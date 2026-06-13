@@ -81,6 +81,13 @@ function reverseRows(grid: GameGrid): GameGrid {
   return grid.map((row) => [...row].reverse());
 }
 
+function transpose(grid: GameGrid): GameGrid {
+  const size = grid.length;
+  return Array.from({ length: size }, (_, col) =>
+    Array.from({ length: size }, (_, row) => grid[row][col])
+  );
+}
+
 export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
   switch (direction) {
     case "left":
@@ -88,6 +95,10 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
     case "right": {
       const outcome = applySlideRowLeftToGrid(reverseRows(grid));
       return { ...outcome, grid: reverseRows(outcome.grid) };
+    }
+    case "up": {
+      const outcome = applySlideRowLeftToGrid(transpose(grid));
+      return { ...outcome, grid: transpose(outcome.grid) };
     }
     default:
       return { grid, moved: false, scoreGained: 0 };

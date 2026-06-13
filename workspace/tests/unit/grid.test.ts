@@ -103,4 +103,24 @@ describe("slide", () => {
     expect(outcome.moved).toBe(true);
     expect(outcome.scoreGained).toBe(30);
   });
+
+  it("slides and merges every column upward", () => {
+    const grid: GameGrid = [
+      [null, 4, 4, 4],
+      [4, 6, 6, 7],
+      [null, 4, 4, null],
+      [7, 6, 6, null],
+    ];
+
+    const outcome = slide(grid, "up");
+
+    expect(outcome.grid).toEqual([
+      [4, null, null, 4],
+      [7, null, null, 7],
+      [null, null, null, null],
+      [null, null, null, null],
+    ]);
+    expect(outcome.moved).toBe(true);
+    expect(outcome.scoreGained).toBe(40);
+  });
 });
