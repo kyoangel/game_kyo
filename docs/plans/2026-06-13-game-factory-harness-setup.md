@@ -11,7 +11,7 @@
 
 **Complexity Path:** `Simplified TDD path`
 
-**Status:** In Progress — Phase 1 Task 1 done (git initialized, `.gitignore` added, initial commit `c69ffe4`, fix-up commit `ec506e8` to also ignore `.claude/` runtime state)
+**Status:** In Progress — Phase 1 complete (8/8 tasks done; commits `c69ffe4`..`274a2f7`, including `e82443c` sandbox.Dockerfile fix and `274a2f7` sandbox.e2e.Dockerfile). Starting Phase 2 (grid.ts TDD).
 
 ---
 
