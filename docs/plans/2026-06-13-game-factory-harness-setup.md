@@ -11,7 +11,7 @@
 
 **Complexity Path:** `Simplified TDD path`
 
-**Status:** In Progress — Phase 1 complete (8/8). Phase 2 in progress: Tasks 1-6 done (createEmptyGrid, compactRow, slideRowLeft, slide left/right/up; commits `a754ab1`..`8795b4a`). Next: Task 7 (slide down).
+**Status:** In Progress — Phase 1 complete (8/8). Phase 2 complete (11/11): grid.ts has createEmptyGrid, compactRow, slideRowLeft, slide (all 4 directions), canMove, isGameOver, spawnRandomTile — 16/16 Vitest passing; sandbox build+run verified (commits `a754ab1`..`1365fb6`). Starting Phase 3 (agent prompts + PWA assets).
 
 ---
 
