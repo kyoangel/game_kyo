@@ -5,6 +5,7 @@ import {
   slideRowLeft,
   slide,
   canMove,
+  isGameOver,
   type GameGrid,
 } from "../../src/grid";
 
@@ -167,5 +168,29 @@ describe("canMove", () => {
     ];
 
     expect(canMove(grid)).toBe(false);
+  });
+});
+
+describe("isGameOver", () => {
+  it("returns true for a full grid with no possible merge in any direction", () => {
+    const grid: GameGrid = [
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+    ];
+
+    expect(isGameOver(grid)).toBe(true);
+  });
+
+  it("returns false when a merge is still possible", () => {
+    const grid: GameGrid = [
+      [4, 6, 1, 2],
+      [3, 5, 7, 8],
+      [9, 1, 2, 3],
+      [4, 5, 6, 7],
+    ];
+
+    expect(isGameOver(grid)).toBe(false);
   });
 });
