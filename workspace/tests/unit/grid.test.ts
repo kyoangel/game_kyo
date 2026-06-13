@@ -83,4 +83,24 @@ describe("slide", () => {
     expect(outcome.moved).toBe(true);
     expect(outcome.scoreGained).toBe(30);
   });
+
+  it("slides and merges every row to the right", () => {
+    const grid: GameGrid = [
+      [7, null, null, 4],
+      [null, null, 4, 6],
+      [6, 4, 6, 4],
+      [null, null, 4, 7],
+    ];
+
+    const outcome = slide(grid, "right");
+
+    expect(outcome.grid).toEqual([
+      [null, null, 7, 4],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, 4, 7],
+    ]);
+    expect(outcome.moved).toBe(true);
+    expect(outcome.scoreGained).toBe(30);
+  });
 });

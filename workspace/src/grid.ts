@@ -77,10 +77,18 @@ function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
   return { grid: resultGrid, moved, scoreGained };
 }
 
+function reverseRows(grid: GameGrid): GameGrid {
+  return grid.map((row) => [...row].reverse());
+}
+
 export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
   switch (direction) {
     case "left":
       return applySlideRowLeftToGrid(grid);
+    case "right": {
+      const outcome = applySlideRowLeftToGrid(reverseRows(grid));
+      return { ...outcome, grid: reverseRows(outcome.grid) };
+    }
     default:
       return { grid, moved: false, scoreGained: 0 };
   }
