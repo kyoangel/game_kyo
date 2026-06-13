@@ -115,3 +115,29 @@ export function canMove(grid: GameGrid): boolean {
 export function isGameOver(grid: GameGrid): boolean {
   return !canMove(grid);
 }
+
+export type Rng = () => number;
+
+export function spawnRandomTile(grid: GameGrid, rng: Rng = Math.random): GameGrid {
+  const emptyCells: Array<[number, number]> = [];
+  grid.forEach((row, rowIndex) => {
+    row.forEach((cell, colIndex) => {
+      if (cell === null) {
+        emptyCells.push([rowIndex, colIndex]);
+      }
+    });
+  });
+
+  if (emptyCells.length === 0) {
+    return grid;
+  }
+
+  const [targetRow, targetCol] = emptyCells[Math.floor(rng() * emptyCells.length)];
+  const value = Math.floor(rng() * 9) + 1;
+
+  return grid.map((row, rowIndex) =>
+    row.map((cell, colIndex) =>
+      rowIndex === targetRow && colIndex === targetCol ? value : cell
+    )
+  );
+}

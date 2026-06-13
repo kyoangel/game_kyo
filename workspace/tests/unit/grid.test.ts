@@ -6,6 +6,7 @@ import {
   slide,
   canMove,
   isGameOver,
+  spawnRandomTile,
   type GameGrid,
 } from "../../src/grid";
 
@@ -192,5 +193,35 @@ describe("isGameOver", () => {
     ];
 
     expect(isGameOver(grid)).toBe(false);
+  });
+});
+
+describe("spawnRandomTile", () => {
+  it("fills exactly one empty cell with a digit 1-9 using the injected rng", () => {
+    const grid = createEmptyGrid(4);
+    const values = [0, 0];
+    const rng = () => values.shift() as number;
+
+    const result = spawnRandomTile(grid, rng);
+
+    const filled = result.flat().filter((cell): cell is number => cell !== null);
+    expect(filled).toHaveLength(1);
+    expect(result[0][0]).toBe(1);
+    expect(filled[0]).toBeGreaterThanOrEqual(1);
+    expect(filled[0]).toBeLessThanOrEqual(9);
+  });
+
+  it("returns the grid unchanged when there are no empty cells", () => {
+    const grid: GameGrid = [
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+    ];
+    const rng = () => 0;
+
+    const result = spawnRandomTile(grid, rng);
+
+    expect(result).toEqual(grid);
   });
 });
