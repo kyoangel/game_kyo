@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createEmptyGrid, compactRow } from "../../src/grid";
+import { createEmptyGrid, compactRow, slideRowLeft } from "../../src/grid";
 
 describe("createEmptyGrid", () => {
   it("creates an NxN grid filled with null", () => {
@@ -28,5 +28,31 @@ describe("compactRow", () => {
 
     expect(result.row).toEqual([4, 7, null, null]);
     expect(result.moved).toBe(false);
+  });
+});
+
+describe("slideRowLeft", () => {
+  it("merges a single adjacent pair that sums to 10 and scores 10", () => {
+    const result = slideRowLeft([4, 6, null, null]);
+
+    expect(result.row).toEqual([null, null, null, null]);
+    expect(result.moved).toBe(true);
+    expect(result.scoreGained).toBe(10);
+  });
+
+  it("resolves chain reactions in a single call", () => {
+    const result = slideRowLeft([4, 6, 4, 6]);
+
+    expect(result.row).toEqual([null, null, null, null]);
+    expect(result.moved).toBe(true);
+    expect(result.scoreGained).toBe(20);
+  });
+
+  it("reports moved=false and scoreGained=0 when nothing can merge or compact", () => {
+    const result = slideRowLeft([4, 7, null, null]);
+
+    expect(result.row).toEqual([4, 7, null, null]);
+    expect(result.moved).toBe(false);
+    expect(result.scoreGained).toBe(0);
   });
 });
