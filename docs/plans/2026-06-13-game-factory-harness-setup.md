@@ -11,7 +11,7 @@
 
 **Complexity Path:** `Simplified TDD path`
 
-**Status:** In Progress — Phase 1 complete (8/8). Phase 2 complete (11/11): grid.ts has createEmptyGrid, compactRow, slideRowLeft, slide (all 4 directions), canMove, isGameOver, spawnRandomTile — 16/16 Vitest passing; sandbox build+run verified (commits `a754ab1`..`1365fb6`). Starting Phase 3 (agent prompts + PWA assets).
+**Status:** Complete — Phases 1-3 all done (27/27 tasks). Phase 1: Vite+Vitest+Playwright workspace + both Docker sandboxes (commits `c69ffe4`..`274a2f7`). Phase 2: grid.ts pure-function engine, 16/16 Vitest passing, sandbox integration verified (commits `a754ab1`..`1365fb6`). Phase 3: all 5 agent prompts (designer/coder/qa/reviewer/optimizer) + PWA manifest/icon/service worker wired into index.html (commits `604936e`..`32dacec`). All Success Criteria checked. Phase 4 (Python orchestrator/agents/harness) remains a roadmap-only table — needs its own `/plan` after a manual Claude CLI / Gemini SDK spike.
 
 ---
 
@@ -1894,11 +1894,11 @@ This phase is **not implemented** by this plan. It documents the target Python l
 - **Risk:** Phase 4's Claude CLI / Gemini SDK output shapes are unknown, so writing TDD tests now would test against guessed formats -> **Mitigation:** Phase 4 is a roadmap table only; the deferred-detail note requires a manual spike (one real call to each) before the follow-up `/plan` locks down `SandboxResult` / `ReviewResult` / `OptimizerResult`.
 
 ## Success Criteria
-- [ ] `git log --oneline` shows one commit per task across Phases 1-3, with a clean working tree (`git status --short` empty)
-- [ ] `cd workspace && npm run build` and `cd workspace && npx tsc --noEmit` both succeed with no errors
-- [ ] `cd workspace && npm run test:unit` reports 1 test file, 16 passing tests
-- [ ] `docker build -t game-sandbox -f sandbox.Dockerfile .` succeeds and `docker run --rm --name game-sandbox-instance game-sandbox` exits 0
-- [ ] `docker build -t game-sandbox-e2e -f sandbox.e2e.Dockerfile .` succeeds
-- [ ] `prompts/` contains `designer.txt`, `coder.txt`, `qa.txt`, `reviewer.txt`, and `optimizer.txt`, each matching the contracts described in Phase 3
-- [ ] `workspace/manifest.json`, `workspace/sw.js`, and `workspace/icons/icon.svg` exist and are referenced from `workspace/index.html`
-- [ ] Phase 4 roadmap table is present in this document, with the manual-spike prerequisite documented for the follow-up `/plan`
+- [x] `git log --oneline` shows one commit per task across Phases 1-3, with a clean working tree (`git status --short` empty)
+- [x] `cd workspace && npm run build` and `cd workspace && npx tsc --noEmit` both succeed with no errors
+- [x] `cd workspace && npm run test:unit` reports 1 test file, 16 passing tests
+- [x] `docker build -t game-sandbox -f sandbox.Dockerfile .` succeeds and `docker run --rm --name game-sandbox-instance game-sandbox` exits 0
+- [x] `docker build -t game-sandbox-e2e -f sandbox.e2e.Dockerfile .` succeeds
+- [x] `prompts/` contains `designer.txt`, `coder.txt`, `qa.txt`, `reviewer.txt`, and `optimizer.txt`, each matching the contracts described in Phase 3
+- [x] `workspace/manifest.json`, `workspace/sw.js`, and `workspace/icons/icon.svg` exist and are referenced from `workspace/index.html`
+- [x] Phase 4 roadmap table is present in this document, with the manual-spike prerequisite documented for the follow-up `/plan`
