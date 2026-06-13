@@ -106,3 +106,8 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
     }
   }
 }
+
+export function canMove(grid: GameGrid): boolean {
+  const directions: Direction[] = ["up", "down", "left", "right"];
+  return directions.some((direction) => slide(grid, direction).moved);
+}

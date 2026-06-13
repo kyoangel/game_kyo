@@ -4,6 +4,7 @@ import {
   compactRow,
   slideRowLeft,
   slide,
+  canMove,
   type GameGrid,
 } from "../../src/grid";
 
@@ -142,5 +143,29 @@ describe("slide", () => {
     ]);
     expect(outcome.moved).toBe(true);
     expect(outcome.scoreGained).toBe(20);
+  });
+});
+
+describe("canMove", () => {
+  it("returns true when at least one direction would change the grid", () => {
+    const grid: GameGrid = [
+      [4, 6, 1, 2],
+      [3, 5, 7, 8],
+      [9, 1, 2, 3],
+      [4, 5, 6, 7],
+    ];
+
+    expect(canMove(grid)).toBe(true);
+  });
+
+  it("returns false when no direction would change a full grid with no merges", () => {
+    const grid: GameGrid = [
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+    ];
+
+    expect(canMove(grid)).toBe(false);
   });
 });
