@@ -11,7 +11,7 @@
 
 **Complexity Path:** `Simplified TDD path`
 
-**Status:** In Progress — Phase 1 complete (8/8). Phase 2 in progress: Tasks 1-2 done (createEmptyGrid, compactRow; commits `a754ab1`, `f6b9d80`). Next: Task 3 (slideRowLeft).
+**Status:** In Progress — Phase 1 complete (8/8). Phase 2 in progress: Tasks 1-6 done (createEmptyGrid, compactRow, slideRowLeft, slide left/right/up; commits `a754ab1`..`8795b4a`). Next: Task 7 (slide down).
 
 ---
 

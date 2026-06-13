@@ -100,7 +100,9 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
       const outcome = applySlideRowLeftToGrid(transpose(grid));
       return { ...outcome, grid: transpose(outcome.grid) };
     }
-    default:
-      return { grid, moved: false, scoreGained: 0 };
+    case "down": {
+      const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)));
+      return { ...outcome, grid: transpose(reverseRows(outcome.grid)) };
+    }
   }
 }
