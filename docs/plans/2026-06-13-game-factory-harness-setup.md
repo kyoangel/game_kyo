@@ -11,7 +11,7 @@
 
 **Complexity Path:** `Simplified TDD path`
 
-**Status:** Draft
+**Status:** In Progress — Phase 1 Task 1 done (git initialized, `.gitignore` added, initial commit `c69ffe4`, fix-up commit `ec506e8` to also ignore `.claude/` runtime state)
 
 ---
 
