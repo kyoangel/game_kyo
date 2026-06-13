@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { createEmptyGrid, compactRow, slideRowLeft } from "../../src/grid";
+import {
+  createEmptyGrid,
+  compactRow,
+  slideRowLeft,
+  slide,
+  type GameGrid,
+} from "../../src/grid";
 
 describe("createEmptyGrid", () => {
   it("creates an NxN grid filled with null", () => {
@@ -54,5 +60,27 @@ describe("slideRowLeft", () => {
     expect(result.row).toEqual([4, 7, null, null]);
     expect(result.moved).toBe(false);
     expect(result.scoreGained).toBe(0);
+  });
+});
+
+describe("slide", () => {
+  it("slides and merges every row to the left", () => {
+    const grid: GameGrid = [
+      [null, 4, null, 7],
+      [4, 6, null, null],
+      [4, 6, 4, 6],
+      [4, 7, null, null],
+    ];
+
+    const outcome = slide(grid, "left");
+
+    expect(outcome.grid).toEqual([
+      [4, 7, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [4, 7, null, null],
+    ]);
+    expect(outcome.moved).toBe(true);
+    expect(outcome.scoreGained).toBe(30);
   });
 });

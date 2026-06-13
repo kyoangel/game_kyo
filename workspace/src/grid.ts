@@ -54,3 +54,34 @@ export function slideRowLeft(row: Cell[]): SlideResult {
 
   return { row: finalRow, moved, scoreGained };
 }
+
+export type Direction = "up" | "down" | "left" | "right";
+
+export interface SlideOutcome {
+  grid: GameGrid;
+  moved: boolean;
+  scoreGained: number;
+}
+
+function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
+  let moved = false;
+  let scoreGained = 0;
+
+  const resultGrid = grid.map((row) => {
+    const result = slideRowLeft(row);
+    if (result.moved) moved = true;
+    scoreGained += result.scoreGained;
+    return result.row;
+  });
+
+  return { grid: resultGrid, moved, scoreGained };
+}
+
+export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
+  switch (direction) {
+    case "left":
+      return applySlideRowLeftToGrid(grid);
+    default:
+      return { grid, moved: false, scoreGained: 0 };
+  }
+}
