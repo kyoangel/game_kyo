@@ -163,9 +163,9 @@ cd /Users/kyo.lai82/Projects/Personal/game-factory && python3 -m pytest tests/ag
 ```
 Confirm failure is exactly:
 ```
-ModuleNotFoundError: No module named 'agents.gemini_client'
+ImportError: cannot import name 'gemini_client' from 'agents' (/Users/kyo.lai82/Projects/Personal/game-factory/agents/__init__.py)
 ```
-**Anti-rationalization:** Do not write `agents/gemini_client.py` before seeing this exact error. A different error (e.g. `ImportError`, `SyntaxError`) means something else is wrong — stop and investigate before proceeding.
+**Anti-rationalization:** Do not write `agents/gemini_client.py` before seeing this exact error. A different error (e.g. `SyntaxError`, `AttributeError`) means something else is wrong — stop and investigate before proceeding.
 
 **GREEN - Minimal Code**
 
