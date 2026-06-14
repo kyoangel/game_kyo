@@ -108,7 +108,7 @@ cd /Users/kyo.lai82/Projects/Personal/game-factory && python3 -m pytest --collec
 ```
 
 Confirm:
-- `pytest --collect-only` exits with code `5` (no tests collected — same as before, no new test files yet)
+- `pytest --collect-only` exits with code `0` and reports `28/30 tests collected (2 deselected)` (no new test files yet — same 28 tests as the end of Phase 4a)
 - `pytest --markers` output includes a line `@pytest.mark.gemini: invokes the real Gemini API, excluded by default`
 - No `INTERNALERROR` or traceback
 

@@ -3,6 +3,11 @@ name = "game-factory"
 version = "0.1.0"
 description = "AI agent pipeline that builds small TypeScript games"
 requires-python = ">=3.12"
+dependencies = [
+    "pytest",
+    "google-genai",
+    "python-dotenv",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -10,5 +15,6 @@ markers = [
     "slow: long-running checks, excluded by default",
     "docker: requires a local Docker daemon, excluded by default",
     "claude_cli: invokes the real claude CLI binary, excluded by default",
+    "gemini: invokes the real Gemini API, excluded by default",
 ]
-addopts = "-m \"not slow and not docker and not claude_cli\""
+addopts = "-m \"not slow and not docker and not claude_cli and not gemini\""
