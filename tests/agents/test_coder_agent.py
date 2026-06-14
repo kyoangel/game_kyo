@@ -22,3 +22,19 @@ def test_run_coder_loads_prompt_and_passes_feedback(repo: Path) -> None:
         feedback="fix this",
         repo_root=repo,
     )
+
+
+def test_run_coder_returns_changed_workspace_files(repo: Path) -> None:
+    def fake_call_coder(**kwargs):
+        (repo / "workspace" / "new_file.ts").write_text("export const x = 1;\n")
+        return "done"
+
+    spec_path = repo / "spec.md"
+    spec_path.write_text("Add new_file.ts")
+
+    with patch("agents.coder_agent.prompt_store.load", return_value="SYSTEM"), patch(
+        "agents.coder_agent.claude_cli.call_coder", side_effect=fake_call_coder
+    ):
+        changed = coder_agent.run_coder(spec_path, repo_root=repo)
+
+    assert changed == [Path("workspace/new_file.ts")]
