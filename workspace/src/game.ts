@@ -1,6 +1,7 @@
 import {
   createInitialState,
   applyMove,
+  isGameOver,
   type Direction,
   type GameState,
   type Rng,
@@ -9,6 +10,7 @@ import {
 const GRID_SIZE = 4;
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+const gameOverEl = document.getElementById("game-over") as HTMLDivElement;
 
 let state: GameState = createInitialState(GRID_SIZE);
 let rng: Rng = Math.random;
@@ -40,6 +42,8 @@ function render(): void {
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.fillText(`Score: ${state.score}`, 10, 20);
+
+  gameOverEl.hidden = !isGameOver(state.grid);
 }
 
 const KEY_TO_DIRECTION: Record<string, Direction> = {

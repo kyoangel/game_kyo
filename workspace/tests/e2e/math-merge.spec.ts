@@ -44,3 +44,23 @@ test("pressing ArrowLeft merges adjacent tiles summing to 10, increases score, a
   expect(result.grid[0][0]).toBe(1);
   expect(result.grid[0][1]).toBeNull();
 });
+
+test("shows the Game Over overlay when no moves remain", async ({ page }) => {
+  await page.goto("/");
+
+  const gameOverState: GameState = {
+    grid: [
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+      [1, 2, 1, 2],
+      [2, 1, 2, 1],
+    ],
+    score: 0,
+  };
+
+  await page.evaluate((state) => {
+    (window as unknown as { __setTestState: (s: GameState) => void }).__setTestState(state);
+  }, gameOverState);
+
+  await expect(page.locator("#game-over")).toBeVisible();
+});
