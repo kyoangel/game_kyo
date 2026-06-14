@@ -7,6 +7,7 @@ import {
   canMove,
   isGameOver,
   spawnRandomTile,
+  createInitialState,
   type GameGrid,
 } from "../../src/grid";
 
@@ -223,5 +224,20 @@ describe("spawnRandomTile", () => {
     const result = spawnRandomTile(grid, rng);
 
     expect(result).toEqual(grid);
+  });
+});
+
+describe("createInitialState", () => {
+  it("creates a grid with exactly two tiles (values 1-9) and score 0", () => {
+    const rng = () => 0;
+
+    const state = createInitialState(4, rng);
+
+    expect(state.score).toBe(0);
+    expect(state.grid).toHaveLength(4);
+    const filled = state.grid.flat().filter((cell): cell is number => cell !== null);
+    expect(filled).toHaveLength(2);
+    expect(state.grid[0][0]).toBe(1);
+    expect(state.grid[0][1]).toBe(1);
   });
 });

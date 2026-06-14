@@ -141,3 +141,15 @@ export function spawnRandomTile(grid: GameGrid, rng: Rng = Math.random): GameGri
     )
   );
 }
+
+export interface GameState {
+  grid: GameGrid;
+  score: number;
+}
+
+export function createInitialState(size: number, rng: Rng = Math.random): GameState {
+  const empty = createEmptyGrid(size);
+  const withFirstTile = spawnRandomTile(empty, rng);
+  const grid = spawnRandomTile(withFirstTile, rng);
+  return { grid, score: 0 };
+}
