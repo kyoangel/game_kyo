@@ -50,13 +50,26 @@ def review_loop(
     if repo_root is None:
         repo_root = REPO_ROOT
 
-    changed_files = coder_agent.run_coder(spec_path, feedback=None, repo_root=repo_root)
-    build_result = sandbox_runner.run_build_check()
+    feedback: str | None = None
+    review: reviewer_agent.ReviewResult
 
-    if not build_result.success:
-        return reviewer_agent.ReviewResult(approved=False, comments=[build_result.stderr])
+    for _ in range(max_retries):
+        changed_files = coder_agent.run_coder(spec_path, feedback=feedback, repo_root=repo_root)
+        build_result = sandbox_runner.run_build_check()
 
-    return reviewer_agent.run_reviewer(changed_files, repo_root)
+        if not build_result.success:
+            feedback = build_result.stderr
+            review = reviewer_agent.ReviewResult(approved=False, comments=[build_result.stderr])
+            continue
+
+        review = reviewer_agent.run_reviewer(changed_files, repo_root)
+
+        if review.approved:
+            return review
+
+        feedback = "\n".join(review.comments)
+
+    return review
 
 
 def main(argv: list[str] | None = None) -> int:
