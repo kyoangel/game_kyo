@@ -1,3 +1,4 @@
+import subprocess
 from unittest.mock import MagicMock, patch
 
 from harness.sandbox_runner import SandboxResult, run_build_check
@@ -42,3 +43,39 @@ def test_run_build_check_uses_correct_name_flag_and_maps_result() -> None:
     assert run_call_args[-1] == "game-sandbox"
 
     assert result == SandboxResult(success=True, stdout="tsc ok", stderr="", returncode=0)
+
+
+def test_run_build_check_short_circuits_on_build_failure() -> None:
+    build_result = MagicMock(returncode=1, stdout="", stderr="tsc error")
+
+    with patch(
+        "harness.sandbox_runner.subprocess.run", side_effect=[build_result]
+    ) as mock_run:
+        result = run_build_check()
+
+    assert mock_run.call_count == 1  # docker run was never called
+    assert result == SandboxResult(success=False, stdout="", stderr="tsc error", returncode=1)
+
+
+def test_run_build_check_passes_timeout_to_subprocess_run() -> None:
+    build_result = MagicMock(returncode=0, stdout="", stderr="")
+    run_result = MagicMock(returncode=0, stdout="", stderr="")
+
+    with patch(
+        "harness.sandbox_runner.subprocess.run", side_effect=[build_result, run_result]
+    ) as mock_run:
+        run_build_check()
+
+    assert "timeout" in mock_run.call_args_list[0].kwargs
+    assert "timeout" in mock_run.call_args_list[1].kwargs
+
+
+def test_run_build_check_handles_timeout_expired() -> None:
+    with patch(
+        "harness.sandbox_runner.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd=["docker", "build"], timeout=300),
+    ):
+        result = run_build_check()
+
+    assert result.success is False
+    assert "timeout" in result.stderr.lower()

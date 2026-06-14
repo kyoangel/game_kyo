@@ -1050,7 +1050,7 @@ def run_build_check() -> SandboxResult:
             timeout=BUILD_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return SandboxResult(success=False, stdout="", stderr="docker build timed out", returncode=-1)
+        return SandboxResult(success=False, stdout="", stderr="docker build timeout", returncode=-1)
 
     if build.returncode != 0:
         return SandboxResult(
@@ -1065,7 +1065,7 @@ def run_build_check() -> SandboxResult:
             timeout=RUN_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return SandboxResult(success=False, stdout="", stderr="docker run timed out", returncode=-1)
+        return SandboxResult(success=False, stdout="", stderr="docker run timeout", returncode=-1)
 
     return SandboxResult(
         success=run.returncode == 0,
@@ -1160,7 +1160,7 @@ def run_e2e_tests() -> SandboxResult:
             timeout=BUILD_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return SandboxResult(success=False, stdout="", stderr="docker build timed out", returncode=-1)
+        return SandboxResult(success=False, stdout="", stderr="docker build timeout", returncode=-1)
 
     if build.returncode != 0:
         return SandboxResult(
@@ -1175,7 +1175,7 @@ def run_e2e_tests() -> SandboxResult:
             timeout=RUN_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return SandboxResult(success=False, stdout="", stderr="docker run timed out", returncode=-1)
+        return SandboxResult(success=False, stdout="", stderr="docker run timeout", returncode=-1)
 
     return SandboxResult(
         success=run.returncode == 0,
@@ -1204,7 +1204,7 @@ def _run_sandbox(dockerfile: str, image_tag: str, container_name: str) -> Sandbo
             timeout=BUILD_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return SandboxResult(success=False, stdout="", stderr="docker build timed out", returncode=-1)
+        return SandboxResult(success=False, stdout="", stderr="docker build timeout", returncode=-1)
 
     if build.returncode != 0:
         return SandboxResult(
@@ -1219,7 +1219,7 @@ def _run_sandbox(dockerfile: str, image_tag: str, container_name: str) -> Sandbo
             timeout=RUN_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        return SandboxResult(success=False, stdout="", stderr="docker run timed out", returncode=-1)
+        return SandboxResult(success=False, stdout="", stderr="docker run timeout", returncode=-1)
 
     return SandboxResult(
         success=run.returncode == 0,
