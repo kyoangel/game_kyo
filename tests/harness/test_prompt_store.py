@@ -52,3 +52,17 @@ def test_update_writes_commits_and_returns_hash(repo: Path) -> None:
         ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True, check=True
     ).stdout
     assert status == ""
+
+
+def test_rollback_restores_prior_content(repo: Path) -> None:
+    h1 = prompt_store.update("coder", "version 1\n", "v1", repo_root=repo)
+    prompt_store.update("coder", "version 2\n", "v2", repo_root=repo)
+
+    prompt_store.rollback(h1, repo_root=repo)
+
+    assert prompt_store.load("coder", repo_root=repo) == "version 1\n"
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout
+    assert status == ""
