@@ -1,6 +1,12 @@
 import subprocess
 from pathlib import Path
 
+CLAUDE_TIMEOUT_S = 600
+
+
+class ClaudeCliError(Exception):
+    pass
+
 
 def call_coder(
     system_prompt: str,
@@ -12,18 +18,26 @@ def call_coder(
     if feedback is not None:
         prompt = f"{task}\n\n## Previous attempt feedback:\n{feedback}"
 
-    result = subprocess.run(
-        [
-            "claude",
-            "-p",
-            prompt,
-            "--append-system-prompt",
-            system_prompt,
-            "--permission-mode",
-            "acceptEdits",
-        ],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout
+    try:
+        result = subprocess.run(
+            [
+                "claude",
+                "-p",
+                prompt,
+                "--append-system-prompt",
+                system_prompt,
+                "--permission-mode",
+                "acceptEdits",
+            ],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired:
+        raise ClaudeCliError(f"claude CLI timed out after {CLAUDE_TIMEOUT_S}s")
+
+    if result.returncode != 0:
+        raise ClaudeCliError(result.stderr)
+
+    return result.stdout.strip()

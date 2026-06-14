@@ -1,7 +1,10 @@
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from agents.claude_cli import call_coder
+import pytest
+
+from agents.claude_cli import ClaudeCliError, call_coder
 
 
 def test_call_coder_invokes_claude_with_expected_args_and_cwd(tmp_path: Path) -> None:
@@ -42,3 +45,27 @@ def test_call_coder_appends_feedback_to_prompt(tmp_path: Path) -> None:
     assert "Implement feature X" in prompt
     assert "## Previous attempt feedback:" in prompt
     assert "tsc error: missing semicolon" in prompt
+
+
+def test_call_coder_returns_stripped_stdout_on_success(tmp_path: Path) -> None:
+    mock_result = MagicMock(returncode=0, stdout="  done  \n", stderr="")
+
+    with patch("agents.claude_cli.subprocess.run", return_value=mock_result):
+        assert call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path) == "done"
+
+
+def test_call_coder_raises_on_nonzero_returncode(tmp_path: Path) -> None:
+    mock_result = MagicMock(returncode=1, stdout="", stderr="auth error")
+
+    with patch("agents.claude_cli.subprocess.run", return_value=mock_result):
+        with pytest.raises(ClaudeCliError, match="auth error"):
+            call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path)
+
+
+def test_call_coder_converts_timeout_expired_to_claude_cli_error(tmp_path: Path) -> None:
+    with patch(
+        "agents.claude_cli.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd=["claude"], timeout=600),
+    ):
+        with pytest.raises(ClaudeCliError, match="timed out"):
+            call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path)
