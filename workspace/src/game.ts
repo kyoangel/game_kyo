@@ -1,10 +1,17 @@
-import { createInitialState, type GameState } from "./grid";
+import {
+  createInitialState,
+  applyMove,
+  type Direction,
+  type GameState,
+  type Rng,
+} from "./grid";
 
 const GRID_SIZE = 4;
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
 let state: GameState = createInitialState(GRID_SIZE);
+let rng: Rng = Math.random;
 
 function render(): void {
   const cellSize = canvas.width / GRID_SIZE;
@@ -35,6 +42,35 @@ function render(): void {
   ctx.fillText(`Score: ${state.score}`, 10, 20);
 }
 
+const KEY_TO_DIRECTION: Record<string, Direction> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  w: "up",
+  s: "down",
+  a: "left",
+  d: "right",
+};
+
+function handleKeydown(event: KeyboardEvent): void {
+  const direction = KEY_TO_DIRECTION[event.key];
+  if (!direction) return;
+
+  state = applyMove(state, direction, rng);
+  render();
+}
+
+window.addEventListener("keydown", handleKeydown);
+
 (window as unknown as { __getGameState: () => GameState }).__getGameState = () => state;
+
+(window as unknown as {
+  __setTestState: (s: GameState, testRng?: Rng) => void;
+}).__setTestState = (s, testRng) => {
+  state = s;
+  if (testRng) rng = testRng;
+  render();
+};
 
 render();
