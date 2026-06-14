@@ -47,3 +47,7 @@ def test_run_reviewer_loads_prompt_and_calls_gemini(tmp_path: Path) -> None:
         response_schema=ReviewResult,
     )
     assert result == expected
+
+
+def test_format_changed_files_empty_list_returns_placeholder(tmp_path: Path) -> None:
+    assert _format_changed_files([], repo_root=tmp_path) == "No files were changed."

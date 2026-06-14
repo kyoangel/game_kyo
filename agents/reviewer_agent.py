@@ -12,6 +12,9 @@ class ReviewResult(BaseModel):
 
 
 def _format_changed_files(changed_files: list[Path], repo_root: Path) -> str:
+    if not changed_files:
+        return "No files were changed."
+
     blocks = []
     for path in changed_files:
         content = (repo_root / path).read_text()
