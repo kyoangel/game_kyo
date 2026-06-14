@@ -2,6 +2,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from harness import trace_logger
 
 
@@ -60,3 +62,19 @@ def test_log_step_record_contains_expected_keys_and_values(tmp_path: Path) -> No
     assert record["output"] == {"raw": "did x"}
     assert record["result"] == {"success": True}
     datetime.fromisoformat(record["timestamp"])  # must not raise
+
+
+def test_log_step_default_traces_root_resolves_under_repo_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(trace_logger, "REPO_ROOT", tmp_path)
+
+    trace_logger.log_step(
+        run_id="run-default",
+        agent="coder",
+        input={},
+        output={},
+        result={"success": True},
+    )
+
+    assert (tmp_path / "traces" / "run-default" / "trace.jsonl").exists()
