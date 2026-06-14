@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 import orchestrator
+from agents.reviewer_agent import ReviewResult
 from harness.sandbox_runner import SandboxResult
 
 
@@ -113,3 +114,25 @@ def test_main_uses_provided_spec_path_and_returns_one_on_failure(tmp_path: Path,
     mock_inner_loop.assert_called_once_with(spec_path)
     assert exit_code == 1
     assert "❌" in capsys.readouterr().out
+
+
+def test_review_loop_happy_path_build_passes_and_review_approves(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch(
+        "orchestrator.coder_agent.run_coder", return_value=[Path("workspace/grid.ts")]
+    ) as mock_run_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ) as mock_build_check, patch(
+        "orchestrator.reviewer_agent.run_reviewer", return_value=review_result
+    ) as mock_run_reviewer:
+        result = orchestrator.review_loop(spec_path, repo_root=tmp_path)
+
+    mock_run_coder.assert_called_once_with(spec_path, feedback=None, repo_root=tmp_path)
+    mock_build_check.assert_called_once()
+    mock_run_reviewer.assert_called_once_with([Path("workspace/grid.ts")], tmp_path)
+    assert result == review_result

@@ -770,7 +770,7 @@ cd /Users/kyo.lai82/Projects/Personal/game-factory && python3 -m pytest tests/te
 ```
 Confirm the new test fails with exactly:
 ```
-AttributeError: <module 'orchestrator' from '/Users/kyo.lai82/Projects/Personal/game-factory/orchestrator.py'> does not have the attribute 'reviewer_agent'
+AttributeError: module 'orchestrator' has no attribute 'reviewer_agent'
 ```
 (raised by the third `patch(...)` in the `with` statement, before `review_loop` is called), and the previous 6 tests still pass.
 
