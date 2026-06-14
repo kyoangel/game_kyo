@@ -14,5 +14,16 @@ def inner_loop(
     if repo_root is None:
         repo_root = REPO_ROOT
 
-    coder_agent.run_coder(spec_path, feedback=None, repo_root=repo_root)
-    return sandbox_runner.run_build_check()
+    feedback: str | None = None
+    result: sandbox_runner.SandboxResult
+
+    for _ in range(max_retries):
+        coder_agent.run_coder(spec_path, feedback=feedback, repo_root=repo_root)
+        result = sandbox_runner.run_build_check()
+
+        if result.success:
+            return result
+
+        feedback = result.stderr
+
+    return result
