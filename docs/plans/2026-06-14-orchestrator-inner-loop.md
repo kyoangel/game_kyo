@@ -2442,6 +2442,6 @@ Phase 4a's `harness/prompt_store.py` (`load`/`update`/`rollback`) is reused as-i
 - [x] `harness/sandbox_runner.run_build_check`'s `docker run` command includes `--name <container_name>` (fixes the original missing-`--name` bug), verified by Task D2's assertion
 - [ ] `orchestrator.py` exposes `inner_loop(spec_path, max_retries=3, repo_root=None)` and `main(argv)`; the old `run_sandbox_test`/`autonomous_loop` functions are removed
 - [ ] `harness/prompt_store.py` supports `load`/`update`/`rollback` against an injected `repo_root`, tested entirely against a temp-git fixture (no mutation of the real `prompts/` history)
-- [ ] `agents/claude_cli.call_coder` invokes the real `claude` binary via list-form `subprocess.run` (no `shell=True`), confirmed responsive via Task E4's manual smoke test
+- [x] `agents/claude_cli.call_coder` invokes the real `claude` binary via list-form `subprocess.run` (no `shell=True`), confirmed responsive via Task E4's manual smoke test
 - [ ] Task D5 (`docker`-marked), Task E4 (`claude_cli`-marked), and the Phase G manual integration check have each been run at least once and pass
 - [ ] All tasks across Phases A-G are committed individually with their specified commit messages
