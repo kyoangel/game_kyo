@@ -32,3 +32,23 @@ def test_load_returns_prompt_content(repo: Path) -> None:
 def test_load_missing_prompt_raises_file_not_found(repo: Path) -> None:
     with pytest.raises(FileNotFoundError):
         prompt_store.load("nonexistent", repo_root=repo)
+
+
+def test_update_writes_commits_and_returns_hash(repo: Path) -> None:
+    new_hash = prompt_store.update(
+        "coder", "new content\n", "test: update coder prompt", repo_root=repo
+    )
+
+    assert len(new_hash) == 40
+    assert all(c in "0123456789abcdef" for c in new_hash)
+    assert (repo / "prompts" / "coder.txt").read_text() == "new content\n"
+
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    assert new_hash == head
+
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout
+    assert status == ""
