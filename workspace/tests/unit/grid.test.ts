@@ -264,4 +264,21 @@ describe("applyMove", () => {
     const filled = result.grid.flat().filter((cell): cell is number => cell !== null);
     expect(filled).toHaveLength(1);
   });
+
+  it("returns the state unchanged when the move does not change the grid", () => {
+    const state: GameState = {
+      grid: [
+        [4, 7, null, null],
+        [4, 7, null, null],
+        [4, 7, null, null],
+        [4, 7, null, null],
+      ],
+      score: 5,
+    };
+    const rng = () => 0;
+
+    const result = applyMove(state, "left", rng);
+
+    expect(result).toEqual(state);
+  });
 });
