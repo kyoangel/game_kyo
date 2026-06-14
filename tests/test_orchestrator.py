@@ -90,3 +90,26 @@ def test_inner_loop_logs_each_attempt(tmp_path: Path) -> None:
 
     run_ids = {call.kwargs["run_id"] for call in mock_log_step.call_args_list}
     assert len(run_ids) == 1
+
+
+def test_main_resolves_default_spec_path_and_returns_zero_on_success(capsys) -> None:
+    success_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+
+    with patch("orchestrator.inner_loop", return_value=success_result) as mock_inner_loop:
+        exit_code = orchestrator.main([])
+
+    mock_inner_loop.assert_called_once_with(orchestrator.REPO_ROOT / "specs" / "math-merge-10.md")
+    assert exit_code == 0
+    assert "✅" in capsys.readouterr().out
+
+
+def test_main_uses_provided_spec_path_and_returns_one_on_failure(tmp_path: Path, capsys) -> None:
+    failure_result = SandboxResult(success=False, stdout="", stderr="boom", returncode=1)
+    spec_path = tmp_path / "custom-spec.md"
+
+    with patch("orchestrator.inner_loop", return_value=failure_result) as mock_inner_loop:
+        exit_code = orchestrator.main([str(spec_path)])
+
+    mock_inner_loop.assert_called_once_with(spec_path)
+    assert exit_code == 1
+    assert "❌" in capsys.readouterr().out

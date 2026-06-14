@@ -1,4 +1,5 @@
 import dataclasses
+import sys
 import uuid
 from pathlib import Path
 
@@ -39,3 +40,24 @@ def inner_loop(
         feedback = result.stderr
 
     return result
+
+
+def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+
+    spec_path = Path(argv[0]) if argv else REPO_ROOT / "specs" / "math-merge-10.md"
+
+    result = inner_loop(spec_path)
+
+    if result.success:
+        print("✅ inner_loop succeeded")
+    else:
+        print("❌ inner_loop failed")
+        print(result.stderr)
+
+    return 0 if result.success else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
