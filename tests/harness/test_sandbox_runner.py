@@ -1,5 +1,8 @@
+import shutil
 import subprocess
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from harness.sandbox_runner import SandboxResult, run_build_check, run_e2e_tests
 
@@ -109,3 +112,12 @@ def test_run_e2e_tests_uses_e2e_dockerfile_and_distinct_container_name() -> None
     assert run_call_args[-1] == "game-sandbox-e2e"
 
     assert result == SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+
+
+@pytest.mark.docker
+@pytest.mark.skipif(shutil.which("docker") is None, reason="Docker not available")
+def test_run_build_check_real_docker_succeeds() -> None:
+    result = run_build_check()
+
+    assert result.success is True
+    assert "error" not in result.stdout.lower()
