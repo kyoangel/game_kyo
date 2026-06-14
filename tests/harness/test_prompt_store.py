@@ -54,6 +54,11 @@ def test_update_writes_commits_and_returns_hash(repo: Path) -> None:
     assert status == ""
 
 
+def test_rollback_invalid_hash_raises_prompt_store_error(repo: Path) -> None:
+    with pytest.raises(prompt_store.PromptStoreError):
+        prompt_store.rollback("deadbeef", repo_root=repo)
+
+
 def test_rollback_restores_prior_content(repo: Path) -> None:
     h1 = prompt_store.update("coder", "version 1\n", "v1", repo_root=repo)
     prompt_store.update("coder", "version 2\n", "v2", repo_root=repo)
