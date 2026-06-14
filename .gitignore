@@ -5,3 +5,4 @@ traces/
 __pycache__/
 *.pyc
 .claude/
+.pytest_cache/
