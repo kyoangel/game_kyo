@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+from google.genai import errors
 from pydantic import BaseModel
 
 from agents import gemini_client
@@ -57,3 +59,35 @@ def test_call_gemini_with_response_schema_returns_parsed(monkeypatch) -> None:
     assert config.response_schema is _EchoResult
 
     assert result == expected
+
+
+def test_call_gemini_wraps_api_error(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = errors.APIError(
+        500, {"error": {"message": "internal error", "status": "INTERNAL"}}
+    )
+
+    with patch("agents.gemini_client.genai.Client", return_value=mock_client):
+        with pytest.raises(gemini_client.GeminiClientError) as exc_info:
+            gemini_client.call_gemini(system_prompt="You are helpful.", task="Reply with OK")
+
+    assert "internal error" in str(exc_info.value)
+
+
+@pytest.mark.gemini
+def test_call_gemini_real_api_returns_parsed_review_result() -> None:
+    class _ReviewResult(BaseModel):
+        approved: bool
+        comments: list[str]
+
+    result = gemini_client.call_gemini(
+        system_prompt="You are a strict TypeScript code reviewer. Respond with JSON matching the schema.",
+        task="Review this code:\nconst x: any = 1;",
+        response_schema=_ReviewResult,
+    )
+
+    assert isinstance(result, _ReviewResult)
+    assert isinstance(result.approved, bool)
+    assert isinstance(result.comments, list)

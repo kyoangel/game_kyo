@@ -3,12 +3,16 @@ from typing import Any
 
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from pydantic import BaseModel
 
 load_dotenv()
 
 GEMINI_MODEL = "gemini-2.5-flash"
+
+
+class GeminiClientError(Exception):
+    pass
 
 
 def call_gemini(
@@ -23,11 +27,14 @@ def call_gemini(
         config_kwargs["response_mime_type"] = "application/json"
         config_kwargs["response_schema"] = response_schema
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=task,
-        config=types.GenerateContentConfig(**config_kwargs),
-    )
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=task,
+            config=types.GenerateContentConfig(**config_kwargs),
+        )
+    except errors.APIError as exc:
+        raise GeminiClientError(str(exc)) from exc
 
     if response_schema is not None:
         return response.parsed
