@@ -38,3 +38,17 @@ def test_run_coder_returns_changed_workspace_files(repo: Path) -> None:
         changed = coder_agent.run_coder(spec_path, repo_root=repo)
 
     assert changed == [Path("workspace/new_file.ts")]
+
+
+def test_run_coder_returns_empty_list_for_preexisting_changes_only(repo: Path) -> None:
+    (repo / "workspace" / "preexisting.ts").write_text("export const y = 2;\n")
+
+    spec_path = repo / "spec.md"
+    spec_path.write_text("Do nothing")
+
+    with patch("agents.coder_agent.prompt_store.load", return_value="SYSTEM"), patch(
+        "agents.coder_agent.claude_cli.call_coder", return_value="done"
+    ):
+        changed = coder_agent.run_coder(spec_path, repo_root=repo)
+
+    assert changed == []

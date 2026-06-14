@@ -24,6 +24,8 @@ def run_coder(
     system_prompt = prompt_store.load("coder", repo_root)
     task = spec_path.read_text()
 
+    before = _workspace_status(repo_root)
+
     claude_cli.call_coder(
         system_prompt=system_prompt,
         task=task,
@@ -32,4 +34,5 @@ def run_coder(
     )
 
     after = _workspace_status(repo_root)
-    return sorted(Path(p) for p in after)
+    changed = after - before
+    return sorted(Path(p) for p in changed)
