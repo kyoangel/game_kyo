@@ -1,7 +1,7 @@
 import subprocess
 from unittest.mock import MagicMock, patch
 
-from harness.sandbox_runner import SandboxResult, run_build_check
+from harness.sandbox_runner import SandboxResult, run_build_check, run_e2e_tests
 
 
 def test_sandbox_result_is_comparable_dataclass() -> None:
@@ -79,3 +79,33 @@ def test_run_build_check_handles_timeout_expired() -> None:
 
     assert result.success is False
     assert "timeout" in result.stderr.lower()
+
+
+def test_run_e2e_tests_uses_e2e_dockerfile_and_distinct_container_name() -> None:
+    build_result = MagicMock(returncode=0, stdout="", stderr="")
+    run_result = MagicMock(returncode=0, stdout="3 passed", stderr="")
+
+    with patch(
+        "harness.sandbox_runner.subprocess.run", side_effect=[build_result, run_result]
+    ) as mock_run:
+        result = run_e2e_tests()
+
+    build_call_args = mock_run.call_args_list[0].args[0]
+    run_call_args = mock_run.call_args_list[1].args[0]
+
+    assert build_call_args == [
+        "docker",
+        "build",
+        "-t",
+        "game-sandbox-e2e",
+        "-f",
+        "sandbox.e2e.Dockerfile",
+        ".",
+    ]
+
+    name_index = run_call_args.index("--name")
+    e2e_container_name = run_call_args[name_index + 1]
+    assert e2e_container_name != "game-sandbox-instance"
+    assert run_call_args[-1] == "game-sandbox-e2e"
+
+    assert result == SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)

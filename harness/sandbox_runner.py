@@ -13,10 +13,10 @@ class SandboxResult:
     returncode: int
 
 
-def run_build_check() -> SandboxResult:
+def _run_sandbox(dockerfile: str, image_tag: str, container_name: str) -> SandboxResult:
     try:
         build = subprocess.run(
-            ["docker", "build", "-t", "game-sandbox", "-f", "sandbox.Dockerfile", "."],
+            ["docker", "build", "-t", image_tag, "-f", dockerfile, "."],
             capture_output=True,
             text=True,
             timeout=BUILD_TIMEOUT_S,
@@ -31,7 +31,7 @@ def run_build_check() -> SandboxResult:
 
     try:
         run = subprocess.run(
-            ["docker", "run", "--rm", "--name", "game-sandbox-instance", "game-sandbox"],
+            ["docker", "run", "--rm", "--name", container_name, image_tag],
             capture_output=True,
             text=True,
             timeout=RUN_TIMEOUT_S,
@@ -45,3 +45,11 @@ def run_build_check() -> SandboxResult:
         stderr=run.stderr,
         returncode=run.returncode,
     )
+
+
+def run_build_check() -> SandboxResult:
+    return _run_sandbox("sandbox.Dockerfile", "game-sandbox", "game-sandbox-instance")
+
+
+def run_e2e_tests() -> SandboxResult:
+    return _run_sandbox("sandbox.e2e.Dockerfile", "game-sandbox-e2e", "game-sandbox-e2e-instance")
