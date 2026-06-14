@@ -50,6 +50,7 @@ def review_loop(
     if repo_root is None:
         repo_root = REPO_ROOT
 
+    run_id = uuid.uuid4().hex
     feedback: str | None = None
     review: reviewer_agent.ReviewResult
 
@@ -57,12 +58,30 @@ def review_loop(
         changed_files = coder_agent.run_coder(spec_path, feedback=feedback, repo_root=repo_root)
         build_result = sandbox_runner.run_build_check()
 
+        trace_logger.log_step(
+            run_id=run_id,
+            agent="coder",
+            input=feedback,
+            output=[str(p) for p in changed_files],
+            result=dataclasses.asdict(build_result),
+            traces_root=repo_root / "traces",
+        )
+
         if not build_result.success:
             feedback = build_result.stderr
             review = reviewer_agent.ReviewResult(approved=False, comments=[build_result.stderr])
             continue
 
         review = reviewer_agent.run_reviewer(changed_files, repo_root)
+
+        trace_logger.log_step(
+            run_id=run_id,
+            agent="reviewer",
+            input=[str(p) for p in changed_files],
+            output=review.comments,
+            result=review.model_dump(),
+            traces_root=repo_root / "traces",
+        )
 
         if review.approved:
             return review

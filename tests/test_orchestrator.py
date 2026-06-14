@@ -203,3 +203,32 @@ def test_review_loop_returns_last_rejection_when_retries_exhausted(tmp_path: Pat
     assert mock_run_reviewer.call_count == 2
     assert result == review_results[1]
     assert result.approved is False
+
+
+def test_review_loop_logs_coder_and_reviewer_attempts(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_results = [
+        SandboxResult(success=False, stdout="", stderr="tsc error: foo", returncode=1),
+        SandboxResult(success=True, stdout="ok", stderr="", returncode=0),
+    ]
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator.coder_agent.run_coder", return_value=[]), patch(
+        "orchestrator.sandbox_runner.run_build_check", side_effect=build_results
+    ), patch("orchestrator.reviewer_agent.run_reviewer", return_value=review_result), patch(
+        "orchestrator.trace_logger.log_step"
+    ) as mock_log_step:
+        orchestrator.review_loop(spec_path, max_retries=3, repo_root=tmp_path)
+
+    assert mock_log_step.call_count == 3
+
+    agents_logged = [call.kwargs["agent"] for call in mock_log_step.call_args_list]
+    assert agents_logged == ["coder", "coder", "reviewer"]
+
+    run_ids = {call.kwargs["run_id"] for call in mock_log_step.call_args_list}
+    assert len(run_ids) == 1
+
+    reviewer_call = mock_log_step.call_args_list[2]
+    assert reviewer_call.kwargs["result"] == review_result.model_dump()
