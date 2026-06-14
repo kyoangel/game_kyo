@@ -8,11 +8,15 @@ def call_coder(
     feedback: str | None = None,
     repo_root: Path | None = None,
 ) -> str:
+    prompt = task
+    if feedback is not None:
+        prompt = f"{task}\n\n## Previous attempt feedback:\n{feedback}"
+
     result = subprocess.run(
         [
             "claude",
             "-p",
-            task,
+            prompt,
             "--append-system-prompt",
             system_prompt,
             "--permission-mode",

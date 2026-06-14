@@ -23,3 +23,22 @@ def test_call_coder_invokes_claude_with_expected_args_and_cwd(tmp_path: Path) ->
 
     assert kwargs.get("shell") is not True
     assert kwargs["cwd"] == tmp_path
+
+
+def test_call_coder_appends_feedback_to_prompt(tmp_path: Path) -> None:
+    mock_result = MagicMock(returncode=0, stdout="done", stderr="")
+
+    with patch("agents.claude_cli.subprocess.run", return_value=mock_result) as mock_run:
+        call_coder(
+            system_prompt="SYSTEM",
+            task="Implement feature X",
+            feedback="tsc error: missing semicolon",
+            repo_root=tmp_path,
+        )
+
+    cmd = mock_run.call_args.args[0]
+    prompt = cmd[cmd.index("-p") + 1]
+
+    assert "Implement feature X" in prompt
+    assert "## Previous attempt feedback:" in prompt
+    assert "tsc error: missing semicolon" in prompt
