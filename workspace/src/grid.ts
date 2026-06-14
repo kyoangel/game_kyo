@@ -153,3 +153,9 @@ export function createInitialState(size: number, rng: Rng = Math.random): GameSt
   const grid = spawnRandomTile(withFirstTile, rng);
   return { grid, score: 0 };
 }
+
+export function applyMove(state: GameState, direction: Direction, rng: Rng = Math.random): GameState {
+  const outcome = slide(state.grid, direction);
+  const grid = spawnRandomTile(outcome.grid, rng);
+  return { grid, score: state.score + outcome.scoreGained };
+}

@@ -8,7 +8,9 @@ import {
   isGameOver,
   spawnRandomTile,
   createInitialState,
+  applyMove,
   type GameGrid,
+  type GameState,
 } from "../../src/grid";
 
 describe("createEmptyGrid", () => {
@@ -239,5 +241,27 @@ describe("createInitialState", () => {
     expect(filled).toHaveLength(2);
     expect(state.grid[0][0]).toBe(1);
     expect(state.grid[0][1]).toBe(1);
+  });
+});
+
+describe("applyMove", () => {
+  it("slides, increases score by scoreGained, and spawns a new tile when the move changes the grid", () => {
+    const state: GameState = {
+      grid: [
+        [4, 6, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      score: 0,
+    };
+    const rng = () => 0;
+
+    const result = applyMove(state, "left", rng);
+
+    expect(result.score).toBe(10);
+    expect(result.grid[0][0]).toBe(1);
+    const filled = result.grid.flat().filter((cell): cell is number => cell !== null);
+    expect(filled).toHaveLength(1);
   });
 });
