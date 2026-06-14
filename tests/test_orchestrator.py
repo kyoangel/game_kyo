@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -232,3 +233,26 @@ def test_review_loop_logs_coder_and_reviewer_attempts(tmp_path: Path) -> None:
 
     reviewer_call = mock_log_step.call_args_list[2]
     assert reviewer_call.kwargs["result"] == review_result.model_dump()
+
+
+@pytest.mark.gemini
+def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
+    traces_root = orchestrator.REPO_ROOT / "traces"
+    before = set(traces_root.iterdir()) if traces_root.exists() else set()
+
+    with patch("orchestrator.coder_agent.run_coder", return_value=[]):
+        result = orchestrator.review_loop(
+            orchestrator.REPO_ROOT / "specs" / "math-merge-10.md",
+            max_retries=1,
+        )
+
+    assert isinstance(result, ReviewResult)
+
+    after = set(traces_root.iterdir())
+    new_dirs = after - before
+    assert len(new_dirs) == 1
+
+    lines = (new_dirs.pop() / "trace.jsonl").read_text().strip().splitlines()
+    records = [json.loads(line) for line in lines]
+    agents_logged = [r["agent"] for r in records]
+    assert agents_logged == ["coder", "reviewer"]
