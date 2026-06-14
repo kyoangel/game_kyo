@@ -1,3 +1,4 @@
+import dataclasses
 from pathlib import Path
 from unittest.mock import patch
 
@@ -64,3 +65,28 @@ def test_inner_loop_retries_with_feedback_on_failure(
     assert feedback_args[0] is None
     for i in range(1, expected_calls):
         assert feedback_args[i] == build_results[i - 1].stderr
+
+
+def test_inner_loop_logs_each_attempt(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_results = [
+        SandboxResult(success=False, stdout="", stderr="tsc error: foo", returncode=1),
+        SandboxResult(success=True, stdout="ok", stderr="", returncode=0),
+    ]
+
+    with patch("orchestrator.coder_agent.run_coder", return_value=[]), patch(
+        "orchestrator.sandbox_runner.run_build_check", side_effect=build_results
+    ), patch("orchestrator.trace_logger.log_step") as mock_log_step:
+        orchestrator.inner_loop(spec_path, max_retries=3, repo_root=tmp_path)
+
+    assert mock_log_step.call_count == 2
+
+    for call, sandbox_result in zip(mock_log_step.call_args_list, build_results):
+        kwargs = call.kwargs
+        assert kwargs["agent"] == "coder"
+        assert kwargs["result"] == dataclasses.asdict(sandbox_result)
+
+    run_ids = {call.kwargs["run_id"] for call in mock_log_step.call_args_list}
+    assert len(run_ids) == 1
