@@ -602,7 +602,7 @@ cd /Users/kyo.lai82/Projects/Personal/game-factory && python3 -m pytest tests/ag
 ```
 Confirm failure is exactly:
 ```
-AttributeError: <module 'agents.reviewer_agent' from '/Users/kyo.lai82/Projects/Personal/game-factory/agents/reviewer_agent.py'> does not have the attribute 'prompt_store'
+AttributeError: module 'agents.reviewer_agent' has no attribute 'prompt_store'
 ```
 (raised by the first `patch(...)` in the `with` statement, before `run_reviewer` is called), and the previous 2 tests still pass.
 
