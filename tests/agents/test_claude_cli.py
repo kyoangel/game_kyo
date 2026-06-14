@@ -69,3 +69,10 @@ def test_call_coder_converts_timeout_expired_to_claude_cli_error(tmp_path: Path)
     ):
         with pytest.raises(ClaudeCliError, match="timed out"):
             call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path)
+
+
+@pytest.mark.claude_cli
+def test_call_coder_real_claude_cli_replies_ok() -> None:
+    result = call_coder(system_prompt="", task="Reply with exactly: OK")
+
+    assert result == "OK"
