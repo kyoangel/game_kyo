@@ -10,7 +10,7 @@
 **Tech Stack:** Python 3 (3.14 at `/opt/homebrew/bin/python3`), pytest, `google-genai==2.8.0`, `python-dotenv==1.2.2`, `pydantic` (already installed as a `google-genai` dependency), `GEMINI_API_KEY` configured in `.env` (gitignored).
 
 **Complexity Path:** `Simplified TDD path`
-**Status:** Draft
+**Status:** Done
 
 ---
 
@@ -1144,7 +1144,7 @@ Deferred until `review_loop` has produced real `traces/` data (the Optimizer nee
 - Wiring `review_loop` into `main()`'s CLI (currently calls `inner_loop` only — unchanged by this plan)
 
 ## Testing Strategy
-- Phases H-J unit tests (10 default + 1 happy-path/retry/log tests in `tests/test_orchestrator.py`, plus 3 in `tests/agents/test_gemini_client.py` and 4 in `tests/agents/test_reviewer_agent.py` = 11 new tests total) all mock `agents.gemini_client.genai.Client` / `gemini_client.call_gemini` / `reviewer_agent.run_reviewer` — zero real network calls in the default `pytest` run.
+- 12 new default tests across the 3 modified/created test files (3 in `tests/agents/test_gemini_client.py` for H2-H4, 4 in `tests/agents/test_reviewer_agent.py` for I1-I3, 5 in `tests/test_orchestrator.py` for J1-J3) all mock `agents.gemini_client.genai.Client` / `gemini_client.call_gemini` / `reviewer_agent.run_reviewer` — zero real network calls in the default `pytest` run.
 - New `gemini` marker (2 checks: H4, J4) excluded by default via `pyproject.toml`'s `addopts`, run manually once per phase during implementation.
 
 ## Risks & Mitigations
@@ -1153,10 +1153,10 @@ Deferred until `review_loop` has produced real `traces/` data (the Optimizer nee
 - **Risk:** J4's real Docker build can take minutes. **Mitigation:** consistent with Phase 4a's Task G4, run once as a final manual check, not in the default suite.
 
 ## Success Criteria
-- [ ] `python3 -m pytest` (default markers) green: 28 existing + 11 new = 39 tests pass.
-- [ ] `agents/gemini_client.call_gemini` implemented: plain text via `response.text`, structured output via `response_schema`/`response.parsed`, `google.genai.errors.APIError` wrapped as `GeminiClientError`.
-- [ ] `agents/reviewer_agent.run_reviewer` implemented: loads `prompts/reviewer.txt` via `prompt_store.load`, formats changed files (or `"No files were changed."` placeholder), calls `gemini_client.call_gemini(..., response_schema=ReviewResult)`.
-- [ ] `orchestrator.review_loop` implemented per the design above; `orchestrator.inner_loop`/`main` and the original 28 tests are unchanged.
-- [ ] H4 and J4 `gemini`-marked checks each run once and pass.
-- [ ] All 11 tasks (H1-H4, I1-I3, J1-J4) individually committed.
-- [ ] `pyproject.toml` declares `pytest`/`google-genai`/`python-dotenv` dependencies and registers the `gemini` marker.
+- [x] `python3 -m pytest` (default markers) green: 28 existing + 12 new = 40 tests pass, 4 deselected (2 original + 2 new `gemini`-marked).
+- [x] `agents/gemini_client.call_gemini` implemented: plain text via `response.text`, structured output via `response_schema`/`response.parsed`, `google.genai.errors.APIError` wrapped as `GeminiClientError`.
+- [x] `agents/reviewer_agent.run_reviewer` implemented: loads `prompts/reviewer.txt` via `prompt_store.load`, formats changed files (or `"No files were changed."` placeholder), calls `gemini_client.call_gemini(..., response_schema=ReviewResult)`.
+- [x] `orchestrator.review_loop` implemented per the design above; `orchestrator.inner_loop`/`main` and the original 28 tests are unchanged.
+- [x] H4 and J4 `gemini`-marked checks each run once and pass.
+- [x] All 11 tasks (H1-H4, I1-I3, J1-J4) individually committed.
+- [x] `pyproject.toml` declares `pytest`/`google-genai`/`python-dotenv` dependencies and registers the `gemini` marker.
