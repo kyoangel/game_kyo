@@ -235,6 +235,49 @@ def test_review_loop_logs_coder_and_reviewer_attempts(tmp_path: Path) -> None:
     assert reviewer_call.kwargs["result"] == review_result.model_dump()
 
 
+def test_qa_loop_happy_path_runs_qa_once_then_build_unit_e2e_review_pass(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    qa_changed = [Path("workspace/tests/unit/grid.test.ts")]
+    coder_changed = [Path("workspace/src/grid.ts")]
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+    e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch(
+        "orchestrator.qa_agent.run_qa", return_value=qa_changed
+    ) as mock_run_qa, patch(
+        "orchestrator.coder_agent.run_coder", return_value=coder_changed
+    ) as mock_run_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ) as mock_build_check, patch(
+        "orchestrator.sandbox_runner.run_unit_tests", return_value=unit_result
+    ) as mock_unit_tests, patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", return_value=e2e_result
+    ) as mock_e2e_tests, patch(
+        "orchestrator.reviewer_agent.run_reviewer", return_value=review_result
+    ) as mock_run_reviewer, patch(
+        "orchestrator.trace_logger.log_step"
+    ) as mock_log_step:
+        result = orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_run_qa.assert_called_once_with(spec_path, repo_root=tmp_path)
+    mock_run_coder.assert_called_once_with(spec_path, feedback=None, repo_root=tmp_path)
+    mock_build_check.assert_called_once()
+    mock_unit_tests.assert_called_once()
+    mock_e2e_tests.assert_called_once()
+    mock_run_reviewer.assert_called_once_with(coder_changed, tmp_path)
+    assert result == review_result
+
+    agents_logged = [call.kwargs["agent"] for call in mock_log_step.call_args_list]
+    assert agents_logged == ["qa", "coder", "qa", "qa", "reviewer"]
+
+    run_ids = {call.kwargs["run_id"] for call in mock_log_step.call_args_list}
+    assert len(run_ids) == 1
+
+
 @pytest.mark.gemini
 def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
     traces_root = orchestrator.REPO_ROOT / "traces"
