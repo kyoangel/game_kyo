@@ -10,4 +10,21 @@ def changed_paths(repo_root: Path) -> set[str]:
         text=True,
         check=True,
     )
-    return {line[3:] for line in result.stdout.splitlines() if line}
+
+    paths: set[str] = set()
+    for line in result.stdout.splitlines():
+        if not line:
+            continue
+
+        status = line[:2]
+        path = line[3:]
+        full_path = repo_root / path
+
+        if status == "??" and full_path.is_dir():
+            for file_path in full_path.rglob("*"):
+                if file_path.is_file():
+                    paths.add(str(file_path.relative_to(repo_root)))
+        else:
+            paths.add(path)
+
+    return paths

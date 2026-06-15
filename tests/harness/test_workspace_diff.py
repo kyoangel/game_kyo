@@ -36,3 +36,15 @@ def test_changed_paths_detects_new_and_modified_files(repo: Path) -> None:
     (repo / "workspace" / "README.md").write_text("changed\n")
 
     assert workspace_diff.changed_paths(repo) == {"workspace/new_file.ts", "workspace/README.md"}
+
+
+def test_changed_paths_expands_new_untracked_directory_to_its_files(repo: Path) -> None:
+    icons_dir = repo / "workspace" / "public" / "icons"
+    icons_dir.mkdir(parents=True)
+    (repo / "workspace" / "public" / "manifest.json").write_text("{}\n")
+    (icons_dir / "icon.svg").write_text("<svg></svg>\n")
+
+    assert workspace_diff.changed_paths(repo) == {
+        "workspace/public/manifest.json",
+        "workspace/public/icons/icon.svg",
+    }
