@@ -1,3 +1,4 @@
+import argparse
 import dataclasses
 import sys
 import uuid
@@ -186,17 +187,29 @@ def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
 
-    spec_path = Path(argv[0]) if argv else REPO_ROOT / "specs" / "math-merge-10.md"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("spec", nargs="?", default=None)
+    parser.add_argument("--loop", choices=["inner", "qa"], default="inner")
+    args = parser.parse_args(argv)
 
-    result = inner_loop(spec_path)
+    spec_path = Path(args.spec) if args.spec else REPO_ROOT / "specs" / "math-merge-10.md"
 
-    if result.success:
-        print("✅ inner_loop succeeded")
+    if args.loop == "qa":
+        result = qa_loop(spec_path)
+        success = result.approved
+        detail = "\n".join(result.comments)
     else:
-        print("❌ inner_loop failed")
-        print(result.stderr)
+        result = inner_loop(spec_path)
+        success = result.success
+        detail = result.stderr
 
-    return 0 if result.success else 1
+    if success:
+        print(f"✅ {args.loop}_loop succeeded")
+    else:
+        print(f"❌ {args.loop}_loop failed")
+        print(detail)
+
+    return 0 if success else 1
 
 
 if __name__ == "__main__":

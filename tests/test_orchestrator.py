@@ -117,6 +117,33 @@ def test_main_uses_provided_spec_path_and_returns_one_on_failure(tmp_path: Path,
     assert "❌" in capsys.readouterr().out
 
 
+def test_main_with_qa_loop_flag_calls_qa_loop_and_returns_zero_on_approval(capsys) -> None:
+    approved_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator.qa_loop", return_value=approved_result) as mock_qa_loop:
+        exit_code = orchestrator.main(["--loop", "qa"])
+
+    mock_qa_loop.assert_called_once_with(orchestrator.REPO_ROOT / "specs" / "math-merge-10.md")
+    assert exit_code == 0
+    assert "✅" in capsys.readouterr().out
+
+
+def test_main_with_qa_loop_flag_uses_provided_spec_path_and_returns_one_on_rejection(
+    tmp_path: Path, capsys
+) -> None:
+    rejected_result = ReviewResult(approved=False, comments=["needs more tests"])
+    spec_path = tmp_path / "custom-spec.md"
+
+    with patch("orchestrator.qa_loop", return_value=rejected_result) as mock_qa_loop:
+        exit_code = orchestrator.main(["--loop", "qa", str(spec_path)])
+
+    mock_qa_loop.assert_called_once_with(spec_path)
+    assert exit_code == 1
+    out = capsys.readouterr().out
+    assert "❌" in out
+    assert "needs more tests" in out
+
+
 def test_review_loop_happy_path_build_passes_and_review_approves(tmp_path: Path) -> None:
     spec_path = tmp_path / "spec.md"
     spec_path.write_text("Build something")
