@@ -1,19 +1,7 @@
-import subprocess
 from pathlib import Path
 
 from agents import claude_cli
-from harness import prompt_store
-
-
-def _workspace_status(repo_root: Path) -> set[str]:
-    result = subprocess.run(
-        ["git", "status", "--porcelain", "workspace/"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return {line[3:] for line in result.stdout.splitlines() if line}
+from harness import prompt_store, workspace_diff
 
 
 def run_coder(
@@ -24,7 +12,7 @@ def run_coder(
     system_prompt = prompt_store.load("coder", repo_root)
     task = spec_path.read_text()
 
-    before = _workspace_status(repo_root)
+    before = workspace_diff.changed_paths(repo_root)
 
     claude_cli.call_coder(
         system_prompt=system_prompt,
@@ -33,6 +21,6 @@ def run_coder(
         repo_root=repo_root,
     )
 
-    after = _workspace_status(repo_root)
+    after = workspace_diff.changed_paths(repo_root)
     changed = after - before
     return sorted(Path(p) for p in changed)
