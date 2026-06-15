@@ -8,12 +8,19 @@ import {
 } from "./grid";
 
 const GRID_SIZE = 4;
+const BEST_SCORE_KEY = "mathMerge10BestScore";
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 const gameOverEl = document.getElementById("game-over") as HTMLDivElement;
 
+function loadBestScore(): number {
+  const value = Number(localStorage.getItem(BEST_SCORE_KEY));
+  return Number.isFinite(value) ? value : 0;
+}
+
 let state: GameState = createInitialState(GRID_SIZE);
 let rng: Rng = Math.random;
+let bestScore = loadBestScore();
 
 function render(): void {
   const cellSize = canvas.width / GRID_SIZE;
@@ -42,6 +49,7 @@ function render(): void {
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.fillText(`Score: ${state.score}`, 10, 20);
+  ctx.fillText(`Best: ${bestScore}`, 10, 45);
 
   gameOverEl.hidden = !isGameOver(state.grid);
 }
@@ -57,12 +65,20 @@ const KEY_TO_DIRECTION: Record<string, Direction> = {
   d: "right",
 };
 
+function setState(newState: GameState): void {
+  state = newState;
+  if (state.score > bestScore) {
+    bestScore = state.score;
+    localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
+  }
+  render();
+}
+
 function handleKeydown(event: KeyboardEvent): void {
   const direction = KEY_TO_DIRECTION[event.key];
   if (!direction) return;
 
-  state = applyMove(state, direction, rng);
-  render();
+  setState(applyMove(state, direction, rng));
 }
 
 window.addEventListener("keydown", handleKeydown);
@@ -72,9 +88,8 @@ window.addEventListener("keydown", handleKeydown);
 (window as unknown as {
   __setTestState: (s: GameState, testRng?: Rng) => void;
 }).__setTestState = (s, testRng) => {
-  state = s;
   if (testRng) rng = testRng;
-  render();
+  setState(s);
 };
 
 render();
