@@ -51,3 +51,28 @@ def test_run_reviewer_loads_prompt_and_calls_gemini(tmp_path: Path) -> None:
 
 def test_format_changed_files_empty_list_returns_placeholder(tmp_path: Path) -> None:
     assert _format_changed_files([], repo_root=tmp_path) == "No files were changed."
+
+
+def test_format_changed_files_marks_deleted_files_without_crashing(tmp_path: Path) -> None:
+    (tmp_path / "workspace").mkdir()
+    (tmp_path / "workspace" / "kept.ts").write_text("export const x = 1;\n")
+
+    changed_files = [Path("workspace/kept.ts"), Path("workspace/deleted.ts")]
+
+    formatted = _format_changed_files(changed_files, repo_root=tmp_path)
+
+    assert "## workspace/kept.ts" in formatted
+    assert "export const x = 1;" in formatted
+    assert "## workspace/deleted.ts" in formatted
+    assert "deleted" in formatted.lower()
+
+
+def test_format_changed_files_marks_directories_without_crashing(tmp_path: Path) -> None:
+    (tmp_path / "workspace" / "public").mkdir(parents=True)
+
+    changed_files = [Path("workspace/public")]
+
+    formatted = _format_changed_files(changed_files, repo_root=tmp_path)
+
+    assert "## workspace/public" in formatted
+    assert "directory" in formatted.lower()

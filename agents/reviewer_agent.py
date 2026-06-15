@@ -17,8 +17,14 @@ def _format_changed_files(changed_files: list[Path], repo_root: Path) -> str:
 
     blocks = []
     for path in changed_files:
-        content = (repo_root / path).read_text()
-        blocks.append(f"## {path}\n{content}")
+        full_path = repo_root / path
+        if not full_path.exists():
+            blocks.append(f"## {path}\n(file deleted)")
+        elif full_path.is_dir():
+            blocks.append(f"## {path}\n(new directory)")
+        else:
+            content = full_path.read_text()
+            blocks.append(f"## {path}\n{content}")
 
     return "\n\n".join(blocks)
 
