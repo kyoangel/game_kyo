@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from harness.sandbox_runner import SandboxResult, run_build_check, run_e2e_tests
+from harness.sandbox_runner import SandboxResult, run_build_check, run_e2e_tests, run_unit_tests
 
 
 def test_sandbox_result_is_comparable_dataclass() -> None:
@@ -121,3 +121,41 @@ def test_run_build_check_real_docker_succeeds() -> None:
 
     assert result.success is True
     assert "error" not in result.stdout.lower()
+
+
+def test_run_unit_tests_uses_unit_dockerfile_and_distinct_container_name() -> None:
+    build_result = MagicMock(returncode=0, stdout="", stderr="")
+    run_result = MagicMock(returncode=0, stdout="5 passed", stderr="")
+
+    with patch(
+        "harness.sandbox_runner.subprocess.run", side_effect=[build_result, run_result]
+    ) as mock_run:
+        result = run_unit_tests()
+
+    build_call_args = mock_run.call_args_list[0].args[0]
+    run_call_args = mock_run.call_args_list[1].args[0]
+
+    assert build_call_args == [
+        "docker",
+        "build",
+        "-t",
+        "game-sandbox-unit",
+        "-f",
+        "sandbox.unit.Dockerfile",
+        ".",
+    ]
+
+    name_index = run_call_args.index("--name")
+    unit_container_name = run_call_args[name_index + 1]
+    assert unit_container_name not in ("game-sandbox-instance", "game-sandbox-e2e-instance")
+    assert run_call_args[-1] == "game-sandbox-unit"
+
+    assert result == SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+
+
+@pytest.mark.docker
+@pytest.mark.skipif(shutil.which("docker") is None, reason="Docker not available")
+def test_run_unit_tests_real_docker_succeeds() -> None:
+    result = run_unit_tests()
+
+    assert result.success is True

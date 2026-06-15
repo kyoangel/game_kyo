@@ -53,3 +53,7 @@ def run_build_check() -> SandboxResult:
 
 def run_e2e_tests() -> SandboxResult:
     return _run_sandbox("sandbox.e2e.Dockerfile", "game-sandbox-e2e", "game-sandbox-e2e-instance")
+
+
+def run_unit_tests() -> SandboxResult:
+    return _run_sandbox("sandbox.unit.Dockerfile", "game-sandbox-unit", "game-sandbox-unit-instance")
