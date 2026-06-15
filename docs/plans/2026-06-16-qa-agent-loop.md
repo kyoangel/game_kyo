@@ -10,7 +10,7 @@
 **Tech Stack:** Python 3 (3.14 at `/opt/homebrew/bin/python3`), pytest, existing `harness.sandbox_runner._run_sandbox` Docker helper, existing `agents.claude_cli.call_coder` CLI wrapper (reused as-is), existing `agents.reviewer_agent`/`gemini_client` (Phase 4b).
 
 **Complexity Path:** `Simplified TDD path`
-**Status:** Draft
+**Status:** Done
 
 ---
 
@@ -1042,10 +1042,10 @@ Run:
 - **Risk:** K1's and M4's real Docker builds can take minutes each. **Mitigation:** consistent with Phase 4a's `test_run_build_check_real_docker_succeeds` and Phase 4b's J4, run once per task as a final manual check, not part of the default suite.
 
 ## Success Criteria
-- [ ] `python3 -m pytest` (default markers) green: 40 existing + 10 new = 50 tests pass, 6 deselected (4 original + 2 new: K1's `docker`-marked unit-sandbox check, M4's `docker`+`gemini`-marked check).
-- [ ] `harness.sandbox_runner.run_unit_tests` implemented via `_run_sandbox("sandbox.unit.Dockerfile", "game-sandbox-unit", "game-sandbox-unit-instance")`; `sandbox.unit.Dockerfile` created.
-- [ ] `harness.workspace_diff.changed_paths` extracted; `coder_agent.run_coder` refactored to use it; `tests/agents/test_coder_agent.py`'s 3 tests remain green.
-- [ ] `agents.qa_agent.run_qa` implemented: loads `prompts/qa.txt`, calls `claude_cli.call_coder` (no `feedback`), returns changed `workspace/tests/**` paths.
-- [ ] `orchestrator.qa_loop` implemented per the design above (QA once → loop of Coder→build→unit→e2e→Reviewer, each gate's failure feeding `feedback` back to Coder); `orchestrator.inner_loop`/`review_loop`/`main` and the original 40 tests are unchanged.
-- [ ] K1's `docker`-marked check and M4 each run once and pass (or M4's known-flaky outcome is documented per Risks).
-- [ ] All 6 tasks (K1, K2, L1, M1, M2, M3, M4) individually committed.
+- [x] `python3 -m pytest` (default markers) green: 40 existing + 10 new = 50 tests pass, 6 deselected (4 original + 2 new: K1's `docker`-marked unit-sandbox check, M4's `docker`+`gemini`-marked check).
+- [x] `harness.sandbox_runner.run_unit_tests` implemented via `_run_sandbox("sandbox.unit.Dockerfile", "game-sandbox-unit", "game-sandbox-unit-instance")`; `sandbox.unit.Dockerfile` created.
+- [x] `harness.workspace_diff.changed_paths` extracted; `coder_agent.run_coder` refactored to use it; `tests/agents/test_coder_agent.py`'s 3 tests remain green.
+- [x] `agents.qa_agent.run_qa` implemented: loads `prompts/qa.txt`, calls `claude_cli.call_coder` (no `feedback`), returns changed `workspace/tests/**` paths.
+- [x] `orchestrator.qa_loop` implemented per the design above (QA once → loop of Coder→build→unit→e2e→Reviewer, each gate's failure feeding `feedback` back to Coder); `orchestrator.inner_loop`/`review_loop`/`main` and the original 40 tests are unchanged.
+- [x] K1's `docker`-marked check and M4 each run once and pass (or M4's known-flaky outcome is documented per Risks).
+- [x] All 7 tasks (K1, K2, L1, M1, M2, M3, M4) individually committed.
