@@ -278,6 +278,42 @@ def test_qa_loop_happy_path_runs_qa_once_then_build_unit_e2e_review_pass(tmp_pat
     assert len(run_ids) == 1
 
 
+def test_qa_loop_retries_run_coder_on_unit_test_failure(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_results = [
+        SandboxResult(success=False, stdout="FAIL grid.test.ts", stderr="", returncode=1),
+        SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0),
+    ]
+    e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+        "orchestrator.coder_agent.run_coder", return_value=[]
+    ) as mock_run_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ) as mock_build_check, patch(
+        "orchestrator.sandbox_runner.run_unit_tests", side_effect=unit_results
+    ) as mock_unit_tests, patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", return_value=e2e_result
+    ) as mock_e2e_tests, patch(
+        "orchestrator.reviewer_agent.run_reviewer", return_value=review_result
+    ) as mock_run_reviewer:
+        result = orchestrator.qa_loop(spec_path, max_retries=3, repo_root=tmp_path)
+
+    assert mock_run_coder.call_count == 2
+    assert mock_build_check.call_count == 2
+    assert mock_unit_tests.call_count == 2
+    assert mock_e2e_tests.call_count == 1
+    assert mock_run_reviewer.call_count == 1
+
+    feedback_args = [call.kwargs["feedback"] for call in mock_run_coder.call_args_list]
+    assert feedback_args == [None, "FAIL grid.test.ts"]
+    assert result == review_result
+
+
 @pytest.mark.gemini
 def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
     traces_root = orchestrator.REPO_ROOT / "traces"

@@ -100,6 +100,8 @@ def qa_loop(
         repo_root = REPO_ROOT
 
     run_id = uuid.uuid4().hex
+    feedback: str | None = None
+    review: reviewer_agent.ReviewResult
 
     qa_changed = qa_agent.run_qa(spec_path, repo_root=repo_root)
     trace_logger.log_step(
@@ -111,59 +113,66 @@ def qa_loop(
         traces_root=repo_root / "traces",
     )
 
-    changed_files = coder_agent.run_coder(spec_path, feedback=None, repo_root=repo_root)
-    build_result = sandbox_runner.run_build_check()
+    for _ in range(max_retries):
+        changed_files = coder_agent.run_coder(spec_path, feedback=feedback, repo_root=repo_root)
+        build_result = sandbox_runner.run_build_check()
 
-    trace_logger.log_step(
-        run_id=run_id,
-        agent="coder",
-        input=None,
-        output=[str(p) for p in changed_files],
-        result=dataclasses.asdict(build_result),
-        traces_root=repo_root / "traces",
-    )
+        trace_logger.log_step(
+            run_id=run_id,
+            agent="coder",
+            input=feedback,
+            output=[str(p) for p in changed_files],
+            result=dataclasses.asdict(build_result),
+            traces_root=repo_root / "traces",
+        )
 
-    if not build_result.success:
-        return reviewer_agent.ReviewResult(approved=False, comments=[build_result.stderr])
+        if not build_result.success:
+            feedback = build_result.stderr
+            review = reviewer_agent.ReviewResult(approved=False, comments=[build_result.stderr])
+            continue
 
-    unit_result = sandbox_runner.run_unit_tests()
+        unit_result = sandbox_runner.run_unit_tests()
 
-    trace_logger.log_step(
-        run_id=run_id,
-        agent="qa",
-        input=None,
-        output=[],
-        result=dataclasses.asdict(unit_result),
-        traces_root=repo_root / "traces",
-    )
+        trace_logger.log_step(
+            run_id=run_id,
+            agent="qa",
+            input=None,
+            output=[],
+            result=dataclasses.asdict(unit_result),
+            traces_root=repo_root / "traces",
+        )
 
-    if not unit_result.success:
-        return reviewer_agent.ReviewResult(approved=False, comments=[unit_result.stdout])
+        if not unit_result.success:
+            feedback = unit_result.stdout
+            review = reviewer_agent.ReviewResult(approved=False, comments=[unit_result.stdout])
+            continue
 
-    e2e_result = sandbox_runner.run_e2e_tests()
+        e2e_result = sandbox_runner.run_e2e_tests()
 
-    trace_logger.log_step(
-        run_id=run_id,
-        agent="qa",
-        input=None,
-        output=[],
-        result=dataclasses.asdict(e2e_result),
-        traces_root=repo_root / "traces",
-    )
+        trace_logger.log_step(
+            run_id=run_id,
+            agent="qa",
+            input=None,
+            output=[],
+            result=dataclasses.asdict(e2e_result),
+            traces_root=repo_root / "traces",
+        )
 
-    if not e2e_result.success:
-        return reviewer_agent.ReviewResult(approved=False, comments=[e2e_result.stdout])
+        if not e2e_result.success:
+            return reviewer_agent.ReviewResult(approved=False, comments=[e2e_result.stdout])
 
-    review = reviewer_agent.run_reviewer(changed_files, repo_root)
+        review = reviewer_agent.run_reviewer(changed_files, repo_root)
 
-    trace_logger.log_step(
-        run_id=run_id,
-        agent="reviewer",
-        input=[str(p) for p in changed_files],
-        output=review.comments,
-        result=review.model_dump(),
-        traces_root=repo_root / "traces",
-    )
+        trace_logger.log_step(
+            run_id=run_id,
+            agent="reviewer",
+            input=[str(p) for p in changed_files],
+            output=review.comments,
+            result=review.model_dump(),
+            traces_root=repo_root / "traces",
+        )
+
+        return review
 
     return review
 
