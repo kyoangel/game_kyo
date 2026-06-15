@@ -14,7 +14,7 @@
 - [ ] 沒有使用 `any` 型別
 - [ ] 所有 public 函式都有明確的型別標註（參數與回傳值）
 - [ ] GameGrid 相關操作皆為純函式，不會直接 mutate 傳入的 grid 參數
-- [ ] workspace/manifest.json 與 workspace/sw.js 存在，且 workspace/index.html 已正確連結兩者
+- [ ] workspace/public/manifest.json 與 workspace/public/sw.js 存在（Vite 預設靜態資源目錄，會以 /manifest.json 與 /sw.js 提供），且 workspace/index.html 已正確連結兩者
 <!-- CHECKLIST_END -->
 
 限制：

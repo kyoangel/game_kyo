@@ -11,9 +11,9 @@ GameGrid / grid.ts 契約：
 - 新增遊戲邏輯時，優先在 grid.ts 中新增/修改純函式，並更新對應的 workspace/tests/unit/grid.test.ts（如果 QA Agent 尚未涵蓋）。
 
 PWA 檔案職責：
-- workspace/manifest.json：PWA manifest，定義 name、icons、start_url、display 等欄位。
-- workspace/sw.js：Service Worker，負責快取靜態資源以支援離線啟動。
-- workspace/icons/：PWA 圖示檔案。
+- workspace/public/manifest.json：PWA manifest，定義 name、icons、start_url、display 等欄位（置於 public/ 目錄，Vite 會以 /manifest.json 提供）。
+- workspace/public/sw.js：Service Worker，負責快取靜態資源以支援離線啟動（置於 public/，以 /sw.js 提供）。
+- workspace/public/icons/：PWA 圖示檔案（置於 public/，以 /icons/... 提供）。
 - workspace/index.html：需包含 <link rel="manifest"> 與圖示連結，並在合適時機註冊 sw.js。
 
 限制：
