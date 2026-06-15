@@ -159,7 +159,9 @@ def qa_loop(
         )
 
         if not e2e_result.success:
-            return reviewer_agent.ReviewResult(approved=False, comments=[e2e_result.stdout])
+            feedback = e2e_result.stdout
+            review = reviewer_agent.ReviewResult(approved=False, comments=[e2e_result.stdout])
+            continue
 
         review = reviewer_agent.run_reviewer(changed_files, repo_root)
 
@@ -172,7 +174,10 @@ def qa_loop(
             traces_root=repo_root / "traces",
         )
 
-        return review
+        if review.approved:
+            return review
+
+        feedback = "\n".join(review.comments)
 
     return review
 

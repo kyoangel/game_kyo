@@ -314,6 +314,75 @@ def test_qa_loop_retries_run_coder_on_unit_test_failure(tmp_path: Path) -> None:
     assert result == review_result
 
 
+def test_qa_loop_retries_run_coder_on_e2e_test_failure(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+    e2e_results = [
+        SandboxResult(success=False, stdout="FAIL math-merge.spec.ts", stderr="", returncode=1),
+        SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0),
+    ]
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+        "orchestrator.coder_agent.run_coder", return_value=[]
+    ) as mock_run_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ) as mock_build_check, patch(
+        "orchestrator.sandbox_runner.run_unit_tests", return_value=unit_result
+    ) as mock_unit_tests, patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", side_effect=e2e_results
+    ) as mock_e2e_tests, patch(
+        "orchestrator.reviewer_agent.run_reviewer", return_value=review_result
+    ) as mock_run_reviewer:
+        result = orchestrator.qa_loop(spec_path, max_retries=3, repo_root=tmp_path)
+
+    assert mock_run_coder.call_count == 2
+    assert mock_build_check.call_count == 2
+    assert mock_unit_tests.call_count == 2
+    assert mock_e2e_tests.call_count == 2
+    assert mock_run_reviewer.call_count == 1
+
+    feedback_args = [call.kwargs["feedback"] for call in mock_run_coder.call_args_list]
+    assert feedback_args == [None, "FAIL math-merge.spec.ts"]
+    assert result == review_result
+
+
+def test_qa_loop_retries_run_coder_on_review_rejection(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+    e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+    review_results = [
+        ReviewResult(approved=False, comments=["Avoid `any` types"]),
+        ReviewResult(approved=True, comments=[]),
+    ]
+
+    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+        "orchestrator.coder_agent.run_coder", return_value=[]
+    ) as mock_run_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_unit_tests", return_value=unit_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", return_value=e2e_result
+    ), patch(
+        "orchestrator.reviewer_agent.run_reviewer", side_effect=review_results
+    ) as mock_run_reviewer:
+        result = orchestrator.qa_loop(spec_path, max_retries=3, repo_root=tmp_path)
+
+    assert mock_run_coder.call_count == 2
+    assert mock_run_reviewer.call_count == 2
+
+    feedback_args = [call.kwargs["feedback"] for call in mock_run_coder.call_args_list]
+    assert feedback_args == [None, "Avoid `any` types"]
+    assert result == review_results[1]
+
+
 @pytest.mark.gemini
 def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
     traces_root = orchestrator.REPO_ROOT / "traces"
