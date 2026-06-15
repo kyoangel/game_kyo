@@ -404,3 +404,29 @@ def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
     records = [json.loads(line) for line in lines]
     agents_logged = [r["agent"] for r in records]
     assert agents_logged == ["coder", "reviewer"]
+
+
+@pytest.mark.docker
+@pytest.mark.gemini
+def test_qa_loop_real_sandbox_and_gemini_review_with_no_changed_files() -> None:
+    traces_root = orchestrator.REPO_ROOT / "traces"
+    before = set(traces_root.iterdir()) if traces_root.exists() else set()
+
+    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+        "orchestrator.coder_agent.run_coder", return_value=[]
+    ):
+        result = orchestrator.qa_loop(
+            orchestrator.REPO_ROOT / "specs" / "math-merge-10.md",
+            max_retries=1,
+        )
+
+    assert isinstance(result, ReviewResult)
+
+    after = set(traces_root.iterdir())
+    new_dirs = after - before
+    assert len(new_dirs) == 1
+
+    lines = (new_dirs.pop() / "trace.jsonl").read_text().strip().splitlines()
+    records = [json.loads(line) for line in lines]
+    agents_logged = [r["agent"] for r in records]
+    assert agents_logged == ["qa", "coder", "qa", "qa", "reviewer"]
