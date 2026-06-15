@@ -45,6 +45,65 @@ test("pressing ArrowLeft merges adjacent tiles summing to 10, increases score, a
   expect(result.grid[0][1]).toBeNull();
 });
 
+test("pressing a slide key resolves a chain reaction in a single move (e.g. [4,6,4,6] all merge for 20 points)", async ({ page }) => {
+  await page.goto("/");
+
+  const chainState: GameState = {
+    grid: [
+      [4, 6, 4, 6],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    score: 0,
+  };
+
+  await page.evaluate((state) => {
+    (window as unknown as { __setTestState: (s: GameState, rng: () => number) => void }).__setTestState(
+      state,
+      () => 0
+    );
+  }, chainState);
+
+  await page.keyboard.press("ArrowLeft");
+
+  const result = await page.evaluate(
+    () => (window as unknown as { __getGameState: () => GameState }).__getGameState()
+  );
+
+  expect(result.score).toBe(20);
+  expect(result.grid[0]).toEqual([1, null, null, null]);
+});
+
+test("an invalid slide (one that does not change the board) leaves the GameGrid state unchanged", async ({ page }) => {
+  await page.goto("/");
+
+  const unchangedState: GameState = {
+    grid: [
+      [null, null, 4, 7],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    score: 0,
+  };
+
+  await page.evaluate((state) => {
+    (window as unknown as { __setTestState: (s: GameState, rng: () => number) => void }).__setTestState(
+      state,
+      () => 0
+    );
+  }, unchangedState);
+
+  await page.keyboard.press("ArrowRight");
+
+  const result = await page.evaluate(
+    () => (window as unknown as { __getGameState: () => GameState }).__getGameState()
+  );
+
+  expect(result).toEqual(unchangedState);
+});
+
 test("persists the best score to localStorage under mathMerge10BestScore and never lowers it on a new game", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => localStorage.removeItem("mathMerge10BestScore"));
