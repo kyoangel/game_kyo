@@ -164,7 +164,16 @@ def qa_loop(
             review = reviewer_agent.ReviewResult(approved=False, comments=[e2e_result.stdout])
             continue
 
-        review = reviewer_agent.run_reviewer(changed_files, repo_root)
+        if changed_files:
+            review = reviewer_agent.run_reviewer(changed_files, repo_root)
+        else:
+            review = reviewer_agent.ReviewResult(
+                approved=True,
+                comments=[
+                    "Coder Agent 沒有提交任何檔案變更，且 build/unit/e2e 測試全數通過，"
+                    "視為現有實作已符合規格，自動核准。"
+                ],
+            )
 
         trace_logger.log_step(
             run_id=run_id,

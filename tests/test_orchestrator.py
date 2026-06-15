@@ -317,8 +317,10 @@ def test_qa_loop_retries_run_coder_on_unit_test_failure(tmp_path: Path) -> None:
     e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
     review_result = ReviewResult(approved=True, comments=[])
 
+    coder_changed = [Path("workspace/src/grid.ts")]
+
     with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
-        "orchestrator.coder_agent.run_coder", return_value=[]
+        "orchestrator.coder_agent.run_coder", return_value=coder_changed
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
     ) as mock_build_check, patch(
@@ -353,8 +355,10 @@ def test_qa_loop_retries_run_coder_on_e2e_test_failure(tmp_path: Path) -> None:
     ]
     review_result = ReviewResult(approved=True, comments=[])
 
+    coder_changed = [Path("workspace/src/grid.ts")]
+
     with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
-        "orchestrator.coder_agent.run_coder", return_value=[]
+        "orchestrator.coder_agent.run_coder", return_value=coder_changed
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
     ) as mock_build_check, patch(
@@ -389,8 +393,10 @@ def test_qa_loop_retries_run_coder_on_review_rejection(tmp_path: Path) -> None:
         ReviewResult(approved=True, comments=[]),
     ]
 
+    coder_changed = [Path("workspace/src/grid.ts")]
+
     with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
-        "orchestrator.coder_agent.run_coder", return_value=[]
+        "orchestrator.coder_agent.run_coder", return_value=coder_changed
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
     ), patch(
@@ -408,6 +414,39 @@ def test_qa_loop_retries_run_coder_on_review_rejection(tmp_path: Path) -> None:
     feedback_args = [call.kwargs["feedback"] for call in mock_run_coder.call_args_list]
     assert feedback_args == [None, "Avoid `any` types"]
     assert result == review_results[1]
+
+
+def test_qa_loop_approves_without_calling_reviewer_when_coder_makes_no_changes_and_checks_pass(
+    tmp_path: Path,
+) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+    e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+
+    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+        "orchestrator.coder_agent.run_coder", return_value=[]
+    ) as mock_run_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_unit_tests", return_value=unit_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", return_value=e2e_result
+    ), patch(
+        "orchestrator.reviewer_agent.run_reviewer"
+    ) as mock_run_reviewer, patch(
+        "orchestrator.trace_logger.log_step"
+    ) as mock_log_step:
+        result = orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_run_reviewer.assert_not_called()
+    assert mock_run_coder.call_count == 1
+    assert result.approved is True
+
+    agents_logged = [call.kwargs["agent"] for call in mock_log_step.call_args_list]
+    assert agents_logged == ["qa", "coder", "qa", "qa", "reviewer"]
 
 
 @pytest.mark.gemini
@@ -434,8 +473,7 @@ def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
 
 
 @pytest.mark.docker
-@pytest.mark.gemini
-def test_qa_loop_real_sandbox_and_gemini_review_with_no_changed_files() -> None:
+def test_qa_loop_real_sandbox_with_no_changed_files_auto_approves() -> None:
     traces_root = orchestrator.REPO_ROOT / "traces"
     before = set(traces_root.iterdir()) if traces_root.exists() else set()
 
@@ -447,7 +485,7 @@ def test_qa_loop_real_sandbox_and_gemini_review_with_no_changed_files() -> None:
             max_retries=1,
         )
 
-    assert isinstance(result, ReviewResult)
+    assert result.approved is True
 
     after = set(traces_root.iterdir())
     new_dirs = after - before
