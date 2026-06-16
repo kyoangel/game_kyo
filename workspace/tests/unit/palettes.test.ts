@@ -40,3 +40,29 @@ describe("isPaletteId", () => {
     expect(isPaletteId(null)).toBe(false);
   });
 });
+
+describe("pairHint palette — pairs summing to 10 share a hue family", () => {
+  it("1 (light blue) and 9 (dark blue) use the specified colors", () => {
+    expect(PALETTES.pairHint[1].bg).toBe("#bfdbfe");
+    expect(PALETTES.pairHint[9].bg).toBe("#1d4ed8");
+  });
+
+  it("2 (light green) and 8 (dark green) use the specified colors", () => {
+    expect(PALETTES.pairHint[2].bg).toBe("#bbf7d0");
+    expect(PALETTES.pairHint[8].bg).toBe("#15803d");
+  });
+
+  it("3 (light orange) and 7 (dark orange) use the specified colors", () => {
+    expect(PALETTES.pairHint[3].bg).toBe("#fed7aa");
+    expect(PALETTES.pairHint[7].bg).toBe("#c2410c");
+  });
+
+  it("4 (light purple) and 6 (dark purple) use the specified colors", () => {
+    expect(PALETTES.pairHint[4].bg).toBe("#e9d5ff");
+    expect(PALETTES.pairHint[6].bg).toBe("#7c3aed");
+  });
+
+  it("5 uses mid-gold (self-pairs with itself to 10)", () => {
+    expect(PALETTES.pairHint[5].bg).toBe("#fef08a");
+  });
+});
