@@ -14,6 +14,7 @@ import {
   isPaletteId,
   type PaletteId,
 } from "./palettes";
+import { formatScorePopup } from "./scoring";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -23,6 +24,7 @@ const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 const gameOverEl = document.getElementById("game-over") as HTMLDivElement;
 const paletteToggleEl = document.getElementById("palette-toggle") as HTMLButtonElement;
+const scorePopupEl = document.getElementById("score-popup") as HTMLDivElement;
 
 function loadBestScore(): number {
   const value = Number(localStorage.getItem(BEST_SCORE_KEY));
@@ -90,12 +92,27 @@ const KEY_TO_DIRECTION: Record<string, Direction> = {
   d: "right",
 };
 
+function showScorePopup(amount: number): void {
+  scorePopupEl.textContent = formatScorePopup(amount);
+  scorePopupEl.classList.remove("animate");
+  // Force a reflow so re-adding "animate" restarts the CSS animation.
+  void scorePopupEl.offsetWidth;
+  scorePopupEl.classList.add("animate");
+}
+
 function setState(newState: GameState): void {
+  const scoreGained = newState.score - state.score;
   state = newState;
+
   if (state.score > bestScore) {
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
+
+  if (scoreGained > 0) {
+    showScorePopup(scoreGained);
+  }
+
   render();
 }
 
