@@ -46,7 +46,7 @@ test("no elimination produces empty eliminatedPairs with spawn and moved hints",
   await page.evaluate(() => {
     (window as any).__setTestState({
       grid: [
-        [1, 2, 3, null],
+        [null, 1, 2, 3],
         [null, null, null, null],
         [null, null, null, null],
         [null, null, null, null],
