@@ -34,9 +34,16 @@ const gameOverScoreEl = document.getElementById("game-over-score") as HTMLParagr
 const gameOverBestEl = document.getElementById("game-over-best") as HTMLParagraphElement;
 const gameOverBadgeEl = document.getElementById("game-over-badge") as HTMLParagraphElement;
 const playAgainEl = document.getElementById("play-again") as HTMLButtonElement;
-const paletteToggleEl = document.getElementById("palette-toggle") as HTMLButtonElement;
+const paletteToggleEl = document.getElementById("hud-palette-toggle") as HTMLButtonElement;
+const hudScoreEl = document.getElementById("hud-score") as HTMLSpanElement;
+const hudBestEl = document.getElementById("hud-best") as HTMLSpanElement;
 const scorePopupEl = document.getElementById("score-popup") as HTMLDivElement;
 const comboBadgeEl = document.getElementById("combo-badge") as HTMLDivElement;
+
+function updateHudScore(): void {
+  hudScoreEl.textContent = `Score: ${state.score}`;
+  hudBestEl.textContent = `Best: ${bestScore}`;
+}
 
 function loadBestScore(): number {
   const value = Number(localStorage.getItem(BEST_SCORE_KEY));
@@ -231,13 +238,6 @@ function render(): void {
     ctx.restore();
   });
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "20px sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText(`Score: ${state.score}`, 10, 20);
-  ctx.fillText(`Best: ${bestScore}`, 10, 45);
-
   const gameOver = isGameOver(state.grid);
   gameOverEl.hidden = !gameOver;
   if (gameOver) {
@@ -390,6 +390,8 @@ function handleKeydown(event: KeyboardEvent): void {
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
 
+  updateHudScore();
+
   if (scoreGained > 0) {
     showScorePopup(scoreGained);
   }
@@ -437,6 +439,7 @@ function setState(newState: GameState): void {
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
 
+  updateHudScore();
   render();
 }
 
@@ -456,4 +459,5 @@ playAgainEl.addEventListener("click", () => {
 (window as unknown as { __getCurrentPalette: () => PaletteId }).__getCurrentPalette = () =>
   currentPalette;
 
+updateHudScore();
 render();
