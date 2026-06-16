@@ -1,6 +1,11 @@
 export type Cell = number | null;
 export type GameGrid = Cell[][];
 
+export interface EliminatedPair {
+  a: { row: number; col: number };
+  b: { row: number; col: number };
+}
+
 export function createEmptyGrid(size: number): GameGrid {
   return Array.from({ length: size }, () =>
     Array.from({ length: size }, () => null as Cell)
@@ -28,12 +33,22 @@ export interface SlideResult {
   row: Cell[];
   moved: boolean;
   scoreGained: number;
+  eliminatedIndices: Array<[number, number]>;
 }
 
 export function slideRowLeft(row: Cell[]): SlideResult {
-  const values = row.filter((cell): cell is number => cell !== null);
+  const valuePositions: number[] = [];
+  const values: number[] = [];
+  row.forEach((cell, index) => {
+    if (cell !== null) {
+      valuePositions.push(index);
+      values.push(cell);
+    }
+  });
+
   const merged: number[] = [];
   let scoreGained = 0;
+  const eliminatedIndices: Array<[number, number]> = [];
 
   let i = 0;
   while (i < values.length) {
@@ -42,6 +57,7 @@ export function slideRowLeft(row: Cell[]): SlideResult {
 
     if (next !== undefined && current + next === 10) {
       scoreGained += 10;
+      eliminatedIndices.push([valuePositions[i], valuePositions[i + 1]]);
       i += 2;
     } else {
       merged.push(current);
@@ -52,7 +68,7 @@ export function slideRowLeft(row: Cell[]): SlideResult {
   const finalRow = padToLength(merged, row.length);
   const moved = row.some((cell, index) => cell !== finalRow[index]);
 
-  return { row: finalRow, moved, scoreGained };
+  return { row: finalRow, moved, scoreGained, eliminatedIndices };
 }
 
 export type Direction = "up" | "down" | "left" | "right";
@@ -61,20 +77,28 @@ export interface SlideOutcome {
   grid: GameGrid;
   moved: boolean;
   scoreGained: number;
+  eliminatedPairs: EliminatedPair[];
 }
 
 function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
   let moved = false;
   let scoreGained = 0;
+  const eliminatedPairs: EliminatedPair[] = [];
 
-  const resultGrid = grid.map((row) => {
+  const resultGrid = grid.map((row, rowIndex) => {
     const result = slideRowLeft(row);
     if (result.moved) moved = true;
     scoreGained += result.scoreGained;
+    result.eliminatedIndices.forEach(([colA, colB]) => {
+      eliminatedPairs.push({
+        a: { row: rowIndex, col: colA },
+        b: { row: rowIndex, col: colB },
+      });
+    });
     return result.row;
   });
 
-  return { grid: resultGrid, moved, scoreGained };
+  return { grid: resultGrid, moved, scoreGained, eliminatedPairs };
 }
 
 function reverseRows(grid: GameGrid): GameGrid {
@@ -89,20 +113,35 @@ function transpose(grid: GameGrid): GameGrid {
 }
 
 export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
+  const size = grid.length;
+
   switch (direction) {
-    case "left":
+    case "left": {
       return applySlideRowLeftToGrid(grid);
+    }
     case "right": {
       const outcome = applySlideRowLeftToGrid(reverseRows(grid));
-      return { ...outcome, grid: reverseRows(outcome.grid) };
+      const pairs = outcome.eliminatedPairs.map(({ a, b }) => ({
+        a: { row: a.row, col: size - 1 - a.col },
+        b: { row: b.row, col: size - 1 - b.col },
+      }));
+      return { ...outcome, grid: reverseRows(outcome.grid), eliminatedPairs: pairs };
     }
     case "up": {
       const outcome = applySlideRowLeftToGrid(transpose(grid));
-      return { ...outcome, grid: transpose(outcome.grid) };
+      const pairs = outcome.eliminatedPairs.map(({ a, b }) => ({
+        a: { row: a.col, col: a.row },
+        b: { row: b.col, col: b.row },
+      }));
+      return { ...outcome, grid: transpose(outcome.grid), eliminatedPairs: pairs };
     }
     case "down": {
       const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)));
-      return { ...outcome, grid: transpose(reverseRows(outcome.grid)) };
+      const pairs = outcome.eliminatedPairs.map(({ a, b }) => ({
+        a: { row: size - 1 - a.col, col: a.row },
+        b: { row: size - 1 - b.col, col: b.row },
+      }));
+      return { ...outcome, grid: transpose(reverseRows(outcome.grid)), eliminatedPairs: pairs };
     }
   }
 }
