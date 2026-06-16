@@ -125,6 +125,39 @@ test("F4: collision animation — eliminated pair records meetA/meetB collision 
   expect(hints.eliminatedPairs[0].meetB.col).toBe(1);
 });
 
+test("F5: hammer powerup removes a tile when activated and clicked on canvas", async ({ page }) => {
+  await page.goto("/");
+
+  const hammerState = {
+    grid: [
+      [5, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    score: 0,
+  };
+  await page.evaluate((s) => {
+    (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState(s);
+    (window as unknown as { __setPowerups: (p: unknown) => void }).__setPowerups({
+      hammer: 1, shuffle: 0, addOne: 0, bomb: 0,
+    });
+  }, hammerState);
+
+  await page.locator(".hud-powerup-btn[data-powerup='hammer']").click();
+
+  const canvas = page.locator("#game");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("No canvas");
+  const cellSize = box.width / 4;
+  await page.mouse.click(box.x + cellSize * 0.5, box.y + cellSize * 0.5);
+
+  const state = await page.evaluate(
+    () => (window as unknown as { __getGameState: () => { grid: (number | null)[][] } }).__getGameState(),
+  );
+  expect(state.grid[0][0]).toBeNull();
+});
+
 test("F1: score and best are shown in #hud DOM elements after a move", async ({ page }) => {
   await page.goto("/");
 

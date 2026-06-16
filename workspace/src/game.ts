@@ -92,6 +92,99 @@ function savePowerups(): void {
   localStorage.setItem(POWERUP_KEY, JSON.stringify(powerups));
 }
 
+function renderHudPowerups(): void {
+  const container = document.getElementById("hud-powerups")!;
+  container.innerHTML = "";
+  const defs: Array<{ id: PowerupId; icon: string }> = [
+    { id: "hammer", icon: "🔨" },
+    { id: "shuffle", icon: "🔀" },
+    { id: "addOne", icon: "➕" },
+    { id: "bomb", icon: "💣" },
+  ];
+  defs.forEach(({ id, icon }) => {
+    const count = powerups[id];
+    if (count === 0) return;
+    const btn = document.createElement("button");
+    btn.className = "hud-powerup-btn";
+    btn.dataset.powerup = id;
+    btn.dataset.active = String(activePowerup === id);
+    btn.title = id;
+    btn.innerHTML = `${icon}<span class="hud-powerup-count">${count}</span>`;
+    btn.addEventListener("click", () => {
+      activePowerup = activePowerup === id ? null : id;
+      canvas.style.outline = activePowerup ? "3px solid #f59e0b" : "";
+      renderHudPowerups();
+    });
+    container.appendChild(btn);
+  });
+}
+
+function applyHammer(row: number, col: number): void {
+  if (state.grid[row][col] === null) return;
+  const newGrid = state.grid.map((r, ri) =>
+    r.map((c, ci) => (ri === row && ci === col ? null : c)),
+  );
+  setState({ ...state, grid: newGrid });
+  powerups.hammer--;
+  savePowerups();
+  audio.play("hammer");
+  renderHudPowerups();
+}
+
+function applyShuffle(): void {
+  const tiles: Array<{ row: number; col: number; value: number }> = [];
+  state.grid.forEach((r, ri) =>
+    r.forEach((c, ci) => {
+      if (c !== null) tiles.push({ row: ri, col: ci, value: c });
+    }),
+  );
+  for (let i = tiles.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [tiles[i].value, tiles[j].value] = [tiles[j].value, tiles[i].value];
+  }
+  const newGrid = state.grid.map((r) => r.map(() => null as number | null));
+  tiles.forEach(({ row, col, value }) => {
+    newGrid[row][col] = value;
+  });
+  setState({ ...state, grid: newGrid });
+  powerups.shuffle--;
+  savePowerups();
+  audio.play("shuffle");
+  renderHudPowerups();
+}
+
+function applyAddOne(row: number, col: number): void {
+  const value = state.grid[row][col];
+  if (value === null || value >= 9) return;
+  const newGrid = state.grid.map((r, ri) =>
+    r.map((c, ci) => (ri === row && ci === col ? value + 1 : c)),
+  );
+  setState({ ...state, grid: newGrid });
+  powerups.addOne--;
+  savePowerups();
+  audio.play("addOne");
+  renderHudPowerups();
+}
+
+function applyBomb(row: number, col: number): void {
+  const newGrid = state.grid.map((r, ri) =>
+    r.map((c, ci) => {
+      const isCenter = ri === row && ci === col;
+      const isAdjacent =
+        (ri === row - 1 && ci === col) ||
+        (ri === row + 1 && ci === col) ||
+        (ri === row && ci === col - 1) ||
+        (ri === row && ci === col + 1);
+      return isCenter || isAdjacent ? null : c;
+    }),
+  );
+  setState({ ...state, grid: newGrid });
+  powerups.bomb--;
+  savePowerups();
+  audio.play("bomb");
+  renderHudPowerups();
+}
+
 function loadPlayCount(): number {
   return parseInt(localStorage.getItem(PLAY_COUNT_KEY) ?? "0", 10);
 }
@@ -568,7 +661,26 @@ canvas.addEventListener(
     const dx = e.changedTouches[0].clientX - touchStart.x;
     const dy = e.changedTouches[0].clientY - touchStart.y;
     touchStart = null;
-    if (activePowerup !== null) return;
+
+    if (activePowerup !== null) {
+      const rect = canvas.getBoundingClientRect();
+      const cs = canvas.width / GRID_SIZE;
+      const col = Math.floor((e.changedTouches[0].clientX - rect.left) / cs);
+      const row = Math.floor((e.changedTouches[0].clientY - rect.top) / cs);
+      if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+        const id = activePowerup;
+        activePowerup = null;
+        canvas.style.outline = "";
+        switch (id) {
+          case "hammer":  applyHammer(row, col); break;
+          case "addOne":  applyAddOne(row, col); break;
+          case "bomb":    applyBomb(row, col); break;
+          case "shuffle": applyShuffle(); break;
+        }
+      }
+      return;
+    }
+
     if (Math.abs(dx) < SWIPE_MIN_PX && Math.abs(dy) < SWIPE_MIN_PX) return;
     const direction: Direction =
       Math.abs(dx) > Math.abs(dy)
@@ -582,6 +694,26 @@ canvas.addEventListener(
   },
   { passive: true },
 );
+
+canvas.addEventListener("click", (e) => {
+  if (activePowerup === null) return;
+  const rect = canvas.getBoundingClientRect();
+  const cs = canvas.width / GRID_SIZE;
+  const col = Math.floor((e.clientX - rect.left) / cs);
+  const row = Math.floor((e.clientY - rect.top) / cs);
+  if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return;
+
+  const id = activePowerup;
+  activePowerup = null;
+  canvas.style.outline = "";
+
+  switch (id) {
+    case "hammer":  applyHammer(row, col); break;
+    case "addOne":  applyAddOne(row, col); break;
+    case "bomb":    applyBomb(row, col); break;
+    case "shuffle": applyShuffle(); break;
+  }
+});
 
 // ── Responsive resize ─────────────────────────────────────────────────────────
 function resizeCanvas(): void {
@@ -643,6 +775,12 @@ playAgainEl.addEventListener("click", () => {
 (window as unknown as { __getCurrentPalette: () => PaletteId }).__getCurrentPalette = () =>
   currentPalette;
 
+(window as unknown as { __setPowerups: (p: PowerupState) => void }).__setPowerups = (p) => {
+  powerups = p;
+  renderHudPowerups();
+};
+
 updateMuteButton();
 updateHudScore();
+renderHudPowerups();
 resizeCanvas();
