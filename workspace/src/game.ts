@@ -14,11 +14,13 @@ import {
   isPaletteId,
   type PaletteId,
 } from "./palettes";
+import { changedCells } from "./gridDiff";
 import { formatScorePopup, isNewRecord } from "./scoring";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
 const PALETTE_KEY = "mathMerge10Palette";
+const ANIMATION_DURATION_MS = 150;
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -44,8 +46,10 @@ let state: GameState = createInitialState(GRID_SIZE);
 let rng: Rng = Math.random;
 let bestScore = loadBestScore();
 let currentPalette: PaletteId = loadPalette();
+const animatingCells = new Map<string, number>();
+let animationFrameId: number | null = null;
 
-function render(): void {
+function render(progress: Map<string, number> = new Map()): void {
   const cellSize = canvas.width / GRID_SIZE;
   const padding = 4;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -60,6 +64,15 @@ function render(): void {
 
       if (cell !== null) {
         const colors = PALETTES[currentPalette][cell];
+        const rawProgress = progress.get(`${rowIndex},${colIndex}`);
+        const scale = rawProgress === undefined ? 1 : 1 - Math.pow(1 - rawProgress, 2);
+        const centerX = x + cellSize / 2;
+        const centerY = y + cellSize / 2;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.scale(scale, scale);
+        ctx.translate(-centerX, -centerY);
 
         ctx.fillStyle = colors.bg;
         ctx.beginPath();
@@ -70,7 +83,9 @@ function render(): void {
         ctx.font = "32px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(String(cell), x + cellSize / 2, y + cellSize / 2);
+        ctx.fillText(String(cell), centerX, centerY);
+
+        ctx.restore();
       }
     });
   });
@@ -110,8 +125,39 @@ function showScorePopup(amount: number): void {
   scorePopupEl.classList.add("animate");
 }
 
+function tick(): void {
+  const now = performance.now();
+  const progress = new Map<string, number>();
+  let stillAnimating = false;
+
+  animatingCells.forEach((startTime, key) => {
+    const elapsed = now - startTime;
+    if (elapsed >= ANIMATION_DURATION_MS) {
+      animatingCells.delete(key);
+    } else {
+      progress.set(key, elapsed / ANIMATION_DURATION_MS);
+      stillAnimating = true;
+    }
+  });
+
+  render(progress);
+
+  if (stillAnimating) {
+    animationFrameId = requestAnimationFrame(tick);
+  } else {
+    animationFrameId = null;
+  }
+}
+
+function startAnimationLoop(): void {
+  if (animationFrameId === null) {
+    animationFrameId = requestAnimationFrame(tick);
+  }
+}
+
 function setState(newState: GameState): void {
-  const scoreGained = newState.score - state.score;
+  const prevState = state;
+  const scoreGained = newState.score - prevState.score;
   state = newState;
 
   if (state.score > bestScore) {
@@ -123,7 +169,16 @@ function setState(newState: GameState): void {
     showScorePopup(scoreGained);
   }
 
-  render();
+  const diff = changedCells(prevState.grid, state.grid);
+  if (diff.length > 0) {
+    const now = performance.now();
+    diff.forEach(({ row, col }) => {
+      animatingCells.set(`${row},${col}`, now);
+    });
+    startAnimationLoop();
+  } else {
+    render();
+  }
 }
 
 function handleKeydown(event: KeyboardEvent): void {
