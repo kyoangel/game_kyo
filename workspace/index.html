@@ -62,6 +62,57 @@
         transform: translateY(-30px);
       }
     }
+    #game-over {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+    }
+    #game-over[hidden] {
+      display: none;
+    }
+    #game-over-card {
+      background: #1f2937;
+      border-radius: 12px;
+      padding: 24px 32px;
+      text-align: center;
+      font-family: sans-serif;
+      color: #fff;
+    }
+    #game-over-card h2 {
+      margin: 0 0 12px;
+    }
+    #game-over-card p {
+      margin: 4px 0;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    #game-over-badge {
+      display: inline-block;
+      margin-top: 8px;
+      background: #fde047;
+      color: #422006;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+    #game-over-badge.hidden {
+      display: none;
+    }
+    #play-again {
+      margin-top: 16px;
+      background: #4ade80;
+      color: #052e16;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      padding: 8px 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -69,7 +120,15 @@
     <canvas id="game" width="800" height="800"></canvas>
     <button id="palette-toggle" aria-label="切換配色">🎨</button>
     <div id="score-popup"></div>
-    <div id="game-over" hidden>Game Over</div>
+    <div id="game-over" hidden>
+      <div id="game-over-card">
+        <h2>Game Over</h2>
+        <p id="game-over-score"></p>
+        <p id="game-over-best"></p>
+        <p id="game-over-badge" class="hidden">★ 新紀錄！</p>
+        <button id="play-again">再玩一次</button>
+      </div>
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
   <script>

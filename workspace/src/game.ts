@@ -14,7 +14,7 @@ import {
   isPaletteId,
   type PaletteId,
 } from "./palettes";
-import { formatScorePopup } from "./scoring";
+import { formatScorePopup, isNewRecord } from "./scoring";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -23,6 +23,10 @@ const PALETTE_KEY = "mathMerge10Palette";
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 const gameOverEl = document.getElementById("game-over") as HTMLDivElement;
+const gameOverScoreEl = document.getElementById("game-over-score") as HTMLParagraphElement;
+const gameOverBestEl = document.getElementById("game-over-best") as HTMLParagraphElement;
+const gameOverBadgeEl = document.getElementById("game-over-badge") as HTMLParagraphElement;
+const playAgainEl = document.getElementById("play-again") as HTMLButtonElement;
 const paletteToggleEl = document.getElementById("palette-toggle") as HTMLButtonElement;
 const scorePopupEl = document.getElementById("score-popup") as HTMLDivElement;
 
@@ -78,7 +82,13 @@ function render(): void {
   ctx.fillText(`Score: ${state.score}`, 10, 20);
   ctx.fillText(`Best: ${bestScore}`, 10, 45);
 
-  gameOverEl.hidden = !isGameOver(state.grid);
+  const gameOver = isGameOver(state.grid);
+  gameOverEl.hidden = !gameOver;
+  if (gameOver) {
+    gameOverScoreEl.textContent = `本次分數：${state.score}`;
+    gameOverBestEl.textContent = `最高分：${bestScore}`;
+    gameOverBadgeEl.classList.toggle("hidden", !isNewRecord(state.score, bestScore));
+  }
 }
 
 const KEY_TO_DIRECTION: Record<string, Direction> = {
@@ -129,6 +139,10 @@ paletteToggleEl.addEventListener("click", () => {
   currentPalette = nextPalette(currentPalette);
   localStorage.setItem(PALETTE_KEY, currentPalette);
   render();
+});
+
+playAgainEl.addEventListener("click", () => {
+  setState(createInitialState(GRID_SIZE, rng));
 });
 
 (window as unknown as { __getGameState: () => GameState }).__getGameState = () => state;
