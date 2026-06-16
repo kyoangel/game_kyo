@@ -87,6 +87,44 @@ test("F3: mute button toggles between 🔊 and 🔇", async ({ page }) => {
   await expect(muteBtn).toHaveText("🔊");
 });
 
+test("F4: collision animation — eliminated pair records meetA/meetB collision positions", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // Non-adjacent pair: 3 at col1, 7 at col3. After left slide they meet at col0 + col1.
+  const animState = {
+    grid: [
+      [null, 3, null, 7],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    score: 0,
+  };
+  await page.evaluate(
+    (s) => (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState(s),
+    animState,
+  );
+
+  await page.keyboard.press("ArrowLeft");
+  await page.waitForTimeout(50);
+
+  const hints = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __lastAnimationHints: {
+            eliminatedPairs: Array<{ meetA: { col: number }; meetB: { col: number } }>;
+          };
+        }
+      ).__lastAnimationHints,
+  );
+
+  expect(hints.eliminatedPairs[0].meetA.col).toBe(0);
+  expect(hints.eliminatedPairs[0].meetB.col).toBe(1);
+});
+
 test("F1: score and best are shown in #hud DOM elements after a move", async ({ page }) => {
   await page.goto("/");
 

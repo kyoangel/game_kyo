@@ -80,8 +80,19 @@ let currentPalette: PaletteId = loadPalette();
 const eliminatingCells = new Map<string, { value: number; startTime: number }>();
 // spawnCells: start time for the newly spawned tile (may be future)
 const spawnCells = new Map<string, number>();
-// moveCells: tiles that slid to a new position
-const moveCells = new Map<string, { startTime: number; direction: Direction }>();
+// moveCells: tiles that slid to a new position (or phantom eliminated tiles sliding to meetA/meetB)
+const moveCells = new Map<
+  string,
+  {
+    startTime: number;
+    direction: Direction;
+    value?: number;
+    fromRow?: number;
+    fromCol?: number;
+    toRow?: number;
+    toCol?: number;
+  }
+>();
 
 let animationFrameId: number | null = null;
 
@@ -213,7 +224,27 @@ function render(): void {
     });
   });
 
-  // Draw elimination phantoms on top (cells now null in state.grid)
+  // Draw phantom tiles for eliminated cells during their slide phase (phase 1)
+  moveCells.forEach(({ value, startTime, fromRow, fromCol, toRow, toCol }) => {
+    if (value === undefined || fromRow === undefined) return;
+    const elapsed = now - startTime;
+    const t = Math.min(1, elapsed / MOVE_DURATION_MS);
+    if (t >= 1) return;
+    const p = 1 - Math.pow(1 - t, 2); // ease-out
+    const x = lerp(fromCol! * cellSize, toCol! * cellSize, p);
+    const y = lerp(fromRow * cellSize, toRow! * cellSize, p);
+    const scale = lerp(0.8, 1.0, p);
+    const cx = x + cellSize / 2;
+    const cy = y + cellSize / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    ctx.translate(-cx, -cy);
+    drawBaseTile(value, x, y, cellSize, padding, 0);
+    ctx.restore();
+  });
+
+  // Draw elimination flash phantoms (phase 2, at meeting position)
   eliminatingCells.forEach(({ value, startTime }, key) => {
     const [rowIndex, colIndex] = key.split(",").map(Number);
     const x = colIndex * cellSize;
@@ -351,19 +382,50 @@ function startAnimations(
   spawnCells.clear();
   moveCells.clear();
 
-  eliminatedPairs.forEach(({ a, b }) => {
+  // Regular moved tiles (non-eliminated): spring animation from their destination
+  movedCellsList.forEach(({ row, col }) => {
+    moveCells.set(`${row},${col}`, { startTime: now, direction });
+  });
+
+  // Eliminated tiles: phase 1 = slide phantom from original → meetA/meetB
+  //                   phase 2 = flash at meeting position (delayed by MOVE_DURATION_MS)
+  eliminatedPairs.forEach(({ a, b, meetA, meetB }) => {
     const valA = prevGrid[a.row][a.col];
     const valB = prevGrid[b.row][b.col];
-    if (valA !== null) eliminatingCells.set(`${a.row},${a.col}`, { value: valA, startTime: now });
-    if (valB !== null) eliminatingCells.set(`${b.row},${b.col}`, { value: valB, startTime: now });
+    if (valA !== null) {
+      moveCells.set(`${a.row},${a.col}`, {
+        startTime: now,
+        direction,
+        value: valA,
+        fromRow: a.row,
+        fromCol: a.col,
+        toRow: meetA.row,
+        toCol: meetA.col,
+      });
+      eliminatingCells.set(`${meetA.row},${meetA.col}`, {
+        value: valA,
+        startTime: now + MOVE_DURATION_MS,
+      });
+    }
+    if (valB !== null) {
+      moveCells.set(`${b.row},${b.col}`, {
+        startTime: now,
+        direction,
+        value: valB,
+        fromRow: b.row,
+        fromCol: b.col,
+        toRow: meetB.row,
+        toCol: meetB.col,
+      });
+      eliminatingCells.set(`${meetB.row},${meetB.col}`, {
+        value: valB,
+        startTime: now + MOVE_DURATION_MS,
+      });
+    }
   });
 
   spawnedCells.forEach(({ row, col }) => {
     spawnCells.set(`${row},${col}`, now + SPAWN_DELAY_MS);
-  });
-
-  movedCellsList.forEach(({ row, col }) => {
-    moveCells.set(`${row},${col}`, { startTime: now, direction });
   });
 }
 
