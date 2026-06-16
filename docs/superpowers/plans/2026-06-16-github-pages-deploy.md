@@ -1,6 +1,6 @@
 # GitHub Pages 自動部署實作計畫
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 每次 push 到 `master` 後，自動跑完測試、build，並將遊戲部署至 `https://kyoangel.github.io/game_kyo/merge10/`。
 
@@ -27,7 +27,7 @@
 
 **Files:** 無（git config 不追蹤）
 
-- [ ] **Step 1：在 GitHub 上將 repo 從 `game-factory` 改名為 `game_kyo`**
+- [x] **Step 1：在 GitHub 上將 repo 從 `game-factory` 改名為 `game_kyo`**
 
   從 repo 根目錄執行（`gh` 會自動抓 origin remote 對應的 repo）：
 
@@ -40,13 +40,13 @@
   ✓ Renamed repository kyoangel/game_kyo
   ```
 
-- [ ] **Step 2：更新本地 remote URL**
+- [x] **Step 2：更新本地 remote URL**
 
   ```bash
   git remote set-url origin git@github.com:kyoangel/game_kyo.git
   ```
 
-- [ ] **Step 3：驗證**
+- [x] **Step 3：驗證**
 
   ```bash
   gh repo view --json name,url && git remote -v
@@ -69,7 +69,7 @@
 
 **Files:** gh-pages branch（不影響 master working tree）
 
-- [ ] **Step 1：建立 orphan `gh-pages` branch 並放入 placeholder**
+- [x] **Step 1：建立 orphan `gh-pages` branch 並放入 placeholder**
 
   ```bash
   git checkout --orphan gh-pages
@@ -81,7 +81,7 @@
 
   `git rm --cached` 只清 index，不動磁碟上的檔案，安全。
 
-- [ ] **Step 2：推送 gh-pages branch 到 origin**
+- [x] **Step 2：推送 gh-pages branch 到 origin**
 
   ```bash
   git push origin gh-pages
@@ -92,7 +92,7 @@
   Branch 'gh-pages' set up to track remote branch 'gh-pages' from 'origin'.
   ```
 
-- [ ] **Step 3：切回 master 並清理 placeholder 檔**
+- [x] **Step 3：切回 master 並清理 placeholder 檔**
 
   ```bash
   git checkout master
@@ -101,7 +101,7 @@
 
   切回 master 後，所有原始檔案（workspace/、agents/ 等）恢復正常。
 
-- [ ] **Step 4：透過 GitHub API 啟用 GitHub Pages**
+- [x] **Step 4：透過 GitHub API 啟用 GitHub Pages**
 
   ```bash
   gh api repos/kyoangel/game_kyo/pages \
@@ -123,7 +123,7 @@
   >   -f 'source[path]=/'
   > ```
 
-- [ ] **Step 5：驗證 Pages 已啟用**
+- [x] **Step 5：驗證 Pages 已啟用**
 
   ```bash
   gh api repos/kyoangel/game_kyo/pages --jq '.html_url'
@@ -143,7 +143,7 @@
 **Files:**
 - Create: `workspace/vite.config.ts`
 
-- [ ] **Step 1：建立 vite.config.ts**
+- [x] **Step 1：建立 vite.config.ts**
 
   ```typescript
   import { defineConfig } from 'vite'
@@ -155,7 +155,7 @@
 
   存至 `workspace/vite.config.ts`。
 
-- [ ] **Step 2：驗證 build 輸出含正確 base path**
+- [x] **Step 2：驗證 build 輸出含正確 base path**
 
   ```bash
   cd workspace && npm run build 2>&1
@@ -167,7 +167,7 @@
   /game_kyo/merge10/assets/index-
   ```
 
-- [ ] **Step 3：Commit**
+- [x] **Step 3：Commit**
 
   ```bash
   git add workspace/vite.config.ts
@@ -181,7 +181,7 @@
 **Files:**
 - Modify: `workspace/index.html` (lines 7, 8, 165)
 
-- [ ] **Step 1：確認目前三行的內容**
+- [x] **Step 1：確認目前三行的內容**
 
   ```bash
   grep -n "manifest\|icon.svg\|sw.js" workspace/index.html
@@ -194,7 +194,7 @@
   165:        navigator.serviceWorker.register("/sw.js");
   ```
 
-- [ ] **Step 2：修改 line 7 — manifest**
+- [x] **Step 2：修改 line 7 — manifest**
 
   將：
   ```html
@@ -205,7 +205,7 @@
   <link rel="manifest" href="%BASE_URL%manifest.json" />
   ```
 
-- [ ] **Step 3：修改 line 8 — icon**
+- [x] **Step 3：修改 line 8 — icon**
 
   將：
   ```html
@@ -216,7 +216,7 @@
   <link rel="icon" type="image/svg+xml" href="%BASE_URL%icons/icon.svg" />
   ```
 
-- [ ] **Step 4：修改 line 165 — service worker**
+- [x] **Step 4：修改 line 165 — service worker**
 
   將：
   ```javascript
@@ -227,7 +227,7 @@
   navigator.serviceWorker.register("%BASE_URL%sw.js");
   ```
 
-- [ ] **Step 5：驗證 build 輸出路徑正確**
+- [x] **Step 5：驗證 build 輸出路徑正確**
 
   ```bash
   cd workspace && npm run build 2>&1
@@ -241,7 +241,7 @@
   register("/game_kyo/merge10/sw.js")
   ```
 
-- [ ] **Step 6：Commit**
+- [x] **Step 6：Commit**
 
   ```bash
   git add workspace/index.html
@@ -255,7 +255,7 @@
 **Files:**
 - Modify: `workspace/tests/e2e/merge-animation.spec.ts` (line 4)
 
-- [ ] **Step 1：確認目前硬寫的 URL**
+- [x] **Step 1：確認目前硬寫的 URL**
 
   ```bash
   grep -n "goto" workspace/tests/e2e/merge-animation.spec.ts
@@ -266,7 +266,7 @@
   4:  await page.goto("http://localhost:5173");
   ```
 
-- [ ] **Step 2：改為相對路徑（使用 playwright.config.ts 的 baseURL）**
+- [x] **Step 2：改為相對路徑（使用 playwright.config.ts 的 baseURL）**
 
   將 `workspace/tests/e2e/merge-animation.spec.ts` 第 4 行：
   ```typescript
@@ -279,7 +279,7 @@
 
   注意：`playwright.config.ts` 已設定 `baseURL: "http://localhost:5173"` 與 `webServer`，改成相對路徑後，本地與 CI 行為完全一致。
 
-- [ ] **Step 3：執行全部 E2E 測試確認通過**
+- [x] **Step 3：執行全部 E2E 測試確認通過**
 
   ```bash
   cd workspace && npm run test:e2e 2>&1
@@ -292,7 +292,7 @@
   N passed
   ```
 
-- [ ] **Step 4：Commit**
+- [x] **Step 4：Commit**
 
   ```bash
   git add workspace/tests/e2e/merge-animation.spec.ts
@@ -306,13 +306,13 @@
 **Files:**
 - Create: `.github/workflows/deploy.yml`
 
-- [ ] **Step 1：建立 `.github/workflows/` 目錄**
+- [x] **Step 1：建立 `.github/workflows/` 目錄**
 
   ```bash
   mkdir -p .github/workflows
   ```
 
-- [ ] **Step 2：建立 `deploy.yml`**
+- [x] **Step 2：建立 `deploy.yml`**
 
   ```yaml
   name: Deploy to GitHub Pages
@@ -367,7 +367,7 @@
 
   存至 `.github/workflows/deploy.yml`。
 
-- [ ] **Step 3：在本地先跑一次完整測試確認乾淨**
+- [x] **Step 3：在本地先跑一次完整測試確認乾淨**
 
   ```bash
   cd workspace && npm run test:unit && npm run test:e2e && npm run build
@@ -376,20 +376,20 @@
 
   Expected：unit tests 全過、E2E 全過、build 成功。若有任何失敗，**不要繼續 push**，先修好。
 
-- [ ] **Step 4：Commit workflow 檔**
+- [x] **Step 4：Commit workflow 檔**
 
   ```bash
   git add .github/workflows/deploy.yml
   git commit -m "feat: add GitHub Actions workflow — test then deploy to GitHub Pages"
   ```
 
-- [ ] **Step 5：Push 到 origin，觸發首次部署**
+- [x] **Step 5：Push 到 origin，觸發首次部署**
 
   ```bash
   git push origin master
   ```
 
-- [ ] **Step 6：監看 workflow 執行狀況**
+- [x] **Step 6：監看 workflow 執行狀況**
 
   ```bash
   gh run watch
@@ -407,7 +407,7 @@
   All jobs have completed
   ```
 
-- [ ] **Step 7：驗證遊戲已上線**
+- [x] **Step 7：驗證遊戲已上線**
 
   ```bash
   curl -s -o /dev/null -w "%{http_code}" https://kyoangel.github.io/game_kyo/merge10/
@@ -424,7 +424,7 @@
 
 ## Success Criteria
 
-- [ ] `https://kyoangel.github.io/game_kyo/merge10/` 可正常開啟遊戲
-- [ ] 後續每次 `git push origin master` 都自動跑測試並部署
-- [ ] 測試失敗時 Actions 顯示紅色，不會部署到 Pages
-- [ ] Chrome DevTools → Application → Manifest 可正常讀取（PWA 路徑正確）
+- [x] `https://kyoangel.github.io/game_kyo/merge10/` 可正常開啟遊戲
+- [x] 後續每次 `git push origin master` 都自動跑測試並部署
+- [x] 測試失敗時 Actions 顯示紅色，不會部署到 Pages
+- [x] Chrome DevTools → Application → Manifest 可正常讀取（PWA 路徑正確）
