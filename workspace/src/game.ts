@@ -19,10 +19,19 @@ import {
 import { changedCells } from "./gridDiff";
 import { formatScorePopup, isNewRecord } from "./scoring";
 import { AudioEngine } from "./audio";
+import {
+  type PowerupId,
+  type PowerupState,
+  emptyPowerups,
+  computePlayCountAward,
+  computeBestScoreAward,
+} from "./powerups";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
 const PALETTE_KEY = "mathMerge10Palette";
+const POWERUP_KEY = "mathMerge10Powerups";
+const PLAY_COUNT_KEY = "mathMerge10PlayCount";
 const ELIMINATE_DURATION_MS = 350;
 const MOVE_DURATION_MS = 150;
 const SPAWN_DELAY_MS = 350;
@@ -71,10 +80,27 @@ function loadPalette(): PaletteId {
   return isPaletteId(stored) ? stored : PALETTE_ORDER[0];
 }
 
+function loadPowerups(): PowerupState {
+  try {
+    const raw = localStorage.getItem(POWERUP_KEY);
+    if (raw) return { ...emptyPowerups(), ...JSON.parse(raw) };
+  } catch { /* ignore */ }
+  return emptyPowerups();
+}
+
+function savePowerups(): void {
+  localStorage.setItem(POWERUP_KEY, JSON.stringify(powerups));
+}
+
+function loadPlayCount(): number {
+  return parseInt(localStorage.getItem(PLAY_COUNT_KEY) ?? "0", 10);
+}
+
 let state: GameState = createInitialState(GRID_SIZE);
 let rng: Rng = Math.random;
 let bestScore = loadBestScore();
 let currentPalette: PaletteId = loadPalette();
+let powerups: PowerupState = loadPowerups();
 
 // eliminatingCells: phantom tiles no longer in state.grid
 const eliminatingCells = new Map<string, { value: number; startTime: number }>();
@@ -465,6 +491,11 @@ function handleKeydown(event: KeyboardEvent): void {
   state = { grid: newGrid, score: state.score + scoreGained };
 
   if (state.score > bestScore) {
+    const bombs = computeBestScoreAward(bestScore, state.score);
+    if (bombs > 0) {
+      powerups.bomb += bombs;
+      savePowerups();
+    }
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
@@ -517,7 +548,7 @@ paletteToggleEl.addEventListener("click", () => {
 });
 
 // ── Touch swipe ──────────────────────────────────────────────────────────────
-let activePowerup: string | null = null;
+let activePowerup: PowerupId | null = null;
 let touchStart: { x: number; y: number } | null = null;
 const SWIPE_MIN_PX = 30;
 
@@ -573,8 +604,23 @@ function setState(newState: GameState): void {
   moveCells.clear();
 
   if (state.score > bestScore) {
+    const bombs = computeBestScoreAward(bestScore, state.score);
+    if (bombs > 0) {
+      powerups.bomb += bombs;
+      savePowerups();
+    }
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
+  }
+
+  if (newState.score === 0) {
+    const newCount = loadPlayCount() + 1;
+    localStorage.setItem(PLAY_COUNT_KEY, String(newCount));
+    const award = computePlayCountAward(newCount);
+    if (award) {
+      powerups[award]++;
+      savePowerups();
+    }
   }
 
   updateHudScore();
