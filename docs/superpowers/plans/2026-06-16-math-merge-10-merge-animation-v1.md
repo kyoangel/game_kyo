@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Vite, Canvas 2D, Vitest (unit tests), Playwright (e2e tests).
 
+**Status:** Complete
+
 ---
 
 ## File Structure
