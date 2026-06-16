@@ -26,6 +26,9 @@ const ELIMINATE_DURATION_MS = 350;
 const MOVE_DURATION_MS = 150;
 const SPAWN_DELAY_MS = 350;
 const SPAWN_DURATION_MS = 400;
+const HUD_HEIGHT = 64;
+const CANVAS_PADDING = 16;
+const CANVAS_MAX = 500;
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -428,6 +431,56 @@ paletteToggleEl.addEventListener("click", () => {
   render();
 });
 
+// ── Touch swipe ──────────────────────────────────────────────────────────────
+let activePowerup: string | null = null;
+let touchStart: { x: number; y: number } | null = null;
+const SWIPE_MIN_PX = 30;
+
+canvas.addEventListener(
+  "touchstart",
+  (e) => {
+    if (activePowerup !== null) return;
+    touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  },
+  { passive: true },
+);
+
+canvas.addEventListener(
+  "touchend",
+  (e) => {
+    if (!touchStart) return;
+    const dx = e.changedTouches[0].clientX - touchStart.x;
+    const dy = e.changedTouches[0].clientY - touchStart.y;
+    touchStart = null;
+    if (activePowerup !== null) return;
+    if (Math.abs(dx) < SWIPE_MIN_PX && Math.abs(dy) < SWIPE_MIN_PX) return;
+    const direction: Direction =
+      Math.abs(dx) > Math.abs(dy)
+        ? dx > 0
+          ? "right"
+          : "left"
+        : dy > 0
+          ? "down"
+          : "up";
+    handleKeydown(new KeyboardEvent("keydown", { key: direction === "up" ? "ArrowUp" : direction === "down" ? "ArrowDown" : direction === "left" ? "ArrowLeft" : "ArrowRight" }));
+  },
+  { passive: true },
+);
+
+// ── Responsive resize ─────────────────────────────────────────────────────────
+function resizeCanvas(): void {
+  const available = Math.min(
+    window.innerWidth - CANVAS_PADDING,
+    window.innerHeight - HUD_HEIGHT - CANVAS_PADDING,
+  );
+  const size = Math.min(available, CANVAS_MAX);
+  canvas.width = size;
+  canvas.height = size;
+  render();
+}
+
+window.addEventListener("resize", resizeCanvas);
+
 function setState(newState: GameState): void {
   state = newState;
   eliminatingCells.clear();
@@ -460,4 +513,4 @@ playAgainEl.addEventListener("click", () => {
   currentPalette;
 
 updateHudScore();
-render();
+resizeCanvas();
