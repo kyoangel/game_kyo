@@ -18,6 +18,7 @@ import {
 } from "./palettes";
 import { changedCells } from "./gridDiff";
 import { formatScorePopup, isNewRecord } from "./scoring";
+import { AudioEngine } from "./audio";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -42,6 +43,18 @@ const hudScoreEl = document.getElementById("hud-score") as HTMLSpanElement;
 const hudBestEl = document.getElementById("hud-best") as HTMLSpanElement;
 const scorePopupEl = document.getElementById("score-popup") as HTMLDivElement;
 const comboBadgeEl = document.getElementById("combo-badge") as HTMLDivElement;
+
+const hudMuteEl = document.getElementById("hud-mute") as HTMLButtonElement;
+const audio = new AudioEngine();
+
+function updateMuteButton(): void {
+  hudMuteEl.textContent = audio.isMuted ? "🔇" : "🔊";
+}
+
+hudMuteEl.addEventListener("click", () => {
+  audio.toggleMute();
+  updateMuteButton();
+});
 
 function updateHudScore(): void {
   hudScoreEl.textContent = `Score: ${state.score}`;
@@ -269,6 +282,7 @@ function showScorePopup(amount: number): void {
 }
 
 function showComboBadge(count: number): void {
+  audio.play("combo", { comboCount: count });
   comboBadgeEl.textContent = `COMBO ×${count}`;
   comboBadgeEl.classList.remove("animate");
   void comboBadgeEl.offsetWidth;
@@ -396,7 +410,16 @@ function handleKeydown(event: KeyboardEvent): void {
   updateHudScore();
 
   if (scoreGained > 0) {
+    audio.play("eliminate");
     showScorePopup(scoreGained);
+  } else {
+    audio.play("move");
+  }
+
+  audio.play("spawn");
+
+  if (isGameOver(newGrid)) {
+    setTimeout(() => audio.play("gameOver"), 400);
   }
 
   const eliminatedPairs = outcome.eliminatedPairs;
@@ -512,5 +535,6 @@ playAgainEl.addEventListener("click", () => {
 (window as unknown as { __getCurrentPalette: () => PaletteId }).__getCurrentPalette = () =>
   currentPalette;
 
+updateMuteButton();
 updateHudScore();
 resizeCanvas();

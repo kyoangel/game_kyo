@@ -77,6 +77,16 @@ test("F6: touch swipe left eliminates a 4+6 pair and scores 10", async ({ page }
   expect(state.score).toBe(10);
 });
 
+test("F3: mute button toggles between 🔊 and 🔇", async ({ page }) => {
+  await page.goto("/");
+  const muteBtn = page.locator("#hud-mute");
+  await expect(muteBtn).toHaveText("🔊");
+  await muteBtn.click();
+  await expect(muteBtn).toHaveText("🔇");
+  await muteBtn.click();
+  await expect(muteBtn).toHaveText("🔊");
+});
+
 test("F1: score and best are shown in #hud DOM elements after a move", async ({ page }) => {
   await page.goto("/");
 
