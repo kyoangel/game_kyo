@@ -13,10 +13,10 @@ test("clicking the palette toggle cycles through palettes and persists the choic
 
   expect(await getPalette()).toBe("pairHint");
 
-  await page.click("#palette-toggle");
+  await page.click("#hud-palette-toggle");
   expect(await getPalette()).toBe("gradient");
 
-  await page.click("#palette-toggle");
+  await page.click("#hud-palette-toggle");
   expect(await getPalette()).toBe("pastel");
 
   await page.reload();

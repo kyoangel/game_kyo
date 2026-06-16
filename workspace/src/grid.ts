@@ -4,6 +4,8 @@ export type GameGrid = Cell[][];
 export interface EliminatedPair {
   a: { row: number; col: number };
   b: { row: number; col: number };
+  meetA: { row: number; col: number };
+  meetB: { row: number; col: number };
 }
 
 export function createEmptyGrid(size: number): GameGrid {
@@ -33,7 +35,7 @@ export interface SlideResult {
   row: Cell[];
   moved: boolean;
   scoreGained: number;
-  eliminatedIndices: Array<[number, number]>;
+  eliminatedIndices: Array<[number, number, number, number]>;
 }
 
 export function slideRowLeft(row: Cell[]): SlideResult {
@@ -48,7 +50,7 @@ export function slideRowLeft(row: Cell[]): SlideResult {
 
   const merged: number[] = [];
   let scoreGained = 0;
-  const eliminatedIndices: Array<[number, number]> = [];
+  const eliminatedIndices: Array<[number, number, number, number]> = [];
 
   let i = 0;
   while (i < values.length) {
@@ -57,7 +59,8 @@ export function slideRowLeft(row: Cell[]): SlideResult {
 
     if (next !== undefined && current + next === 10) {
       scoreGained += 10;
-      eliminatedIndices.push([valuePositions[i], valuePositions[i + 1]]);
+      const meetACol = merged.length;
+      eliminatedIndices.push([valuePositions[i], valuePositions[i + 1], meetACol, meetACol + 1]);
       i += 2;
     } else {
       merged.push(current);
@@ -89,10 +92,12 @@ function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
     const result = slideRowLeft(row);
     if (result.moved) moved = true;
     scoreGained += result.scoreGained;
-    result.eliminatedIndices.forEach(([colA, colB]) => {
+    result.eliminatedIndices.forEach(([colA, colB, meetACol, meetBCol]) => {
       eliminatedPairs.push({
         a: { row: rowIndex, col: colA },
         b: { row: rowIndex, col: colB },
+        meetA: { row: rowIndex, col: meetACol },
+        meetB: { row: rowIndex, col: meetBCol },
       });
     });
     return result.row;
@@ -121,25 +126,31 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
     }
     case "right": {
       const outcome = applySlideRowLeftToGrid(reverseRows(grid));
-      const pairs = outcome.eliminatedPairs.map(({ a, b }) => ({
+      const pairs = outcome.eliminatedPairs.map(({ a, b, meetA, meetB }) => ({
         a: { row: a.row, col: size - 1 - a.col },
         b: { row: b.row, col: size - 1 - b.col },
+        meetA: { row: meetA.row, col: size - 1 - meetA.col },
+        meetB: { row: meetB.row, col: size - 1 - meetB.col },
       }));
       return { ...outcome, grid: reverseRows(outcome.grid), eliminatedPairs: pairs };
     }
     case "up": {
       const outcome = applySlideRowLeftToGrid(transpose(grid));
-      const pairs = outcome.eliminatedPairs.map(({ a, b }) => ({
+      const pairs = outcome.eliminatedPairs.map(({ a, b, meetA, meetB }) => ({
         a: { row: a.col, col: a.row },
         b: { row: b.col, col: b.row },
+        meetA: { row: meetA.col, col: meetA.row },
+        meetB: { row: meetB.col, col: meetB.row },
       }));
       return { ...outcome, grid: transpose(outcome.grid), eliminatedPairs: pairs };
     }
     case "down": {
       const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)));
-      const pairs = outcome.eliminatedPairs.map(({ a, b }) => ({
+      const pairs = outcome.eliminatedPairs.map(({ a, b, meetA, meetB }) => ({
         a: { row: size - 1 - a.col, col: a.row },
         b: { row: size - 1 - b.col, col: b.row },
+        meetA: { row: size - 1 - meetA.col, col: meetA.row },
+        meetB: { row: size - 1 - meetB.col, col: meetB.row },
       }));
       return { ...outcome, grid: transpose(reverseRows(outcome.grid)), eliminatedPairs: pairs };
     }
