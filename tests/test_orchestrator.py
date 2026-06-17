@@ -8,6 +8,7 @@ import pytest
 import orchestrator
 from agents.claude_cli import ClaudeCliError
 from agents.reviewer_agent import ReviewResult
+from harness import spec_cache as spec_cache_module
 from harness.sandbox_runner import SandboxResult
 
 
@@ -599,6 +600,114 @@ def test_qa_loop_logs_coder_failure_and_retries_when_run_coder_raises(tmp_path: 
     coder_logs = [c for c in mock_log.call_args_list if c.kwargs.get("agent") == "coder"]
     assert coder_logs[0].kwargs["result"]["success"] is False
     assert mock_coder.call_args_list[1].kwargs["feedback"] == "coder crashed"
+
+
+def test_qa_loop_skips_qa_agent_when_spec_hash_unchanged(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator._run_preflight", return_value=False), \
+         patch("orchestrator.spec_cache.load_cached_hash",
+               return_value=spec_cache_module.get_spec_hash(spec_path)), \
+         patch("orchestrator.spec_cache.save_cached_hash"), \
+         patch("orchestrator.qa_agent.run_qa") as mock_qa, \
+         patch("orchestrator.coder_agent.run_coder", return_value=[]), \
+         patch("orchestrator.sandbox_runner.run_build_check", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_unit_tests", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok), \
+         patch("orchestrator.reviewer_agent.run_reviewer", return_value=review_result), \
+         patch("orchestrator.trace_logger.log_step"):
+        orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_qa.assert_not_called()
+
+
+def test_qa_loop_calls_qa_agent_when_spec_hash_changed(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator._run_preflight", return_value=False), \
+         patch("orchestrator.spec_cache.load_cached_hash", return_value="stale_hash"), \
+         patch("orchestrator.spec_cache.save_cached_hash"), \
+         patch("orchestrator.qa_agent.run_qa", return_value=[]) as mock_qa, \
+         patch("orchestrator.coder_agent.run_coder", return_value=[]), \
+         patch("orchestrator.sandbox_runner.run_build_check", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_unit_tests", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok), \
+         patch("orchestrator.reviewer_agent.run_reviewer", return_value=review_result), \
+         patch("orchestrator.trace_logger.log_step"):
+        orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_qa.assert_called_once()
+
+
+def test_qa_loop_saves_spec_hash_on_approval(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator._run_preflight", return_value=False), \
+         patch("orchestrator.spec_cache.load_cached_hash", return_value=None), \
+         patch("orchestrator.spec_cache.save_cached_hash") as mock_save, \
+         patch("orchestrator.qa_agent.run_qa", return_value=[]), \
+         patch("orchestrator.coder_agent.run_coder", return_value=[]), \
+         patch("orchestrator.sandbox_runner.run_build_check", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_unit_tests", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok), \
+         patch("orchestrator.reviewer_agent.run_reviewer", return_value=review_result), \
+         patch("orchestrator.trace_logger.log_step"):
+        orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_save.assert_called_once_with(spec_path, tmp_path)
+
+
+def test_qa_loop_skips_reviewer_when_all_changed_files_are_test_files(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("spec")
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    test_only = [Path("workspace/tests/unit/grid.test.ts")]
+
+    with patch("orchestrator._run_preflight", return_value=False), \
+         patch("orchestrator.spec_cache.load_cached_hash", return_value=None), \
+         patch("orchestrator.spec_cache.save_cached_hash"), \
+         patch("orchestrator.qa_agent.run_qa", return_value=[]), \
+         patch("orchestrator.coder_agent.run_coder", return_value=test_only), \
+         patch("orchestrator.sandbox_runner.run_build_check", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_unit_tests", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok), \
+         patch("orchestrator.reviewer_agent.run_reviewer") as mock_reviewer, \
+         patch("orchestrator.trace_logger.log_step"):
+        result = orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_reviewer.assert_not_called()
+    assert result.approved is True
+
+
+def test_qa_loop_calls_reviewer_when_src_files_are_changed(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("spec")
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    src_files = [Path("workspace/src/grid.ts")]
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator._run_preflight", return_value=False), \
+         patch("orchestrator.spec_cache.load_cached_hash", return_value=None), \
+         patch("orchestrator.spec_cache.save_cached_hash"), \
+         patch("orchestrator.qa_agent.run_qa", return_value=[]), \
+         patch("orchestrator.coder_agent.run_coder", return_value=src_files), \
+         patch("orchestrator.sandbox_runner.run_build_check", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_unit_tests", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok), \
+         patch("orchestrator.reviewer_agent.run_reviewer", return_value=review_result) as mock_reviewer, \
+         patch("orchestrator.trace_logger.log_step"):
+        orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    mock_reviewer.assert_called_once()
 
 
 @pytest.mark.docker

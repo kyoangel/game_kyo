@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agents import coder_agent, qa_agent, reviewer_agent
 from agents.claude_cli import ClaudeCliError
-from harness import sandbox_runner, trace_logger
+from harness import sandbox_runner, spec_cache, trace_logger
 
 REPO_ROOT = Path(__file__).resolve().parent
 
@@ -138,13 +138,24 @@ def qa_loop(
             comments=["Pre-flight: build/unit/e2e all pass — no LLM agents needed."],
         )
 
-    try:
-        qa_changed = qa_agent.run_qa(spec_path, repo_root=repo_root)
-        qa_trace_result: dict = {"success": True, "changed_files": [str(p) for p in qa_changed]}
-    except ClaudeCliError as e:
-        qa_changed = []
-        qa_trace_result = {"success": False, "error": str(e)}
-        feedback = str(e)
+    cached_hash = spec_cache.load_cached_hash(spec_path, repo_root)
+    current_hash = spec_cache.get_spec_hash(spec_path)
+    if cached_hash == current_hash:
+        qa_changed: list[Path] = []
+        qa_trace_result: dict = {
+            "success": True,
+            "changed_files": [],
+            "skipped": True,
+            "reason": "spec unchanged since last approved run",
+        }
+    else:
+        try:
+            qa_changed = qa_agent.run_qa(spec_path, repo_root=repo_root)
+            qa_trace_result = {"success": True, "changed_files": [str(p) for p in qa_changed]}
+        except ClaudeCliError as e:
+            qa_changed = []
+            qa_trace_result = {"success": False, "error": str(e)}
+            feedback = str(e)
 
     trace_logger.log_step(
         run_id=run_id,
@@ -224,15 +235,23 @@ def qa_loop(
             review = reviewer_agent.ReviewResult(approved=False, comments=[e2e_result.stdout])
             continue
 
-        if changed_files:
+        all_test_files = bool(changed_files) and all(
+            "workspace/tests/" in str(p) for p in changed_files
+        )
+
+        if changed_files and not all_test_files:
             review = reviewer_agent.run_reviewer(changed_files, repo_root)
         else:
             review = reviewer_agent.ReviewResult(
                 approved=True,
-                comments=[
-                    "Coder Agent 沒有提交任何檔案變更，且 build/unit/e2e 測試全數通過，"
-                    "視為現有實作已符合規格，自動核准。"
-                ],
+                comments=(
+                    ["All changes are test files — skipping reviewer."]
+                    if all_test_files
+                    else [
+                        "Coder Agent 沒有提交任何檔案變更，且 build/unit/e2e 測試全數通過，"
+                        "視為現有實作已符合規格，自動核准。"
+                    ]
+                ),
             )
 
         trace_logger.log_step(
@@ -245,6 +264,7 @@ def qa_loop(
         )
 
         if review.approved:
+            spec_cache.save_cached_hash(spec_path, repo_root)
             return review
 
         feedback = "\n".join(review.comments)
