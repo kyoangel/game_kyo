@@ -263,6 +263,54 @@ def test_review_loop_logs_coder_and_reviewer_attempts(tmp_path: Path) -> None:
     assert reviewer_call.kwargs["result"] == review_result.model_dump()
 
 
+def test_qa_loop_skips_all_llm_agents_when_preflight_passes(tmp_path: Path) -> None:
+    """If build+unit+e2e all pass before any LLM call, qa_loop must return approved=True
+    without calling qa_agent, coder_agent, or reviewer_agent — zero tokens spent."""
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+
+    with patch("orchestrator.sandbox_runner.run_build_check", return_value=ok) as mock_build, \
+         patch("orchestrator.sandbox_runner.run_unit_tests", return_value=ok) as mock_unit, \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok) as mock_e2e, \
+         patch("orchestrator.qa_agent.run_qa") as mock_qa, \
+         patch("orchestrator.coder_agent.run_coder") as mock_coder, \
+         patch("orchestrator.reviewer_agent.run_reviewer") as mock_reviewer, \
+         patch("orchestrator.trace_logger.log_step") as mock_log:
+        result = orchestrator.qa_loop(spec_path, repo_root=tmp_path)
+
+    assert result.approved is True
+    mock_qa.assert_not_called()
+    mock_coder.assert_not_called()
+    mock_reviewer.assert_not_called()
+    # One preflight trace step should be logged
+    logged_agents = [c.kwargs["agent"] for c in mock_log.call_args_list]
+    assert "preflight" in logged_agents
+
+
+def test_qa_loop_runs_llm_agents_when_preflight_unit_tests_fail(tmp_path: Path) -> None:
+    """If unit tests fail in pre-flight, qa_loop must proceed to LLM agents."""
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("Build something")
+
+    ok = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    fail = SandboxResult(success=False, stdout="1 failed", stderr="", returncode=1)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch("orchestrator.sandbox_runner.run_build_check", return_value=ok), \
+         patch("orchestrator.sandbox_runner.run_unit_tests", side_effect=[fail, ok, ok]), \
+         patch("orchestrator.sandbox_runner.run_e2e_tests", return_value=ok), \
+         patch("orchestrator.qa_agent.run_qa", return_value=[]) as mock_qa, \
+         patch("orchestrator.coder_agent.run_coder", return_value=[]) as mock_coder, \
+         patch("orchestrator.reviewer_agent.run_reviewer", return_value=review_result), \
+         patch("orchestrator.trace_logger.log_step"):
+        result = orchestrator.qa_loop(spec_path, max_retries=1, repo_root=tmp_path)
+
+    mock_qa.assert_called_once()
+    mock_coder.assert_called_once()
+
+
 def test_qa_loop_happy_path_runs_qa_once_then_build_unit_e2e_review_pass(tmp_path: Path) -> None:
     spec_path = tmp_path / "spec.md"
     spec_path.write_text("Build something")
@@ -274,7 +322,7 @@ def test_qa_loop_happy_path_runs_qa_once_then_build_unit_e2e_review_pass(tmp_pat
     e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
     review_result = ReviewResult(approved=True, comments=[])
 
-    with patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
         "orchestrator.qa_agent.run_qa", return_value=qa_changed
     ) as mock_run_qa, patch(
         "orchestrator.coder_agent.run_coder", return_value=coder_changed
@@ -320,7 +368,9 @@ def test_qa_loop_retries_run_coder_on_unit_test_failure(tmp_path: Path) -> None:
 
     coder_changed = [Path("workspace/src/grid.ts")]
 
-    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
+        "orchestrator.qa_agent.run_qa", return_value=[]
+    ), patch(
         "orchestrator.coder_agent.run_coder", return_value=coder_changed
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
@@ -358,7 +408,9 @@ def test_qa_loop_retries_run_coder_on_e2e_test_failure(tmp_path: Path) -> None:
 
     coder_changed = [Path("workspace/src/grid.ts")]
 
-    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
+        "orchestrator.qa_agent.run_qa", return_value=[]
+    ), patch(
         "orchestrator.coder_agent.run_coder", return_value=coder_changed
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
@@ -396,7 +448,9 @@ def test_qa_loop_retries_run_coder_on_review_rejection(tmp_path: Path) -> None:
 
     coder_changed = [Path("workspace/src/grid.ts")]
 
-    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
+        "orchestrator.qa_agent.run_qa", return_value=[]
+    ), patch(
         "orchestrator.coder_agent.run_coder", return_value=coder_changed
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
@@ -427,7 +481,9 @@ def test_qa_loop_approves_without_calling_reviewer_when_coder_makes_no_changes_a
     unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
     e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
 
-    with patch("orchestrator.qa_agent.run_qa", return_value=[]), patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
+        "orchestrator.qa_agent.run_qa", return_value=[]
+    ), patch(
         "orchestrator.coder_agent.run_coder", return_value=[]
     ) as mock_run_coder, patch(
         "orchestrator.sandbox_runner.run_build_check", return_value=build_result
@@ -484,7 +540,7 @@ def test_qa_loop_logs_qa_failure_and_continues_when_run_qa_raises(tmp_path: Path
     e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
     review_result = ReviewResult(approved=True, comments=[])
 
-    with patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
         "orchestrator.qa_agent.run_qa", side_effect=ClaudeCliError("claude exited with code 1")
     ), patch(
         "orchestrator.coder_agent.run_coder", return_value=[]
@@ -521,7 +577,7 @@ def test_qa_loop_logs_coder_failure_and_retries_when_run_coder_raises(tmp_path: 
     e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
     review_result = ReviewResult(approved=True, comments=[])
 
-    with patch(
+    with patch("orchestrator._run_preflight", return_value=False), patch(
         "orchestrator.qa_agent.run_qa", return_value=[]
     ), patch(
         "orchestrator.coder_agent.run_coder",

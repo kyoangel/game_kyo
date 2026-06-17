@@ -93,6 +93,33 @@ def review_loop(
     return review
 
 
+def _run_preflight(run_id: str, repo_root: Path) -> bool:
+    """Run build+unit+e2e with no LLM involvement; log one 'preflight' trace step.
+
+    Returns True only when all three checks pass (zero tokens needed).
+    Extracted so tests can mock it independently of the in-loop sandbox calls.
+    """
+    preflight_build = sandbox_runner.run_build_check()
+    preflight_unit = sandbox_runner.run_unit_tests()
+    preflight_e2e = sandbox_runner.run_e2e_tests()
+    preflight_ok = preflight_build.success and preflight_unit.success and preflight_e2e.success
+
+    trace_logger.log_step(
+        run_id=run_id,
+        agent="preflight",
+        input=None,
+        output=[],
+        result={
+            "success": preflight_ok,
+            "build": preflight_build.success,
+            "unit": preflight_unit.success,
+            "e2e": preflight_e2e.success,
+        },
+        traces_root=repo_root / "traces",
+    )
+    return preflight_ok
+
+
 def qa_loop(
     spec_path: Path,
     max_retries: int = 3,
@@ -104,6 +131,12 @@ def qa_loop(
     run_id = uuid.uuid4().hex
     feedback: str | None = None
     review: reviewer_agent.ReviewResult
+
+    if _run_preflight(run_id, repo_root):
+        return reviewer_agent.ReviewResult(
+            approved=True,
+            comments=["Pre-flight: build/unit/e2e all pass — no LLM agents needed."],
+        )
 
     try:
         qa_changed = qa_agent.run_qa(spec_path, repo_root=repo_root)
