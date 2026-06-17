@@ -26,7 +26,7 @@
 - Modify: `workspace/index.html` (CSS `<style>` block)
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E test**
+- [x] **Step 1: Write the failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -44,7 +44,7 @@ test("Fix1: html and body have overscroll-behavior none to prevent pull-to-refre
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "overscroll"
@@ -52,7 +52,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "overscroll"
 
 Expected: FAIL — `expect(received).toBe("none")` — value is `"auto"` or `""`
 
-- [ ] **Step 3: Add CSS to `workspace/index.html`**
+- [x] **Step 3: Add CSS to `workspace/index.html`**
 
 In the `<style>` block, add the following immediately before the existing `body {` rule (line 10):
 
@@ -62,7 +62,7 @@ html, body {
 }
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "overscroll"
@@ -70,7 +70,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "overscroll"
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/index.html workspace/tests/e2e/ux-v2.spec.ts
@@ -85,7 +85,7 @@ git commit -m "fix: prevent pull-to-refresh on mobile with overscroll-behavior n
 - Modify: `workspace/index.html` (HTML structure + CSS)
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E test**
+- [x] **Step 1: Write the failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -109,7 +109,7 @@ test("Fix2: palette toggle is inside #hud, not overlaid on canvas", async ({ pag
 });
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "palette toggle is inside"
@@ -117,7 +117,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "palette togg
 
 Expected: FAIL — `insideHud` is `false` (button is inside `#game-container`, not `#hud`)
 
-- [ ] **Step 3: Move the button in `index.html`**
+- [x] **Step 3: Move the button in `index.html`**
 
 **Remove** the button from inside `#game-container`. Currently at line 215:
 ```html
@@ -137,7 +137,7 @@ Delete this line.
     </div>
 ```
 
-- [ ] **Step 4: Fix the CSS in `index.html`**
+- [x] **Step 4: Fix the CSS in `index.html`**
 
 Replace the current `#hud-palette-toggle` rule (lines 62–75):
 
@@ -177,7 +177,7 @@ With this (merged with `#hud-mute` since they share style):
 
 Note: the existing separate `#hud-mute` rule (lines 51–61) must also be removed since both buttons now share the combined rule above.
 
-- [ ] **Step 5: Run all E2E tests**
+- [x] **Step 5: Run all E2E tests**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -185,7 +185,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS (including the existing F1 test which already checks `#hud-palette-toggle` is visible — it will still pass since the button is still in the DOM)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add workspace/index.html workspace/tests/e2e/ux-v2.spec.ts
@@ -201,7 +201,7 @@ git commit -m "fix: move palette toggle from canvas overlay into HUD flex bar"
 - Modify: `workspace/src/game.ts` (replace `renderHudPowerups`, add `POWERUP_UNLOCK_TIPS`, add global dismiss listener)
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write failing E2E tests**
+- [x] **Step 1: Write failing E2E tests**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -249,7 +249,7 @@ test("Fix3: clicking a locked powerup shows its tooltip, clicking outside dismis
 });
 ```
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix3"
@@ -257,7 +257,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix3"
 
 Expected: FAIL — `expect(slots).toHaveCount(4)` fails (currently 0 slots when powerups are 0)
 
-- [ ] **Step 3: Add CSS to `workspace/index.html`**
+- [x] **Step 3: Add CSS to `workspace/index.html`**
 
 Inside the `<style>` block, after the `.hud-powerup-count` rule (around line 104), add:
 
@@ -287,7 +287,7 @@ Inside the `<style>` block, after the `.hud-powerup-count` rule (around line 104
 }
 ```
 
-- [ ] **Step 4: Replace `renderHudPowerups` in `workspace/src/game.ts`**
+- [x] **Step 4: Replace `renderHudPowerups` in `workspace/src/game.ts`**
 
 Find the existing `renderHudPowerups` function (starts around line 95). Replace the entire function, and add the `POWERUP_UNLOCK_TIPS` constant immediately before it:
 
@@ -347,7 +347,7 @@ function renderHudPowerups(): void {
 }
 ```
 
-- [ ] **Step 5: Add global dismiss listener to `workspace/src/game.ts`**
+- [x] **Step 5: Add global dismiss listener to `workspace/src/game.ts`**
 
 Find where the module-level event listeners are set up (around the `paletteToggleEl.addEventListener` block, line 637). Add this **once** at module level, after `renderHudPowerups` is defined:
 
@@ -359,7 +359,7 @@ document.addEventListener("click", () => {
 });
 ```
 
-- [ ] **Step 6: Run all tests**
+- [x] **Step 6: Run all tests**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -367,7 +367,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all unit tests PASS, all E2E tests PASS
 
-- [ ] **Step 7: Run full E2E suite to check for regressions**
+- [x] **Step 7: Run full E2E suite to check for regressions**
 
 ```bash
 cd workspace && npm run test:e2e
@@ -375,7 +375,7 @@ cd workspace && npm run test:e2e
 
 Expected: all 33 E2E tests PASS (31 existing + 2 new Fix3 tests)
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add workspace/index.html workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -386,7 +386,7 @@ git commit -m "feat: show all powerup slots always; locked state with unlock too
 
 ## Final Verification
 
-- [ ] **Full test suite**
+- [x] **Full test suite**
 
 ```bash
 cd workspace && npm run test:unit && npm run test:e2e
@@ -394,7 +394,7 @@ cd workspace && npm run test:unit && npm run test:e2e
 
 Expected: all tests PASS
 
-- [ ] **Build check**
+- [x] **Build check**
 
 ```bash
 cd workspace && npm run build
