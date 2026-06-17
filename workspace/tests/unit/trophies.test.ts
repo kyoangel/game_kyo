@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import { checkTrophies, loadTrophyStatuses, getTrophyDef } from "../../src/trophies";
 
 // Provide a full in-memory localStorage mock for the node test environment
@@ -12,7 +12,6 @@ function makeLocalStorageMock() {
   };
 }
 const localStorageMock = makeLocalStorageMock();
-vi.stubGlobal("localStorage", localStorageMock);
 
 const EMPTY_GRID = Array.from({ length: 4 }, () => Array(4).fill(null)) as (number | null)[][];
 
@@ -21,6 +20,14 @@ function makeGrid(values: (number | null)[][]): (number | null)[][] {
 }
 
 describe("trophies", () => {
+  beforeAll(() => {
+    vi.stubGlobal("localStorage", localStorageMock);
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     localStorage.clear();
   });
