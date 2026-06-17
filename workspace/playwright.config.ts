@@ -4,11 +4,11 @@ export default defineConfig({
   testDir: "./tests/e2e",
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:5173",
+    url: "http://localhost:5173/game_kyo/merge10/",
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:5173/game_kyo/merge10/",
   },
 });

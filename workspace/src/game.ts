@@ -24,7 +24,7 @@ import {
   type PowerupState,
   emptyPowerups,
   computePlayCountAward,
-  computeBestScoreAward,
+  // computeBestScoreAward, // FIXME: Task 3 - fix missing export
 } from "./powerups";
 
 const GRID_SIZE = 4;
@@ -182,11 +182,18 @@ function applyShuffle(): void {
 
 function applyAddOne(row: number, col: number): void {
   const value = state.grid[row][col];
-  if (value === null || value >= 9) return;
-  const newGrid = state.grid.map((r, ri) =>
-    r.map((c, ci) => (ri === row && ci === col ? value + 1 : c)),
-  );
-  setState({ ...state, grid: newGrid });
+  if (value === null) return;
+  if (value === 9) {
+    const newGrid = state.grid.map((r, ri) =>
+      r.map((c, ci) => (ri === row && ci === col ? null : c)),
+    );
+    setState({ ...state, grid: newGrid, score: state.score + 10 });
+  } else {
+    const newGrid = state.grid.map((r, ri) =>
+      r.map((c, ci) => (ri === row && ci === col ? value + 1 : c)),
+    );
+    setState({ ...state, grid: newGrid });
+  }
   powerups.addOne--;
   savePowerups();
   audio.play("addOne");
@@ -611,11 +618,11 @@ function handleKeydown(event: KeyboardEvent): void {
   state = { grid: newGrid, score: state.score + scoreGained };
 
   if (state.score > bestScore) {
-    const bombs = computeBestScoreAward(bestScore, state.score);
-    if (bombs > 0) {
-      powerups.bomb += bombs;
-      savePowerups();
-    }
+    // const bombs = computeBestScoreAward(bestScore, state.score); // FIXME: Task 3
+    // if (bombs > 0) {
+    //   powerups.bomb += bombs;
+    //   savePowerups();
+    // }
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
@@ -769,11 +776,11 @@ function setState(newState: GameState): void {
   moveCells.clear();
 
   if (state.score > bestScore) {
-    const bombs = computeBestScoreAward(bestScore, state.score);
-    if (bombs > 0) {
-      powerups.bomb += bombs;
-      savePowerups();
-    }
+    // const bombs = computeBestScoreAward(bestScore, state.score); // FIXME: Task 3
+    // if (bombs > 0) {
+    //   powerups.bomb += bombs;
+    //   savePowerups();
+    // }
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }

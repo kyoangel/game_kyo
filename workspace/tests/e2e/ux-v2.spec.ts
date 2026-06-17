@@ -255,3 +255,45 @@ test("Fix3: clicking a locked powerup shows its tooltip, clicking outside dismis
   await page.locator("canvas#game").click({ position: { x: 10, y: 10 } });
   await expect(tooltip).toBeHidden();
 });
+
+test("Fix-AddOne: Add One on a 9-tile eliminates it and scores +10", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForTimeout(100);
+
+  const addOneState = {
+    grid: [
+      [9, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ],
+    score: 0,
+  };
+
+  // Set up board with a 9 in top-left, 1 addOne powerup, score 0
+  await page.evaluate((s) => {
+    (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState(s);
+    (window as unknown as { __setPowerups: (p: unknown) => void }).__setPowerups(
+      { hammer: 0, shuffle: 0, addOne: 1, bomb: 0 },
+    );
+  }, addOneState);
+
+  // Activate Add One powerup
+  await page.locator(".hud-powerup-btn[data-powerup='addOne']").click();
+
+  // Click the 9-tile on canvas (top-left quadrant)
+  const canvas = page.locator("canvas#game");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("canvas not found");
+  await canvas.click({ position: { x: box.width * 0.125, y: box.height * 0.125 } });
+
+  // Score should be 10
+  await expect(page.locator("#hud-score")).toContainText("10");
+
+  // addOne count should be 0 (consumed)
+  const addOneCount = await page.evaluate(() => {
+    const btn = document.querySelector(".hud-powerup-btn[data-powerup='addOne']") as HTMLElement;
+    return btn?.dataset.locked;
+  });
+  expect(addOneCount).toBe("true");
+});
