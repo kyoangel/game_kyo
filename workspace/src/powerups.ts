@@ -15,16 +15,14 @@ export function computePlayCountAward(
   playCount: number,
   rng: () => number = Math.random,
 ): PowerupId | null {
-  if (playCount % 10 === 0) return "addOne";
-  if (playCount % 5 === 0) return rng() < 0.5 ? "hammer" : "shuffle";
+  if (playCount % 3 === 0) return "addOne";
+  if (playCount % 2 === 0) return rng() < 0.5 ? "hammer" : "shuffle";
   return null;
 }
 
-export function computeBestScoreAward(oldBest: number, newBest: number): number {
-  let bombs = 0;
-  if (oldBest < 50 && newBest >= 50) bombs += 1;
-  const oldHundreds = Math.floor(oldBest / 100);
-  const newHundreds = Math.floor(newBest / 100);
-  if (newHundreds > oldHundreds) bombs += newHundreds - oldHundreds;
-  return bombs;
+export function computeEliminationAward(
+  oldTotal: number,
+  newTotal: number,
+): number {
+  return Math.floor(newTotal / 30) - Math.floor(oldTotal / 30);
 }

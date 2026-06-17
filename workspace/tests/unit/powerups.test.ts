@@ -1,51 +1,47 @@
 import { describe, it, expect } from "vitest";
 import {
   computePlayCountAward,
-  computeBestScoreAward,
+  computeEliminationAward,
 } from "../../src/powerups";
 
 describe("computePlayCountAward", () => {
-  it("returns null on plays not divisible by 5", () => {
+  it("returns null for play counts not hitting any threshold (1, 5, 7)", () => {
     expect(computePlayCountAward(1)).toBeNull();
-    expect(computePlayCountAward(3)).toBeNull();
+    expect(computePlayCountAward(5)).toBeNull();
     expect(computePlayCountAward(7)).toBeNull();
   });
 
-  it("returns 'hammer' or 'shuffle' on every 5th play (non-10th)", () => {
-    const award = computePlayCountAward(5);
-    expect(["hammer", "shuffle"]).toContain(award);
-    const award15 = computePlayCountAward(15);
-    expect(["hammer", "shuffle"]).toContain(award15);
+  it("returns 'hammer' or 'shuffle' on every 2nd play (non-3rd)", () => {
+    const award2 = computePlayCountAward(2);
+    expect(["hammer", "shuffle"]).toContain(award2);
+    const award4 = computePlayCountAward(4);
+    expect(["hammer", "shuffle"]).toContain(award4);
+    const award8 = computePlayCountAward(8);
+    expect(["hammer", "shuffle"]).toContain(award8);
   });
 
-  it("returns 'addOne' on every 10th play", () => {
-    expect(computePlayCountAward(10)).toBe("addOne");
-    expect(computePlayCountAward(20)).toBe("addOne");
-    expect(computePlayCountAward(30)).toBe("addOne");
+  it("returns 'addOne' on every 3rd play (takes priority over 2nd)", () => {
+    expect(computePlayCountAward(3)).toBe("addOne");
+    expect(computePlayCountAward(6)).toBe("addOne"); // divisible by both 2 and 3 → addOne wins
+    expect(computePlayCountAward(9)).toBe("addOne");
   });
 });
 
-describe("computeBestScoreAward", () => {
-  it("returns 0 bombs when neither 50 threshold nor new 100-multiple crossed", () => {
-    expect(computeBestScoreAward(40, 45)).toBe(0);
-    expect(computeBestScoreAward(55, 70)).toBe(0);
+describe("computeEliminationAward", () => {
+  it("returns 0 when not crossing a 30-multiple", () => {
+    expect(computeEliminationAward(0, 29)).toBe(0);
+    expect(computeEliminationAward(30, 59)).toBe(0);
+    expect(computeEliminationAward(10, 25)).toBe(0);
   });
 
-  it("returns 1 bomb when crossing 50 for the first time", () => {
-    expect(computeBestScoreAward(40, 55)).toBe(1);
-    expect(computeBestScoreAward(0, 50)).toBe(1);
+  it("returns 1 when crossing one 30-multiple boundary", () => {
+    expect(computeEliminationAward(0, 30)).toBe(1);
+    expect(computeEliminationAward(29, 31)).toBe(1);
+    expect(computeEliminationAward(28, 30)).toBe(1);
   });
 
-  it("returns 1 bomb when crossing a new 100-multiple (above 50)", () => {
-    expect(computeBestScoreAward(60, 100)).toBe(1);
-    expect(computeBestScoreAward(150, 210)).toBe(1);
-  });
-
-  it("returns 2 bombs when crossing both 50 threshold and a 100-multiple in one score jump", () => {
-    expect(computeBestScoreAward(0, 100)).toBe(2);
-  });
-
-  it("returns multiple bombs when multiple 100-multiples crossed", () => {
-    expect(computeBestScoreAward(60, 250)).toBe(2); // 100 and 200
+  it("returns 2 when crossing two 30-multiple boundaries", () => {
+    expect(computeEliminationAward(0, 60)).toBe(2);
+    expect(computeEliminationAward(29, 61)).toBe(2);
   });
 });
