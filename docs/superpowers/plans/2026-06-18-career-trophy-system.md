@@ -28,7 +28,7 @@
 - Create: `workspace/src/trophies.ts`
 - Create: `workspace/tests/unit/trophies.test.ts`
 
-- [ ] **Step 1: Write the failing unit tests**
+- [x] **Step 1: Write the failing unit tests**
 
 Create `workspace/tests/unit/trophies.test.ts` with this full content:
 
@@ -190,7 +190,7 @@ describe("trophies", () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify tests fail**
+- [x] **Step 2: Run to verify tests fail**
 
 ```bash
 cd workspace && npm run test:unit 2>&1 | tail -10
@@ -198,7 +198,7 @@ cd workspace && npm run test:unit 2>&1 | tail -10
 
 Expected: FAIL — `Cannot find module '../../src/trophies'`
 
-- [ ] **Step 3: Create `workspace/src/trophies.ts`**
+- [x] **Step 3: Create `workspace/src/trophies.ts`**
 
 ```typescript
 import { type GameGrid } from "./grid";
@@ -328,7 +328,7 @@ export function getTrophyDef(id: string): TrophyDef | undefined {
 }
 ```
 
-- [ ] **Step 4: Run to verify tests pass**
+- [x] **Step 4: Run to verify tests pass**
 
 ```bash
 cd workspace && npm run test:unit 2>&1 | tail -15
@@ -336,7 +336,7 @@ cd workspace && npm run test:unit 2>&1 | tail -15
 
 Expected: all tests PASS. The new trophies suite adds ~20 tests on top of the existing 142.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/trophies.ts workspace/tests/unit/trophies.test.ts
@@ -351,7 +351,7 @@ git commit -m "feat: add trophies module with 8 trophy definitions and persisten
 - Modify: `workspace/index.html`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E tests**
+- [x] **Step 1: Write the failing E2E tests**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -425,7 +425,7 @@ test("Trophy: unlocked trophy shows ✓ in modal", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run to verify tests fail**
+- [x] **Step 2: Run to verify tests fail**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Trophy" 2>&1 | tail -20
@@ -433,7 +433,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Trophy" 2>&1
 
 Expected: FAIL — `#hud-trophy` not found, `#trophy-modal` not found.
 
-- [ ] **Step 3: Add `#hud-trophy` to the shared button CSS selector**
+- [x] **Step 3: Add `#hud-trophy` to the shared button CSS selector**
 
 In `workspace/index.html`, find (around line 54):
 ```css
@@ -450,7 +450,7 @@ Replace with:
     #hud-trophy {
 ```
 
-- [ ] **Step 4: Add `#trophy-toast` CSS + keyframes**
+- [x] **Step 4: Add `#trophy-toast` CSS + keyframes**
 
 In `workspace/index.html`, in the `<style>` block, after the `@keyframes combo-appear` block and before the `#powerup-modal` CSS (around line 222), add:
 
@@ -482,7 +482,7 @@ In `workspace/index.html`, in the `<style>` block, after the `@keyframes combo-a
     }
 ```
 
-- [ ] **Step 5: Add trophy modal CSS**
+- [x] **Step 5: Add trophy modal CSS**
 
 In `workspace/index.html`, in the `<style>` block, after the `#powerup-modal-list .pm-body small` block and before `</style>`, add:
 
@@ -571,7 +571,7 @@ In `workspace/index.html`, in the `<style>` block, after the `#powerup-modal-lis
     }
 ```
 
-- [ ] **Step 6: Add HTML — 🏆 button, toast div, trophy modal**
+- [x] **Step 6: Add HTML — 🏆 button, toast div, trophy modal**
 
 In `workspace/index.html`, find the `#hud` block (around line 313):
 ```html
@@ -626,7 +626,7 @@ Then, after `</div>` closing `#powerup-modal` (around line 357), add the trophy 
     </div>
 ```
 
-- [ ] **Step 7: Run the Trophy E2E tests**
+- [x] **Step 7: Run the Trophy E2E tests**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Trophy" 2>&1 | tail -20
@@ -634,7 +634,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Trophy" 2>&1
 
 Expected: "🏆 button", "modal opens", and "overlay closes" PASS. The "toast" and "shows ✓" tests still FAIL (no JS yet). That's expected.
 
-- [ ] **Step 8: Run full E2E suite to check for regressions**
+- [x] **Step 8: Run full E2E suite to check for regressions**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts 2>&1 | tail -10
@@ -642,7 +642,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts 2>&1 | tail -10
 
 Expected: existing tests all PASS, 3 new Trophy tests PASS, 2 Trophy tests FAIL (toast + ✓ — JS not wired yet).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add workspace/index.html workspace/tests/e2e/ux-v2.spec.ts
@@ -656,7 +656,7 @@ git commit -m "feat: add trophy HUD button, toast element, and trophy modal HTML
 **Files:**
 - Modify: `workspace/src/game.ts`
 
-- [ ] **Step 1: Add import for `trophies` module**
+- [x] **Step 1: Add import for `trophies` module**
 
 In `workspace/src/game.ts`, after the existing powerups import (after line 27):
 
@@ -664,7 +664,7 @@ In `workspace/src/game.ts`, after the existing powerups import (after line 27):
 import { checkTrophies, loadTrophyStatuses, getTrophyDef } from "./trophies";
 ```
 
-- [ ] **Step 2: Add element refs**
+- [x] **Step 2: Add element refs**
 
 In `workspace/src/game.ts`, after line 61 (`const powerupModalCloseEl = ...`):
 
@@ -677,7 +677,7 @@ const trophyModalListEl = document.getElementById("trophy-modal-list") as HTMLUL
 const trophyToastEl = document.getElementById("trophy-toast") as HTMLDivElement;
 ```
 
-- [ ] **Step 3: Add modal listeners**
+- [x] **Step 3: Add modal listeners**
 
 In `workspace/src/game.ts`, after the existing powerup modal listeners (after line 81 — after `powerupModalCloseEl.addEventListener`):
 
@@ -694,7 +694,7 @@ trophyModalCloseEl.addEventListener("click", () => {
 });
 ```
 
-- [ ] **Step 4: Add `showTrophyToast` and `renderTrophyModal` functions**
+- [x] **Step 4: Add `showTrophyToast` and `renderTrophyModal` functions**
 
 In `workspace/src/game.ts`, after `showComboBadge` (after line 497, before `function tick()`):
 
@@ -733,7 +733,7 @@ function renderTrophyModal(): void {
 }
 ```
 
-- [ ] **Step 5: Add `checkTrophies` callpoint after each slide**
+- [x] **Step 5: Add `checkTrophies` callpoint after each slide**
 
 In `workspace/src/game.ts`, in `handleKeydown`, after `startAnimationLoop()` (after line 692):
 
@@ -746,7 +746,7 @@ In `workspace/src/game.ts`, in `handleKeydown`, after `startAnimationLoop()` (af
   newlyUnlockedTrophies.forEach((id) => showTrophyToast(id));
 ```
 
-- [ ] **Step 6: Add `checkTrophies` callpoint at game-over**
+- [x] **Step 6: Add `checkTrophies` callpoint at game-over**
 
 In `workspace/src/game.ts`, in `handleKeydown`, find the game-over block (around line 655):
 
@@ -766,7 +766,7 @@ Replace with:
   }
 ```
 
-- [ ] **Step 7: Run TypeScript check**
+- [x] **Step 7: Run TypeScript check**
 
 ```bash
 cd workspace && npx tsc --noEmit 2>&1
@@ -774,7 +774,7 @@ cd workspace && npx tsc --noEmit 2>&1
 
 Expected: no errors.
 
-- [ ] **Step 8: Run full unit test suite**
+- [x] **Step 8: Run full unit test suite**
 
 ```bash
 cd workspace && npm run test:unit 2>&1 | tail -5
@@ -782,7 +782,7 @@ cd workspace && npm run test:unit 2>&1 | tail -5
 
 Expected: all tests PASS.
 
-- [ ] **Step 9: Run all Trophy E2E tests**
+- [x] **Step 9: Run all Trophy E2E tests**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Trophy" 2>&1 | tail -20
@@ -790,7 +790,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Trophy" 2>&1
 
 Expected: all 5 Trophy tests PASS.
 
-- [ ] **Step 10: Run full E2E suite**
+- [x] **Step 10: Run full E2E suite**
 
 ```bash
 cd workspace && npm run test:e2e 2>&1 | tail -10
@@ -798,7 +798,7 @@ cd workspace && npm run test:e2e 2>&1 | tail -10
 
 Expected: all tests PASS (41 existing + 5 new = 46 total).
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add workspace/src/game.ts
@@ -809,7 +809,7 @@ git commit -m "feat: wire trophy unlock checks, toast notifications, and modal i
 
 ## Final Verification
 
-- [ ] **Full test suite**
+- [x] **Full test suite**
 
 ```bash
 cd workspace && npm run test:unit && npm run test:e2e
@@ -817,7 +817,7 @@ cd workspace && npm run test:unit && npm run test:e2e
 
 Expected: all tests PASS.
 
-- [ ] **Build check**
+- [x] **Build check**
 
 ```bash
 cd workspace && npm run build 2>&1 | tail -5
