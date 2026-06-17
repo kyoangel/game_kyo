@@ -346,3 +346,44 @@ test("Fix-Bomb: bomb awarded when lifetime eliminations cross a 30-pair multiple
   });
   expect(bombLocked).toBe("false");
 });
+
+test("Fix-Viewport: body min-height uses 100dvh so page does not scroll on mobile", async ({ page }) => {
+  await page.goto("/");
+  const minHeight = await page.evaluate(() => {
+    for (const sheet of document.styleSheets) {
+      try {
+        for (const rule of sheet.cssRules) {
+          if (rule instanceof CSSStyleRule && rule.selectorText === "body") {
+            return rule.style.minHeight;
+          }
+        }
+      } catch { /* cross-origin */ }
+    }
+    return "";
+  });
+  expect(minHeight).toBe("100dvh");
+});
+
+test("Fix-Modal: ❓ button visible in HUD", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#hud-powerup-info")).toBeVisible();
+});
+
+test("Fix-Modal: clicking ❓ opens modal with all 4 powerup names", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hud-powerup-info").click();
+  await expect(page.locator("#powerup-modal")).toBeVisible();
+  await expect(page.locator("#powerup-modal")).toContainText("Hammer");
+  await expect(page.locator("#powerup-modal")).toContainText("Shuffle");
+  await expect(page.locator("#powerup-modal")).toContainText("Add One");
+  await expect(page.locator("#powerup-modal")).toContainText("Bomb");
+});
+
+test("Fix-Modal: clicking overlay closes modal", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hud-powerup-info").click();
+  await expect(page.locator("#powerup-modal")).toBeVisible();
+  // Click the overlay (not the card)
+  await page.locator("#powerup-modal-overlay").click({ position: { x: 5, y: 5 } });
+  await expect(page.locator("#powerup-modal")).toBeHidden();
+});
