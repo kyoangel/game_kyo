@@ -24,7 +24,7 @@ import {
   type PowerupState,
   emptyPowerups,
   computePlayCountAward,
-  // computeBestScoreAward, // FIXME: Task 3 - fix missing export
+  computeEliminationAward,
 } from "./powerups";
 
 const GRID_SIZE = 4;
@@ -32,6 +32,7 @@ const BEST_SCORE_KEY = "mathMerge10BestScore";
 const PALETTE_KEY = "mathMerge10Palette";
 const POWERUP_KEY = "mathMerge10Powerups";
 const PLAY_COUNT_KEY = "mathMerge10PlayCount";
+const LIFETIME_ELIM_KEY = "mathMerge10LifetimeElim";
 const ELIMINATE_DURATION_MS = 350;
 const MOVE_DURATION_MS = 150;
 const SPAWN_DELAY_MS = 350;
@@ -221,6 +222,10 @@ function applyBomb(row: number, col: number): void {
 
 function loadPlayCount(): number {
   return parseInt(localStorage.getItem(PLAY_COUNT_KEY) ?? "0", 10);
+}
+
+function loadLifetimeElim(): number {
+  return parseInt(localStorage.getItem(LIFETIME_ELIM_KEY) ?? "0", 10);
 }
 
 let state: GameState = createInitialState(GRID_SIZE);
@@ -618,11 +623,6 @@ function handleKeydown(event: KeyboardEvent): void {
   state = { grid: newGrid, score: state.score + scoreGained };
 
   if (state.score > bestScore) {
-    // const bombs = computeBestScoreAward(bestScore, state.score); // FIXME: Task 3
-    // if (bombs > 0) {
-    //   powerups.bomb += bombs;
-    //   savePowerups();
-    // }
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
@@ -643,6 +643,18 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 
   const eliminatedPairs = outcome.eliminatedPairs;
+
+  if (eliminatedPairs.length > 0) {
+    const oldElim = loadLifetimeElim();
+    const newElim = oldElim + eliminatedPairs.length;
+    localStorage.setItem(LIFETIME_ELIM_KEY, String(newElim));
+    const bombs = computeEliminationAward(oldElim, newElim);
+    if (bombs > 0) {
+      powerups.bomb += bombs;
+      savePowerups();
+      renderHudPowerups();
+    }
+  }
 
   (window as unknown as {
     __lastAnimationHints: {
@@ -776,11 +788,6 @@ function setState(newState: GameState): void {
   moveCells.clear();
 
   if (state.score > bestScore) {
-    // const bombs = computeBestScoreAward(bestScore, state.score); // FIXME: Task 3
-    // if (bombs > 0) {
-    //   powerups.bomb += bombs;
-    //   savePowerups();
-    // }
     bestScore = state.score;
     localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
   }
@@ -818,6 +825,10 @@ playAgainEl.addEventListener("click", () => {
 (window as unknown as { __setPowerups: (p: PowerupState) => void }).__setPowerups = (p) => {
   powerups = p;
   renderHudPowerups();
+};
+
+(window as unknown as { __setLifetimeElim: (n: number) => void }).__setLifetimeElim = (n) => {
+  localStorage.setItem(LIFETIME_ELIM_KEY, String(n));
 };
 
 updateMuteButton();

@@ -297,3 +297,52 @@ test("Fix-AddOne: Add One on a 9-tile eliminates it and scores +10", async ({ pa
   });
   expect(addOneCount).toBe("true");
 });
+
+test("Fix-Bomb: bomb awarded when lifetime eliminations cross a 30-pair multiple", async ({ page }) => {
+  await page.goto("/");
+
+  // Start with 0 bombs
+  await page.evaluate(() => {
+    (window as unknown as { __setPowerups: (p: unknown) => void }).__setPowerups(
+      { hammer: 0, shuffle: 0, addOne: 0, bomb: 0 },
+    );
+    // Set lifetime counter to 29 (one away from first bomb)
+    (window as unknown as { __setLifetimeElim: (n: number) => void }).__setLifetimeElim(29);
+  });
+
+  // Set up board with a pair that sums to 10 (4 and 6 in same row)
+  await page.evaluate(() => {
+    (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
+      grid: [
+        [4, 6, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      score: 0,
+    });
+  });
+
+  // Swipe left to eliminate the pair (4+6=10)
+  const canvas = page.locator("canvas#game");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("canvas not found");
+  await page.evaluate(
+    ({ sx, ex, y }) => {
+      const el = document.getElementById("game")!;
+      el.dispatchEvent(new TouchEvent("touchstart", { touches: [new Touch({ identifier: 1, target: el, clientX: sx, clientY: y })] }));
+      el.dispatchEvent(new TouchEvent("touchend", { changedTouches: [new Touch({ identifier: 1, target: el, clientX: ex, clientY: y })] }));
+    },
+    { sx: box.x + box.width * 0.75, ex: box.x + box.width * 0.25, y: box.y + box.height * 0.1 },
+  );
+
+  // Wait a frame for state to update
+  await page.waitForTimeout(100);
+
+  // Bomb button should now be unlocked (count = 1)
+  const bombLocked = await page.evaluate(() => {
+    const btn = document.querySelector(".hud-powerup-btn[data-powerup='bomb']") as HTMLElement;
+    return btn?.dataset.locked;
+  });
+  expect(bombLocked).toBe("false");
+});
