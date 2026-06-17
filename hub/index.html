@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Kyo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #111;
+      color: #e5e7eb;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px 64px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      color: #f9fafb;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #6b7280;
+      margin-bottom: 48px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    a.card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 28px 16px 24px;
+      background: #1a1a2e;
+      border: 1px solid #2d2d44;
+      border-radius: 14px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+    }
+
+    a.card:hover {
+      border-color: #6366f1;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
+    }
+
+    .card-icon {
+      font-size: 2.8rem;
+      line-height: 1;
+    }
+
+    .card-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f3f4f6;
+      text-align: center;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #312e81;
+      color: #a5b4fc;
+      text-transform: uppercase;
+    }
+
+    footer {
+      margin-top: 64px;
+      font-size: 0.75rem;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Game Kyo</h1>
+  <p class="subtitle">選一個遊戲開始</p>
+
+  <div class="grid">
+    <a class="card" href="/game_kyo/merge10/">
+      <div class="card-icon">🔢</div>
+      <div class="card-name">Math Merge 10</div>
+      <div class="card-desc">滑動格子，讓數字相加為 10 來消除</div>
+      <span class="badge">puzzle</span>
+    </a>
+  </div>
+
+  <footer>kyoangel.github.io/game_kyo</footer>
+</body>
+</html>

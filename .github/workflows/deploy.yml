@@ -39,10 +39,18 @@ jobs:
         run: npm run build
         working-directory: workspace
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy game to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: workspace/dist
           target-folder: merge10
+          branch: gh-pages
+          clean: false
+
+      - name: Deploy hub index to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: hub
+          target-folder: .
           branch: gh-pages
           clean: false
