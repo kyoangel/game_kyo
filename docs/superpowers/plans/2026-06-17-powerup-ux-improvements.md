@@ -28,7 +28,7 @@
 - Modify: `workspace/src/powerups.ts`
 - Modify: `workspace/tests/unit/powerups.test.ts`
 
-- [ ] **Step 1: Write the failing unit tests**
+- [x] **Step 1: Write the failing unit tests**
 
 Replace the entire contents of `workspace/tests/unit/powerups.test.ts`:
 
@@ -82,7 +82,7 @@ describe("computeEliminationAward", () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify tests fail**
+- [x] **Step 2: Run to verify tests fail**
 
 ```bash
 cd workspace && npm run test:unit
@@ -90,7 +90,7 @@ cd workspace && npm run test:unit
 
 Expected: FAIL — `computeEliminationAward is not a function`, and the `computePlayCountAward` threshold tests fail (old thresholds are 5/10, not 2/3).
 
-- [ ] **Step 3: Replace `workspace/src/powerups.ts`**
+- [x] **Step 3: Replace `workspace/src/powerups.ts`**
 
 ```typescript
 export type PowerupId = "hammer" | "shuffle" | "addOne" | "bomb";
@@ -123,7 +123,7 @@ export function computeEliminationAward(
 }
 ```
 
-- [ ] **Step 4: Run to verify tests pass**
+- [x] **Step 4: Run to verify tests pass**
 
 ```bash
 cd workspace && npm run test:unit
@@ -131,7 +131,7 @@ cd workspace && npm run test:unit
 
 Expected: all tests PASS (including old tests that still reference `computePlayCountAward`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/powerups.ts workspace/tests/unit/powerups.test.ts
@@ -146,7 +146,7 @@ git commit -m "feat: rebalance powerup unlock thresholds and add elimination-bas
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E test**
+- [x] **Step 1: Write the failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -191,7 +191,7 @@ test("Fix-AddOne: Add One on a 9-tile eliminates it and scores +10", async ({ pa
 });
 ```
 
-- [ ] **Step 2: Run to verify test fails**
+- [x] **Step 2: Run to verify test fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-AddOne"
@@ -199,7 +199,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-AddOne"
 
 Expected: FAIL — score remains 0 (current code does nothing on tile-9).
 
-- [ ] **Step 3: Fix `applyAddOne` in `workspace/src/game.ts`**
+- [x] **Step 3: Fix `applyAddOne` in `workspace/src/game.ts`**
 
 Find the existing `applyAddOne` function (around line 183) and replace it:
 
@@ -225,7 +225,7 @@ function applyAddOne(row: number, col: number): void {
 }
 ```
 
-- [ ] **Step 4: Run to verify test passes**
+- [x] **Step 4: Run to verify test passes**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-AddOne"
@@ -233,7 +233,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-AddOne"
 
 Expected: PASS.
 
-- [ ] **Step 5: Run full unit + ux-v2 E2E suite**
+- [x] **Step 5: Run full unit + ux-v2 E2E suite**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -241,7 +241,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -256,7 +256,7 @@ git commit -m "fix: Add One on tile-9 now eliminates it and scores +10"
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E test**
+- [x] **Step 1: Write the failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -311,7 +311,7 @@ test("Fix-Bomb: bomb awarded when lifetime eliminations cross a 30-pair multiple
 });
 ```
 
-- [ ] **Step 2: Run to verify test fails**
+- [x] **Step 2: Run to verify test fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Bomb"
@@ -319,7 +319,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Bomb"
 
 Expected: FAIL — `__setLifetimeElim is not a function` (hook doesn't exist yet).
 
-- [ ] **Step 3: Update `workspace/src/game.ts`**
+- [x] **Step 3: Update `workspace/src/game.ts`**
 
 **3a. Update the import from `./powerups`** — replace `computeBestScoreAward` with `computeEliminationAward`:
 
@@ -426,7 +426,7 @@ Replace with:
 };
 ```
 
-- [ ] **Step 4: Run to verify TypeScript compiles**
+- [x] **Step 4: Run to verify TypeScript compiles**
 
 ```bash
 cd workspace && npx tsc --noEmit
@@ -434,7 +434,7 @@ cd workspace && npx tsc --noEmit
 
 Expected: no errors.
 
-- [ ] **Step 5: Run the new E2E test**
+- [x] **Step 5: Run the new E2E test**
 
 Make sure dev server is running (`lsof -i :5173`; if not: `cd workspace && npm run dev &` then wait 3s).
 
@@ -444,7 +444,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Bomb"
 
 Expected: PASS.
 
-- [ ] **Step 6: Run full suite**
+- [x] **Step 6: Run full suite**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -452,7 +452,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -467,7 +467,7 @@ git commit -m "feat: track lifetime eliminations for bomb award; remove best-sco
 - Modify: `workspace/index.html`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E tests**
+- [x] **Step 1: Write the failing E2E tests**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -514,7 +514,7 @@ test("Fix-Modal: clicking overlay closes modal", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run to verify tests fail**
+- [x] **Step 2: Run to verify tests fail**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Viewport|Fix-Modal"
@@ -522,7 +522,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Viewport
 
 Expected: FAIL — `minHeight` is `"100vh"`, `#hud-powerup-info` not found, modal elements not found.
 
-- [ ] **Step 3: Update `workspace/index.html` — viewport fix**
+- [x] **Step 3: Update `workspace/index.html` — viewport fix**
 
 Find `min-height: 100vh;` in the `body {}` rule and change it to:
 
@@ -530,7 +530,7 @@ Find `min-height: 100vh;` in the `body {}` rule and change it to:
 min-height: 100dvh;
 ```
 
-- [ ] **Step 4: Update `workspace/index.html` — add ❓ button to selector**
+- [x] **Step 4: Update `workspace/index.html` — add ❓ button to selector**
 
 Find:
 ```css
@@ -545,7 +545,7 @@ Replace with:
     #hud-powerup-info {
 ```
 
-- [ ] **Step 5: Update `workspace/index.html` — add modal CSS**
+- [x] **Step 5: Update `workspace/index.html` — add modal CSS**
 
 Inside the `<style>` block, after the `#combo-badge` keyframes (after line 221, before `</style>`), add:
 
@@ -624,7 +624,7 @@ Inside the `<style>` block, after the `#combo-badge` keyframes (after line 221, 
     }
 ```
 
-- [ ] **Step 6: Update `workspace/index.html` — add ❓ button and modal markup**
+- [x] **Step 6: Update `workspace/index.html` — add ❓ button and modal markup**
 
 Find the `#hud` block (around line 240–246):
 ```html
@@ -686,7 +686,7 @@ Replace with:
     </div>
 ```
 
-- [ ] **Step 7: Run the failing E2E tests**
+- [x] **Step 7: Run the failing E2E tests**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Viewport|Fix-Modal"
@@ -694,7 +694,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "Fix-Viewport
 
 Expected: viewport and modal-visible tests PASS; the overlay-close test likely still fails (no JS yet).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add workspace/index.html workspace/tests/e2e/ux-v2.spec.ts
@@ -708,7 +708,7 @@ git commit -m "feat: fix mobile viewport height (100dvh) and add powerup descrip
 **Files:**
 - Modify: `workspace/src/game.ts`
 
-- [ ] **Step 1: Add modal element refs to `workspace/src/game.ts`**
+- [x] **Step 1: Add modal element refs to `workspace/src/game.ts`**
 
 After the line `const hudMuteEl = document.getElementById("hud-mute") as HTMLButtonElement;` (around line 56), add:
 
@@ -719,7 +719,7 @@ const powerupModalOverlayEl = document.getElementById("powerup-modal-overlay") a
 const powerupModalCloseEl = document.getElementById("powerup-modal-close") as HTMLButtonElement;
 ```
 
-- [ ] **Step 2: Add modal open/close event listeners**
+- [x] **Step 2: Add modal open/close event listeners**
 
 After `hudMuteEl.addEventListener(...)` (after line 66), add:
 
@@ -735,7 +735,7 @@ powerupModalCloseEl.addEventListener("click", () => {
 });
 ```
 
-- [ ] **Step 3: Update `POWERUP_UNLOCK_TIPS`**
+- [x] **Step 3: Update `POWERUP_UNLOCK_TIPS`**
 
 Find (around line 95–100):
 ```typescript
@@ -757,7 +757,7 @@ const POWERUP_UNLOCK_TIPS: Record<PowerupId, string> = {
 };
 ```
 
-- [ ] **Step 4: Run TypeScript check**
+- [x] **Step 4: Run TypeScript check**
 
 ```bash
 cd workspace && npx tsc --noEmit
@@ -765,7 +765,7 @@ cd workspace && npx tsc --noEmit
 
 Expected: no errors.
 
-- [ ] **Step 5: Run all E2E tests**
+- [x] **Step 5: Run all E2E tests**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -773,7 +773,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all PASS (including `Fix-Modal: clicking overlay closes modal`).
 
-- [ ] **Step 6: Run full suite (unit + all E2E)**
+- [x] **Step 6: Run full suite (unit + all E2E)**
 
 ```bash
 cd workspace && npm run test:unit && npm run test:e2e
@@ -781,7 +781,7 @@ cd workspace && npm run test:unit && npm run test:e2e
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add workspace/src/game.ts
@@ -792,7 +792,7 @@ git commit -m "feat: add powerup modal JS, update unlock tips text"
 
 ## Final Verification
 
-- [ ] **Full test suite**
+- [x] **Full test suite**
 
 ```bash
 cd workspace && npm run test:unit && npm run test:e2e
@@ -800,7 +800,7 @@ cd workspace && npm run test:unit && npm run test:e2e
 
 Expected: all tests PASS.
 
-- [ ] **Build check**
+- [x] **Build check**
 
 ```bash
 cd workspace && npm run build
