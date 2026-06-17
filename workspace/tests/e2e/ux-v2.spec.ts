@@ -387,3 +387,71 @@ test("Fix-Modal: clicking overlay closes modal", async ({ page }) => {
   await page.locator("#powerup-modal-overlay").click({ position: { x: 5, y: 5 } });
   await expect(page.locator("#powerup-modal")).toBeHidden();
 });
+
+test("Trophy: 🏆 button is visible in HUD", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#hud-trophy")).toBeVisible();
+});
+
+test("Trophy: clicking 🏆 opens modal with all 8 trophy names", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hud-trophy").click();
+  await expect(page.locator("#trophy-modal")).toBeVisible();
+  for (const name of [
+    "空手而歸", "一的洪流", "九的盛宴", "滿溢邊緣",
+    "連鎖初學", "連鎖高手", "連鎖達人", "連鎖大師",
+  ]) {
+    await expect(page.locator("#trophy-modal")).toContainText(name);
+  }
+});
+
+test("Trophy: clicking overlay closes trophy modal", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#hud-trophy").click();
+  await expect(page.locator("#trophy-modal")).toBeVisible();
+  await page.locator("#trophy-modal-overlay").click({ position: { x: 5, y: 5 } });
+  await expect(page.locator("#trophy-modal")).toBeHidden();
+});
+
+test("Trophy: combo_2 slide unlocks 連鎖初學 and shows toast", async ({ page }) => {
+  await page.goto("/");
+  // Grid with 2 pairs (row 0: 1+9, row 1: 1+9) — ArrowLeft eliminates both
+  await page.evaluate(() => {
+    (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
+      grid: [
+        [1, 9, null, null],
+        [1, 9, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      score: 0,
+    });
+  });
+  await page.keyboard.press("ArrowLeft");
+  await page.waitForTimeout(300);
+  await expect(page.locator("#trophy-toast")).toContainText("連鎖初學");
+});
+
+test("Trophy: unlocked trophy shows ✓ in modal", async ({ page }) => {
+  await page.goto("/");
+  // Unlock combo_2 first
+  await page.evaluate(() => {
+    (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
+      grid: [
+        [1, 9, null, null],
+        [1, 9, null, null],
+        [null, null, null, null],
+        [null, null, null, null],
+      ],
+      score: 0,
+    });
+  });
+  await page.keyboard.press("ArrowLeft");
+  await page.waitForTimeout(300);
+  // Open trophy modal
+  await page.locator("#hud-trophy").click();
+  await expect(page.locator("#trophy-modal")).toBeVisible();
+  // 連鎖初學 row should have ✓
+  const combo2Item = page.locator("#trophy-modal-list li").filter({ hasText: "連鎖初學" });
+  await expect(combo2Item).toContainText("✓");
+});
