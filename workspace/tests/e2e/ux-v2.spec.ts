@@ -183,3 +183,15 @@ test("F1: score and best are shown in #hud DOM elements after a move", async ({ 
   const bestText = await page.locator("#hud-best").textContent();
   expect(bestText).toContain("10");
 });
+
+test("Fix1: html and body have overscroll-behavior none to prevent pull-to-refresh", async ({ page }) => {
+  await page.goto("/");
+  const htmlOverscroll = await page.evaluate(
+    () => getComputedStyle(document.documentElement).overscrollBehavior,
+  );
+  const bodyOverscroll = await page.evaluate(
+    () => getComputedStyle(document.body).overscrollBehavior,
+  );
+  expect(htmlOverscroll).toBe("none");
+  expect(bodyOverscroll).toBe("none");
+});
