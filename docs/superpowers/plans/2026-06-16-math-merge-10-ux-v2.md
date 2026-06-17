@@ -1,6 +1,6 @@
 # Math Merge 10 UX Enhancement v2 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add six player-experience features to Math Merge 10: HUD footer layout, redesigned pairHint palette, audio engine, collision animation, RWD + touch swipe, and a power-up system.
 
@@ -34,7 +34,7 @@
 - Modify: `workspace/index.html`
 - Create: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write the failing E2E test**
+- [x] **Step 1: Write the failing E2E test**
 
 Create `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -51,7 +51,7 @@ test("F1: #hud footer contains score, best, palette toggle, and mute button", as
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -59,7 +59,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: FAIL — `Error: locator.toBeVisible: Locator: #hud` (element not found)
 
-- [ ] **Step 3: Implement — restructure `index.html`**
+- [x] **Step 3: Implement — restructure `index.html`**
 
 Replace `<div id="game-container">` block and related CSS in `index.html`. The full new `body` section and all relevant CSS changes:
 
@@ -183,7 +183,7 @@ In `<body>`, **replace** the `<div id="game-container">...</div>` block with:
 
 Also update canvas default size from `800` to `480` (RWD will override this at runtime anyway).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -191,7 +191,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: PASS — all 1 test passes
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/index.html workspace/tests/e2e/ux-v2.spec.ts
@@ -206,7 +206,7 @@ git commit -m "feat: add #hud footer bar with score, palette, mute, and powerup 
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Add failing E2E test for DOM score**
+- [x] **Step 1: Add failing E2E test for DOM score**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -238,7 +238,7 @@ test("F1: score and best are shown in #hud-score and #hud-best DOM elements", as
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "DOM elements"
@@ -246,7 +246,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "DOM elements
 
 Expected: FAIL — score DOM shows "Score: 0" even after move (DOM never updated)
 
-- [ ] **Step 3: Implement in `game.ts`**
+- [x] **Step 3: Implement in `game.ts`**
 
 At the top of `game.ts`, **update** the existing element references and **add** new ones. Replace:
 
@@ -315,7 +315,7 @@ updateHudScore();
 render();
 ```
 
-- [ ] **Step 4: Run tests to verify pass**
+- [x] **Step 4: Run tests to verify pass**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -323,7 +323,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all unit tests PASS, both ux-v2 E2E tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -338,7 +338,7 @@ git commit -m "feat: move score display from canvas to #hud DOM elements"
 - Modify: `workspace/src/palettes.ts`
 - Modify: `workspace/tests/unit/palettes.test.ts`
 
-- [ ] **Step 1: Write failing unit test**
+- [x] **Step 1: Write failing unit test**
 
 Append to `workspace/tests/unit/palettes.test.ts`:
 
@@ -370,7 +370,7 @@ describe("pairHint palette — pairs summing to 10 share a hue family", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npm run test:unit -- --reporter=verbose tests/unit/palettes.test.ts
@@ -378,7 +378,7 @@ cd workspace && npm run test:unit -- --reporter=verbose tests/unit/palettes.test
 
 Expected: FAIL — `expected '#7dd3fc' to be '#bfdbfe'` (current colors don't match)
 
-- [ ] **Step 3: Implement — update `pairHint` in `palettes.ts`**
+- [x] **Step 3: Implement — update `pairHint` in `palettes.ts`**
 
 Replace the `pairHint` entry in the `PALETTES` object:
 
@@ -396,7 +396,7 @@ Replace the `pairHint` entry in the `PALETTES` object:
   },
 ```
 
-- [ ] **Step 4: Run all unit tests to verify pass**
+- [x] **Step 4: Run all unit tests to verify pass**
 
 ```bash
 cd workspace && npm run test:unit
@@ -404,7 +404,7 @@ cd workspace && npm run test:unit
 
 Expected: all tests PASS (including existing PALETTES structure test and new hue-pair tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/palettes.ts workspace/tests/unit/palettes.test.ts
@@ -422,7 +422,7 @@ git commit -m "feat: redesign pairHint palette so pairs summing to 10 share a hu
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write failing E2E test**
+- [x] **Step 1: Write failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -441,7 +441,7 @@ test("F6: canvas width shrinks to fit a narrow viewport", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "narrow viewport"
@@ -449,7 +449,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "narrow viewp
 
 Expected: FAIL — canvas.width is 480 regardless of viewport
 
-- [ ] **Step 3: Update viewport meta in `index.html`**
+- [x] **Step 3: Update viewport meta in `index.html`**
 
 Replace:
 
@@ -463,7 +463,7 @@ With:
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 ```
 
-- [ ] **Step 4: Add `resizeCanvas()` to `game.ts`**
+- [x] **Step 4: Add `resizeCanvas()` to `game.ts`**
 
 After the constants section (after `SPAWN_DURATION_MS`), add:
 
@@ -493,7 +493,7 @@ updateHudScore();
 resizeCanvas();
 ```
 
-- [ ] **Step 5: Run tests to verify pass**
+- [x] **Step 5: Run tests to verify pass**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -501,7 +501,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add workspace/index.html workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -516,7 +516,7 @@ git commit -m "feat: add responsive canvas resize and user-scalable=no viewport 
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write failing E2E test**
+- [x] **Step 1: Write failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -569,7 +569,7 @@ test("F6: touch swipe left eliminates a 4+6 pair and scores 10", async ({ page }
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "swipe left"
@@ -577,7 +577,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "swipe left"
 
 Expected: FAIL — score stays 0 (no touch handler exists)
 
-- [ ] **Step 3: Implement `handleMove` + touch in `game.ts`**
+- [x] **Step 3: Implement `handleMove` + touch in `game.ts`**
 
 **Extract `handleMove` from `handleKeydown`**. In `game.ts`, replace the `handleKeydown` function with the following two functions:
 
@@ -704,7 +704,7 @@ Note: `activePowerup` is declared in Task 10. For now declare it as a placeholde
 let activePowerup: string | null = null;
 ```
 
-- [ ] **Step 4: Run tests to verify pass**
+- [x] **Step 4: Run tests to verify pass**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -712,7 +712,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -729,7 +729,7 @@ git commit -m "feat: extract handleMove and add touchstart/touchend swipe contro
 - Create: `workspace/src/audio.ts`
 - Create: `workspace/tests/unit/audio.test.ts`
 
-- [ ] **Step 1: Write failing unit test**
+- [x] **Step 1: Write failing unit test**
 
 Create `workspace/tests/unit/audio.test.ts`:
 
@@ -812,7 +812,7 @@ describe("AudioEngine", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npm run test:unit -- --reporter=verbose tests/unit/audio.test.ts
@@ -820,7 +820,7 @@ cd workspace && npm run test:unit -- --reporter=verbose tests/unit/audio.test.ts
 
 Expected: FAIL — `Cannot find module '../../src/audio'`
 
-- [ ] **Step 3: Create `workspace/src/audio.ts`**
+- [x] **Step 3: Create `workspace/src/audio.ts`**
 
 ```typescript
 export type AudioEvent =
@@ -979,7 +979,7 @@ export class AudioEngine {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify pass**
+- [x] **Step 4: Run tests to verify pass**
 
 ```bash
 cd workspace && npm run test:unit -- --reporter=verbose tests/unit/audio.test.ts
@@ -987,7 +987,7 @@ cd workspace && npm run test:unit -- --reporter=verbose tests/unit/audio.test.ts
 
 Expected: all 6 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/audio.ts workspace/tests/unit/audio.test.ts
@@ -1001,7 +1001,7 @@ git commit -m "feat: add AudioEngine class with Web Audio API programmatic sound
 **Files:**
 - Modify: `workspace/src/game.ts`
 
-- [ ] **Step 1: Write E2E test (smoke: mute button toggles icon)**
+- [x] **Step 1: Write E2E test (smoke: mute button toggles icon)**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -1017,7 +1017,7 @@ test("F3: mute button toggles between 🔊 and 🔇", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "mute button"
@@ -1025,7 +1025,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "mute button"
 
 Expected: FAIL — button text never changes (no click handler)
 
-- [ ] **Step 3: Wire audio in `game.ts`**
+- [x] **Step 3: Wire audio in `game.ts`**
 
 At the top of `game.ts`, add import:
 
@@ -1086,7 +1086,7 @@ function showComboBadge(count: number): void {
 
 Call `updateMuteButton()` once at module initialization (after the `hudMuteEl` + `audio` setup block), before `resizeCanvas()`.
 
-- [ ] **Step 4: Run all tests**
+- [x] **Step 4: Run all tests**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -1094,7 +1094,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -1111,7 +1111,7 @@ git commit -m "feat: wire AudioEngine into game events and add mute toggle butto
 - Modify: `workspace/src/grid.ts`
 - Modify: `workspace/tests/unit/mergeAnimation.test.ts`
 
-- [ ] **Step 1: Update failing tests in `mergeAnimation.test.ts`**
+- [x] **Step 1: Update failing tests in `mergeAnimation.test.ts`**
 
 The current tests assert exact `eliminatedIndices` and `eliminatedPairs` shapes that will break when we add `meetA`/`meetB`. Update them first:
 
@@ -1222,7 +1222,7 @@ describe("slide eliminatedPairs absolute grid coordinates", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd workspace && npm run test:unit -- --reporter=verbose tests/unit/mergeAnimation.test.ts
@@ -1230,7 +1230,7 @@ cd workspace && npm run test:unit -- --reporter=verbose tests/unit/mergeAnimatio
 
 Expected: FAIL — `expected [ [0, 1] ] to equal [ [0, 1, 0, 1] ]` and structure mismatches
 
-- [ ] **Step 3: Update `grid.ts`**
+- [x] **Step 3: Update `grid.ts`**
 
 **Update `EliminatedPair` interface**:
 
@@ -1316,7 +1316,7 @@ export interface SlideResult {
     }
 ```
 
-- [ ] **Step 4: Run all unit tests to verify pass**
+- [x] **Step 4: Run all unit tests to verify pass**
 
 ```bash
 cd workspace && npm run test:unit
@@ -1324,7 +1324,7 @@ cd workspace && npm run test:unit
 
 Expected: all tests PASS (including all pre-existing `grid.test.ts`, `specRequirements.test.ts`, `gameRules.test.ts`)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/grid.ts workspace/tests/unit/mergeAnimation.test.ts
@@ -1339,7 +1339,7 @@ git commit -m "feat: extend EliminatedPair with meetA/meetB collision positions"
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write failing E2E test**
+- [x] **Step 1: Write failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -1383,7 +1383,7 @@ test("F4: collision animation — eliminated pair phantom moves to meeting posit
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "collision animation"
@@ -1391,7 +1391,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "collision an
 
 Expected: FAIL — `meetA` / `meetB` not on `__lastAnimationHints.eliminatedPairs` entries (old interface had only `a`/`b`)
 
-- [ ] **Step 3: Update `moveCells` type + `startAnimations` + `render` in `game.ts`**
+- [x] **Step 3: Update `moveCells` type + `startAnimations` + `render` in `game.ts`**
 
 **Update moveCells map type** (find the declaration and change):
 
@@ -1502,7 +1502,7 @@ function startAnimations(
   });
 ```
 
-- [ ] **Step 4: Run all tests**
+- [x] **Step 4: Run all tests**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -1510,7 +1510,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -1527,7 +1527,7 @@ git commit -m "feat: collision animation — tiles slide to meeting position bef
 - Modify: `workspace/src/game.ts`
 - Create: `workspace/tests/unit/powerups.test.ts`
 
-- [ ] **Step 1: Write failing unit test**
+- [x] **Step 1: Write failing unit test**
 
 Create `workspace/tests/unit/powerups.test.ts`:
 
@@ -1590,7 +1590,7 @@ describe("computeBestScoreAward", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npm run test:unit -- --reporter=verbose tests/unit/powerups.test.ts
@@ -1598,7 +1598,7 @@ cd workspace && npm run test:unit -- --reporter=verbose tests/unit/powerups.test
 
 Expected: FAIL — `Cannot find module '../../src/powerups'`
 
-- [ ] **Step 3: Create `workspace/src/powerups.ts`** (pure logic, no DOM)
+- [x] **Step 3: Create `workspace/src/powerups.ts`** (pure logic, no DOM)
 
 ```typescript
 export type PowerupId = "hammer" | "shuffle" | "addOne" | "bomb";
@@ -1743,7 +1743,7 @@ Also update `handleMove` to call `computeBestScoreAward` when updating bestScore
   }
 ```
 
-- [ ] **Step 4: Run all tests**
+- [x] **Step 4: Run all tests**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -1751,7 +1751,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/powerups.ts workspace/src/game.ts workspace/tests/unit/powerups.test.ts
@@ -1766,7 +1766,7 @@ git commit -m "feat: add PowerupState, unlock logic (play count + best score mil
 - Modify: `workspace/src/game.ts`
 - Modify: `workspace/tests/e2e/ux-v2.spec.ts`
 
-- [ ] **Step 1: Write failing E2E test**
+- [x] **Step 1: Write failing E2E test**
 
 Append to `workspace/tests/e2e/ux-v2.spec.ts`:
 
@@ -1809,7 +1809,7 @@ test("F5: hammer powerup removes a tile when activated and clicked on canvas", a
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "hammer powerup"
@@ -1817,7 +1817,7 @@ cd workspace && npx playwright test tests/e2e/ux-v2.spec.ts --grep "hammer power
 
 Expected: FAIL — `Error: locator.click: .hud-powerup-btn[data-powerup='hammer']` (element not found, and `__setPowerups` not exposed)
 
-- [ ] **Step 3: Implement powerup UI in `game.ts`**
+- [x] **Step 3: Implement powerup UI in `game.ts`**
 
 Add `renderHudPowerups` and apply functions. After the `savePowerups` function:
 
@@ -1997,7 +1997,7 @@ Expose `__setPowerups` for testing. At the bottom of `game.ts` (alongside the ot
 
 Add `renderHudPowerups()` call during initialization (before the final `resizeCanvas()`).
 
-- [ ] **Step 4: Run all tests**
+- [x] **Step 4: Run all tests**
 
 ```bash
 cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
@@ -2005,7 +2005,7 @@ cd workspace && npm run test:unit && npx playwright test tests/e2e/ux-v2.spec.ts
 
 Expected: all tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add workspace/src/game.ts workspace/tests/e2e/ux-v2.spec.ts
@@ -2016,7 +2016,7 @@ git commit -m "feat: add powerup UI (hammer, shuffle, addOne, bomb) with canvas 
 
 ## Final Verification
 
-- [ ] **Run full test suite**
+- [x] **Run full test suite**
 
 ```bash
 cd workspace && npm run test:unit && npm run test:e2e
@@ -2024,7 +2024,7 @@ cd workspace && npm run test:unit && npm run test:e2e
 
 Expected: all unit tests PASS, all E2E tests PASS (including pre-existing tests in `math-merge.spec.ts`, `interaction.spec.ts`, `visual-effects.spec.ts`, `merge-animation.spec.ts`)
 
-- [ ] **Build check**
+- [x] **Build check**
 
 ```bash
 cd workspace && npm run build
