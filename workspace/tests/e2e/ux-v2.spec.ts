@@ -195,3 +195,21 @@ test("Fix1: html and body have overscroll-behavior none to prevent pull-to-refre
   expect(htmlOverscroll).toBe("none");
   expect(bodyOverscroll).toBe("none");
 });
+
+test("Fix2: palette toggle is inside #hud, not overlaid on canvas", async ({ page }) => {
+  await page.goto("/");
+
+  // Must be a descendant of #hud
+  const insideHud = await page.evaluate(() => {
+    const btn = document.getElementById("hud-palette-toggle")!;
+    const hud = document.getElementById("hud")!;
+    return hud.contains(btn);
+  });
+  expect(insideHud).toBe(true);
+
+  // Must NOT be absolutely positioned (would indicate it's still floating on canvas)
+  const position = await page.evaluate(
+    () => getComputedStyle(document.getElementById("hud-palette-toggle")!).position,
+  );
+  expect(position).toBe("static");
+});
