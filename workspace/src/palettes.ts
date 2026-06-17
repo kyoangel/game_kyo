@@ -9,15 +9,15 @@ export type PaletteId = "pairHint" | "gradient" | "pastel";
 
 export const PALETTES: Record<PaletteId, Palette> = {
   pairHint: {
-    1: { bg: "#bfdbfe", text: "#1e3a8a" },   // light blue  (pairs with 9)
-    2: { bg: "#bbf7d0", text: "#14532d" },   // light green (pairs with 8)
-    3: { bg: "#fed7aa", text: "#7c2d12" },   // light orange (pairs with 7)
-    4: { bg: "#e9d5ff", text: "#4c1d95" },   // light purple (pairs with 6)
-    5: { bg: "#fef08a", text: "#713f12" },   // mid gold (self-pair)
-    6: { bg: "#7c3aed", text: "#ffffff" },   // dark purple (pairs with 4)
-    7: { bg: "#c2410c", text: "#ffffff" },   // dark orange (pairs with 3)
-    8: { bg: "#15803d", text: "#ffffff" },   // dark green (pairs with 2)
-    9: { bg: "#1d4ed8", text: "#ffffff" },   // dark blue (pairs with 1)
+    1: { bg: "#bfdbfe", text: "#1e3a8a" },   // light blue   (pairs with 9)
+    2: { bg: "#bbf7d0", text: "#14532d" },   // light green  (pairs with 8)
+    3: { bg: "#fef3c7", text: "#78350f" },   // light amber  (pairs with 7)
+    4: { bg: "#fce7f3", text: "#831843" },   // light rose   (pairs with 6)
+    5: { bg: "#a855f7", text: "#ffffff" },   // purple       (self-pair)
+    6: { bg: "#be185d", text: "#ffffff" },   // dark rose    (pairs with 4)
+    7: { bg: "#d97706", text: "#ffffff" },   // dark amber   (pairs with 3)
+    8: { bg: "#15803d", text: "#ffffff" },   // dark green   (pairs with 2)
+    9: { bg: "#1d4ed8", text: "#ffffff" },   // dark blue    (pairs with 1)
   },
   gradient: {
     1: { bg: "#60a5fa", text: "#1e3a8a" },

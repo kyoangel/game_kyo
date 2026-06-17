@@ -48,7 +48,6 @@
       font-size: 15px;
       white-space: nowrap;
     }
-    #hud-palette-toggle,
     #hud-mute {
       width: 44px;
       height: 44px;
@@ -59,6 +58,20 @@
       font-size: 18px;
       cursor: pointer;
       flex-shrink: 0;
+    }
+    #hud-palette-toggle {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 10;
     }
     #hud-powerups {
       display: flex;
@@ -92,7 +105,7 @@
     }
     #score-popup {
       position: absolute;
-      top: 30px;
+      bottom: 8px;
       left: 12px;
       color: #fde047;
       font-family: sans-serif;
@@ -199,6 +212,7 @@
   <div id="game-wrapper">
     <div id="game-container">
       <canvas id="game" width="480" height="480"></canvas>
+      <button id="hud-palette-toggle" aria-label="切換配色">🎨</button>
       <div id="score-popup"></div>
       <div id="combo-badge"></div>
       <div id="game-over" hidden>
@@ -215,7 +229,6 @@
       <span id="hud-score">Score: 0</span>
       <span id="hud-best">Best: 0</span>
       <div id="hud-powerups"></div>
-      <button id="hud-palette-toggle" aria-label="切換配色">🎨</button>
       <button id="hud-mute" aria-label="靜音">🔊</button>
     </div>
   </div>
