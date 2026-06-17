@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 import orchestrator
+from agents.claude_cli import ClaudeCliError
 from agents.reviewer_agent import ReviewResult
 from harness.sandbox_runner import SandboxResult
 
@@ -470,6 +471,78 @@ def test_review_loop_real_gemini_review_with_no_changed_files() -> None:
     records = [json.loads(line) for line in lines]
     agents_logged = [r["agent"] for r in records]
     assert agents_logged == ["coder", "reviewer"]
+
+
+def test_qa_loop_logs_qa_failure_and_continues_when_run_qa_raises(tmp_path: Path) -> None:
+    """ClaudeCliError from qa_agent.run_qa must be caught, logged as success=False,
+    and used as initial feedback for run_coder — the loop must not crash."""
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("spec")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+    e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch(
+        "orchestrator.qa_agent.run_qa", side_effect=ClaudeCliError("claude exited with code 1")
+    ), patch(
+        "orchestrator.coder_agent.run_coder", return_value=[]
+    ) as mock_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_unit_tests", return_value=unit_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", return_value=e2e_result
+    ), patch(
+        "orchestrator.reviewer_agent.run_reviewer", return_value=review_result
+    ), patch(
+        "orchestrator.trace_logger.log_step"
+    ) as mock_log:
+        result = orchestrator.qa_loop(spec_path, max_retries=1, repo_root=tmp_path)
+
+    assert isinstance(result, ReviewResult), "qa_loop must not raise"
+    first_log = mock_log.call_args_list[0]
+    assert first_log.kwargs["agent"] == "qa"
+    assert first_log.kwargs["result"]["success"] is False
+    mock_coder.assert_called_once_with(
+        spec_path, feedback="claude exited with code 1", repo_root=tmp_path
+    )
+
+
+def test_qa_loop_logs_coder_failure_and_retries_when_run_coder_raises(tmp_path: Path) -> None:
+    """ClaudeCliError from coder_agent.run_coder must be caught, logged, and retried
+    with the error message fed back as feedback on the next iteration."""
+    spec_path = tmp_path / "spec.md"
+    spec_path.write_text("spec")
+
+    build_result = SandboxResult(success=True, stdout="ok", stderr="", returncode=0)
+    unit_result = SandboxResult(success=True, stdout="5 passed", stderr="", returncode=0)
+    e2e_result = SandboxResult(success=True, stdout="3 passed", stderr="", returncode=0)
+    review_result = ReviewResult(approved=True, comments=[])
+
+    with patch(
+        "orchestrator.qa_agent.run_qa", return_value=[]
+    ), patch(
+        "orchestrator.coder_agent.run_coder",
+        side_effect=[ClaudeCliError("coder crashed"), []],
+    ) as mock_coder, patch(
+        "orchestrator.sandbox_runner.run_build_check", return_value=build_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_unit_tests", return_value=unit_result
+    ), patch(
+        "orchestrator.sandbox_runner.run_e2e_tests", return_value=e2e_result
+    ), patch(
+        "orchestrator.reviewer_agent.run_reviewer", return_value=review_result
+    ), patch(
+        "orchestrator.trace_logger.log_step"
+    ) as mock_log:
+        result = orchestrator.qa_loop(spec_path, max_retries=2, repo_root=tmp_path)
+
+    assert result.approved is True, "must recover and eventually approve"
+    coder_logs = [c for c in mock_log.call_args_list if c.kwargs.get("agent") == "coder"]
+    assert coder_logs[0].kwargs["result"]["success"] is False
+    assert mock_coder.call_args_list[1].kwargs["feedback"] == "coder crashed"
 
 
 @pytest.mark.docker

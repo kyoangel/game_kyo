@@ -62,6 +62,25 @@ def test_call_coder_raises_on_nonzero_returncode(tmp_path: Path) -> None:
             call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path)
 
 
+def test_call_coder_raises_with_stdout_when_stderr_is_empty(tmp_path: Path) -> None:
+    """When claude exits non-zero but writes nothing to stderr (common in nested sessions),
+    the error should still be informative — fall back to stdout."""
+    mock_result = MagicMock(returncode=1, stdout="  Permission denied by session  ", stderr="")
+
+    with patch("agents.claude_cli.subprocess.run", return_value=mock_result):
+        with pytest.raises(ClaudeCliError, match="Permission denied by session"):
+            call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path)
+
+
+def test_call_coder_raises_with_returncode_when_stdout_and_stderr_both_empty(tmp_path: Path) -> None:
+    """Last-resort fallback: include the exit code so the error is never a blank string."""
+    mock_result = MagicMock(returncode=2, stdout="", stderr="")
+
+    with patch("agents.claude_cli.subprocess.run", return_value=mock_result):
+        with pytest.raises(ClaudeCliError, match="2"):
+            call_coder(system_prompt="SYSTEM", task="TASK", repo_root=tmp_path)
+
+
 def test_call_coder_converts_timeout_expired_to_claude_cli_error(tmp_path: Path) -> None:
     with patch(
         "agents.claude_cli.subprocess.run",

@@ -38,6 +38,11 @@ def call_coder(
         raise ClaudeCliError(f"claude CLI timed out after {CLAUDE_TIMEOUT_S}s")
 
     if result.returncode != 0:
-        raise ClaudeCliError(result.stderr)
+        detail = (
+            result.stderr.strip()
+            or result.stdout.strip()
+            or f"claude exited with code {result.returncode}"
+        )
+        raise ClaudeCliError(detail)
 
     return result.stdout.strip()

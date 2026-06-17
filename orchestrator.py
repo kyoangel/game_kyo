@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from agents import coder_agent, qa_agent, reviewer_agent
+from agents.claude_cli import ClaudeCliError
 from harness import sandbox_runner, trace_logger
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -104,18 +105,44 @@ def qa_loop(
     feedback: str | None = None
     review: reviewer_agent.ReviewResult
 
-    qa_changed = qa_agent.run_qa(spec_path, repo_root=repo_root)
+    try:
+        qa_changed = qa_agent.run_qa(spec_path, repo_root=repo_root)
+        qa_trace_result: dict = {"success": True, "changed_files": [str(p) for p in qa_changed]}
+    except ClaudeCliError as e:
+        qa_changed = []
+        qa_trace_result = {"success": False, "error": str(e)}
+        feedback = str(e)
+
     trace_logger.log_step(
         run_id=run_id,
         agent="qa",
         input=None,
         output=[str(p) for p in qa_changed],
-        result={"changed_files": [str(p) for p in qa_changed]},
+        result=qa_trace_result,
         traces_root=repo_root / "traces",
     )
 
     for _ in range(max_retries):
-        changed_files = coder_agent.run_coder(spec_path, feedback=feedback, repo_root=repo_root)
+        try:
+            changed_files = coder_agent.run_coder(spec_path, feedback=feedback, repo_root=repo_root)
+            coder_trace_result = dataclasses.asdict(
+                sandbox_runner.SandboxResult(success=True, stdout="", stderr="", returncode=0)
+            )
+        except ClaudeCliError as e:
+            changed_files = []
+            coder_trace_result = {"success": False, "error": str(e)}
+            feedback = str(e)
+            trace_logger.log_step(
+                run_id=run_id,
+                agent="coder",
+                input=feedback,
+                output=[],
+                result=coder_trace_result,
+                traces_root=repo_root / "traces",
+            )
+            review = reviewer_agent.ReviewResult(approved=False, comments=[str(e)])
+            continue
+
         build_result = sandbox_runner.run_build_check()
 
         trace_logger.log_step(
