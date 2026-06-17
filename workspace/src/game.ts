@@ -55,6 +55,10 @@ const scorePopupEl = document.getElementById("score-popup") as HTMLDivElement;
 const comboBadgeEl = document.getElementById("combo-badge") as HTMLDivElement;
 
 const hudMuteEl = document.getElementById("hud-mute") as HTMLButtonElement;
+const hudPowerupInfoEl = document.getElementById("hud-powerup-info") as HTMLButtonElement;
+const powerupModalEl = document.getElementById("powerup-modal") as HTMLDivElement;
+const powerupModalOverlayEl = document.getElementById("powerup-modal-overlay") as HTMLDivElement;
+const powerupModalCloseEl = document.getElementById("powerup-modal-close") as HTMLButtonElement;
 const audio = new AudioEngine();
 
 function updateMuteButton(): void {
@@ -64,6 +68,16 @@ function updateMuteButton(): void {
 hudMuteEl.addEventListener("click", () => {
   audio.toggleMute();
   updateMuteButton();
+});
+
+hudPowerupInfoEl.addEventListener("click", () => {
+  powerupModalEl.removeAttribute("hidden");
+});
+powerupModalOverlayEl.addEventListener("click", () => {
+  powerupModalEl.setAttribute("hidden", "");
+});
+powerupModalCloseEl.addEventListener("click", () => {
+  powerupModalEl.setAttribute("hidden", "");
 });
 
 function updateHudScore(): void {
@@ -94,10 +108,10 @@ function savePowerups(): void {
 }
 
 const POWERUP_UNLOCK_TIPS: Record<PowerupId, string> = {
-  hammer:  "每玩 5 局隨機獲得",
-  shuffle: "每玩 5 局隨機獲得",
-  addOne:  "每玩 10 局獲得",
-  bomb:    "分數突破 50 分獲得；每過 100 分再得一顆",
+  hammer:  "每 2 局隨機獲得",
+  shuffle: "每 2 局隨機獲得",
+  addOne:  "每 3 局獲得",
+  bomb:    "每累計消除 30 對獲得一顆",
 };
 
 function renderHudPowerups(): void {

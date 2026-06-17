@@ -249,7 +249,7 @@ test("Fix3: clicking a locked powerup shows its tooltip, clicking outside dismis
   // Click locked button → tooltip appears
   await hammerBtn.click();
   await expect(tooltip).toBeVisible();
-  await expect(tooltip).toContainText("每玩 5 局");
+  await expect(tooltip).toContainText("每 2 局隨機獲得");
 
   // Click outside → tooltip hidden
   await page.locator("canvas#game").click({ position: { x: 10, y: 10 } });
