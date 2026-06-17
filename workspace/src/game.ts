@@ -26,6 +26,7 @@ import {
   computePlayCountAward,
   computeEliminationAward,
 } from "./powerups";
+import { checkTrophies, loadTrophyStatuses, getTrophyDef } from "./trophies";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -59,6 +60,12 @@ const hudPowerupInfoEl = document.getElementById("hud-powerup-info") as HTMLButt
 const powerupModalEl = document.getElementById("powerup-modal") as HTMLDivElement;
 const powerupModalOverlayEl = document.getElementById("powerup-modal-overlay") as HTMLDivElement;
 const powerupModalCloseEl = document.getElementById("powerup-modal-close") as HTMLButtonElement;
+const hudTrophyEl = document.getElementById("hud-trophy") as HTMLButtonElement;
+const trophyModalEl = document.getElementById("trophy-modal") as HTMLDivElement;
+const trophyModalOverlayEl = document.getElementById("trophy-modal-overlay") as HTMLDivElement;
+const trophyModalCloseEl = document.getElementById("trophy-modal-close") as HTMLButtonElement;
+const trophyModalListEl = document.getElementById("trophy-modal-list") as HTMLUListElement;
+const trophyToastEl = document.getElementById("trophy-toast") as HTMLDivElement;
 const audio = new AudioEngine();
 
 function updateMuteButton(): void {
@@ -78,6 +85,17 @@ powerupModalOverlayEl.addEventListener("click", () => {
 });
 powerupModalCloseEl.addEventListener("click", () => {
   powerupModalEl.setAttribute("hidden", "");
+});
+
+hudTrophyEl.addEventListener("click", () => {
+  renderTrophyModal();
+  trophyModalEl.removeAttribute("hidden");
+});
+trophyModalOverlayEl.addEventListener("click", () => {
+  trophyModalEl.setAttribute("hidden", "");
+});
+trophyModalCloseEl.addEventListener("click", () => {
+  trophyModalEl.setAttribute("hidden", "");
 });
 
 function updateHudScore(): void {
@@ -496,6 +514,39 @@ function showComboBadge(count: number): void {
   }, 300);
 }
 
+const trophyToastQueue: string[] = [];
+let trophyToastTimer: ReturnType<typeof setTimeout> | null = null;
+
+function drainTrophyToastQueue(): void {
+  const id = trophyToastQueue.shift();
+  if (id === undefined) { trophyToastTimer = null; return; }
+  const def = getTrophyDef(id);
+  if (!def) { drainTrophyToastQueue(); return; }
+  trophyToastEl.textContent = `${def.icon} ${def.name}！`;
+  trophyToastEl.classList.remove("animate");
+  void trophyToastEl.offsetWidth;
+  trophyToastEl.classList.add("animate");
+  trophyToastTimer = setTimeout(() => {
+    trophyToastEl.classList.remove("animate");
+    drainTrophyToastQueue();
+  }, 2200);
+}
+
+function showTrophyToast(id: string): void {
+  trophyToastQueue.push(id);
+  if (trophyToastTimer === null) drainTrophyToastQueue();
+}
+
+function renderTrophyModal(): void {
+  trophyModalListEl.innerHTML = "";
+  loadTrophyStatuses().forEach(({ def, unlocked }) => {
+    const li = document.createElement("li");
+    if (!unlocked) li.classList.add("tm-locked");
+    li.innerHTML = `<span class="tm-icon">${def.icon}</span><span class="tm-body"><strong>${def.name}</strong>${unlocked ? '<span class="tm-check">✓</span>' : ""}<small>${def.description}</small></span>`;
+    trophyModalListEl.appendChild(li);
+  });
+}
+
 function tick(): void {
   const now = performance.now();
   let stillAnimating = false;
@@ -654,6 +705,8 @@ function handleKeydown(event: KeyboardEvent): void {
 
   if (isGameOver(newGrid)) {
     setTimeout(() => audio.play("gameOver"), 400);
+    const gameOverTrophies = checkTrophies({ type: "gameOver", score: state.score });
+    gameOverTrophies.forEach((id) => showTrophyToast(id));
   }
 
   const eliminatedPairs = outcome.eliminatedPairs;
@@ -690,6 +743,12 @@ function handleKeydown(event: KeyboardEvent): void {
 
   startAnimations(prevGrid, eliminatedPairs, spawnedCells, movedCells, direction);
   startAnimationLoop();
+  const newlyUnlockedTrophies = checkTrophies({
+    type: "slide",
+    grid: state.grid,
+    comboCount: eliminatedPairs.length,
+  });
+  newlyUnlockedTrophies.forEach((id) => showTrophyToast(id));
 }
 
 window.addEventListener("keydown", handleKeydown);
