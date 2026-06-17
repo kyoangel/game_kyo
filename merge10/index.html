@@ -7,6 +7,9 @@
   <link rel="manifest" href="/game_kyo/merge10/manifest.json" />
   <link rel="icon" type="image/svg+xml" href="/game_kyo/merge10/icons/icon.svg" />
   <style>
+    html, body {
+      overscroll-behavior: none;
+    }
     body {
       margin: 0;
       display: flex;
@@ -48,6 +51,7 @@
       font-size: 15px;
       white-space: nowrap;
     }
+    #hud-palette-toggle,
     #hud-mute {
       width: 44px;
       height: 44px;
@@ -58,20 +62,6 @@
       font-size: 18px;
       cursor: pointer;
       flex-shrink: 0;
-    }
-    #hud-palette-toggle {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.45);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-      z-index: 10;
     }
     #hud-powerups {
       display: flex;
@@ -102,6 +92,29 @@
       font-weight: bold;
       color: #fde047;
       pointer-events: none;
+    }
+    .hud-powerup-btn[data-locked="true"] {
+      opacity: 0.4;
+      cursor: pointer;
+    }
+    .powerup-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #e5e7eb;
+      font-size: 11px;
+      white-space: nowrap;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid #374151;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .hud-powerup-btn[data-tooltip-open="true"] .powerup-tooltip {
+      display: block;
     }
     #score-popup {
       position: absolute;
@@ -207,13 +220,12 @@
       100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0); }
     }
   </style>
-  <script type="module" crossorigin src="/game_kyo/merge10/assets/index-Czs6F9sA.js"></script>
+  <script type="module" crossorigin src="/game_kyo/merge10/assets/index-CQ57EM_z.js"></script>
 </head>
 <body>
   <div id="game-wrapper">
     <div id="game-container">
       <canvas id="game" width="480" height="480"></canvas>
-      <button id="hud-palette-toggle" aria-label="切換配色">🎨</button>
       <div id="score-popup"></div>
       <div id="combo-badge"></div>
       <div id="game-over" hidden>
@@ -230,6 +242,7 @@
       <span id="hud-score">Score: 0</span>
       <span id="hud-best">Best: 0</span>
       <div id="hud-powerups"></div>
+      <button id="hud-palette-toggle" aria-label="切換配色">🎨</button>
       <button id="hud-mute" aria-label="靜音">🔊</button>
     </div>
   </div>
