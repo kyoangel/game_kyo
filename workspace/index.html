@@ -93,6 +93,29 @@
       color: #fde047;
       pointer-events: none;
     }
+    .hud-powerup-btn[data-locked="true"] {
+      opacity: 0.4;
+      cursor: pointer;
+    }
+    .powerup-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #e5e7eb;
+      font-size: 11px;
+      white-space: nowrap;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid #374151;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .hud-powerup-btn[data-tooltip-open="true"] .powerup-tooltip {
+      display: block;
+    }
     #score-popup {
       position: absolute;
       bottom: 8px;

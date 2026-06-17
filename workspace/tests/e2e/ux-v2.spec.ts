@@ -213,3 +213,45 @@ test("Fix2: palette toggle is inside #hud, not overlaid on canvas", async ({ pag
   );
   expect(position).toBe("static");
 });
+
+test("Fix3: all 4 powerup slots are always visible, locked slots show lock badge", async ({ page }) => {
+  await page.goto("/");
+  // Ensure 0 powerups
+  await page.evaluate(() => {
+    (window as unknown as { __setPowerups: (p: unknown) => void }).__setPowerups(
+      { hammer: 0, shuffle: 0, addOne: 0, bomb: 0 },
+    );
+  });
+
+  const slots = page.locator(".hud-powerup-btn");
+  await expect(slots).toHaveCount(4);
+
+  // All locked
+  for (const slot of await slots.all()) {
+    expect(await slot.getAttribute("data-locked")).toBe("true");
+  }
+});
+
+test("Fix3: clicking a locked powerup shows its tooltip, clicking outside dismisses it", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    (window as unknown as { __setPowerups: (p: unknown) => void }).__setPowerups(
+      { hammer: 0, shuffle: 0, addOne: 0, bomb: 0 },
+    );
+  });
+
+  const hammerBtn = page.locator(".hud-powerup-btn[data-powerup='hammer']");
+  const tooltip = hammerBtn.locator(".powerup-tooltip");
+
+  // Tooltip hidden initially
+  await expect(tooltip).toBeHidden();
+
+  // Click locked button → tooltip appears
+  await hammerBtn.click();
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toContainText("每玩 5 局");
+
+  // Click outside → tooltip hidden
+  await page.locator("canvas#game").click({ position: { x: 10, y: 10 } });
+  await expect(tooltip).toBeHidden();
+});

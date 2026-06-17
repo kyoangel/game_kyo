@@ -92,29 +92,56 @@ function savePowerups(): void {
   localStorage.setItem(POWERUP_KEY, JSON.stringify(powerups));
 }
 
+const POWERUP_UNLOCK_TIPS: Record<PowerupId, string> = {
+  hammer:  "每玩 5 局隨機獲得",
+  shuffle: "每玩 5 局隨機獲得",
+  addOne:  "每玩 10 局獲得",
+  bomb:    "分數突破 50 分獲得；每過 100 分再得一顆",
+};
+
 function renderHudPowerups(): void {
   const container = document.getElementById("hud-powerups")!;
   container.innerHTML = "";
   const defs: Array<{ id: PowerupId; icon: string }> = [
-    { id: "hammer", icon: "🔨" },
+    { id: "hammer",  icon: "🔨" },
     { id: "shuffle", icon: "🔀" },
-    { id: "addOne", icon: "➕" },
-    { id: "bomb", icon: "💣" },
+    { id: "addOne",  icon: "➕" },
+    { id: "bomb",    icon: "💣" },
   ];
+
   defs.forEach(({ id, icon }) => {
     const count = powerups[id];
-    if (count === 0) return;
+    const locked = count === 0;
     const btn = document.createElement("button");
     btn.className = "hud-powerup-btn";
     btn.dataset.powerup = id;
+    btn.dataset.locked = String(locked);
     btn.dataset.active = String(activePowerup === id);
-    btn.title = id;
-    btn.innerHTML = `${icon}<span class="hud-powerup-count">${count}</span>`;
-    btn.addEventListener("click", () => {
+
+    const badge = locked
+      ? `<span class="hud-powerup-count">🔒</span>`
+      : `<span class="hud-powerup-count">${count}</span>`;
+    const tooltip = locked
+      ? `<span class="powerup-tooltip">${POWERUP_UNLOCK_TIPS[id]}</span>`
+      : "";
+
+    btn.innerHTML = `${icon}${badge}${tooltip}`;
+
+    btn.addEventListener("click", (e) => {
+      if (locked) {
+        e.stopPropagation();
+        const isOpen = btn.dataset.tooltipOpen === "true";
+        container.querySelectorAll<HTMLElement>("[data-tooltip-open]").forEach(
+          (el) => { delete el.dataset.tooltipOpen; },
+        );
+        if (!isOpen) btn.dataset.tooltipOpen = "true";
+        return;
+      }
       activePowerup = activePowerup === id ? null : id;
       canvas.style.outline = activePowerup ? "3px solid #f59e0b" : "";
       renderHudPowerups();
     });
+
     container.appendChild(btn);
   });
 }
@@ -638,6 +665,12 @@ paletteToggleEl.addEventListener("click", () => {
   currentPalette = nextPalette(currentPalette);
   localStorage.setItem(PALETTE_KEY, currentPalette);
   render();
+});
+
+document.addEventListener("click", () => {
+  document.querySelectorAll<HTMLElement>("[data-tooltip-open]").forEach(
+    (el) => { delete el.dataset.tooltipOpen; },
+  );
 });
 
 // ── Touch swipe ──────────────────────────────────────────────────────────────
