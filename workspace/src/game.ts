@@ -859,6 +859,12 @@ function setState(newState: GameState): void {
   eliminatingCells.clear();
   spawnCells.clear();
   moveCells.clear();
+  trophyToastQueue.length = 0;
+  if (trophyToastTimer !== null) {
+    clearTimeout(trophyToastTimer);
+    trophyToastTimer = null;
+    trophyToastEl.classList.remove("animate");
+  }
 
   if (state.score > bestScore) {
     bestScore = state.score;
