@@ -13,6 +13,13 @@ function makeLocalStorageMock() {
 const localStorageMock = makeLocalStorageMock();
 
 const EMPTY_GRID = Array.from({ length: 4 }, () => Array(4).fill(null)) as (number | null)[][];
+// A grid with one tile — used in combo/score counter tests to avoid firing board_clear.
+const ONE_TILE_GRID: (number | null)[][] = [
+  [1, null, null, null],
+  [null, null, null, null],
+  [null, null, null, null],
+  [null, null, null, null],
+];
 
 function makeGrid(values: (number | null)[][]): (number | null)[][] {
   return values;
@@ -47,21 +54,23 @@ describe("trophies", () => {
 
   // ── Stats: combo counter increments ──────────────────────────────────────────
 
-  it("slide with comboCount=1 only increments combo1Count", () => {
-    // After 10 slides with comboCount=1, combo_1_bronze should unlock (threshold=10)
+  it("slide with comboCount=1 increments combo1Count but NOT combo2Count", () => {
+    // After 10 slides with comboCount=1, combo_1_bronze should unlock (threshold=10).
+    // Uses ONE_TILE_GRID so board_clear cannot fire alongside it.
     for (let i = 0; i < 9; i++) {
-      const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 1 });
+      const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 1 });
       expect(r).not.toContain("combo_1_bronze");
     }
-    const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 1 });
+    const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 1 });
     expect(r).toContain("combo_1_bronze");
     // combo_2_bronze threshold is 3; combo2Count should still be 0
     expect(r).not.toContain("combo_2_bronze");
   });
 
   it("slide with comboCount=3 increments combo1, combo2, combo3 counts but not combo4", () => {
-    // combo_3_bronze threshold is 1 — first slide with comboCount=3 should unlock it
-    const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 3 });
+    // combo_3_bronze threshold is 1 — first slide with comboCount=3 should unlock it.
+    // Uses ONE_TILE_GRID so board_clear cannot fire alongside it.
+    const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 3 });
     expect(r).toContain("combo_3_bronze");
     // combo_4_bronze threshold is 1 — but combo4Count is 0 (comboCount=3 < 4)
     expect(r).not.toContain("combo_4_bronze");
@@ -142,7 +151,7 @@ describe("trophies", () => {
     expect(checkTrophies({ type: "slide", grid, comboCount: 0 })).not.toContain("num_9_bronze");
   });
 
-  it("num_5_gold unlocks when slide has 5 tiles of value 5", () => {
+  it("num_5_gold unlocks (along with bronze and silver) when slide has 5 tiles of value 5", () => {
     const grid = makeGrid([
       [5, 5, 5, 5],
       [5, null, null, null],
@@ -150,7 +159,9 @@ describe("trophies", () => {
       [null, null, null, null],
     ]);
     const r = checkTrophies({ type: "slide", grid, comboCount: 0 });
-    expect(r).toContain("num_5_gold");
+    expect(r).toContain("num_5_bronze");  // threshold=3, satisfied
+    expect(r).toContain("num_5_silver");  // threshold=4, satisfied
+    expect(r).toContain("num_5_gold");    // threshold=5, satisfied
     expect(r).not.toContain("num_5_diamond"); // needs 6
   });
 
@@ -158,35 +169,38 @@ describe("trophies", () => {
 
   it("combo_2_bronze unlocks after 3 slides with comboCount >= 2", () => {
     for (let i = 0; i < 2; i++) {
-      const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 2 });
+      const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 2 });
       expect(r).not.toContain("combo_2_bronze");
     }
-    const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 2 });
+    const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 2 });
     expect(r).toContain("combo_2_bronze");
   });
 
   it("combo_4_bronze unlocks on first slide with comboCount >= 4 (threshold=1)", () => {
-    const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 4 });
+    const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 4 });
     expect(r).toContain("combo_4_bronze");
   });
 
-  it("combo_4_diamond unlocks after 20 slides with comboCount >= 4", () => {
-    for (let i = 0; i < 19; i++) {
-      checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 4 });
+  it("combo_4_diamond NOT unlocked until 20th slide; unlocks on exactly the 20th", () => {
+    // 19 slides — diamond must NOT appear yet
+    for (let i = 0; i < 18; i++) {
+      checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 4 });
     }
+    const r19 = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 4 });
+    expect(r19).not.toContain("combo_4_diamond");
     // 20th slide should unlock diamond
-    const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 4 });
+    const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 4 });
     expect(r).toContain("combo_4_diamond");
   });
 
   // ── combo_5 single achievement (unchanged) ───────────────────────────────────
 
   it("combo_5 unlocks on first slide with comboCount >= 5", () => {
-    expect(checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 5 })).toContain("combo_5");
+    expect(checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 5 })).toContain("combo_5");
   });
 
   it("combo_5 does NOT unlock at comboCount 4", () => {
-    expect(checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 4 })).not.toContain("combo_5");
+    expect(checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 4 })).not.toContain("combo_5");
   });
 
   // ── Score milestone trophies ──────────────────────────────────────────────────
@@ -207,6 +221,11 @@ describe("trophies", () => {
     checkTrophies({ type: "gameOver", score: 400 });
     const r = checkTrophies({ type: "gameOver", score: 350 });
     expect(r).toContain("score_300_silver");
+  });
+
+  it("score_500_bronze unlocks on first game with score >= 500", () => {
+    const r = checkTrophies({ type: "gameOver", score: 500 });
+    expect(r).toContain("score_500_bronze");
   });
 
   // ── Board clear ───────────────────────────────────────────────────────────────
@@ -251,8 +270,8 @@ describe("trophies", () => {
   // ── Deduplication ─────────────────────────────────────────────────────────────
 
   it("already-unlocked trophy is NOT returned again by checkTrophies", () => {
-    checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 5 });
-    const r = checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 5 });
+    checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 5 });
+    const r = checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 5 });
     expect(r).not.toContain("combo_5");
   });
 
@@ -282,12 +301,13 @@ describe("trophies", () => {
   // ── loadTrophyStatuses post-unlock ────────────────────────────────────────────
 
   it("loadTrophyStatuses reflects unlocked state after checkTrophies", () => {
-    checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 5 });
+    checkTrophies({ type: "slide", grid: ONE_TILE_GRID, comboCount: 5 });
     const statuses = loadTrophyStatuses();
     const combo5 = statuses.find((s) => s.def.id === "combo_5")!;
     expect(combo5.unlocked).toBe(true);
     expect(combo5.unlockedAt).toBeTypeOf("number");
     const zeroScore = statuses.find((s) => s.def.id === "zero_score")!;
     expect(zeroScore.unlocked).toBe(false);
+    expect(zeroScore.unlockedAt).toBeNull();
   });
 });
