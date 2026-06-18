@@ -26,7 +26,7 @@ import {
   computePlayCountAward,
   computeEliminationAward,
 } from "./powerups";
-import { checkTrophies, loadTrophyStatuses, getTrophyDef } from "./trophies";
+import { checkTrophies, loadTrophyStatuses, getTrophyDef, type TrophyDef } from "./trophies";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -539,12 +539,33 @@ function showTrophyToast(id: string): void {
 
 function renderTrophyModal(): void {
   trophyModalListEl.innerHTML = "";
-  loadTrophyStatuses().forEach(({ def, unlocked }) => {
-    const li = document.createElement("li");
-    if (!unlocked) li.classList.add("tm-locked");
-    li.innerHTML = `<span class="tm-icon">${def.icon}</span><span class="tm-body"><strong>${def.name}</strong>${unlocked ? '<span class="tm-check">✓</span>' : ""}<small>${def.description}</small></span>`;
-    trophyModalListEl.appendChild(li);
-  });
+  const statuses = loadTrophyStatuses();
+
+  const CATEGORY_ORDER: TrophyDef["category"][] = ["numbers", "combos", "scores", "play", "special"];
+  const CATEGORY_LABELS: Record<TrophyDef["category"], string> = {
+    numbers: "數字系列",
+    combos: "連鎖系列",
+    scores: "分數里程碑",
+    play: "遊玩成就",
+    special: "特殊成就",
+  };
+
+  for (const cat of CATEGORY_ORDER) {
+    const group = statuses.filter((s) => s.def.category === cat);
+    if (group.length === 0) continue;
+
+    const header = document.createElement("li");
+    header.className = "tm-category-header";
+    header.textContent = CATEGORY_LABELS[cat];
+    trophyModalListEl.appendChild(header);
+
+    for (const { def, unlocked } of group) {
+      const li = document.createElement("li");
+      if (!unlocked) li.classList.add("tm-locked");
+      li.innerHTML = `<span class="tm-icon">${def.icon}</span><span class="tm-body"><strong>${def.name}</strong>${unlocked ? '<span class="tm-check">✓</span>' : ""}<small>${def.description}</small></span>`;
+      trophyModalListEl.appendChild(li);
+    }
+  }
 }
 
 function tick(): void {

@@ -393,16 +393,31 @@ test("Trophy: 🏆 button is visible in HUD", async ({ page }) => {
   await expect(page.locator("#hud-trophy")).toBeVisible();
 });
 
-test("Trophy: clicking 🏆 opens modal with all 8 trophy names", async ({ page }) => {
+test("Trophy: clicking 🏆 opens modal with trophy names from all 5 categories", async ({ page }) => {
   await page.goto("/");
   await page.locator("#hud-trophy").click();
   await expect(page.locator("#trophy-modal")).toBeVisible();
+  // Spot-check one trophy from each category (numbers, combos, scores, play, special)
   for (const name of [
-    "空手而歸", "一的洪流", "九的盛宴", "滿溢邊緣",
-    "連鎖初學", "連鎖高手", "連鎖達人", "連鎖大師",
+    "一的洪流",    // numbers
+    "連鎖初學",   // combos
+    "百分首達",   // scores
+    "新手冒險",   // play
+    "空手而歸",   // special
   ]) {
     await expect(page.locator("#trophy-modal")).toContainText(name);
   }
+});
+
+test("trophy modal: shows 5 category headers", async ({ page }) => {
+  await page.goto("/");
+  await page.waitForSelector("canvas");
+  await page.click("#hud-trophy");
+  await expect(page.locator("#trophy-modal")).toBeVisible();
+
+  const headers = page.locator(".tm-category-header");
+  await expect(headers).toHaveCount(5);
+  await expect(headers.first()).toHaveText("數字系列");
 });
 
 test("Trophy: clicking overlay closes trophy modal", async ({ page }) => {
@@ -415,7 +430,11 @@ test("Trophy: clicking overlay closes trophy modal", async ({ page }) => {
 
 test("Trophy: combo_2 slide unlocks 連鎖初學 and shows toast", async ({ page }) => {
   await page.goto("/");
-  // Grid with 2 pairs (row 0: 1+9, row 1: 1+9) — ArrowLeft eliminates both
+  // Pre-seed stats so that combo2Count is already 2 (threshold is 3)
+  await page.evaluate(() => {
+    localStorage.setItem("mathMerge10Stats", JSON.stringify({ combo2Count: 2 }));
+  });
+  // Grid with 2 pairs (row 0: 1+9, row 1: 1+9) — ArrowLeft eliminates both (combo-2)
   await page.evaluate(() => {
     (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
       grid: [
@@ -434,7 +453,11 @@ test("Trophy: combo_2 slide unlocks 連鎖初學 and shows toast", async ({ page
 
 test("Trophy: unlocked trophy shows ✓ in modal", async ({ page }) => {
   await page.goto("/");
-  // Unlock combo_2 first
+  // Pre-seed stats so that combo2Count is already 2 (threshold is 3), then do one more combo-2
+  await page.evaluate(() => {
+    localStorage.setItem("mathMerge10Stats", JSON.stringify({ combo2Count: 2 }));
+  });
+  // Unlock 連鎖初學 by reaching combo2Count=3
   await page.evaluate(() => {
     (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
       grid: [
