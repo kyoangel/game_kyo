@@ -393,30 +393,31 @@ test("Trophy: 🏆 button is visible in HUD", async ({ page }) => {
   await expect(page.locator("#hud-trophy")).toBeVisible();
 });
 
-test("Trophy: clicking 🏆 opens modal with trophy names from all 5 categories", async ({ page }) => {
+test("Trophy: clicking 🏆 opens modal with trophy names from all 6 categories", async ({ page }) => {
   await page.goto("/");
   await page.locator("#hud-trophy").click();
   await expect(page.locator("#trophy-modal")).toBeVisible();
-  // Spot-check one trophy from each category (numbers, combos, scores, play, special)
+  // Spot-check one label/name from each category (numbers, combos, scores, play, cumulative, special)
   for (const name of [
-    "一的洪流",    // numbers
-    "連鎖初學",   // combos
-    "百分首達",   // scores
-    "新手冒險",   // play
-    "空手而歸",   // special
+    "數字 1",       // numbers (tiered group label)
+    "最高連鎖",     // combos (tiered group label)
+    "單場 ≥100 分", // scores (tiered group label)
+    "遊玩次數",     // play (tiered group label)
+    "累積總分",     // cumulative (tiered group label)
+    "空手而歸",     // special (single trophy def.name)
   ]) {
     await expect(page.locator("#trophy-modal")).toContainText(name);
   }
 });
 
-test("trophy modal: shows 5 category headers", async ({ page }) => {
+test("trophy modal: shows 6 category headers", async ({ page }) => {
   await page.goto("/");
   await page.waitForSelector("canvas");
   await page.click("#hud-trophy");
   await expect(page.locator("#trophy-modal")).toBeVisible();
 
   const headers = page.locator(".tm-category-header");
-  await expect(headers).toHaveCount(5);
+  await expect(headers).toHaveCount(6);
   await expect(headers.first()).toHaveText("數字系列");
 });
 
@@ -428,12 +429,9 @@ test("Trophy: clicking overlay closes trophy modal", async ({ page }) => {
   await expect(page.locator("#trophy-modal")).toBeHidden();
 });
 
-test("Trophy: combo_2 slide unlocks 連鎖初學 and shows toast", async ({ page }) => {
+test("Trophy: combo-2 slide unlocks 連鎖初現 and shows toast", async ({ page }) => {
   await page.goto("/");
-  // Pre-seed stats so that combo2Count is already 2 (threshold is 3)
-  await page.evaluate(() => {
-    localStorage.setItem("mathMerge10Stats", JSON.stringify({ combo2Count: 2 }));
-  });
+  // No pre-seeding needed: combo_bronze unlocks immediately on first slide with comboCount >= 2
   // Grid with 2 pairs (row 0: 1+9, row 1: 1+9) — ArrowLeft eliminates both (combo-2)
   await page.evaluate(() => {
     (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
@@ -448,16 +446,12 @@ test("Trophy: combo_2 slide unlocks 連鎖初學 and shows toast", async ({ page
   });
   await page.keyboard.press("ArrowLeft");
   await page.waitForTimeout(300);
-  await expect(page.locator("#trophy-toast")).toContainText("連鎖初學");
+  await expect(page.locator("#trophy-toast")).toContainText("連鎖初現");
 });
 
-test("Trophy: unlocked trophy shows ✓ in modal", async ({ page }) => {
+test("Trophy: unlocked combo_bronze shows as unlocked medal in new UI", async ({ page }) => {
   await page.goto("/");
-  // Pre-seed stats so that combo2Count is already 2 (threshold is 3), then do one more combo-2
-  await page.evaluate(() => {
-    localStorage.setItem("mathMerge10Stats", JSON.stringify({ combo2Count: 2 }));
-  });
-  // Unlock 連鎖初學 by reaching combo2Count=3
+  // Unlock 連鎖初現 with a combo-2 slide (no pre-seeding needed)
   await page.evaluate(() => {
     (window as unknown as { __setTestState: (s: unknown) => void }).__setTestState({
       grid: [
@@ -474,9 +468,14 @@ test("Trophy: unlocked trophy shows ✓ in modal", async ({ page }) => {
   // Open trophy modal
   await page.locator("#hud-trophy").click();
   await expect(page.locator("#trophy-modal")).toBeVisible();
-  // 連鎖初學 row should have ✓
-  const combo2Item = page.locator("#trophy-modal-list li").filter({ hasText: "連鎖初學" });
-  await expect(combo2Item).toContainText("✓");
+  // The 連鎖系列 progress row should exist and have its first medal unlocked
+  const comboRow = page.locator("#trophy-modal-list .tm-prog-row").filter({ hasText: "最高連鎖" });
+  await expect(comboRow).toBeVisible();
+  const firstMedal = comboRow.locator(".tm-tier").first();
+  await expect(firstMedal).not.toHaveClass(/locked/);
+  // Second medal (silver, needs ×3) should still be locked
+  const secondMedal = comboRow.locator(".tm-tier").nth(1);
+  await expect(secondMedal).toHaveClass(/locked/);
 });
 
 test("HUD: renders in two rows without horizontal overflow at 390px viewport", async ({

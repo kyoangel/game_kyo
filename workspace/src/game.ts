@@ -26,7 +26,7 @@ import {
   computePlayCountAward,
   computeEliminationAward,
 } from "./powerups";
-import { checkTrophies, loadTrophyStatuses, getTrophyDef, type TrophyDef } from "./trophies";
+import { checkTrophies, loadModalData, getTrophyDef } from "./trophies";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -539,30 +539,54 @@ function showTrophyToast(id: string): void {
 
 function renderTrophyModal(): void {
   trophyModalListEl.innerHTML = "";
-  const statuses = loadTrophyStatuses();
+  const sections = loadModalData();
 
-  const CATEGORY_ORDER: TrophyDef["category"][] = ["numbers", "combos", "scores", "play", "special"];
-  const CATEGORY_LABELS: Record<TrophyDef["category"], string> = {
-    numbers: "數字系列",
-    combos: "連鎖系列",
-    scores: "分數里程碑",
-    play: "遊玩成就",
-    special: "特殊成就",
-  };
-
-  for (const cat of CATEGORY_ORDER) {
-    const group = statuses.filter((s) => s.def.category === cat);
-    if (group.length === 0) continue;
-
+  for (const section of sections) {
     const header = document.createElement("li");
     header.className = "tm-category-header";
-    header.textContent = CATEGORY_LABELS[cat];
+    header.textContent = section.categoryLabel;
     trophyModalListEl.appendChild(header);
 
-    for (const { def, unlocked } of group) {
+    for (const group of section.groups) {
       const li = document.createElement("li");
-      if (!unlocked) li.classList.add("tm-locked");
-      li.innerHTML = `<span class="tm-icon">${def.icon}</span><span class="tm-body"><strong>${def.name}</strong>${unlocked ? '<span class="tm-check">✓</span>' : ""}<small>${def.description}</small></span>`;
+
+      if (group.type === "single") {
+        const { def, unlocked } = group.single!;
+        li.className = `tm-single${unlocked ? "" : " locked"}`;
+        li.innerHTML = `<span class="tm-single-ico">${def.icon}</span><div class="tm-single-body"><strong>${def.name}</strong><small>${def.description}</small></div>`;
+      } else if (group.beyondDiamond) {
+        li.className = "tm-prog-row";
+        li.innerHTML = `
+          <div class="tm-prog-top">
+            <span class="tm-prog-label">${group.label}</span>
+            <span class="tm-beyond-count">${group.beyondDisplay ?? ""}</span>
+          </div>
+          <div class="tm-medals">
+            ${group.tiers!.map((t) => `<div class="tm-tier"><span class="tm-ico">${t.def.icon}</span></div>`).join("")}
+            <span class="tm-beyond-tag">全數解鎖 ✦</span>
+          </div>
+          <div class="tm-bar"><div class="tm-fill tm-fill-cyan" style="width:100%"></div></div>
+          <div class="tm-beyond-sub">${group.beyondSubDisplay ?? ""}</div>
+        `;
+      } else {
+        const pct = Math.min(100, ((group.progressValue ?? 0) / (group.progressCeiling ?? 1)) * 100);
+        li.className = "tm-prog-row";
+        li.innerHTML = `
+          <div class="tm-prog-top">
+            <span class="tm-prog-label">${group.label}</span>
+            <span class="tm-prog-val">${group.progressDisplay ?? ""}</span>
+          </div>
+          <div class="tm-medals">
+            ${group.tiers!.map((t, i) => `
+              <div class="tm-tier${t.unlocked ? "" : " locked"}">
+                <span class="tm-ico">${t.def.icon}</span>
+                <span class="tm-thr">${group.thresholdDisplays?.[i] ?? ""}</span>
+              </div>`).join("")}
+          </div>
+          <div class="tm-bar"><div class="tm-fill tm-fill-purple" style="width:${pct.toFixed(1)}%"></div></div>
+        `;
+      }
+
       trophyModalListEl.appendChild(li);
     }
   }
