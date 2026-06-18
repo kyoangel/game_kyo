@@ -7,3 +7,6 @@ __pycache__/
 .claude/
 .pytest_cache/
 workspace/test-results/
+test-results/
+.DS_Store
+.superpowers/
