@@ -177,7 +177,8 @@ describe("trophies", () => {
   });
 
   it("score_total_silver unlocks once totalScore >= 10000", () => {
-    for (let i = 0; i < 19; i++) checkTrophies({ type: "gameOver", score: 600 });
+    // 16 × 600 = 9600 (< 10000), 17th = 10200 (≥ 10000) → unlocks on this call
+    for (let i = 0; i < 16; i++) checkTrophies({ type: "gameOver", score: 600 });
     const r = checkTrophies({ type: "gameOver", score: 600 });
     expect(r).toContain("score_total_silver");
   });
