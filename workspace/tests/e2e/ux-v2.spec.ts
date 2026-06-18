@@ -455,3 +455,27 @@ test("Trophy: unlocked trophy shows ✓ in modal", async ({ page }) => {
   const combo2Item = page.locator("#trophy-modal-list li").filter({ hasText: "連鎖初學" });
   await expect(combo2Item).toContainText("✓");
 });
+
+test("HUD: renders in two rows without horizontal overflow at 390px viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.waitForSelector("canvas");
+
+  // Two-row wrapper elements exist
+  await expect(page.locator("#hud-scores")).toBeVisible();
+  await expect(page.locator("#hud-buttons")).toBeVisible();
+
+  // Score and best are inside the scores row
+  await expect(page.locator("#hud-scores #hud-score")).toBeVisible();
+  await expect(page.locator("#hud-scores #hud-best")).toBeVisible();
+
+  // Buttons are inside the buttons row
+  await expect(page.locator("#hud-buttons #hud-trophy")).toBeVisible();
+  await expect(page.locator("#hud-buttons #hud-mute")).toBeVisible();
+
+  // No horizontal overflow
+  const bodyScrollWidth = await page.evaluate(() => document.body.scrollWidth);
+  expect(bodyScrollWidth).toBeLessThanOrEqual(390);
+});
