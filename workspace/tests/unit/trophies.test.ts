@@ -228,12 +228,12 @@ describe("trophies", () => {
     expect(checkTrophies({ type: "slide", grid: EMPTY_GRID, comboCount: 0 })).toContain("board_clear");
   });
 
-  it("almost_full unlocks with 15 non-null tiles on board", () => {
+  it("almost_full unlocks with all 16 tiles non-null (full board)", () => {
     const grid: (number | null)[][] = [
       [1, 2, 3, 4],
       [5, 6, 7, 8],
       [9, 1, 2, 3],
-      [4, 5, 6, null],
+      [4, 5, 6, 7],
     ];
     expect(checkTrophies({ type: "slide", grid, comboCount: 0 })).toContain("almost_full");
   });
