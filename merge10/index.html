@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Game Factory</title>
   <link rel="manifest" href="/game_kyo/merge10/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Math Merge 10" />
+  <link rel="apple-touch-icon" href="/game_kyo/merge10/icons/apple-touch-icon.png" />
   <link rel="icon" type="image/svg+xml" href="/game_kyo/merge10/icons/icon.svg" />
   <style>
     html, body {
@@ -430,10 +434,27 @@
     .tm-single-body small { color: #6b7280; font-size: 10px; }
     .tm-single.locked .tm-single-ico { filter: grayscale(1) opacity(0.25); }
     .tm-single.locked .tm-single-body strong { color: #4b5563; }
+    #ios-hint {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e3a5f;
+      color: #bfdbfe;
+      font-family: sans-serif;
+      font-size: 13px;
+      border-radius: 8px;
+      padding: 10px 16px;
+      z-index: 100;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      cursor: pointer;
+    }
   </style>
-  <script type="module" crossorigin src="/game_kyo/merge10/assets/index-Ct7GdR2G.js"></script>
+  <script type="module" crossorigin src="/game_kyo/merge10/assets/index-cqQ1M4_y.js"></script>
 </head>
 <body>
+  <div id="ios-hint" style="display:none"></div>
   <div id="game-wrapper">
     <div id="game-container">
       <canvas id="game" width="480" height="480"></canvas>
@@ -515,6 +536,23 @@
         navigator.serviceWorker.register("/game_kyo/merge10/sw.js");
       });
     }
+  </script>
+  <script>
+    (function () {
+      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      var isStandalone = ('standalone' in navigator) && navigator.standalone;
+      var shown = localStorage.getItem('iosHintShown');
+      if (!isIOS || isStandalone || shown) return;
+      localStorage.setItem('iosHintShown', '1');
+      setTimeout(function () {
+        var el = document.getElementById('ios-hint');
+        if (!el) return;
+        el.textContent = '💡 用 Safari 分享 → 加入主畫面，可離線遊玩（點擊關閉）';
+        el.style.display = 'block';
+        el.addEventListener('click', function () { el.style.display = 'none'; });
+        setTimeout(function () { el.style.display = 'none'; }, 6000);
+      }, 2000);
+    }());
   </script>
 </body>
 </html>
