@@ -271,13 +271,20 @@ describe("trophies", () => {
     expect(cum.groups[0].progressCeiling).toBe(200000);
   });
 
-  it("遊玩成就 section has 2 groups: tiered play count + single board_clear", () => {
+  it("遊玩成就 section has 1 group: tiered play count only", () => {
     const sections = loadModalData();
     const play = sections[3];
-    expect(play.groups).toHaveLength(2);
+    expect(play.groups).toHaveLength(1);
     expect(play.groups[0].type).toBe("tiered");
-    expect(play.groups[1].type).toBe("single");
-    expect(play.groups[1].single!.def.id).toBe("board_clear");
+  });
+
+  it("特殊成就 section has 3 groups: board_clear, zero_score, almost_full", () => {
+    const sections = loadModalData();
+    const special = sections[5];
+    expect(special.groups).toHaveLength(3);
+    expect(special.groups[0].single!.def.id).toBe("board_clear");
+    expect(special.groups[1].single!.def.id).toBe("zero_score");
+    expect(special.groups[2].single!.def.id).toBe("almost_full");
   });
 
   it("play group beyondDiamond is false before play_diamond unlocked", () => {
