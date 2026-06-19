@@ -2,13 +2,14 @@
   "name": "Math Merge: 10之魔法師",
   "short_name": "Math Merge 10",
   "description": "相鄰數字相加為 10 即可消除的益智遊戲，適合學齡兒童。",
-  "start_url": "/",
+  "start_url": "/game_kyo/merge10/",
+  "scope": "/game_kyo/merge10/",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#222222",
+  "background_color": "#111827",
+  "theme_color": "#1a1a2e",
   "icons": [
     {
-      "src": "/icons/icon.svg",
+      "src": "/game_kyo/merge10/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
