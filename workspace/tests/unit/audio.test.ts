@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AudioEngine } from "../../src/audio";
 
-function makeMockCtx() {
+function makeMockCtx(state?: "suspended" | "running" | "closed") {
   const mockGain = {
     gain: {
       setValueAtTime: vi.fn(),
@@ -21,10 +21,12 @@ function makeMockCtx() {
     },
   };
   return {
+    state: state || "running",
     currentTime: 0,
     destination: {},
     createOscillator: vi.fn(() => mockOsc),
     createGain: vi.fn(() => mockGain),
+    resume: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -72,5 +74,21 @@ describe("AudioEngine", () => {
     engine.toggleMute();
     engine.play("move");
     expect(AudioContext).not.toHaveBeenCalled();
+  });
+
+  it("calls resume() when AudioContext is suspended", () => {
+    const mockCtx = makeMockCtx("suspended");
+    vi.stubGlobal("AudioContext", vi.fn(() => mockCtx));
+    const engine = new AudioEngine();
+    engine.play("move");
+    expect(mockCtx.resume).toHaveBeenCalledOnce();
+  });
+
+  it("does not call resume() when AudioContext is already running", () => {
+    const mockCtx = makeMockCtx("running");
+    vi.stubGlobal("AudioContext", vi.fn(() => mockCtx));
+    const engine = new AudioEngine();
+    engine.play("move");
+    expect(mockCtx.resume).not.toHaveBeenCalled();
   });
 });
