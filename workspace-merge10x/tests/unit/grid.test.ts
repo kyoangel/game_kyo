@@ -16,6 +16,7 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.scoreGained).toBe(10);
     expect(result.groups).toHaveLength(1);
     expect(result.groups[0].length).toBe(2);
+    expect(result.groups[0].compactedStart).toBe(0);
   });
 
   it("eliminates a 3-tile group summing to 10", () => {
@@ -23,6 +24,7 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.row).toEqual([null, null, null, null]);
     expect(result.scoreGained).toBe(25);
     expect(result.groups[0].length).toBe(3);
+    expect(result.groups[0].compactedStart).toBe(0);
   });
 
   it("eliminates a 4-tile group summing to 10", () => {
@@ -30,11 +32,13 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.row).toEqual([null, null, null, null]);
     expect(result.scoreGained).toBe(50);
     expect(result.groups[0].length).toBe(4);
+    expect(result.groups[0].compactedStart).toBe(0);
   });
 
   it("prefers 4-tile over 3-tile: [1,2,3,4] = quad not [1,2,3]+[4]", () => {
     const result = slideRowLeft([1, 2, 3, 4]);
     expect(result.groups[0].length).toBe(4);
+    expect(result.groups[0].compactedStart).toBe(0);
   });
 
   it("prefers 3-tile over 2-tile: [2,3,5,5] — triple then leftover 5", () => {
@@ -42,6 +46,7 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.row).toEqual([5, null, null, null]);
     expect(result.scoreGained).toBe(25);
     expect(result.groups[0].length).toBe(3);
+    expect(result.groups[0].compactedStart).toBe(0);
   });
 
   it("falls back to 2-tile when no 3/4-tile match: [5,5,null,null]", () => {
@@ -49,6 +54,7 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.row).toEqual([null, null, null, null]);
     expect(result.scoreGained).toBe(10);
     expect(result.groups[0].length).toBe(2);
+    expect(result.groups[0].compactedStart).toBe(0);
   });
 
   it("handles two consecutive 2-tile pairs: [3,7,3,7]", () => {
@@ -56,6 +62,8 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.row).toEqual([null, null, null, null]);
     expect(result.scoreGained).toBe(20);
     expect(result.groups).toHaveLength(2);
+    expect(result.groups[0].compactedStart).toBe(0);
+    expect(result.groups[1].compactedStart).toBe(0);
   });
 
   it("handles mixed pair + triple in one row: [1,9,2,3,5,null]", () => {
@@ -63,6 +71,8 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.row).toEqual([null, null, null, null, null, null]);
     expect(result.scoreGained).toBe(35); // 10 + 25
     expect(result.groups).toHaveLength(2);
+    expect(result.groups[0].compactedStart).toBe(0);
+    expect(result.groups[1].compactedStart).toBe(0);
   });
 
   it("keeps non-matching tiles", () => {
@@ -83,6 +93,14 @@ describe("slideRowLeft — greedy longest-match", () => {
     const result = slideRowLeft([2, 3, 5, null]);
     expect(result.groups[0].originalCols).toEqual([0, 1, 2]);
   });
+
+  it("compactedStart reflects non-eliminated tiles preceding the group: [1,2,1,9]", () => {
+    const result = slideRowLeft([1, 2, 1, 9]);
+    expect(result.row).toEqual([1, 2, null, null]);
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0].compactedStart).toBe(2); // merged=[1,2] before the [1,9] pair
+    expect(result.groups[0].originalCols).toEqual([2, 3]);
+  });
 });
 
 describe("slide — 4-direction", () => {
@@ -98,6 +116,7 @@ describe("slide — 4-direction", () => {
     expect(outcome.scoreGained).toBe(10);
     expect(outcome.eliminatedGroups).toHaveLength(1);
     expect(outcome.grid[0]).toEqual([null, null, null, null]);
+    expect(outcome.eliminatedGroups[0].compactedStart).toBe(0);
   });
 
   it("slides right and eliminates pair", () => {
@@ -110,6 +129,7 @@ describe("slide — 4-direction", () => {
     const outcome = slide(grid, "right");
     expect(outcome.moved).toBe(true);
     expect(outcome.grid[0]).toEqual([null, null, null, null]);
+    expect(outcome.eliminatedGroups[0].compactedStart).toBe(2);
   });
 
   it("slides up and eliminates pair in column", () => {
@@ -123,6 +143,7 @@ describe("slide — 4-direction", () => {
     expect(outcome.moved).toBe(true);
     expect(outcome.grid[0][0]).toBe(null);
     expect(outcome.grid[1][0]).toBe(null);
+    expect(outcome.eliminatedGroups[0].compactedStart).toBe(0);
   });
 
   it("returns moved=false when no tile changes", () => {

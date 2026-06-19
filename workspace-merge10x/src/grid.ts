@@ -11,11 +11,13 @@ export interface GameState {
 export interface EliminatedGroup {
   positions: Array<{ row: number; col: number }>;
   length: 2 | 3 | 4;
+  compactedStart: number;
 }
 
 export interface SlideGroupInfo {
   originalCols: number[];
   length: 2 | 3 | 4;
+  compactedStart: number;
 }
 
 export interface SlideResult {
@@ -65,21 +67,21 @@ export function slideRowLeft(row: Cell[]): SlideResult {
       i + 3 < values.length &&
       v[i] + v[i + 1] + v[i + 2] + v[i + 3] === 10
     ) {
-      groups.push({ originalCols: [p[i], p[i + 1], p[i + 2], p[i + 3]], length: 4 });
+      groups.push({ originalCols: [p[i], p[i + 1], p[i + 2], p[i + 3]], length: 4, compactedStart: merged.length });
       scoreGained += scoreForLength(4);
       i += 4;
     } else if (
       i + 2 < values.length &&
       v[i] + v[i + 1] + v[i + 2] === 10
     ) {
-      groups.push({ originalCols: [p[i], p[i + 1], p[i + 2]], length: 3 });
+      groups.push({ originalCols: [p[i], p[i + 1], p[i + 2]], length: 3, compactedStart: merged.length });
       scoreGained += scoreForLength(3);
       i += 3;
     } else if (
       i + 1 < values.length &&
       v[i] + v[i + 1] === 10
     ) {
-      groups.push({ originalCols: [p[i], p[i + 1]], length: 2 });
+      groups.push({ originalCols: [p[i], p[i + 1]], length: 2, compactedStart: merged.length });
       scoreGained += scoreForLength(2);
       i += 2;
     } else {
@@ -117,6 +119,7 @@ function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
       eliminatedGroups.push({
         positions: g.originalCols.map((col) => ({ row: rowIndex, col })),
         length: g.length,
+        compactedStart: g.compactedStart,
       });
     });
     return result.row;
@@ -145,6 +148,7 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
           row,
           col: size - 1 - col,
         })),
+        compactedStart: size - g.compactedStart - g.length,
       }));
       return { ...outcome, grid: reverseRows(outcome.grid), eliminatedGroups: groups };
     }
@@ -156,6 +160,7 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
       }));
       return { ...outcome, grid: transpose(outcome.grid), eliminatedGroups: groups };
     }
+
     case "down": {
       const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)));
       const groups = outcome.eliminatedGroups.map((g) => ({
@@ -164,6 +169,7 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
           row: size - 1 - col,
           col: row,
         })),
+        compactedStart: size - g.compactedStart - g.length,
       }));
       return { ...outcome, grid: transpose(reverseRows(outcome.grid)), eliminatedGroups: groups };
     }
