@@ -47,6 +47,34 @@ jobs:
           branch: gh-pages
           clean: false
 
+      - name: Install dependencies (merge10x)
+        run: npm ci
+        working-directory: workspace-merge10x
+
+      - name: Unit tests (merge10x)
+        run: npm run test:unit
+        working-directory: workspace-merge10x
+
+      - name: Install Playwright browsers (merge10x)
+        run: npx playwright install --with-deps chromium
+        working-directory: workspace-merge10x
+
+      - name: E2E tests (merge10x)
+        run: npm run test:e2e
+        working-directory: workspace-merge10x
+
+      - name: Build (merge10x)
+        run: npm run build
+        working-directory: workspace-merge10x
+
+      - name: Deploy merge10x to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: workspace-merge10x/dist
+          target-folder: merge10x
+          branch: gh-pages
+          clean: false
+
       - name: Deploy hub index to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
