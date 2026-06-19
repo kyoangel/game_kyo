@@ -7,6 +7,8 @@ import {
   type GameState,
   type GameGrid,
   type Rng,
+  type EliminatedGroup,
+  type SlideOutcome,
 } from "./grid";
 import { formatScorePopup, isNewRecord } from "./scoring";
 import { AudioEngine } from "./audio";
@@ -20,6 +22,8 @@ const PLAY_COUNT_KEY = "merge10xPlayCount";
 const SPAWN_DELAY_MS = 350;
 const SPAWN_DURATION_MS = 400;
 const MOVE_DURATION_MS = 150;
+const ELIM_HIGHLIGHT_MS = 400;
+const ELIM_FADE_MS = 200;
 const CANVAS_PADDING = 24;
 const HUD_HEIGHT = 70;
 const CANVAS_MAX = 520;
@@ -98,8 +102,67 @@ const spawnCells = new Map<string, number>();
 const moveCells = new Map<string, { startTime: number; direction: Direction }>();
 let animationFrameId: number | null = null;
 
+interface PhantomGroup {
+  tiles: Array<{ origRow: number; origCol: number; value: number }>;
+  compactedStart: number;
+  length: 2 | 3 | 4;
+  direction: Direction;
+  startTime: number;
+}
+
+let eliminationPhase: PhantomGroup[] | null = null;
+let deferredSlideOutcome: {
+  outcome: SlideOutcome;
+  prevScore: number;
+} | null = null;
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+function buildPhantomGroups(
+  eliminatedGroups: EliminatedGroup[],
+  originalGrid: GameGrid,
+  direction: Direction,
+  startTime: number,
+): PhantomGroup[] {
+  return eliminatedGroups.map((g) => ({
+    tiles: g.positions.map(({ row, col }) => ({
+      origRow: row,
+      origCol: col,
+      value: originalGrid[row][col] as number,
+    })),
+    compactedStart: g.compactedStart,
+    length: g.length,
+    direction,
+    startTime,
+  }));
+}
+
+function finalizeDeferredSlide(): void {
+  if (!deferredSlideOutcome) return;
+  const { outcome, prevScore } = deferredSlideOutcome;
+  deferredSlideOutcome = null;
+
+  const postSlideGrid = outcome.grid;
+  const newGrid = spawnRandomTile(postSlideGrid, rng);
+  const spawnedCells = changedCells(postSlideGrid, newGrid).filter(
+    ({ row, col }) => newGrid[row][col] !== null && postSlideGrid[row][col] === null,
+  );
+
+  const newScore = prevScore + outcome.scoreGained;
+  state = { grid: newGrid, score: newScore };
+  if (state.score > bestScore) { bestScore = state.score; saveBestScore(gridSize, bestScore); }
+  updateHudScore();
+
+  if (isGameOver(newGrid)) {
+    showGameOver(prevScore);
+  }
+
+  spawnCells.clear();
+  spawnedCells.forEach(({ row, col }) => {
+    spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
+  });
 }
 
 // ── Rendering ──────────────────────────────────────────────────────────────────
@@ -115,6 +178,72 @@ function drawTile(value: number, x: number, y: number, cellSize: number): void {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(String(value), x + cellSize / 2, y + cellSize / 2);
+}
+
+function drawPhantomTile(value: number, x: number, y: number, cellSize: number, alpha: number, scale: number): void {
+  const cx = x + cellSize / 2, cy = y + cellSize / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.translate(-cx, -cy);
+  const padding = gridSize === 5 ? 3 : 4;
+  ctx.fillStyle = "#fde047";
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  (ctx as unknown as { roundRect: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect(x + padding, y + padding, cellSize - padding * 2, cellSize - padding * 2, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#422006";
+  ctx.font = `${gridSize === 5 ? 22 : 30}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(value), x + cellSize / 2, y + cellSize / 2);
+  ctx.restore();
+}
+
+function drawBracket(group: PhantomGroup, cellSize: number, bracketAlpha: number): void {
+  const isVertical = group.direction === "up" || group.direction === "down";
+  const cs = group.compactedStart;
+  const len = group.length;
+  const firstTile = group.tiles[0];
+
+  let x1: number, y1: number, x2: number, y2: number, cpx: number, cpy: number, lx: number, ly: number;
+
+  if (!isVertical) {
+    const rowY = firstTile.origRow * cellSize;
+    const arcY = rowY + cellSize + 8;
+    x1 = cs * cellSize;
+    x2 = (cs + len) * cellSize;
+    y1 = arcY; y2 = arcY;
+    cpx = (x1 + x2) / 2;
+    cpy = arcY + 12;
+    lx = cpx; ly = cpy + 10;
+  } else {
+    const colX = firstTile.origCol * cellSize;
+    const arcX = colX + cellSize + 8;
+    y1 = cs * cellSize;
+    y2 = (cs + len) * cellSize;
+    x1 = arcX; x2 = arcX;
+    cpx = arcX + 12;
+    cpy = (y1 + y2) / 2;
+    lx = cpx + 10; ly = cpy;
+  }
+
+  ctx.save();
+  ctx.globalAlpha = bracketAlpha;
+  ctx.strokeStyle = "#fde047";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cpx, cpy, x2, y2);
+  ctx.stroke();
+
+  ctx.fillStyle = "#fde047";
+  ctx.font = "bold 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText("= 10", lx, ly);
+  ctx.restore();
 }
 
 function render(): void {
@@ -176,6 +305,53 @@ function render(): void {
       }
     });
   });
+
+  if (eliminationPhase !== null) {
+    const now = performance.now();
+    for (const group of eliminationPhase) {
+      const elapsed = now - group.startTime;
+      const isVertical = group.direction === "up" || group.direction === "down";
+
+      for (let k = 0; k < group.tiles.length; k++) {
+        const tile = group.tiles[k];
+        const origX = tile.origCol * cellSize;
+        const origY = tile.origRow * cellSize;
+
+        let compRow: number, compCol: number;
+        if (!isVertical) {
+          compRow = tile.origRow;
+          compCol = group.compactedStart + k;
+        } else {
+          compRow = group.compactedStart + k;
+          compCol = tile.origCol;
+        }
+        const compX = compCol * cellSize;
+        const compY = compRow * cellSize;
+
+        if (elapsed <= MOVE_DURATION_MS) {
+          const t = elapsed / MOVE_DURATION_MS;
+          const p = 1 - Math.pow(1 - t, 2);
+          const x = lerp(origX, compX, p);
+          const y = lerp(origY, compY, p);
+          drawPhantomTile(tile.value, x, y, cellSize, 1, 1.0);
+        } else if (elapsed <= MOVE_DURATION_MS + ELIM_HIGHLIGHT_MS) {
+          drawPhantomTile(tile.value, compX, compY, cellSize, 1, 1.05);
+        } else {
+          const fadeElapsed = elapsed - MOVE_DURATION_MS - ELIM_HIGHLIGHT_MS;
+          const alpha = Math.max(0, 1 - fadeElapsed / ELIM_FADE_MS);
+          const scale = lerp(1.05, 0.4, fadeElapsed / ELIM_FADE_MS);
+          drawPhantomTile(tile.value, compX, compY, cellSize, alpha, scale);
+        }
+      }
+
+      if (elapsed > MOVE_DURATION_MS) {
+        const bracketAlpha = elapsed <= MOVE_DURATION_MS + ELIM_HIGHLIGHT_MS
+          ? 1
+          : Math.max(0, 1 - (elapsed - MOVE_DURATION_MS - ELIM_HIGHLIGHT_MS) / ELIM_FADE_MS);
+        drawBracket(group, cellSize, bracketAlpha);
+      }
+    }
+  }
 }
 
 function tick(): void {
@@ -197,6 +373,19 @@ function tick(): void {
       moveCells.delete(key);
     }
   });
+
+  if (eliminationPhase !== null) {
+    const totalPhaseDuration = MOVE_DURATION_MS + ELIM_HIGHLIGHT_MS + ELIM_FADE_MS;
+    const elapsed = now - eliminationPhase[0].startTime;
+    if (elapsed < totalPhaseDuration) {
+      stillAnimating = true;
+    } else {
+      eliminationPhase = null;
+      finalizeDeferredSlide();
+      startAnimationLoop();
+      return;
+    }
+  }
 
   render();
   if (stillAnimating) {
@@ -317,75 +506,96 @@ function startGame(size: 4 | 5): void {
 }
 
 // ── Move handler ───────────────────────────────────────────────────────────────
+function showGameOver(prevScore: number): void {
+  gameOverScoreEl.textContent = `本次分數：${state.score}`;
+  gameOverBestEl.textContent = `最高分：${bestScore}`;
+  gameOverBadgeEl.classList.toggle("hidden", !isNewRecord(state.score, prevScore > bestScore ? prevScore : bestScore));
+  gameOverEl.removeAttribute("hidden");
+  setTimeout(() => audio.play("gameOver"), 400);
+  const gameOverTrophies = checkTrophies({ type: "gameOver", score: state.score });
+  gameOverTrophies.forEach((id) => showTrophyToast(id));
+}
+
 function handleMove(direction: Direction): void {
   if (isGameOver(state.grid)) return;
+  if (eliminationPhase !== null) return;
 
   const outcome = slide(state.grid, direction);
   if (!outcome.moved) return;
 
-  const postSlideGrid = outcome.grid;
-  const newGrid = spawnRandomTile(postSlideGrid, rng);
-  const scoreGained = outcome.scoreGained;
-
-  const spawnedCells = changedCells(postSlideGrid, newGrid).filter(
-    ({ row, col }) => newGrid[row][col] !== null && postSlideGrid[row][col] === null,
-  );
-  const spawnedKeys = new Set(spawnedCells.map(({ row, col }) => `${row},${col}`));
-  const allChanged = changedCells(state.grid, newGrid);
-  const movedCells = allChanged.filter(({ row, col }) => {
-    const key = `${row},${col}`;
-    return !spawnedKeys.has(key) && newGrid[row][col] !== null;
-  });
-
-  const prevState = state;
-  state = { grid: newGrid, score: state.score + scoreGained };
-
-  if (state.score > bestScore) {
-    bestScore = state.score;
-    saveBestScore(gridSize, bestScore);
-  }
-
-  updateHudScore();
-
+  const originalGrid = state.grid;
+  const { scoreGained } = outcome;
   const groups = outcome.eliminatedGroups;
+
+  audio.play(groups.length > 0 ? "eliminate" : "move");
+  audio.play("spawn");
+
   if (groups.length > 0) {
-    audio.play("eliminate");
     showScorePopup(scoreGained);
     if (groups.length >= 2) {
       setTimeout(() => showComboBadge(groups.length), 300);
     }
-  } else {
-    audio.play("move");
   }
-  audio.play("spawn");
 
-  // Trophy check for slide event (check postSlideGrid for board_clear)
   const slideTrophies = checkTrophies({
     type: "slide",
-    postSlideGrid,
+    postSlideGrid: outcome.grid,
     eliminatedGroups: groups,
   });
   slideTrophies.forEach((id) => showTrophyToast(id));
 
-  // Game over
-  if (isGameOver(newGrid)) {
-    gameOverScoreEl.textContent = `本次分數：${state.score}`;
-    gameOverBestEl.textContent = `最高分：${bestScore}`;
-    gameOverBadgeEl.classList.toggle("hidden", !isNewRecord(state.score, prevState.score > bestScore ? prevState.score : bestScore));
-    gameOverEl.removeAttribute("hidden");
-    setTimeout(() => audio.play("gameOver"), 400);
-    const gameOverTrophies = checkTrophies({ type: "gameOver", score: state.score });
-    gameOverTrophies.forEach((id) => showTrophyToast(id));
+  if (groups.length === 0) {
+    // No eliminations: existing immediate behavior
+    const postSlideGrid = outcome.grid;
+    const newGrid = spawnRandomTile(postSlideGrid, rng);
+    const spawnedCells = changedCells(postSlideGrid, newGrid).filter(
+      ({ row, col }) => newGrid[row][col] !== null && postSlideGrid[row][col] === null,
+    );
+    const spawnedKeys = new Set(spawnedCells.map(({ row, col }) => `${row},${col}`));
+    const allChanged = changedCells(originalGrid, newGrid);
+    const movedTiles = allChanged.filter(({ row, col }) => {
+      const key = `${row},${col}`;
+      return !spawnedKeys.has(key) && newGrid[row][col] !== null;
+    });
+
+    const prevScore = state.score;
+    state = { grid: newGrid, score: state.score + scoreGained };
+    if (state.score > bestScore) { bestScore = state.score; saveBestScore(gridSize, bestScore); }
+    updateHudScore();
+
+    if (isGameOver(newGrid)) {
+      showGameOver(prevScore);
+    }
+
+    spawnCells.clear();
+    moveCells.clear();
+    spawnedCells.forEach(({ row, col }) => {
+      spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
+    });
+    movedTiles.forEach(({ row, col }) => {
+      moveCells.set(`${row},${col}`, { startTime: performance.now(), direction });
+    });
+    startAnimationLoop();
+    return;
   }
+
+  // Eliminations exist: set up phantom animation, defer spawn + score
+  const postSlideGrid = outcome.grid;
+  state = { grid: postSlideGrid, score: state.score };
+
+  const movedTiles = changedCells(originalGrid, postSlideGrid).filter(
+    ({ row, col }) => postSlideGrid[row][col] !== null,
+  );
 
   spawnCells.clear();
   moveCells.clear();
-  spawnedCells.forEach(({ row, col }) => {
-    spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
-  });
-  movedCells.forEach(({ row, col }) => {
+  movedTiles.forEach(({ row, col }) => {
     moveCells.set(`${row},${col}`, { startTime: performance.now(), direction });
   });
+
+  eliminationPhase = buildPhantomGroups(groups, originalGrid, direction, performance.now());
+  deferredSlideOutcome = { outcome, prevScore: state.score };
+
   startAnimationLoop();
 }
 
