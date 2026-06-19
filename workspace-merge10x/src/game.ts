@@ -382,8 +382,7 @@ function tick(): void {
     } else {
       eliminationPhase = null;
       finalizeDeferredSlide();
-      startAnimationLoop();
-      return;
+      stillAnimating = true;  // continue loop so spawnCells from finalizeDeferredSlide animate
     }
   }
 
