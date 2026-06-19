@@ -165,7 +165,7 @@ const TROPHY_DEFS: TrophyRule[] = [
   ...scoreTrophies(500,  [1, 2, 5,  15], "五百", (s) => s.score500Count),
   ...scoreTrophies(1000, [1, 2, 5,  10], "千分", (s) => s.score1000Count),
 
-  // 遊玩成就 (5) — unchanged
+  // 遊玩成就 (4) — unchanged
   { id: "play_bronze",  name: "新手冒險", icon: "🥉", category: "play" as const,
     description: "遊玩 10 局",  check: ({ stats }) => stats.playCount >= 10 },
   { id: "play_silver",  name: "進階玩家", icon: "🥈", category: "play" as const,
@@ -174,9 +174,6 @@ const TROPHY_DEFS: TrophyRule[] = [
     description: "遊玩 100 局", check: ({ stats }) => stats.playCount >= 100 },
   { id: "play_diamond", name: "遊戲達人", icon: "💎", category: "play" as const,
     description: "遊玩 500 局", check: ({ stats }) => stats.playCount >= 500 },
-  { id: "board_clear",  name: "天地清明", icon: "✨", category: "play" as const,
-    description: "一局遊戲中將盤面完全清空",
-    check: ({ event }) => event.type === "slide" && countNonNull(event.grid) === 0 },
 
   // 累積成就 (4) — NEW
   { id: "score_total_bronze",  name: "千分旅程",   icon: "🥉", category: "cumulative" as const,
@@ -188,13 +185,16 @@ const TROPHY_DEFS: TrophyRule[] = [
   { id: "score_total_diamond", name: "二十萬傳說", icon: "💎", category: "cumulative" as const,
     description: "累積總分達到 200,000 分",  check: ({ stats }) => stats.totalScore >= 200000 },
 
-  // 特殊成就 (2) — unchanged
+  // 特殊成就 (3) — unchanged
   { id: "zero_score",  name: "空手而歸", icon: "🕊️", category: "special" as const,
     description: "完成一場遊戲，得分為零",
     check: ({ event }) => event.type === "gameOver" && event.score === 0 },
+  { id: "board_clear", name: "天地清明", icon: "✨", category: "play" as const,
+    description: "一局遊戲中將盤面完全清空",
+    check: ({ event }) => event.type === "slide" && countNonNull(event.grid) === 0  },
   { id: "almost_full", name: "滿溢邊緣", icon: "💥", category: "special" as const,
-    description: "版面上同時有 15 格或以上非空的格子",
-    check: ({ event }) => event.type === "slide" && countNonNull(event.grid) >= 15 },
+    description: "版面上同時有 16 格或以上非空的格子",
+    check: ({ event }) => event.type === "slide" && countNonNull(event.grid) == 16 },
 ];
 
 // ── Public API ────────────────────────────────────────────────────────────────
