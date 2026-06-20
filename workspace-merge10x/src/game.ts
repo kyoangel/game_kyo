@@ -56,6 +56,7 @@ const playAgainEl = document.getElementById("play-again") as HTMLButtonElement;
 const changeSizeEl = document.getElementById("change-size") as HTMLButtonElement;
 const hudScoreEl = document.getElementById("hud-score") as HTMLSpanElement;
 const hudBestEl = document.getElementById("hud-best") as HTMLSpanElement;
+const hudSettingsEl = document.getElementById("hud-settings") as HTMLButtonElement;
 const hudMuteEl = document.getElementById("hud-mute") as HTMLButtonElement;
 const hudTrophyEl = document.getElementById("hud-trophy") as HTMLButtonElement;
 const trophyModalEl = document.getElementById("trophy-modal") as HTMLDivElement;
@@ -77,14 +78,13 @@ function saveGridSize(size: 4 | 5): void {
   localStorage.setItem(SIZE_KEY, String(size));
 }
 
-function loadMatchLimit(): 2 | 3 | 4 {
+function loadMatchLimit(): 2 | 3 {
   const v = localStorage.getItem(MATCH_LIMIT_KEY);
-  if (v === "3") return 3;
-  if (v === "4") return 4;
+  if (v === "3" || v === "4") return 3; // 4 is no longer a UI option; treat as 3
   return 2;
 }
 
-function saveMatchLimit(limit: 2 | 3 | 4): void {
+function saveMatchLimit(limit: 2 | 3): void {
   localStorage.setItem(MATCH_LIMIT_KEY, String(limit));
 }
 
@@ -107,7 +107,7 @@ function loadPlayCount(): number {
 
 // ── Game state ─────────────────────────────────────────────────────────────────
 let gridSize: 4 | 5 = loadGridSize();
-let matchLimit: 2 | 3 | 4 = loadMatchLimit();
+let matchLimit: 2 | 3 = loadMatchLimit();
 let state: GameState = createInitialState(gridSize);
 let rng: Rng = Math.random;
 let bestScore: number = loadBestScore(gridSize);
@@ -567,7 +567,7 @@ function showComboBadge(count: number): void {
 }
 
 // ── Size + match selection ─────────────────────────────────────────────────────
-function startGame(size: 4 | 5, limit: 2 | 3 | 4): void {
+function startGame(size: 4 | 5, limit: 2 | 3): void {
   gridSize = size;
   saveGridSize(size);
   matchLimit = limit;
@@ -717,6 +717,12 @@ canvas.addEventListener("touchend", (e) => {
 }, { passive: true });
 
 // ── Event listeners ────────────────────────────────────────────────────────────
+hudSettingsEl.addEventListener("click", () => {
+  pendingSize = null;
+  sizeStepEl.removeAttribute("hidden");
+  matchStepEl.setAttribute("hidden", "");
+  sizePickerEl.removeAttribute("hidden");
+});
 hudMuteEl.addEventListener("click", () => { audio.toggleMute(); updateMuteButton(); });
 hudTrophyEl.addEventListener("click", () => { renderTrophyModal(); trophyModalEl.removeAttribute("hidden"); });
 trophyModalOverlayEl.addEventListener("click", () => trophyModalEl.setAttribute("hidden", ""));
@@ -733,7 +739,7 @@ document.querySelectorAll<HTMLButtonElement>(".size-btn:not(.match-btn)").forEac
 document.querySelectorAll<HTMLButtonElement>(".match-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (pendingSize === null) return;
-    const limit = Number(btn.dataset.match) as 2 | 3 | 4;
+    const limit = Number(btn.dataset.match) as 2 | 3;
     startGame(pendingSize, limit);
   });
 });
