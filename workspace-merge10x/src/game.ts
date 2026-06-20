@@ -313,42 +313,6 @@ function drawPhantomTile(value: number, x: number, y: number, cellSize: number, 
   ctx.restore();
 }
 
-function drawBracket(group: PhantomGroup, cellSize: number, bracketAlpha: number): void {
-  const isVertical = group.direction === "up" || group.direction === "down";
-  const cs = group.firstCompactedStart;
-  const len = group.length;
-  const firstTile = group.tiles[0];
-
-  let x1: number, y1: number, x2: number, y2: number, cpx: number, cpy: number;
-
-  if (!isVertical) {
-    const rowY = firstTile.firstCompactRow * cellSize;
-    const arcY = rowY + cellSize + 8;
-    x1 = cs * cellSize;
-    x2 = (cs + len) * cellSize;
-    y1 = arcY; y2 = arcY;
-    cpx = (x1 + x2) / 2;
-    cpy = arcY + 12;
-  } else {
-    const colX = firstTile.firstCompactCol * cellSize;
-    const arcX = colX + cellSize + 8;
-    y1 = cs * cellSize;
-    y2 = (cs + len) * cellSize;
-    x1 = arcX; x2 = arcX;
-    cpx = arcX + 12;
-    cpy = (y1 + y2) / 2;
-  }
-
-  ctx.save();
-  ctx.globalAlpha = bracketAlpha;
-  ctx.strokeStyle = "#fde047";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.quadraticCurveTo(cpx, cpy, x2, y2);
-  ctx.stroke();
-  ctx.restore();
-}
 
 function render(): void {
   const cellSize = canvas.width / gridSize;
@@ -461,12 +425,6 @@ function render(): void {
         }
       }
 
-      if (elapsed >= hStart && elapsed < fEnd) {
-        const bracketAlpha = elapsed < fStart
-          ? 1
-          : Math.max(0, 1 - (elapsed - fStart) / ELIM_FADE_MS);
-        drawBracket(group, cellSize, bracketAlpha);
-      }
     }
   }
 }
