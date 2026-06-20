@@ -89,7 +89,7 @@ test.describe("Swipe and elimination", () => {
       [null, null, null, null],
     ]);
     await swipe(page, "left");
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(1000);
     const state = await page.evaluate(() => (window as any).__getGameState());
     expect(state.score).toBeGreaterThanOrEqual(10);
     const nonNull = (state.grid as (number | null)[][]).flat().filter((c: number | null) => c !== null);
@@ -106,7 +106,7 @@ test.describe("Swipe and elimination", () => {
       [null, null, null, null],
     ]);
     await swipe(page, "left");
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(1000);
     const state = await page.evaluate(() => (window as any).__getGameState());
     expect(state.score).toBeGreaterThanOrEqual(25);
   });
@@ -126,8 +126,8 @@ test.describe("Swipe and elimination", () => {
     const stateDuring = await page.evaluate(() => (window as any).__getGameState());
     expect(stateDuring.score).toBe(0);
 
-    // After full animation (M 150ms + H 400ms + F 200ms + buffer = 900ms)
-    await page.waitForTimeout(900);
+    // After full animation (C1 150ms + H 400ms + F 200ms + C2 150ms + buffer = 1000ms)
+    await page.waitForTimeout(1000);
     const stateAfter = await page.evaluate(() => (window as any).__getGameState());
     expect(stateAfter.score).toBeGreaterThanOrEqual(10);
   });
