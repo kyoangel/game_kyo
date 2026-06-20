@@ -99,7 +99,7 @@ test.describe("Swipe and elimination", () => {
 
   test("eliminates a 3-tile group on swipe left", async ({ page }) => {
     await page.goto("/");
-    await selectSize(page, 4);
+    await selectSize(page, 4, 3); // matchLimit=3 required to allow 3-tile matches
     await setTestState(page, [
       [2, 3, 5, null],
       [null, null, null, null],

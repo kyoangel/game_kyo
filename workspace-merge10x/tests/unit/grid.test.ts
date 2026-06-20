@@ -197,6 +197,31 @@ describe("slide — 4-direction", () => {
     const outcome = slide(grid, "left");
     expect(outcome.moved).toBe(false);
   });
+
+  it("maxMatch=2 does not eliminate 3-tile group via slide()", () => {
+    const grid = [
+      [2, 3, 5, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ];
+    const outcome = slide(grid, "left", 2);
+    expect(outcome.scoreGained).toBe(0);
+    expect(outcome.eliminatedGroups).toHaveLength(0);
+  });
+
+  it("maxMatch=3 eliminates 3-tile group via slide()", () => {
+    const grid = [
+      [2, 3, 5, null],
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
+    ];
+    const outcome = slide(grid, "left", 3);
+    expect(outcome.scoreGained).toBe(25);
+    expect(outcome.eliminatedGroups).toHaveLength(1);
+    expect(outcome.eliminatedGroups[0].length).toBe(3);
+  });
 });
 
 describe("spawnRandomTile — weighted distribution", () => {
