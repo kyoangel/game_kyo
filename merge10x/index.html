@@ -52,6 +52,7 @@
     }
     .size-btn:last-child { margin-bottom: 0; }
     .size-btn[data-size="5"] { border-color: #4ade80; background: rgba(74,222,128,0.08); }
+    .match-btn[data-match="2"] { border-color: #4ade80; background: rgba(74,222,128,0.08); }
     .size-sub { font-size: 12px; color: #6b7280; font-weight: normal; display: block; margin-top: 2px; }
     /* Game over */
     #game-over {
@@ -151,7 +152,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.5); cursor: pointer;
     }
   </style>
-  <script type="module" crossorigin src="/game_kyo/merge10x/assets/index-nSb22KNO.js"></script>
+  <script type="module" crossorigin src="/game_kyo/merge10x/assets/index-BkkR1J6c.js"></script>
 </head>
 <body>
   <div id="ios-hint" style="display:none"></div>
@@ -159,15 +160,32 @@
   <div id="size-picker">
     <div id="size-picker-card">
       <h2>Math Merge 10X</h2>
-      <p>選擇遊戲盤面大小</p>
-      <button class="size-btn" data-size="5">
-        5 × 5
-        <span class="size-sub">推薦・策略感更強</span>
-      </button>
-      <button class="size-btn" data-size="4">
-        4 × 4
-        <span class="size-sub">快速局・輕鬆遊玩</span>
-      </button>
+      <div id="size-step">
+        <p>選擇遊戲盤面</p>
+        <button class="size-btn" data-size="5">
+          5 × 5
+          <span class="size-sub">推薦・策略感更強</span>
+        </button>
+        <button class="size-btn" data-size="4">
+          4 × 4
+          <span class="size-sub">快速局・輕鬆遊玩</span>
+        </button>
+      </div>
+      <div id="match-step" hidden>
+        <p>消除規則</p>
+        <button class="size-btn match-btn" data-match="2">
+          只消 2 個
+          <span class="size-sub">預設・最挑戰</span>
+        </button>
+        <button class="size-btn match-btn" data-match="3">
+          最多 3 個
+          <span class="size-sub">較輕鬆</span>
+        </button>
+        <button class="size-btn match-btn" data-match="4">
+          最多 4 個
+          <span class="size-sub">最容易</span>
+        </button>
+      </div>
     </div>
   </div>
   <div id="game-wrapper">
