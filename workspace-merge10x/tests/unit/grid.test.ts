@@ -112,6 +112,33 @@ describe("slideRowLeft — greedy longest-match", () => {
     expect(result.groups[0].originalCols).toEqual([2, 3]);
     expect(result.groups[0].firstCompactedStart).toBe(2);  // i=2 (values=[1,2,1,9], push at i=2)
   });
+
+  it("maxMatch=2 skips 3-tile match: [2,3,5] stays as-is", () => {
+    const result = slideRowLeft([2, 3, 5, null], 2);
+    expect(result.row).toEqual([2, 3, 5, null]);
+    expect(result.scoreGained).toBe(0);
+    expect(result.groups).toHaveLength(0);
+  });
+
+  it("maxMatch=2 skips 4-tile match: [1,2,3,4] stays as-is", () => {
+    const result = slideRowLeft([1, 2, 3, 4], 2);
+    expect(result.row).toEqual([1, 2, 3, 4]);
+    expect(result.scoreGained).toBe(0);
+    expect(result.groups).toHaveLength(0);
+  });
+
+  it("maxMatch=3 allows 3-tile but skips 4-tile: [1,2,3,4] stays", () => {
+    const result = slideRowLeft([1, 2, 3, 4], 3);
+    expect(result.row).toEqual([1, 2, 3, 4]);
+    expect(result.groups).toHaveLength(0);
+  });
+
+  it("maxMatch=3 eliminates 3-tile: [2,3,5,null]", () => {
+    const result = slideRowLeft([2, 3, 5, null], 3);
+    expect(result.row).toEqual([null, null, null, null]);
+    expect(result.scoreGained).toBe(25);
+    expect(result.groups[0].length).toBe(3);
+  });
 });
 
 describe("slide — 4-direction", () => {

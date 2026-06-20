@@ -16,6 +16,7 @@ import { checkTrophies, loadModalData, getTrophyDef } from "./trophies";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const SIZE_KEY = "merge10xGridSize";
+const MATCH_LIMIT_KEY = "merge10xMatchLimit";
 const BEST_SCORE_KEY_4 = "merge10xBestScore4";
 const BEST_SCORE_KEY_5 = "merge10xBestScore5";
 const PLAY_COUNT_KEY = "merge10xPlayCount";
@@ -45,6 +46,8 @@ const TILE_COLORS: Record<number, { bg: string; text: string }> = {
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 const sizePickerEl = document.getElementById("size-picker") as HTMLDivElement;
+const sizeStepEl = document.getElementById("size-step") as HTMLDivElement;
+const matchStepEl = document.getElementById("match-step") as HTMLDivElement;
 const gameOverEl = document.getElementById("game-over") as HTMLDivElement;
 const gameOverScoreEl = document.getElementById("game-over-score") as HTMLParagraphElement;
 const gameOverBestEl = document.getElementById("game-over-best") as HTMLParagraphElement;
@@ -74,6 +77,17 @@ function saveGridSize(size: 4 | 5): void {
   localStorage.setItem(SIZE_KEY, String(size));
 }
 
+function loadMatchLimit(): 2 | 3 | 4 {
+  const v = localStorage.getItem(MATCH_LIMIT_KEY);
+  if (v === "3") return 3;
+  if (v === "4") return 4;
+  return 2;
+}
+
+function saveMatchLimit(limit: 2 | 3 | 4): void {
+  localStorage.setItem(MATCH_LIMIT_KEY, String(limit));
+}
+
 function bestScoreKey(size: 4 | 5): string {
   return size === 4 ? BEST_SCORE_KEY_4 : BEST_SCORE_KEY_5;
 }
@@ -93,9 +107,11 @@ function loadPlayCount(): number {
 
 // ── Game state ─────────────────────────────────────────────────────────────────
 let gridSize: 4 | 5 = loadGridSize();
+let matchLimit: 2 | 3 | 4 = loadMatchLimit();
 let state: GameState = createInitialState(gridSize);
 let rng: Rng = Math.random;
 let bestScore: number = loadBestScore(gridSize);
+let pendingSize: 4 | 5 | null = null;
 
 // ── Animation state ────────────────────────────────────────────────────────────
 const spawnCells = new Map<string, number>();
@@ -251,7 +267,7 @@ function finalizeDeferredSlide(): void {
   if (state.score > bestScore) { bestScore = state.score; saveBestScore(gridSize, bestScore); }
   updateHudScore();
 
-  if (isGameOver(newGrid)) {
+  if (isGameOver(newGrid, matchLimit)) {
     showGameOver(prevScore);
   }
 
@@ -440,11 +456,14 @@ function render(): void {
           const t = elapsed / MOVE_DURATION_MS;
           const p = 1 - Math.pow(1 - t, 2);
           drawPhantomTile(tile.value, lerp(origX, fcX, p), lerp(origY, fcY, p), cellSize, 1, 1.0);
-        } else if (elapsed >= hStart && elapsed < fEnd) {
+        } else if (elapsed < hStart) {
+          // Waiting for this group's turn: stay visible at firstCompact in normal tile color
+          drawTile(tile.value, fcX, fcY, cellSize);
+        } else if (elapsed < fEnd) {
           if (elapsed < fStart) {
             drawPhantomTile(tile.value, fcX, fcY, cellSize, 1, 1.05);
           } else {
-            const fadeT = (elapsed - fStart) / ELIM_FADE_MS;
+            const fadeT = Math.min(1, (elapsed - fStart) / ELIM_FADE_MS);
             drawPhantomTile(tile.value, fcX, fcY, cellSize, Math.max(0, 1 - fadeT), lerp(1.05, 0.4, fadeT));
           }
         }
@@ -597,10 +616,12 @@ function showComboBadge(count: number): void {
   setTimeout(() => { canvas.style.boxShadow = ""; }, 300);
 }
 
-// ── Size selection ─────────────────────────────────────────────────────────────
-function startGame(size: 4 | 5): void {
+// ── Size + match selection ─────────────────────────────────────────────────────
+function startGame(size: 4 | 5, limit: 2 | 3 | 4): void {
   gridSize = size;
   saveGridSize(size);
+  matchLimit = limit;
+  saveMatchLimit(limit);
   bestScore = loadBestScore(size);
   state = createInitialState(gridSize, rng);
   spawnCells.clear();
@@ -608,6 +629,9 @@ function startGame(size: 4 | 5): void {
   eliminationPhase = null;
   deferredSlideOutcome = null;
   recompactCells.clear();
+  pendingSize = null;
+  sizeStepEl.removeAttribute("hidden");
+  matchStepEl.setAttribute("hidden", "");
   sizePickerEl.setAttribute("hidden", "");
   gameOverEl.setAttribute("hidden", "");
   updateHudScore();
@@ -626,10 +650,10 @@ function showGameOver(prevScore: number): void {
 }
 
 function handleMove(direction: Direction): void {
-  if (isGameOver(state.grid)) return;
+  if (isGameOver(state.grid, matchLimit)) return;
   if (eliminationPhase !== null) return;
 
-  const outcome = slide(state.grid, direction);
+  const outcome = slide(state.grid, direction, matchLimit);
   if (!outcome.moved) return;
 
   const originalGrid = state.grid;
@@ -748,23 +772,35 @@ hudTrophyEl.addEventListener("click", () => { renderTrophyModal(); trophyModalEl
 trophyModalOverlayEl.addEventListener("click", () => trophyModalEl.setAttribute("hidden", ""));
 trophyModalCloseEl.addEventListener("click", () => trophyModalEl.setAttribute("hidden", ""));
 
-document.querySelectorAll<HTMLButtonElement>(".size-btn").forEach((btn) => {
+document.querySelectorAll<HTMLButtonElement>(".size-btn:not(.match-btn)").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const size = Number(btn.dataset.size) as 4 | 5;
-    startGame(size);
+    pendingSize = Number(btn.dataset.size) as 4 | 5;
+    sizeStepEl.setAttribute("hidden", "");
+    matchStepEl.removeAttribute("hidden");
+  });
+});
+
+document.querySelectorAll<HTMLButtonElement>(".match-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (pendingSize === null) return;
+    const limit = Number(btn.dataset.match) as 2 | 3 | 4;
+    startGame(pendingSize, limit);
   });
 });
 
 playAgainEl.addEventListener("click", () => {
   const newCount = loadPlayCount() + 1;
   localStorage.setItem(PLAY_COUNT_KEY, String(newCount));
-  startGame(gridSize);
+  startGame(gridSize, matchLimit);
   const playTrophies = checkTrophies({ type: "gameStart", playCount: newCount });
   playTrophies.forEach((id) => showTrophyToast(id));
 });
 
 changeSizeEl.addEventListener("click", () => {
   gameOverEl.setAttribute("hidden", "");
+  pendingSize = null;
+  sizeStepEl.removeAttribute("hidden");
+  matchStepEl.setAttribute("hidden", "");
   sizePickerEl.removeAttribute("hidden");
 });
 

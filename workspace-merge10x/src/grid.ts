@@ -46,7 +46,7 @@ function padToLength(values: number[], length: number): Cell[] {
   return Array.from({ length }, (_, i) => values[i] ?? null);
 }
 
-export function slideRowLeft(row: Cell[]): SlideResult {
+export function slideRowLeft(row: Cell[], maxMatch: 2 | 3 | 4 = 4): SlideResult {
   const valuePositions: number[] = [];
   const values: number[] = [];
   row.forEach((cell, index) => {
@@ -66,6 +66,7 @@ export function slideRowLeft(row: Cell[]): SlideResult {
     const p = valuePositions;
 
     if (
+      maxMatch >= 4 &&
       i + 3 < values.length &&
       v[i] + v[i + 1] + v[i + 2] + v[i + 3] === 10
     ) {
@@ -73,6 +74,7 @@ export function slideRowLeft(row: Cell[]): SlideResult {
       scoreGained += scoreForLength(4);
       i += 4;
     } else if (
+      maxMatch >= 3 &&
       i + 2 < values.length &&
       v[i] + v[i + 1] + v[i + 2] === 10
     ) {
@@ -108,13 +110,13 @@ function transpose(grid: GameGrid): GameGrid {
   );
 }
 
-function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
+function applySlideRowLeftToGrid(grid: GameGrid, maxMatch: 2 | 3 | 4 = 4): SlideOutcome {
   let moved = false;
   let scoreGained = 0;
   const eliminatedGroups: EliminatedGroup[] = [];
 
   const resultGrid = grid.map((row, rowIndex) => {
-    const result = slideRowLeft(row);
+    const result = slideRowLeft(row, maxMatch);
     if (result.moved) moved = true;
     scoreGained += result.scoreGained;
     result.groups.forEach((g) => {
@@ -136,15 +138,15 @@ function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
   return { grid: resultGrid, moved, scoreGained, eliminatedGroups };
 }
 
-export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
+export function slide(grid: GameGrid, direction: Direction, maxMatch: 2 | 3 | 4 = 4): SlideOutcome {
   const size = grid.length;
 
   switch (direction) {
     case "left": {
-      return applySlideRowLeftToGrid(grid);
+      return applySlideRowLeftToGrid(grid, maxMatch);
     }
     case "right": {
-      const outcome = applySlideRowLeftToGrid(reverseRows(grid));
+      const outcome = applySlideRowLeftToGrid(reverseRows(grid), maxMatch);
       const groups = outcome.eliminatedGroups.map((g) => ({
         ...g,
         positions: g.positions.map(({ row, col }) => ({
@@ -157,7 +159,7 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
       return { ...outcome, grid: reverseRows(outcome.grid), eliminatedGroups: groups };
     }
     case "up": {
-      const outcome = applySlideRowLeftToGrid(transpose(grid));
+      const outcome = applySlideRowLeftToGrid(transpose(grid), maxMatch);
       const groups = outcome.eliminatedGroups.map((g) => ({
         ...g,
         positions: g.positions.map(({ row, col }) => ({ row: col, col: row })),
@@ -166,7 +168,7 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
     }
 
     case "down": {
-      const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)));
+      const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)), maxMatch);
       const groups = outcome.eliminatedGroups.map((g) => ({
         ...g,
         positions: g.positions.map(({ row, col }) => ({
@@ -181,17 +183,17 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
   }
 }
 
-export function canMove(grid: GameGrid): boolean {
+export function canMove(grid: GameGrid, maxMatch: 2 | 3 | 4 = 4): boolean {
   // If there are empty cells, tiles can still be spawned and moved
   const hasEmptyCell = grid.some((row) => row.some((cell) => cell === null));
   if (hasEmptyCell) return true;
   // Full board: check if any slide direction produces a match
   const directions: Direction[] = ["up", "down", "left", "right"];
-  return directions.some((d) => slide(grid, d).moved);
+  return directions.some((d) => slide(grid, d, maxMatch).moved);
 }
 
-export function isGameOver(grid: GameGrid): boolean {
-  return !canMove(grid);
+export function isGameOver(grid: GameGrid, maxMatch: 2 | 3 | 4 = 4): boolean {
+  return !canMove(grid, maxMatch);
 }
 
 export function createEmptyGrid(size: number): GameGrid {

@@ -1,7 +1,8 @@
 import { test, expect, Page } from "@playwright/test";
 
-async function selectSize(page: Page, size: 4 | 5): Promise<void> {
+async function selectSize(page: Page, size: 4 | 5, matchLimit: 2 | 3 | 4 = 2): Promise<void> {
   await page.click(`button[data-size="${size}"]`);
+  await page.click(`button[data-match="${matchLimit}"]`);
   await expect(page.locator("#size-picker")).toBeHidden();
 }
 
