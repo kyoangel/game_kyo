@@ -319,7 +319,7 @@ function drawBracket(group: PhantomGroup, cellSize: number, bracketAlpha: number
   const len = group.length;
   const firstTile = group.tiles[0];
 
-  let x1: number, y1: number, x2: number, y2: number, cpx: number, cpy: number, lx: number, ly: number;
+  let x1: number, y1: number, x2: number, y2: number, cpx: number, cpy: number;
 
   if (!isVertical) {
     const rowY = firstTile.firstCompactRow * cellSize;
@@ -329,7 +329,6 @@ function drawBracket(group: PhantomGroup, cellSize: number, bracketAlpha: number
     y1 = arcY; y2 = arcY;
     cpx = (x1 + x2) / 2;
     cpy = arcY + 12;
-    lx = cpx; ly = cpy + 10;
   } else {
     const colX = firstTile.firstCompactCol * cellSize;
     const arcX = colX + cellSize + 8;
@@ -338,7 +337,6 @@ function drawBracket(group: PhantomGroup, cellSize: number, bracketAlpha: number
     x1 = arcX; x2 = arcX;
     cpx = arcX + 12;
     cpy = (y1 + y2) / 2;
-    lx = cpx + 10; ly = cpy;
   }
 
   ctx.save();
@@ -349,12 +347,6 @@ function drawBracket(group: PhantomGroup, cellSize: number, bracketAlpha: number
   ctx.moveTo(x1, y1);
   ctx.quadraticCurveTo(cpx, cpy, x2, y2);
   ctx.stroke();
-
-  ctx.fillStyle = "#fde047";
-  ctx.font = "bold 11px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillText("= 10", lx, ly);
   ctx.restore();
 }
 
@@ -696,7 +688,7 @@ function handleMove(direction: Direction): void {
     if (state.score > bestScore) { bestScore = state.score; saveBestScore(gridSize, bestScore); }
     updateHudScore();
 
-    if (isGameOver(newGrid)) {
+    if (isGameOver(newGrid, matchLimit)) {
       showGameOver(prevScore);
     }
 

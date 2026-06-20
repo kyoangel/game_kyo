@@ -280,6 +280,20 @@ describe("isGameOver / canMove", () => {
     expect(isGameOver(grid)).toBe(true);
     expect(canMove(grid)).toBe(false);
   });
+
+  it("maxMatch=2: full board with only 3-tile matches is game over", () => {
+    // Row [2,3,5,3]: 2+3=5, 3+5=8, 5+3=8 — no 2-tile pair sums to 10
+    //               but 2+3+5=10 — 3-tile match exists
+    // Columns use values with no adjacent pair summing to 10 either
+    const grid = [
+      [2, 3, 5, 3],
+      [3, 5, 3, 2],
+      [2, 3, 5, 3],
+      [3, 5, 3, 2],
+    ] as (number | null)[][];
+    expect(isGameOver(grid, 2)).toBe(true);  // no 2-tile matches → game over
+    expect(isGameOver(grid, 3)).toBe(false); // 3-tile match exists → still playable
+  });
 });
 
 describe("createInitialState", () => {
