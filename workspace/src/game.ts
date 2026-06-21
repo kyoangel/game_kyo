@@ -341,10 +341,11 @@ function buildElimPhaseState(
     eliminatedPairs.flatMap(({ a, b }) => [`${a.row},${a.col}`, `${b.row},${b.col}`]),
   );
 
-  const groups: PhantomGroup[] = eliminatedPairs.map(({ a, b, meetA, meetB }, groupIndex) => ({
+  // Both tiles in each pair slide to meetA (tile B flies to join tile A), creating visible C1 movement.
+  const groups: PhantomGroup[] = eliminatedPairs.map(({ a, b, meetA }, groupIndex) => ({
     tiles: [
       { origRow: a.row, origCol: a.col, firstCompactRow: meetA.row, firstCompactCol: meetA.col, value: prevGrid[a.row][a.col] as number },
-      { origRow: b.row, origCol: b.col, firstCompactRow: meetB.row, firstCompactCol: meetB.col, value: prevGrid[b.row][b.col] as number },
+      { origRow: b.row, origCol: b.col, firstCompactRow: meetA.row, firstCompactCol: meetA.col, value: prevGrid[b.row][b.col] as number },
     ],
     length: 2 as const,
     direction,
@@ -358,7 +359,6 @@ function buildElimPhaseState(
       ? Array.from({ length: size }, (_, i) => size - 1 - i)
       : Array.from({ length: size }, (_, i) => i);
 
-    let fcIdx = 0;
     let finalIdx = 0;
 
     for (const pos of positions) {
@@ -370,22 +370,18 @@ function buildElimPhaseState(
       const isElim = eliminatedSet.has(`${origRow},${origCol}`);
 
       if (!isElim) {
-        let fcRow: number, fcCol: number, finalRow: number, finalCol: number;
+        let finalRow: number, finalCol: number;
         if (isVertical) {
-          fcRow = isReverse ? size - 1 - fcIdx : fcIdx;
-          fcCol = lineIdx;
           finalRow = isReverse ? size - 1 - finalIdx : finalIdx;
           finalCol = lineIdx;
         } else {
-          fcRow = lineIdx;
-          fcCol = isReverse ? size - 1 - fcIdx : fcIdx;
           finalRow = lineIdx;
           finalCol = isReverse ? size - 1 - finalIdx : finalIdx;
         }
-        survivorCells.push({ origRow, origCol, firstCompactRow: fcRow, firstCompactCol: fcCol, finalRow, finalCol });
+        // Survivors stay in place during C1; they slide orig→final in C2.
+        survivorCells.push({ origRow, origCol, firstCompactRow: origRow, firstCompactCol: origCol, finalRow, finalCol });
         finalIdx++;
       }
-      fcIdx++;
     }
   }
 

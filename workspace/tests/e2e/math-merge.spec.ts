@@ -67,7 +67,7 @@ test("pressing a slide key resolves a chain reaction in a single move (e.g. [4,6
   }, chainState);
 
   await page.keyboard.press("ArrowLeft");
-  await page.waitForTimeout(1500); // spawn is deferred until after elimination animation
+  await page.waitForTimeout(2500); // spawn is deferred; 2 groups × 600ms HF = 1500ms total + buffer
 
   const result = await page.evaluate(
     () => (window as unknown as { __getGameState: () => GameState }).__getGameState()
