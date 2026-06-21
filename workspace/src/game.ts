@@ -341,11 +341,10 @@ function buildElimPhaseState(
     eliminatedPairs.flatMap(({ a, b }) => [`${a.row},${a.col}`, `${b.row},${b.col}`]),
   );
 
-  // Both tiles in each pair slide to meetA (tile B flies to join tile A), creating visible C1 movement.
-  const groups: PhantomGroup[] = eliminatedPairs.map(({ a, b, meetA }, groupIndex) => ({
+  const groups: PhantomGroup[] = eliminatedPairs.map(({ a, b, meetA, meetB }, groupIndex) => ({
     tiles: [
       { origRow: a.row, origCol: a.col, firstCompactRow: meetA.row, firstCompactCol: meetA.col, value: prevGrid[a.row][a.col] as number },
-      { origRow: b.row, origCol: b.col, firstCompactRow: meetA.row, firstCompactCol: meetA.col, value: prevGrid[b.row][b.col] as number },
+      { origRow: b.row, origCol: b.col, firstCompactRow: meetB.row, firstCompactCol: meetB.col, value: prevGrid[b.row][b.col] as number },
     ],
     length: 2 as const,
     direction,
