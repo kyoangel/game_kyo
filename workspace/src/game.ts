@@ -358,6 +358,7 @@ function buildElimPhaseState(
       ? Array.from({ length: size }, (_, i) => size - 1 - i)
       : Array.from({ length: size }, (_, i) => i);
 
+    let fcIdx = 0;
     let finalIdx = 0;
 
     for (const pos of positions) {
@@ -369,18 +370,22 @@ function buildElimPhaseState(
       const isElim = eliminatedSet.has(`${origRow},${origCol}`);
 
       if (!isElim) {
-        let finalRow: number, finalCol: number;
+        let fcRow: number, fcCol: number, finalRow: number, finalCol: number;
         if (isVertical) {
+          fcRow = isReverse ? size - 1 - fcIdx : fcIdx;
+          fcCol = lineIdx;
           finalRow = isReverse ? size - 1 - finalIdx : finalIdx;
           finalCol = lineIdx;
         } else {
+          fcRow = lineIdx;
+          fcCol = isReverse ? size - 1 - fcIdx : fcIdx;
           finalRow = lineIdx;
           finalCol = isReverse ? size - 1 - finalIdx : finalIdx;
         }
-        // Survivors stay in place during C1; they slide orig→final in C2.
-        survivorCells.push({ origRow, origCol, firstCompactRow: origRow, firstCompactCol: origCol, finalRow, finalCol });
+        survivorCells.push({ origRow, origCol, firstCompactRow: fcRow, firstCompactCol: fcCol, finalRow, finalCol });
         finalIdx++;
       }
+      fcIdx++;
     }
   }
 
