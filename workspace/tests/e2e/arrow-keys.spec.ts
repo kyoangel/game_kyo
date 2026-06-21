@@ -31,6 +31,7 @@ test("ArrowUp merges an adjacent column pair summing to 10 and increases score",
   );
 
   await page.keyboard.press("ArrowUp");
+  await page.waitForTimeout(1500); // spawn is deferred until after elimination animation
 
   const result = await page.evaluate(
     () =>
@@ -71,6 +72,7 @@ test("ArrowUp merges a non-adjacent column pair (tiles separated by nulls) and i
   );
 
   await page.keyboard.press("ArrowUp");
+  await page.waitForTimeout(1500); // spawn is deferred until after elimination animation
 
   const result = await page.evaluate(
     () =>
@@ -149,6 +151,7 @@ test("ArrowDown merges a non-adjacent column pair (tiles separated by nulls) and
   );
 
   await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(1500); // spawn is deferred until after elimination animation
 
   const result = await page.evaluate(
     () =>

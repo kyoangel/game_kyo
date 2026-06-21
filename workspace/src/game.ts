@@ -34,7 +34,8 @@ const PALETTE_KEY = "mathMerge10Palette";
 const POWERUP_KEY = "mathMerge10Powerups";
 const PLAY_COUNT_KEY = "mathMerge10PlayCount";
 const LIFETIME_ELIM_KEY = "mathMerge10LifetimeElim";
-const ELIMINATE_DURATION_MS = 350;
+const ELIM_HIGHLIGHT_MS = 400;
+const ELIM_FADE_MS = 200;
 const MOVE_DURATION_MS = 150;
 const SPAWN_DELAY_MS = 350;
 const SPAWN_DURATION_MS = 400;
@@ -266,28 +267,182 @@ let bestScore = loadBestScore();
 let currentPalette: PaletteId = loadPalette();
 let powerups: PowerupState = loadPowerups();
 
-// eliminatingCells: phantom tiles no longer in state.grid
-const eliminatingCells = new Map<string, { value: number; startTime: number }>();
-// spawnCells: start time for the newly spawned tile (may be future)
 const spawnCells = new Map<string, number>();
-// moveCells: tiles that slid to a new position (or phantom eliminated tiles sliding to meetA/meetB)
-const moveCells = new Map<
-  string,
-  {
-    startTime: number;
-    direction: Direction;
-    value?: number;
-    fromRow?: number;
-    fromCol?: number;
-    toRow?: number;
-    toCol?: number;
-  }
->();
+const moveCells = new Map<string, { startTime: number; direction: Direction }>();
+
+interface PhantomTile {
+  origRow: number;
+  origCol: number;
+  firstCompactRow: number;
+  firstCompactCol: number;
+  value: number;
+}
+
+interface PhantomGroup {
+  tiles: PhantomTile[];
+  length: 2;
+  direction: Direction;
+  groupIndex: number;
+}
+
+interface SurvivorCell {
+  origRow: number;
+  origCol: number;
+  firstCompactRow: number;
+  firstCompactCol: number;
+  finalRow: number;
+  finalCol: number;
+}
+
+interface ElimPhaseState {
+  groups: PhantomGroup[];
+  startTime: number;
+  survivorCells: SurvivorCell[];
+}
+
+interface RecompactCell {
+  origRow: number;
+  origCol: number;
+  firstCompactRow: number;
+  firstCompactCol: number;
+}
+
+let eliminationPhase: ElimPhaseState | null = null;
+let spawnPending = false;
+const recompactCells = new Map<string, RecompactCell>();
 
 let animationFrameId: number | null = null;
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+const HF_MS = ELIM_HIGHLIGHT_MS + ELIM_FADE_MS;
+
+function c2StartMs(totalGroups: number): number {
+  return MOVE_DURATION_MS + totalGroups * HF_MS;
+}
+
+function totalElimMs(totalGroups: number): number {
+  return c2StartMs(totalGroups) + MOVE_DURATION_MS;
+}
+
+function buildElimPhaseState(
+  eliminatedPairs: EliminatedPair[],
+  prevGrid: GameGrid,
+  direction: Direction,
+  startTime: number,
+): ElimPhaseState {
+  const size = prevGrid.length;
+  const isVertical = direction === "up" || direction === "down";
+  const isReverse = direction === "right" || direction === "down";
+
+  const eliminatedSet = new Set(
+    eliminatedPairs.flatMap(({ a, b }) => [`${a.row},${a.col}`, `${b.row},${b.col}`]),
+  );
+
+  const groups: PhantomGroup[] = eliminatedPairs.map(({ a, b, meetA, meetB }, groupIndex) => ({
+    tiles: [
+      { origRow: a.row, origCol: a.col, firstCompactRow: meetA.row, firstCompactCol: meetA.col, value: prevGrid[a.row][a.col] as number },
+      { origRow: b.row, origCol: b.col, firstCompactRow: meetB.row, firstCompactCol: meetB.col, value: prevGrid[b.row][b.col] as number },
+    ],
+    length: 2 as const,
+    direction,
+    groupIndex,
+  }));
+
+  const survivorCells: SurvivorCell[] = [];
+
+  for (let lineIdx = 0; lineIdx < size; lineIdx++) {
+    const positions: number[] = isReverse
+      ? Array.from({ length: size }, (_, i) => size - 1 - i)
+      : Array.from({ length: size }, (_, i) => i);
+
+    let fcIdx = 0;
+    let finalIdx = 0;
+
+    for (const pos of positions) {
+      const origRow = isVertical ? pos : lineIdx;
+      const origCol = isVertical ? lineIdx : pos;
+
+      if (prevGrid[origRow][origCol] === null) continue;
+
+      const isElim = eliminatedSet.has(`${origRow},${origCol}`);
+
+      if (!isElim) {
+        let fcRow: number, fcCol: number, finalRow: number, finalCol: number;
+        if (isVertical) {
+          fcRow = isReverse ? size - 1 - fcIdx : fcIdx;
+          fcCol = lineIdx;
+          finalRow = isReverse ? size - 1 - finalIdx : finalIdx;
+          finalCol = lineIdx;
+        } else {
+          fcRow = lineIdx;
+          fcCol = isReverse ? size - 1 - fcIdx : fcIdx;
+          finalRow = lineIdx;
+          finalCol = isReverse ? size - 1 - finalIdx : finalIdx;
+        }
+        survivorCells.push({ origRow, origCol, firstCompactRow: fcRow, firstCompactCol: fcCol, finalRow, finalCol });
+        finalIdx++;
+      }
+      fcIdx++;
+    }
+  }
+
+  return { groups, startTime, survivorCells };
+}
+
+function drawPhantomTile(
+  value: number,
+  x: number,
+  y: number,
+  cellSize: number,
+  alpha: number,
+  scale: number,
+): void {
+  const cx = x + cellSize / 2;
+  const cy = y + cellSize / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.translate(-cx, -cy);
+  ctx.fillStyle = "#fde047";
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x + 4, y + 4, cellSize - 8, cellSize - 8, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#422006";
+  ctx.font = "32px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(value), x + cellSize / 2, y + cellSize / 2);
+  ctx.restore();
+}
+
+function finalizeDeferredSlide(): void {
+  if (!spawnPending) return;
+  spawnPending = false;
+
+  const postSlideGrid = state.grid;
+  const newGrid = spawnRandomTile(postSlideGrid, rng);
+  state = { ...state, grid: newGrid };
+
+  if (isGameOver(newGrid)) {
+    setTimeout(() => audio.play("gameOver"), 400);
+    const gameOverTrophies = checkTrophies({ type: "gameOver", score: state.score });
+    gameOverTrophies.forEach((id) => showTrophyToast(id));
+  }
+
+  const spawnedList = changedCells(postSlideGrid, newGrid).filter(
+    ({ row, col }) => newGrid[row][col] !== null && postSlideGrid[row][col] === null,
+  );
+  spawnCells.clear();
+  spawnedList.forEach(({ row, col }) => {
+    spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
+  });
 }
 
 function drawBaseTile(
@@ -386,6 +541,26 @@ function render(): void {
         }
         drawBaseTile(cell, x, y + dy, cellSize, padding, 0);
         ctx.restore();
+      } else if (eliminationPhase !== null && recompactCells.has(key)) {
+        const rc = recompactCells.get(key)!;
+        const elapsed = now - eliminationPhase.startTime;
+        const c2Start = c2StartMs(eliminationPhase.groups.length);
+        let drawX: number, drawY: number;
+        if (elapsed <= MOVE_DURATION_MS) {
+          const t = Math.min(1, elapsed / MOVE_DURATION_MS);
+          const p = 1 - Math.pow(1 - t, 2);
+          drawX = lerp(rc.origCol * cellSize, rc.firstCompactCol * cellSize, p);
+          drawY = lerp(rc.origRow * cellSize, rc.firstCompactRow * cellSize, p);
+        } else if (elapsed < c2Start) {
+          drawX = rc.firstCompactCol * cellSize;
+          drawY = rc.firstCompactRow * cellSize;
+        } else {
+          const t = Math.min(1, (elapsed - c2Start) / MOVE_DURATION_MS);
+          const p = 1 - Math.pow(1 - t, 2);
+          drawX = lerp(rc.firstCompactCol * cellSize, colIndex * cellSize, p);
+          drawY = lerp(rc.firstCompactRow * cellSize, rowIndex * cellSize, p);
+        }
+        drawBaseTile(cell, drawX, drawY, cellSize, padding, 0);
       } else if (moveCells.has(key)) {
         const { startTime, direction } = moveCells.get(key)!;
         const t = Math.min(1, (now - startTime) / MOVE_DURATION_MS);
@@ -414,73 +589,47 @@ function render(): void {
     });
   });
 
-  // Draw phantom tiles for eliminated cells during their slide phase (phase 1)
-  moveCells.forEach(({ value, startTime, fromRow, fromCol, toRow, toCol }) => {
-    if (value === undefined || fromRow === undefined) return;
-    const elapsed = now - startTime;
-    const t = Math.min(1, elapsed / MOVE_DURATION_MS);
-    if (t >= 1) return;
-    const p = 1 - Math.pow(1 - t, 2); // ease-out
-    const x = lerp(fromCol! * cellSize, toCol! * cellSize, p);
-    const y = lerp(fromRow * cellSize, toRow! * cellSize, p);
-    const scale = lerp(0.8, 1.0, p);
-    const cx = x + cellSize / 2;
-    const cy = y + cellSize / 2;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-    ctx.translate(-cx, -cy);
-    drawBaseTile(value, x, y, cellSize, padding, 0);
-    ctx.restore();
-  });
+  // Draw elimination phase: phantom tiles C1→H→F, survivors already handled in tile loop via recompactCells
+  if (eliminationPhase !== null) {
+    const elapsed = now - eliminationPhase.startTime;
 
-  // Draw elimination flash phantoms (phase 2, at meeting position)
-  eliminatingCells.forEach(({ value, startTime }, key) => {
-    const [rowIndex, colIndex] = key.split(",").map(Number);
-    const x = colIndex * cellSize;
-    const y = rowIndex * cellSize;
-    const elapsed = now - startTime;
-    const t = Math.min(1, elapsed / ELIMINATE_DURATION_MS);
+    for (const group of eliminationPhase.groups) {
+      const hStart = MOVE_DURATION_MS + group.groupIndex * HF_MS;
+      const fStart = hStart + ELIM_HIGHLIGHT_MS;
+      const fEnd = fStart + ELIM_FADE_MS;
 
-    const T1 = 60 / ELIMINATE_DURATION_MS;
-    const T2 = 200 / ELIMINATE_DURATION_MS;
-    if (t >= T2) return;
+      for (const tile of group.tiles) {
+        const fcX = tile.firstCompactCol * cellSize;
+        const fcY = tile.firstCompactRow * cellSize;
+        const origX = tile.origCol * cellSize;
+        const origY = tile.origRow * cellSize;
 
-    let scale: number;
-    let opacity: number;
-    let flashAlpha: number;
-
-    if (t < T1) {
-      const p = t / T1;
-      scale = 1 + 0.15 * p;
-      flashAlpha = 0.5 * p;
-      opacity = 1;
-    } else {
-      const p = (t - T1) / (T2 - T1);
-      scale = 1.15 * (1 - p);
-      flashAlpha = 0.5 * (1 - p);
-      opacity = 1 - p;
+        if (elapsed <= MOVE_DURATION_MS) {
+          const t = elapsed / MOVE_DURATION_MS;
+          const p = 1 - Math.pow(1 - t, 2);
+          drawPhantomTile(tile.value, lerp(origX, fcX, p), lerp(origY, fcY, p), cellSize, 1, 1.0);
+        } else if (elapsed < hStart) {
+          drawBaseTile(tile.value, fcX, fcY, cellSize, padding, 0);
+        } else if (elapsed < fEnd) {
+          if (elapsed < fStart) {
+            drawPhantomTile(tile.value, fcX, fcY, cellSize, 1, 1.05);
+          } else {
+            const fadeT = Math.min(1, (elapsed - fStart) / ELIM_FADE_MS);
+            drawPhantomTile(tile.value, fcX, fcY, cellSize, Math.max(0, 1 - fadeT), lerp(1.05, 0.4, fadeT));
+          }
+        }
+      }
     }
+  }
 
-    const cx = x + cellSize / 2;
-    const cy = y + cellSize / 2;
-    ctx.save();
-    ctx.globalAlpha = opacity;
-    ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-    ctx.translate(-cx, -cy);
-    ctx.shadowColor = "#facc15";
-    ctx.shadowBlur = 40 * flashAlpha;
-    drawBaseTile(value, x, y, cellSize, padding, flashAlpha);
-    ctx.restore();
-  });
-
-  const gameOver = isGameOver(state.grid);
-  gameOverEl.hidden = !gameOver;
-  if (gameOver) {
-    gameOverScoreEl.textContent = `本次分數：${state.score}`;
-    gameOverBestEl.textContent = `最高分：${bestScore}`;
-    gameOverBadgeEl.classList.toggle("hidden", !isNewRecord(state.score, bestScore));
+  if (eliminationPhase === null) {
+    const gameOver = isGameOver(state.grid);
+    gameOverEl.hidden = !gameOver;
+    if (gameOver) {
+      gameOverScoreEl.textContent = `本次分數：${state.score}`;
+      gameOverBestEl.textContent = `最高分：${bestScore}`;
+      gameOverBadgeEl.classList.toggle("hidden", !isNewRecord(state.score, bestScore));
+    }
   }
 }
 
@@ -596,13 +745,18 @@ function tick(): void {
   const now = performance.now();
   let stillAnimating = false;
 
-  eliminatingCells.forEach((data, key) => {
-    if (now - data.startTime >= ELIMINATE_DURATION_MS) {
-      eliminatingCells.delete(key);
-    } else {
+  if (eliminationPhase !== null) {
+    const elapsed = now - eliminationPhase.startTime;
+    const total = totalElimMs(eliminationPhase.groups.length);
+    if (elapsed < total) {
       stillAnimating = true;
+    } else {
+      eliminationPhase = null;
+      recompactCells.clear();
+      finalizeDeferredSlide();
+      stillAnimating = true; // spawn animation follows
     }
-  });
+  }
 
   spawnCells.forEach((startTime, key) => {
     if (startTime > now) {
@@ -637,100 +791,22 @@ function startAnimationLoop(): void {
   }
 }
 
-function startAnimations(
-  prevGrid: GameGrid,
-  eliminatedPairs: EliminatedPair[],
-  spawnedCells: Array<{ row: number; col: number }>,
-  movedCellsList: Array<{ row: number; col: number }>,
-  direction: Direction,
-): void {
-  const now = performance.now();
-
-  eliminatingCells.clear();
-  spawnCells.clear();
-  moveCells.clear();
-
-  // Regular moved tiles (non-eliminated): spring animation from their destination
-  movedCellsList.forEach(({ row, col }) => {
-    moveCells.set(`${row},${col}`, { startTime: now, direction });
-  });
-
-  // Eliminated tiles: phase 1 = slide phantom from original → meetA/meetB
-  //                   phase 2 = flash at meeting position (delayed by MOVE_DURATION_MS)
-  eliminatedPairs.forEach(({ a, b, meetA, meetB }) => {
-    const valA = prevGrid[a.row][a.col];
-    const valB = prevGrid[b.row][b.col];
-    if (valA !== null) {
-      moveCells.set(`${a.row},${a.col}`, {
-        startTime: now,
-        direction,
-        value: valA,
-        fromRow: a.row,
-        fromCol: a.col,
-        toRow: meetA.row,
-        toCol: meetA.col,
-      });
-      eliminatingCells.set(`${meetA.row},${meetA.col}`, {
-        value: valA,
-        startTime: now + MOVE_DURATION_MS,
-      });
-    }
-    if (valB !== null) {
-      moveCells.set(`${b.row},${b.col}`, {
-        startTime: now,
-        direction,
-        value: valB,
-        fromRow: b.row,
-        fromCol: b.col,
-        toRow: meetB.row,
-        toCol: meetB.col,
-      });
-      eliminatingCells.set(`${meetB.row},${meetB.col}`, {
-        value: valB,
-        startTime: now + MOVE_DURATION_MS,
-      });
-    }
-  });
-
-  spawnedCells.forEach(({ row, col }) => {
-    spawnCells.set(`${row},${col}`, now + SPAWN_DELAY_MS);
-  });
-}
-
 function handleKeydown(event: KeyboardEvent): void {
   const direction = KEY_TO_DIRECTION[event.key];
   if (!direction) return;
 
   if (isGameOver(state.grid)) return;
+  if (eliminationPhase !== null) return;
 
   const outcome = slide(state.grid, direction);
   if (!outcome.moved) return;
 
   const prevGrid = state.grid;
   const postSlideGrid = outcome.grid;
-  const newGrid = spawnRandomTile(postSlideGrid, rng);
   const scoreGained = outcome.scoreGained;
+  const eliminatedPairs = outcome.eliminatedPairs;
 
-  const spawnedCells = changedCells(postSlideGrid, newGrid);
-
-  const eliminatedPositionKeys = new Set(
-    outcome.eliminatedPairs.flatMap((p) => [
-      `${p.a.row},${p.a.col}`,
-      `${p.b.row},${p.b.col}`,
-    ])
-  );
-  const spawnedKeys = new Set(spawnedCells.map((c) => `${c.row},${c.col}`));
-  const allChanged = changedCells(prevGrid, newGrid);
-  const movedCells = allChanged.filter((c) => {
-    const key = `${c.row},${c.col}`;
-    return (
-      !eliminatedPositionKeys.has(key) &&
-      !spawnedKeys.has(key) &&
-      newGrid[c.row][c.col] !== null
-    );
-  });
-
-  state = { grid: newGrid, score: state.score + scoreGained };
+  state = { grid: postSlideGrid, score: state.score + scoreGained };
 
   if (state.score > bestScore) {
     bestScore = state.score;
@@ -748,13 +824,9 @@ function handleKeydown(event: KeyboardEvent): void {
 
   audio.play("spawn");
 
-  if (isGameOver(newGrid)) {
-    setTimeout(() => audio.play("gameOver"), 400);
-    const gameOverTrophies = checkTrophies({ type: "gameOver", score: state.score });
-    gameOverTrophies.forEach((id) => showTrophyToast(id));
+  if (eliminatedPairs.length >= 2) {
+    setTimeout(() => showComboBadge(eliminatedPairs.length), 300);
   }
-
-  const eliminatedPairs = outcome.eliminatedPairs;
 
   if (eliminatedPairs.length > 0) {
     const oldElim = loadLifetimeElim();
@@ -766,28 +838,84 @@ function handleKeydown(event: KeyboardEvent): void {
       savePowerups();
       renderHudPowerups();
     }
-  }
 
-  (window as unknown as {
-    __lastAnimationHints: {
-      eliminatedPairs: EliminatedPair[];
-      spawnedCell: { row: number; col: number } | null;
-      movedCells: Array<{ row: number; col: number }>;
-      comboCount: number;
+    const now = performance.now();
+    eliminationPhase = buildElimPhaseState(eliminatedPairs, prevGrid, direction, now);
+    spawnPending = true;
+
+    recompactCells.clear();
+    for (const sc of eliminationPhase.survivorCells) {
+      recompactCells.set(`${sc.finalRow},${sc.finalCol}`, {
+        origRow: sc.origRow,
+        origCol: sc.origCol,
+        firstCompactRow: sc.firstCompactRow,
+        firstCompactCol: sc.firstCompactCol,
+      });
+    }
+    spawnCells.clear();
+    moveCells.clear();
+
+    (window as unknown as {
+      __lastAnimationHints: {
+        eliminatedPairs: EliminatedPair[];
+        spawnedCell: { row: number; col: number } | null;
+        movedCells: Array<{ row: number; col: number }>;
+        comboCount: number;
+      };
+    }).__lastAnimationHints = {
+      eliminatedPairs,
+      spawnedCell: null,
+      movedCells: [],
+      comboCount: eliminatedPairs.length,
     };
-  }).__lastAnimationHints = {
-    eliminatedPairs,
-    spawnedCell: spawnedCells[0] ?? null,
-    movedCells,
-    comboCount: eliminatedPairs.length,
-  };
 
-  if (eliminatedPairs.length >= 2) {
-    setTimeout(() => showComboBadge(eliminatedPairs.length), 300);
+    startAnimationLoop();
+  } else {
+    const newGrid = spawnRandomTile(postSlideGrid, rng);
+    state = { ...state, grid: newGrid };
+
+    const spawnedList = changedCells(postSlideGrid, newGrid).filter(
+      ({ row, col }) => newGrid[row][col] !== null && postSlideGrid[row][col] === null,
+    );
+    const spawnedKeys = new Set(spawnedList.map(({ row, col }) => `${row},${col}`));
+    const allChanged = changedCells(prevGrid, newGrid);
+    const movedList = allChanged.filter(({ row, col }) => {
+      const key = `${row},${col}`;
+      return !spawnedKeys.has(key) && newGrid[row][col] !== null;
+    });
+
+    spawnCells.clear();
+    moveCells.clear();
+    spawnedList.forEach(({ row, col }) => {
+      spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
+    });
+    movedList.forEach(({ row, col }) => {
+      moveCells.set(`${row},${col}`, { startTime: performance.now(), direction });
+    });
+
+    if (isGameOver(newGrid)) {
+      setTimeout(() => audio.play("gameOver"), 400);
+      const gameOverTrophies = checkTrophies({ type: "gameOver", score: state.score });
+      gameOverTrophies.forEach((id) => showTrophyToast(id));
+    }
+
+    (window as unknown as {
+      __lastAnimationHints: {
+        eliminatedPairs: EliminatedPair[];
+        spawnedCell: { row: number; col: number } | null;
+        movedCells: Array<{ row: number; col: number }>;
+        comboCount: number;
+      };
+    }).__lastAnimationHints = {
+      eliminatedPairs: [],
+      spawnedCell: spawnedList[0] ?? null,
+      movedCells: movedList,
+      comboCount: 0,
+    };
+
+    startAnimationLoop();
   }
 
-  startAnimations(prevGrid, eliminatedPairs, spawnedCells, movedCells, direction);
-  startAnimationLoop();
   const newlyUnlockedTrophies = checkTrophies({
     type: "slide",
     grid: state.grid,
@@ -901,7 +1029,9 @@ window.addEventListener("resize", resizeCanvas);
 
 function setState(newState: GameState): void {
   state = newState;
-  eliminatingCells.clear();
+  eliminationPhase = null;
+  spawnPending = false;
+  recompactCells.clear();
   spawnCells.clear();
   moveCells.clear();
   trophyToastQueue.length = 0;
