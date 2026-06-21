@@ -73,7 +73,7 @@ test("pressing a slide key resolves a chain reaction in a single move (e.g. [4,6
     () => (window as unknown as { __getGameState: () => GameState }).__getGameState()
   );
 
-  expect(result.score).toBe(20);
+  expect(result.score).toBe(40); // 2 pairs × base 20pts × combo multiplier 2 = 40
   expect(result.grid[0]).toEqual([1, null, null, null]);
 });
 

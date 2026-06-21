@@ -805,8 +805,10 @@ function handleKeydown(event: KeyboardEvent): void {
   const postSlideGrid = outcome.grid;
   const scoreGained = outcome.scoreGained;
   const eliminatedPairs = outcome.eliminatedPairs;
+  const comboMultiplier = Math.max(1, eliminatedPairs.length);
+  const actualScore = scoreGained * comboMultiplier;
 
-  state = { grid: postSlideGrid, score: state.score + scoreGained };
+  state = { grid: postSlideGrid, score: state.score + actualScore };
 
   if (state.score > bestScore) {
     bestScore = state.score;
@@ -817,7 +819,7 @@ function handleKeydown(event: KeyboardEvent): void {
 
   if (scoreGained > 0) {
     audio.play("eliminate");
-    showScorePopup(scoreGained);
+    showScorePopup(actualScore);
   } else {
     audio.play("move");
   }
