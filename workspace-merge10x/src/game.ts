@@ -57,8 +57,12 @@ const changeSizeEl = document.getElementById("change-size") as HTMLButtonElement
 const hudScoreEl = document.getElementById("hud-score") as HTMLSpanElement;
 const hudBestEl = document.getElementById("hud-best") as HTMLSpanElement;
 const hudSettingsEl = document.getElementById("hud-settings") as HTMLButtonElement;
+const hudInfoEl = document.getElementById("hud-info") as HTMLButtonElement;
 const hudMuteEl = document.getElementById("hud-mute") as HTMLButtonElement;
 const hudTrophyEl = document.getElementById("hud-trophy") as HTMLButtonElement;
+const infoModalEl = document.getElementById("info-modal") as HTMLDivElement;
+const infoModalOverlayEl = document.getElementById("info-modal-overlay") as HTMLDivElement;
+const infoModalCloseEl = document.getElementById("info-modal-close") as HTMLButtonElement;
 const trophyModalEl = document.getElementById("trophy-modal") as HTMLDivElement;
 const trophyModalOverlayEl = document.getElementById("trophy-modal-overlay") as HTMLDivElement;
 const trophyModalCloseEl = document.getElementById("trophy-modal-close") as HTMLButtonElement;
@@ -723,6 +727,9 @@ hudSettingsEl.addEventListener("click", () => {
   matchStepEl.setAttribute("hidden", "");
   sizePickerEl.removeAttribute("hidden");
 });
+hudInfoEl.addEventListener("click", () => infoModalEl.removeAttribute("hidden"));
+infoModalOverlayEl.addEventListener("click", () => infoModalEl.setAttribute("hidden", ""));
+infoModalCloseEl.addEventListener("click", () => infoModalEl.setAttribute("hidden", ""));
 hudMuteEl.addEventListener("click", () => { audio.toggleMute(); updateMuteButton(); });
 hudTrophyEl.addEventListener("click", () => { renderTrophyModal(); trophyModalEl.removeAttribute("hidden"); });
 trophyModalOverlayEl.addEventListener("click", () => trophyModalEl.setAttribute("hidden", ""));
