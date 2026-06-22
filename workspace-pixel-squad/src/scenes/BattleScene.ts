@@ -165,7 +165,7 @@ export class BattleScene extends Phaser.Scene {
     const entries: ActionEntry[] = [];
 
     if (character.isProtagonist) {
-      entries.push({ label: '總攻擊', action: () => this.executeAutoAttack(character) });
+      entries.push({ label: '自動', action: () => this.executeAutoAttack(character) });
     }
     entries.push(
       { label: '攻擊', action: () => this.executeNormalAttack(character) },

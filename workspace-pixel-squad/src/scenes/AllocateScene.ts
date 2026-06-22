@@ -69,7 +69,13 @@ export class AllocateScene extends Phaser.Scene {
           stageIndex: this.stageIndex + 1,
         });
       } else {
-        this.scene.start('BattleScene', { playerParty: this.party, stageIndex: 0 });
+        // Route back to ResultScene so the "全部關卡通關！" screen is shown
+        this.scene.start('ResultScene', {
+          victory: true,
+          playerParty: this.party,
+          stageIndex: this.stageIndex,
+          expGained: 0,
+        });
       }
     });
   }
