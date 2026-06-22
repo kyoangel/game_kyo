@@ -32,7 +32,7 @@ export class BattleScene extends Phaser.Scene {
 
   init(data: BattleSceneData) {
     this.playerParty = data.playerParty?.length
-      ? data.playerParty.map(c => ({ ...c, stats: { ...c.stats }, alive: true, defending: false }))
+      ? data.playerParty.map(c => ({ ...c, stats: { ...c.stats, hp: c.stats.maxHp }, alive: true, defending: false }))
       : PLAYER_TEMPLATES.map(t => createCharacter(t, 1));
     this.stageIndex = data.stageIndex ?? 0;
     const stage = STAGES[this.stageIndex];
