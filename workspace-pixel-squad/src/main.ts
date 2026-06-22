@@ -8,6 +8,7 @@ const config: Phaser.Types.Core.GameConfig = {
   width: 360,
   height: 640,
   backgroundColor: '#111827',
+  pixelArt: true,
   parent: 'game',
   scale: {
     mode: Phaser.Scale.FIT,
