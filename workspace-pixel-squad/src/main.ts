@@ -1,13 +1,5 @@
 import Phaser from 'phaser';
-
-class BootScene extends Phaser.Scene {
-  constructor() { super({ key: 'BootScene' }); }
-  create() {
-    this.add.text(180, 320, 'Pixel Squad', {
-      fontSize: '24px', color: '#e5e7eb',
-    }).setOrigin(0.5);
-  }
-}
+import { BattleScene } from './scenes/BattleScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -19,7 +11,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
   },
-  scene: [BootScene],
+  scene: [BattleScene],
 };
 
 new Phaser.Game(config);
