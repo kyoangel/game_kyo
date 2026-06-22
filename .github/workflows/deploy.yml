@@ -75,6 +75,34 @@ jobs:
           branch: gh-pages
           clean: false
 
+      - name: Install dependencies (pixel-squad)
+        run: npm ci
+        working-directory: workspace-pixel-squad
+
+      - name: Unit tests (pixel-squad)
+        run: npm run test:unit
+        working-directory: workspace-pixel-squad
+
+      - name: Install Playwright browsers (pixel-squad)
+        run: npx playwright install --with-deps chromium
+        working-directory: workspace-pixel-squad
+
+      - name: E2E tests (pixel-squad)
+        run: npm run test:e2e
+        working-directory: workspace-pixel-squad
+
+      - name: Build (pixel-squad)
+        run: npm run build
+        working-directory: workspace-pixel-squad
+
+      - name: Deploy pixel-squad to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: workspace-pixel-squad/dist
+          target-folder: pixel-squad
+          branch: gh-pages
+          clean: false
+
       - name: Deploy hub index to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
