@@ -36,6 +36,6 @@ export function allocateStat(
   if (character.statPoints <= 0) return character;
   const inc = stat === 'hp' ? 10 : 2;
   const stats = { ...character.stats, [stat]: character.stats[stat] + inc };
-  if (stat === 'hp') stats.maxHp = stats.hp;
+  if (stat === 'hp') stats.maxHp = character.stats.maxHp + inc;
   return { ...character, stats, statPoints: character.statPoints - 1 };
 }
