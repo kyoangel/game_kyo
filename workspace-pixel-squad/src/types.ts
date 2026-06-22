@@ -82,3 +82,11 @@ export interface AllocateSceneData {
   playerParty: Character[];
   stageIndex: number;
 }
+
+export type BattlePhase = 'command' | 'executing' | 'auto';
+
+export interface PendingCommand {
+  character: Character;
+  action: 'attack' | 'skill' | 'defend';
+  target?: Character; // undefined for 防禦
+}
