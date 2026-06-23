@@ -69,6 +69,7 @@ export interface Stage {
 export interface BattleSceneData {
   playerParty: Character[];
   stageIndex: number;
+  expPool?: number;
 }
 
 export interface ResultSceneData {
@@ -76,11 +77,18 @@ export interface ResultSceneData {
   playerParty: Character[];
   stageIndex: number;
   expGained: number;
+  expPool?: number;
 }
 
 export interface AllocateSceneData {
   playerParty: Character[];
   stageIndex: number;
+}
+
+export interface PrepSceneData {
+  playerParty: Character[];
+  stageIndex: number;
+  expPool: number;
 }
 
 export type BattlePhase = 'command' | 'executing' | 'auto';
