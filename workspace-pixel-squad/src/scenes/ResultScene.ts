@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
 import type { ResultSceneData } from '../types';
-import { applyExp } from '../battle/ExpSystem';
 import { STAGES } from '../data/stages';
 
 export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
 
   create(data: ResultSceneData) {
-    const { victory, playerParty, stageIndex, expGained } = data;
+    const { victory, playerParty, stageIndex, expGained, expPool = 0 } = data;
     const W = 360, H = 640;
 
     this.add.rectangle(W / 2, H / 2, W, H, 0x111827);
@@ -23,50 +22,40 @@ export class ResultScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     if (victory) {
-      this.add.text(W / 2, 270, `獲得 EXP: ${expGained}`, {
+      const newExpPool = expPool + expGained;
+
+      this.add.text(W / 2, 270, `獲得 EXP: +${expGained}`, {
         fontSize: '16px', color: '#fde047', fontFamily: 'monospace',
       }).setOrigin(0.5);
 
-      const updatedParty = playerParty.map(c => applyExp(c, expGained));
-      const hasProtagonistPoints = updatedParty.some(c => c.isProtagonist && c.statPoints > 0);
+      this.add.text(W / 2, 304, `EXP池: ${newExpPool}`, {
+        fontSize: '13px', color: '#4ade80', fontFamily: 'monospace',
+      }).setOrigin(0.5);
 
-      let y = 310;
-      updatedParty.forEach(c => {
-        const leveled = c.level > (playerParty.find(p => p.id === c.id)?.level ?? 1);
-        const label = leveled ? `${c.name} Lv.${c.level} ↑` : `${c.name} Lv.${c.level}`;
-        this.add.text(W / 2, y, label, {
-          fontSize: '13px', color: leveled ? '#a78bfa' : '#e5e7eb', fontFamily: 'monospace',
+      let y = 350;
+      playerParty.forEach(c => {
+        this.add.text(W / 2, y, `${c.name}  Lv.${c.level}`, {
+          fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
         }).setOrigin(0.5);
         y += 22;
       });
 
-      const isLastStage = stageIndex >= STAGES.length - 1;
-
-      if (hasProtagonistPoints) {
-        this.makeButton(W / 2, 520, '分配能力點數', 0x7c3aed, () => {
-          this.scene.start('AllocateScene', { playerParty: updatedParty, stageIndex });
+      this.makeButton(W / 2, 520, '整備', 0x7c3aed, () => {
+        this.scene.start('PrepScene', {
+          playerParty,
+          stageIndex,
+          expPool: newExpPool,
         });
-      } else if (!isLastStage) {
-        this.makeButton(W / 2, 520, '下一關', 0x16a34a, () => {
-          this.scene.start('BattleScene', { playerParty: updatedParty, stageIndex: stageIndex + 1 });
-        });
-      } else {
-        this.add.text(W / 2, 500, '🎉 全部關卡通關！', {
-          fontSize: '18px', color: '#fde047', fontFamily: 'monospace',
-        }).setOrigin(0.5);
-        this.makeButton(W / 2, 540, '再來一次', 0x374151, () => {
-          this.scene.start('BattleScene', { playerParty: [], stageIndex: 0 });
-        });
-      }
+      });
     } else {
       this.add.text(W / 2, 300, '隊伍全滅', {
         fontSize: '14px', color: '#6b7280', fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.makeButton(W / 2, 400, '重試', 0x374151, () => {
-        this.scene.start('BattleScene', { playerParty: [], stageIndex });
+        this.scene.start('BattleScene', { playerParty: [], stageIndex, expPool });
       });
       this.makeButton(W / 2, 460, '從第一關開始', 0x374151, () => {
-        this.scene.start('BattleScene', { playerParty: [], stageIndex: 0 });
+        this.scene.start('BattleScene', { playerParty: [], stageIndex: 0, expPool: 0 });
       });
     }
   }
