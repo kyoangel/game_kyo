@@ -20,6 +20,7 @@ export class BattleScene extends Phaser.Scene {
   private playerParty: Character[] = [];
   private enemyParty: Character[] = [];
   private stageIndex = 0;
+  private expPool = 0;
   private views = new Map<string, CharacterView>();
   private actionMenu!: Phaser.GameObjects.Container;
   private messageText!: Phaser.GameObjects.Text;
@@ -53,6 +54,7 @@ export class BattleScene extends Phaser.Scene {
       ? data.playerParty.map(c => ({ ...c, stats: { ...c.stats, hp: c.stats.maxHp }, alive: true, defending: false }))
       : PLAYER_TEMPLATES.map(t => createCharacter(t, 1));
     this.stageIndex = data.stageIndex ?? 0;
+    this.expPool = data.expPool ?? 0;
     const stage = STAGES[this.stageIndex];
     this.enemyParty = stage.enemies.map(e => createEnemy(e));
     this.views.clear();
@@ -439,6 +441,7 @@ export class BattleScene extends Phaser.Scene {
           playerParty: this.playerParty,
           stageIndex: this.stageIndex,
           expGained,
+          expPool: this.expPool,
         });
       });
       return true;
