@@ -163,8 +163,51 @@ Out of scope for Phase 1:
 - Sound effects / music
 - Full pixel art (placeholder art acceptable)
 
-### Phase 2 — Campaign + Full Progression
-- EXP curves tuned, non-protagonist auto-growth curves defined
+### Phase 2 — Progression Redesign + Campaign
+
+#### 整備畫面（PrepScene）— replaces AllocateScene
+
+**Flow:** ResultScene → PrepScene → BattleScene
+
+**Experience Pool:**
+- All battle EXP goes into a shared `expPool: number` (carried in playerParty data)
+- On victory: `expPool += stage.expReward`
+- PrepScene consumes expPool to level up characters
+
+**Level-up mechanics (decoupled from UI via `LevelUpConfig`):**
+```
+LevelUpConfig:
+  protagonist:
+    pointsPerLevel: 5          ← freely allocated by player
+  nonProtagonist:
+    pointsPerLevel: 5          ← all random; future: support { min: 3, max: 6 } range
+  expFormula: (level) => level * 50
+```
+- Player may level the same character multiple times in one prep session (if pool allows)
+- Protagonist → manual point allocation panel
+- Non-protagonist → 5 points randomly distributed across hp/atk/def/spd, shown as summary
+
+**PrepScene UI:**
+```
+┌─────────────────────────┐
+│  整備                    │
+│  經驗池：[████░░] 320 EXP│
+├─────────────────────────┤
+│  [角色1] Lv3  需 150 EXP │  ← tap to level up (repeatable)
+│  [角色2] Lv2  需 100 EXP │
+│  [角色3] Lv1  需  50 EXP │
+├─────────────────────────┤
+│         [出發]           │
+└─────────────────────────┘
+```
+- Character rows show current level + EXP needed for next level
+- Insufficient EXP → button disabled, "EXP 不足" indicator
+- 出發 → proceeds to next BattleScene regardless of leftover pool EXP
+
+**Deferred features (unlock via in-game events/rewards in later phases):**
+- 許願屬性（Wish Stat）: per-character guaranteed stat direction on level-up; reserved for event/reward unlock
+
+#### Campaign
 - Multiple story chapters with stage select
 - Pre-battle squad selection screen (pick 5 from pool)
 - Post-battle loot (basic drops)
