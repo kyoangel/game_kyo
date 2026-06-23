@@ -80,11 +80,6 @@ export interface ResultSceneData {
   expPool?: number;
 }
 
-export interface AllocateSceneData {
-  playerParty: Character[];
-  stageIndex: number;
-}
-
 export interface PrepSceneData {
   playerParty: Character[];
   stageIndex: number;
