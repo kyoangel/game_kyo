@@ -80,7 +80,7 @@ export class PrepScene extends Phaser.Scene {
 
       const statsText = this.add.text(24, y + 38,
         `HP:${char.stats.hp}  ATK:${char.stats.atk}  DEF:${char.stats.def}  SPD:${char.stats.spd}`,
-        { fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' });
+        { fontSize: '13px', color: '#9ca3af', fontFamily: 'monospace' });
 
       const costColor = canUp ? '#4ade80' : '#6b7280';
       const costLabel = canUp ? `▶ 下一級需 ${cost} EXP` : `需 ${cost} EXP（不足）`;
@@ -168,13 +168,18 @@ export class PrepScene extends Phaser.Scene {
     this.allocationPanel.setDepth(10);
 
     const bg = this.add.rectangle(0, 0, 320, 360, 0x1f2937).setStrokeStyle(2, 0x7c3aed);
+    // bg must be added FIRST so stat rows render on top of it, not beneath it
+    this.allocationPanel.add(bg);
+
     const title = this.add.text(0, -155, `${char.name}  升級 Lv.${char.level}`, {
-      fontSize: '13px', color: '#a78bfa', fontFamily: 'monospace',
+      fontSize: '14px', color: '#a78bfa', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
     this.pointsText = this.add.text(0, -125, `剩餘點數: ${char.statPoints}`, {
-      fontSize: '14px', color: '#fde047', fontFamily: 'monospace',
+      fontSize: '15px', color: '#fde047', fontFamily: 'monospace',
     }).setOrigin(0.5);
+
+    this.allocationPanel.add([title, this.pointsText]);
 
     const statDefs: Array<{ key: 'hp' | 'atk' | 'def' | 'spd'; label: string; inc: string }> = [
       { key: 'hp', label: 'HP', inc: '+10' },
@@ -186,16 +191,16 @@ export class PrepScene extends Phaser.Scene {
     statDefs.forEach(({ key, label, inc }, i) => {
       const y = -70 + i * 60;
       const lbl = this.add.text(-130, y, label, {
-        fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
+        fontSize: '15px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0, 0.5);
       const val = this.add.text(10, y, String(char.stats[key]), {
-        fontSize: '13px', color: '#a78bfa', fontFamily: 'monospace',
+        fontSize: '15px', color: '#a78bfa', fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.statValueTexts.set(key, val);
-      const btn = this.add.rectangle(100, y, 64, 28, 0x374151)
+      const btn = this.add.rectangle(100, y, 70, 32, 0x374151)
         .setInteractive({ useHandCursor: true });
       const btnTxt = this.add.text(100, y, inc, {
-        fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace',
+        fontSize: '14px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0.5);
       btn.on('pointerdown', () => this.spendPoint(key));
       btn.on('pointerover', () => btn.setFillStyle(0x4b5563));
@@ -203,16 +208,16 @@ export class PrepScene extends Phaser.Scene {
       this.allocationPanel!.add([lbl, val, btn, btnTxt]);
     });
 
-    const confirmBtn = this.add.rectangle(0, 140, 140, 36, 0x16a34a)
+    const confirmBtn = this.add.rectangle(0, 140, 160, 40, 0x16a34a)
       .setInteractive({ useHandCursor: true });
     const confirmTxt = this.add.text(0, 140, '確認', {
-      fontSize: '14px', color: '#fff', fontFamily: 'monospace',
+      fontSize: '16px', color: '#fff', fontFamily: 'monospace',
     }).setOrigin(0.5);
     confirmBtn.on('pointerdown', () => this.closeAllocationPanel());
     confirmBtn.on('pointerover', () => confirmBtn.setAlpha(0.8));
     confirmBtn.on('pointerout', () => confirmBtn.setAlpha(1));
 
-    this.allocationPanel.add([bg, title, this.pointsText, confirmBtn, confirmTxt]);
+    this.allocationPanel.add([confirmBtn, confirmTxt]);
   }
 
   private spendPoint(stat: 'hp' | 'atk' | 'def' | 'spd') {
