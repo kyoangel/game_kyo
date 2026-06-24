@@ -8,7 +8,31 @@ permissions:
   contents: write
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      merge10: ${{ steps.filter.outputs.merge10 }}
+      merge10x: ${{ steps.filter.outputs.merge10x }}
+      pixel-squad: ${{ steps.filter.outputs.pixel-squad }}
+      hub: ${{ steps.filter.outputs.hub }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            merge10:
+              - 'workspace/**'
+            merge10x:
+              - 'workspace-merge10x/**'
+            pixel-squad:
+              - 'workspace-pixel-squad/**'
+            hub:
+              - 'hub/**'
+
   build-merge10:
+    needs: changes
+    if: needs.changes.outputs.merge10 == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,20 +41,15 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: workspace/package-lock.json
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
         working-directory: workspace
-      - name: Unit tests
-        run: npm run test:unit
+      - run: npm run test:unit
         working-directory: workspace
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium
         working-directory: workspace
-      - name: E2E tests
-        run: npm run test:e2e
+      - run: npm run test:e2e
         working-directory: workspace
-      - name: Build
-        run: npm run build
+      - run: npm run build
         working-directory: workspace
       - uses: actions/upload-artifact@v4
         with:
@@ -38,6 +57,8 @@ jobs:
           path: workspace/dist
 
   build-merge10x:
+    needs: changes
+    if: needs.changes.outputs.merge10x == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,20 +67,15 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: workspace-merge10x/package-lock.json
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
         working-directory: workspace-merge10x
-      - name: Unit tests
-        run: npm run test:unit
+      - run: npm run test:unit
         working-directory: workspace-merge10x
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium
         working-directory: workspace-merge10x
-      - name: E2E tests
-        run: npm run test:e2e
+      - run: npm run test:e2e
         working-directory: workspace-merge10x
-      - name: Build
-        run: npm run build
+      - run: npm run build
         working-directory: workspace-merge10x
       - uses: actions/upload-artifact@v4
         with:
@@ -67,6 +83,8 @@ jobs:
           path: workspace-merge10x/dist
 
   build-pixel-squad:
+    needs: changes
+    if: needs.changes.outputs.pixel-squad == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,20 +93,15 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: workspace-pixel-squad/package-lock.json
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
         working-directory: workspace-pixel-squad
-      - name: Unit tests
-        run: npm run test:unit
+      - run: npm run test:unit
         working-directory: workspace-pixel-squad
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium
         working-directory: workspace-pixel-squad
-      - name: E2E tests
-        run: npm run test:e2e
+      - run: npm run test:e2e
         working-directory: workspace-pixel-squad
-      - name: Build
-        run: npm run build
+      - run: npm run build
         working-directory: workspace-pixel-squad
       - uses: actions/upload-artifact@v4
         with:
@@ -96,44 +109,63 @@ jobs:
           path: workspace-pixel-squad/dist
 
   deploy:
-    needs: [build-merge10, build-merge10x, build-pixel-squad]
+    needs: [changes, build-merge10, build-merge10x, build-pixel-squad]
+    if: |
+      always() && !failure() && !cancelled() &&
+      (
+        needs.build-merge10.result == 'success' ||
+        needs.build-merge10x.result == 'success' ||
+        needs.build-pixel-squad.result == 'success' ||
+        needs.changes.outputs.hub == 'true'
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
+        if: needs.build-merge10.result == 'success'
         with:
           name: dist-merge10
           path: dist/merge10
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-merge10x
-          path: dist/merge10x
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-pixel-squad
-          path: dist/pixel-squad
       - name: Deploy merge10
+        if: needs.build-merge10.result == 'success'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: dist/merge10
           target-folder: merge10
           branch: gh-pages
           clean: false
+
+      - uses: actions/download-artifact@v4
+        if: needs.build-merge10x.result == 'success'
+        with:
+          name: dist-merge10x
+          path: dist/merge10x
       - name: Deploy merge10x
+        if: needs.build-merge10x.result == 'success'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: dist/merge10x
           target-folder: merge10x
           branch: gh-pages
           clean: false
+
+      - uses: actions/download-artifact@v4
+        if: needs.build-pixel-squad.result == 'success'
+        with:
+          name: dist-pixel-squad
+          path: dist/pixel-squad
       - name: Deploy pixel-squad
+        if: needs.build-pixel-squad.result == 'success'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: dist/pixel-squad
           target-folder: pixel-squad
           branch: gh-pages
           clean: false
-      - name: Deploy hub index
+
+      - name: Deploy hub
+        if: needs.changes.outputs.hub == 'true'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: hub
