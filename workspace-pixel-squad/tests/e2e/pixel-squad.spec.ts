@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('game loads and shows battle screen with characters', async ({ page }) => {
-  await page.goto('/game_kyo/pixel-squad/');
+  await page.goto('/game_kyo/pixel-squad/?e2e=1');
   await page.waitForSelector('canvas', { timeout: 8000 });
   const canvas = page.locator('canvas');
   await expect(canvas).toBeVisible();
@@ -11,7 +11,7 @@ test('game loads and shows battle screen with characters', async ({ page }) => {
 });
 
 test('battle state is accessible via test helper', async ({ page }) => {
-  await page.goto('/game_kyo/pixel-squad/');
+  await page.goto('/game_kyo/pixel-squad/?e2e=1');
   await page.waitForSelector('canvas', { timeout: 8000 });
   await page.waitForTimeout(1500);
 
@@ -20,12 +20,12 @@ test('battle state is accessible via test helper', async ({ page }) => {
   );
   expect(state).toBeTruthy();
   const s = state as { playerParty: unknown[]; enemyParty: unknown[] };
-  expect(s.playerParty).toHaveLength(3);
-  expect(s.enemyParty).toHaveLength(1); // stage 1 has 1 enemy
+  expect(s.playerParty.length).toBeGreaterThanOrEqual(1); // new game starts with protagonist
+  expect(s.enemyParty).toHaveLength(1); // stage 1-1 has 1 enemy
 });
 
 test('player can click 攻擊 during their turn', async ({ page }) => {
-  await page.goto('/game_kyo/pixel-squad/');
+  await page.goto('/game_kyo/pixel-squad/?e2e=1');
   await page.waitForSelector('canvas', { timeout: 8000 });
   await page.waitForTimeout(2000); // let first player turn arrive
 

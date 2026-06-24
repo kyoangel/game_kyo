@@ -8,6 +8,19 @@ export class TitleScene extends Phaser.Scene {
   constructor() { super({ key: 'TitleScene' }); }
 
   create() {
+    // E2E test shortcut: ?e2e=1 bypasses TitleScene and jumps directly to BattleScene
+    if (new URLSearchParams(window.location.search).has('e2e')) {
+      const gs = newGame(0);
+      saveSlot(gs);
+      this.scene.start('BattleScene', {
+        playerParty: gs.squad,
+        stageIndex: 0,
+        expPool: 0,
+        gameState: gs,
+      });
+      return;
+    }
+
     const W = 360, H = 640;
     this.add.rectangle(W / 2, H / 2, W, H, 0x111827);
 
