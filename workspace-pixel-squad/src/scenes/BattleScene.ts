@@ -467,6 +467,17 @@ export class BattleScene extends Phaser.Scene {
 
     this.showMessage(resultMsg);
 
+    if (success) {
+      // Recruit succeeded — no counterattack, just end the battle
+      this.time.delayedCall(1200, () => {
+        this.clearMessage();
+        enemy.alive = false;
+        this.checkBattleEnd();
+      });
+      return;
+    }
+
+    // Recruit failed — enemy counterattacks, then resume combat
     this.time.delayedCall(600, () => {
       this.clearMessage();
       const aliveTargets = this.playerParty.filter(p => p.alive);
@@ -477,12 +488,7 @@ export class BattleScene extends Phaser.Scene {
       }
       const dmg = calcDamage(enemy, target);
       this.applyDamageAndAdvance(enemy, target, dmg, undefined, () => {
-        if (success) {
-          enemy.alive = false;
-          this.checkBattleEnd();
-        } else {
-          this.startCommandPhase();
-        }
+        this.startCommandPhase();
       });
     });
   }

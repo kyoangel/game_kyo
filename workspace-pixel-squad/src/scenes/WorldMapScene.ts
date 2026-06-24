@@ -245,6 +245,7 @@ export class WorldMapScene extends Phaser.Scene {
       playerParty: this.gameState.squad,
       stageIndex,
       expPool: this.gameState.expPool,
+      gameState: this.gameState,
     });
   }
 }

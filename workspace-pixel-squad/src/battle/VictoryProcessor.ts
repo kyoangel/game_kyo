@@ -45,13 +45,17 @@ export function processVictory(
     }
   }
 
-  // Recruit: add recruited enemy to pool
+  // Recruit: add recruited enemy to pool, and auto-join squad if not full
   if (recruitedEnemy) {
     const alreadyInPool = state.pool.some(c => c.templateId === recruitedEnemy.templateId);
     if (!alreadyInPool) {
       const template = PLAYER_TEMPLATES.find(t => t.id === recruitedEnemy.templateId);
       if (template) {
-        state.pool.push(createCharacter(template, Math.max(1, recruitedEnemy.level)));
+        const newChar = createCharacter(template, Math.max(1, recruitedEnemy.level));
+        state.pool.push(newChar);
+        if (state.squad.length < 5) {
+          state.squad.push(newChar);
+        }
       }
     }
   }
