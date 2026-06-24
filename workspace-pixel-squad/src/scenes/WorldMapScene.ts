@@ -47,7 +47,7 @@ export class WorldMapScene extends Phaser.Scene {
       color: '#e5e7eb',
       fontFamily: 'monospace',
     }).setOrigin(0.5);
-    backBtnBg.on('pointerdown', () => this.scene.start('BaseScene', { gameState: this.gameState }));
+    backBtnBg.on('pointerdown', () => this.scene.start('BaseScene', this.gameState));
     backBtnBg.on('pointerover', () => backBtnBg.setFillStyle(0x4b5563));
     backBtnBg.on('pointerout', () => backBtnBg.setFillStyle(0x374151));
 
