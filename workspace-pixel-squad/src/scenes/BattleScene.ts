@@ -6,6 +6,7 @@ import { calcDamage } from '../battle/DamageCalc';
 import { chooseTarget } from '../battle/AI';
 import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
+import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 
 interface CharacterView {
   body: Phaser.GameObjects.Rectangle;
@@ -35,6 +36,9 @@ export class BattleScene extends Phaser.Scene {
   // Auto mode state
   private stopRequested = false;
   private stopButton?: Phaser.GameObjects.Container;
+
+  // Recruit state
+  private recruitedEnemy?: Character;
 
   // Target selection state
   private targetHighlights = new Map<string, Phaser.GameObjects.Rectangle>();
@@ -66,6 +70,7 @@ export class BattleScene extends Phaser.Scene {
     this.stopRequested = false;
     this.targetSelectActive = false;
     this.waitingForInput = false;
+    this.recruitedEnemy = undefined;
   }
 
   create() {
@@ -111,25 +116,41 @@ export class BattleScene extends Phaser.Scene {
   private renderParty(party: Character[], x: number, isPlayer: boolean) {
     const topY = 40, bottomY = 470;
     const n = Math.max(1, party.length);
+    const useTwoCol = n >= 4;
+    const colOffset = 26;
+
     party.forEach((char, i) => {
-      const cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
+      let cx: number;
+      let cy: number;
+
+      if (useTwoCol) {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const rows = Math.ceil(n / 2);
+        cy = topY + ((bottomY - topY) * (row + 0.5)) / rows;
+        cx = x + (col === 0 ? -colOffset : colOffset);
+      } else {
+        cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
+        cx = x;
+      }
+
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
-      const body = this.add.rectangle(x, cy, 44, 56, color).setAlpha(0.9);
-      const hpBarBg = this.add.rectangle(x, cy + 34, 60, 6, 0x374151);
-      const hpBar = this.add.rectangle(x - 30, cy + 34, 60, 6, 0x22c55e).setOrigin(0, 0.5);
-      const nameText = this.add.text(x, cy - 36, char.name, {
+      const body = this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
+      const hpBarBg = this.add.rectangle(cx, cy + 34, 60, 6, 0x374151);
+      const hpBar = this.add.rectangle(cx - 30, cy + 34, 60, 6, 0x22c55e).setOrigin(0, 0.5);
+      const nameText = this.add.text(cx, cy - 36, char.name, {
         fontSize: '10px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const archetypeText = this.add.text(x, cy - 26, `[${char.archetype}]`, {
+      const archetypeText = this.add.text(cx, cy - 26, `[${char.archetype}]`, {
         fontSize: '8px', color: '#6b7280', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const hpText = this.add.text(x, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
+      const hpText = this.add.text(cx, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
         fontSize: '9px', color: '#9ca3af', fontFamily: 'monospace',
       }).setOrigin(0.5);
       this.views.set(char.id, { body, hpBarBg, hpBar, nameText, hpText, archetypeText });
 
       if (isPlayer) {
-        const icon = this.add.text(x + 28, cy - 36, '', {
+        const icon = this.add.text(cx + 28, cy - 36, '', {
           fontSize: '11px', fontFamily: 'monospace',
         }).setOrigin(0.5);
         this.commandIcons.set(char.id, icon);
@@ -227,6 +248,16 @@ export class BattleScene extends Phaser.Scene {
         }
       },
     );
+
+    // 勸降 — only show when exactly 1 alive enemy remains and it's below 50% HP
+    const aliveEnemies = this.enemyParty.filter(e => e.alive);
+    if (aliveEnemies.length === 1 && canAttemptRecruit(aliveEnemies[0])) {
+      const recruitTarget = aliveEnemies[0];
+      entries.push({
+        label: '勸降',
+        action: () => this.attemptRecruitAction(character, recruitTarget),
+      });
+    }
 
     this.keyboardActions = entries;
     this.keyboardActionIndex = isFirstAlive ? 1 : 0;
@@ -402,6 +433,46 @@ export class BattleScene extends Phaser.Scene {
     this.applyDamageAndAdvance(cmd.character, target, dmg, skill?.name, next);
   }
 
+  private attemptRecruitAction(_attacker: Character, enemy: Character) {
+    if (!this.waitingForInput) return;
+    this.waitingForInput = false;
+    this.actionMenu.removeAll(true);
+
+    const isNamed = isNamedCharacter(enemy.templateId);
+    const chance = recruitChance(enemy, isNamed);
+    const success = attemptRecruit(chance);
+
+    const resultMsg = success
+      ? `「${enemy.name}」決定加入你的隊伍！`
+      : `「${enemy.name}」拒絕了你的勸降！`;
+
+    if (success) {
+      this.recruitedEnemy = enemy;
+      enemy.recruited = true;
+    }
+
+    this.showMessage(resultMsg);
+
+    this.time.delayedCall(600, () => {
+      this.clearMessage();
+      const aliveTargets = this.playerParty.filter(p => p.alive);
+      const target = aliveTargets[Math.floor(Math.random() * aliveTargets.length)];
+      if (!target) {
+        this.checkBattleEnd();
+        return;
+      }
+      const dmg = calcDamage(enemy, target);
+      this.applyDamageAndAdvance(enemy, target, dmg, undefined, () => {
+        if (success) {
+          enemy.alive = false;
+          this.checkBattleEnd();
+        } else {
+          this.startCommandPhase();
+        }
+      });
+    });
+  }
+
   private executeEnemyAction(enemy: Character, next: () => void) {
     const target = chooseTarget(this.playerParty);
     if (!target) { next(); return; }
@@ -442,6 +513,7 @@ export class BattleScene extends Phaser.Scene {
           stageIndex: this.stageIndex,
           expGained,
           expPool: this.expPool,
+          recruitedEnemy: this.recruitedEnemy,
         });
       });
       return true;
