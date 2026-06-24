@@ -6,7 +6,7 @@ export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
 
   create(data: ResultSceneData) {
-    const { victory, playerParty, stageIndex, expGained, expPool = 0 } = data;
+    const { victory, playerParty, stageIndex, expGained, expPool = 0, recruitedEnemy } = data;
     const W = 360, H = 640;
 
     this.add.rectangle(W / 2, H / 2, W, H, 0x111827);
@@ -31,6 +31,12 @@ export class ResultScene extends Phaser.Scene {
       this.add.text(W / 2, 304, `EXP池: ${newExpPool}`, {
         fontSize: '13px', color: '#4ade80', fontFamily: 'monospace',
       }).setOrigin(0.5);
+
+      if (recruitedEnemy) {
+        this.add.text(W / 2, 338, `新成員：${recruitedEnemy.name} 加入了！`, {
+          fontSize: '15px', color: '#a78bfa', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+      }
 
       let y = 350;
       playerParty.forEach(c => {
