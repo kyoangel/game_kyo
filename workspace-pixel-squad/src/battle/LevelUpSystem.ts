@@ -56,7 +56,7 @@ export function applyLevelUp(
       level: newLevel,
       expToNext: newExpToNext,
       stats: {
-        hp: character.stats.hp + gains.hp,
+        hp: character.stats.maxHp + gains.hp,
         maxHp: character.stats.maxHp + gains.hp,
         atk: character.stats.atk + gains.atk,
         def: character.stats.def + gains.def,
