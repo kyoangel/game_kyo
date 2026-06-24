@@ -8,102 +8,132 @@ permissions:
   contents: write
 
 jobs:
-  deploy:
+  build-merge10:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: workspace/package-lock.json
-
       - name: Install dependencies
         run: npm ci
         working-directory: workspace
-
       - name: Unit tests
         run: npm run test:unit
         working-directory: workspace
-
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
         working-directory: workspace
-
       - name: E2E tests
         run: npm run test:e2e
         working-directory: workspace
-
       - name: Build
         run: npm run build
         working-directory: workspace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-merge10
+          path: workspace/dist
 
-      - name: Deploy game to GitHub Pages
+  build-merge10x:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: workspace-merge10x/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: workspace-merge10x
+      - name: Unit tests
+        run: npm run test:unit
+        working-directory: workspace-merge10x
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: workspace-merge10x
+      - name: E2E tests
+        run: npm run test:e2e
+        working-directory: workspace-merge10x
+      - name: Build
+        run: npm run build
+        working-directory: workspace-merge10x
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-merge10x
+          path: workspace-merge10x/dist
+
+  build-pixel-squad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: workspace-pixel-squad/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: workspace-pixel-squad
+      - name: Unit tests
+        run: npm run test:unit
+        working-directory: workspace-pixel-squad
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: workspace-pixel-squad
+      - name: E2E tests
+        run: npm run test:e2e
+        working-directory: workspace-pixel-squad
+      - name: Build
+        run: npm run build
+        working-directory: workspace-pixel-squad
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-pixel-squad
+          path: workspace-pixel-squad/dist
+
+  deploy:
+    needs: [build-merge10, build-merge10x, build-pixel-squad]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-merge10
+          path: dist/merge10
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-merge10x
+          path: dist/merge10x
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-pixel-squad
+          path: dist/pixel-squad
+      - name: Deploy merge10
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: workspace/dist
+          folder: dist/merge10
           target-folder: merge10
           branch: gh-pages
           clean: false
-
-      - name: Install dependencies (merge10x)
-        run: npm ci
-        working-directory: workspace-merge10x
-
-      - name: Unit tests (merge10x)
-        run: npm run test:unit
-        working-directory: workspace-merge10x
-
-      - name: Install Playwright browsers (merge10x)
-        run: npx playwright install --with-deps chromium
-        working-directory: workspace-merge10x
-
-      - name: E2E tests (merge10x)
-        run: npm run test:e2e
-        working-directory: workspace-merge10x
-
-      - name: Build (merge10x)
-        run: npm run build
-        working-directory: workspace-merge10x
-
-      - name: Deploy merge10x to GitHub Pages
+      - name: Deploy merge10x
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: workspace-merge10x/dist
+          folder: dist/merge10x
           target-folder: merge10x
           branch: gh-pages
           clean: false
-
-      - name: Install dependencies (pixel-squad)
-        run: npm ci
-        working-directory: workspace-pixel-squad
-
-      - name: Unit tests (pixel-squad)
-        run: npm run test:unit
-        working-directory: workspace-pixel-squad
-
-      - name: Install Playwright browsers (pixel-squad)
-        run: npx playwright install --with-deps chromium
-        working-directory: workspace-pixel-squad
-
-      - name: E2E tests (pixel-squad)
-        run: npm run test:e2e
-        working-directory: workspace-pixel-squad
-
-      - name: Build (pixel-squad)
-        run: npm run build
-        working-directory: workspace-pixel-squad
-
-      - name: Deploy pixel-squad to GitHub Pages
+      - name: Deploy pixel-squad
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: workspace-pixel-squad/dist
+          folder: dist/pixel-squad
           target-folder: pixel-squad
           branch: gh-pages
           clean: false
-
-      - name: Deploy hub index to GitHub Pages
+      - name: Deploy hub index
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: hub
