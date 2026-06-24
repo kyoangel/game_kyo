@@ -93,3 +93,24 @@ export interface PendingCommand {
   action: 'attack' | 'skill' | 'defend';
   target?: Character; // undefined for 防禦
 }
+
+export interface ChapterRunState {
+  chapterId: string;
+  currentStageIndex: number;   // 0–4, which stage within chapter is next
+  lockedSquad: Character[];    // squad frozen for this run
+}
+
+export interface StageProgress {
+  completedStageIds: string[]; // stages fully cleared (using Stage.id strings)
+  inChapterRun?: ChapterRunState;
+}
+
+export interface GameState {
+  slotId: 0 | 1 | 2;
+  pool: Character[];           // all unlocked characters
+  squad: Character[];          // active squad (max 5, subset of pool)
+  expPool: number;
+  currency: number;            // 廢土幣
+  stageProgress: StageProgress;
+  savedAt: number;             // Date.now() timestamp
+}
