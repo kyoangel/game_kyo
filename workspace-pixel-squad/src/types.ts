@@ -26,6 +26,8 @@ export interface CharacterTemplate {
   skillIds: string[];
   /** Auto stat growth per level (non-protagonist only) */
   statGrowth: StatBlock;
+  unlockMethod: 'start' | 'stage' | 'recruit';
+  unlockStageId?: string;  // for 'stage' and 'recruit' types
 }
 
 /** Live combat instance */
@@ -50,6 +52,7 @@ export interface Character {
   archetype: ArchetypeLabel;
   alive: boolean;
   defending: boolean;   // true = -50% damage this round
+  recruited?: boolean;  // true = this enemy was convinced to join
 }
 
 export interface EnemyTemplate {
@@ -92,6 +95,7 @@ export interface ResultSceneData {
   stageIndex: number;
   expGained: number;
   expPool?: number;
+  recruitedEnemy?: Character;  // set if a recruit succeeded during battle
 }
 
 export interface PrepSceneData {
