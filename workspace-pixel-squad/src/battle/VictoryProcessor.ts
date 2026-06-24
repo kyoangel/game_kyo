@@ -45,18 +45,20 @@ export function processVictory(
     }
   }
 
-  // Recruit: add recruited enemy to pool, and auto-join squad if not full
+  // Recruit: add recruited enemy to pool (if not already there), then auto-join squad if space.
+  // Note: for boss stages, the unlock block above may have already added the character to pool —
+  // the squad push must still happen regardless.
   if (recruitedEnemy) {
     const alreadyInPool = state.pool.some(c => c.templateId === recruitedEnemy.templateId);
     if (!alreadyInPool) {
       const template = PLAYER_TEMPLATES.find(t => t.id === recruitedEnemy.templateId);
       if (template) {
-        const newChar = createCharacter(template, Math.max(1, recruitedEnemy.level));
-        state.pool.push(newChar);
-        if (state.squad.length < 5) {
-          state.squad.push(newChar);
-        }
+        state.pool.push(createCharacter(template, Math.max(1, recruitedEnemy.level)));
       }
+    }
+    const poolChar = state.pool.find(c => c.templateId === recruitedEnemy.templateId);
+    if (poolChar && !state.squad.some(s => s.id === poolChar.id) && state.squad.length < 5) {
+      state.squad.push(poolChar);
     }
   }
 

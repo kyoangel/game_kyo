@@ -116,7 +116,14 @@ export class BattleScene extends Phaser.Scene {
     this.renderParty(this.enemyParty, 270, false);
 
     this.setupKeyboard();
-    this.startCommandPhase();
+
+    const stage = STAGES[this.stageIndex];
+    const isFirstVisit = !this.gameState?.stageProgress.completedStageIds.includes(stage.id);
+    if (isFirstVisit && stage.preDialog) {
+      this.showPreBattleDialog(stage.preDialog, () => this.startCommandPhase());
+    } else {
+      this.startCommandPhase();
+    }
 
     (window as unknown as Record<string, unknown>).__getBattleState = () => ({
       playerParty: this.playerParty,
@@ -733,6 +740,52 @@ export class BattleScene extends Phaser.Scene {
     this.waitingForInput = false;
     this.actionMenu.removeAll(true);
     this.advanceCommandInput();
+  }
+
+  // ─── Pre-battle Dialog ────────────────────────────────────────────────────
+
+  private showPreBattleDialog(dialog: { speaker: string; lines: string[] }, onDone: () => void) {
+    const W = 360, H = 640;
+    let lineIndex = 0;
+
+    const blocker = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0)
+      .setDepth(19)
+      .setInteractive();
+
+    const panelBg = this.add.rectangle(W / 2, H - 100, W, 200, 0x111827)
+      .setStrokeStyle(1, 0x4b5563)
+      .setDepth(20);
+
+    const speakerText = this.add.text(24, H - 188, dialog.speaker, {
+      fontSize: '13px', color: '#a78bfa', fontFamily: 'monospace', fontStyle: 'bold',
+    }).setDepth(20);
+
+    const lineText = this.add.text(24, H - 168, dialog.lines[0], {
+      fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace',
+      wordWrap: { width: 312 },
+    }).setDepth(20);
+
+    const hintText = this.add.text(W - 16, H - 16, '▶ 點擊繼續', {
+      fontSize: '10px', color: '#6b7280', fontFamily: 'monospace',
+    }).setOrigin(1, 1).setDepth(20);
+
+    const advance = () => {
+      lineIndex++;
+      if (lineIndex >= dialog.lines.length) {
+        blocker.destroy();
+        panelBg.destroy();
+        speakerText.destroy();
+        lineText.destroy();
+        hintText.destroy();
+        onDone();
+      } else {
+        lineText.setText(dialog.lines[lineIndex]);
+      }
+    };
+
+    panelBg.setInteractive();
+    panelBg.on('pointerdown', advance);
+    blocker.on('pointerdown', advance);
   }
 
   // ─── Utilities ────────────────────────────────────────────────────────────

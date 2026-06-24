@@ -62,6 +62,11 @@ export interface EnemyTemplate {
   skillIds: string[];
 }
 
+export interface StageDialog {
+  speaker: string;
+  lines: string[];
+}
+
 export interface Stage {
   id: string;
   chapterId: string;
@@ -74,6 +79,7 @@ export interface Stage {
   expReward: number;
   currencyReward: number;
   unlockCharacterId?: string;   // character unlocked on first clear
+  preDialog?: StageDialog;      // shown before battle on first visit
 }
 
 export interface Chapter {

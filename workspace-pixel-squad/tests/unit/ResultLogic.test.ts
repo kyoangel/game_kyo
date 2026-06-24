@@ -84,6 +84,28 @@ describe('processVictory', () => {
     expect(hasVega).toBe(true);
   });
 
+  it('adds recruited enemy to squad when squad has space', () => {
+    const state = makeGameState();
+    const stage = makeStage();
+    const enemy = makeEnemy('vega', 'Vega');
+    expect(state.squad.length).toBeLessThan(5);
+    const result = processVictory(state, stage, 0, enemy);
+    const inSquad = result.squad.some(c => c.templateId === 'vega');
+    expect(inSquad).toBe(true);
+  });
+
+  it('adds recruited boss to squad even when unlock block already added them to pool', () => {
+    // Boss stage: unlockCharacterId === recruited enemy's templateId
+    // The unlock block runs first (adds to pool), then recruit block must still add to squad
+    const state = makeGameState();
+    const stage = makeStage({ unlockCharacterId: 'vega' });
+    const enemy = makeEnemy('vega', 'Vega');
+    const result = processVictory(state, stage, 0, enemy);
+    expect(result.pool.filter(c => c.templateId === 'vega')).toHaveLength(1);
+    const inSquad = result.squad.some(c => c.templateId === 'vega');
+    expect(inSquad).toBe(true);
+  });
+
   it('clears inChapterRun when last stage of chapter (stageIndex 4)', () => {
     const state = makeGameState();
     state.stageProgress.inChapterRun = {

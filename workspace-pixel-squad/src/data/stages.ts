@@ -16,6 +16,14 @@ export const STAGES: Stage[] = [
       { id: 'mutant_b', name: '變種人', baseStats: { hp: 60, atk: 15, def: 5, spd: 8 }, skillIds: [] },
     ],
     expReward: 60, currencyReward: 30,
+    preDialog: {
+      speaker: 'Rex',
+      lines: [
+        '等等⋯⋯你是人類？',
+        '幫我幹掉這群變種人，我就跟你走。',
+        '別讓我失望。',
+      ],
+    },
   },
   {
     id: '1-3', chapterId: 'ch1', name: '廢棄醫院', stageIndex: 2,
@@ -34,12 +42,26 @@ export const STAGES: Stage[] = [
       { id: 'raider_sniper', name: '掠奪者狙擊手', baseStats: { hp: 65, atk: 24, def: 5, spd: 16 }, skillIds: [] },
     ],
     expReward: 90, currencyReward: 45,
+    preDialog: {
+      speaker: 'Nyx',
+      lines: [
+        '真沒想到還有人敢來這裡。',
+        '要活命的話，跟我一起打。',
+      ],
+    },
   },
   {
     id: '1-5', chapterId: 'ch1', name: '[BOSS] 鐵拳 Vega', stageIndex: 4,
     isBoss: true, isSideQuest: false, unlockCharacterId: 'vega',
     enemies: [{ id: 'vega', name: 'Vega', baseStats: { hp: 200, atk: 35, def: 15, spd: 14 }, skillIds: [] }],
     expReward: 120, currencyReward: 80,
+    preDialog: {
+      speaker: 'Vega',
+      lines: [
+        '你敢來找我？',
+        '那就讓我看看你有多少斤兩。',
+      ],
+    },
   },
 
   // ── Chapter 2: 破敗工廠 ──────────────────────────────────────────────────
@@ -62,6 +84,13 @@ export const STAGES: Stage[] = [
       { id: 'raider_c', name: '掠奪者', baseStats: { hp: 80, atk: 20, def: 8, spd: 12 }, skillIds: [] },
     ],
     expReward: 110, currencyReward: 55,
+    preDialog: {
+      speaker: 'Ash',
+      lines: [
+        '這裡的掠奪者是我的地盤問題。',
+        '你幫我清掉他們，我幫你。',
+      ],
+    },
   },
   {
     id: '2-3', chapterId: 'ch2', name: '地下賭場', stageIndex: 2,
@@ -88,6 +117,13 @@ export const STAGES: Stage[] = [
     isBoss: true, isSideQuest: false, unlockCharacterId: 'crow',
     enemies: [{ id: 'crow', name: 'Crow', baseStats: { hp: 220, atk: 38, def: 12, spd: 22 }, skillIds: [] }],
     expReward: 180, currencyReward: 120,
+    preDialog: {
+      speaker: 'Crow',
+      lines: [
+        '又來送死的？',
+        '我很久沒好好玩了⋯⋯',
+      ],
+    },
   },
 
   // ── Chapter 3: 輻射荒原 ──────────────────────────────────────────────────
@@ -121,6 +157,14 @@ export const STAGES: Stage[] = [
       { id: 'bomber', name: '爆破兵', baseStats: { hp: 80, atk: 32, def: 8, spd: 13 }, skillIds: [] },
     ],
     expReward: 200, currencyReward: 100,
+    preDialog: {
+      speaker: 'Mira',
+      lines: [
+        '不許動！',
+        '⋯⋯等等，你不是他們的人？',
+        '一起清掉這些傢伙吧。小心地雷。',
+      ],
+    },
   },
   {
     id: '3-4', chapterId: 'ch3', name: '指揮塔', stageIndex: 3,
@@ -137,6 +181,13 @@ export const STAGES: Stage[] = [
     isBoss: true, isSideQuest: false, unlockCharacterId: 'zora',
     enemies: [{ id: 'zora', name: 'Zora', baseStats: { hp: 260, atk: 32, def: 25, spd: 16 }, skillIds: [] }],
     expReward: 260, currencyReward: 160,
+    preDialog: {
+      speaker: 'Zora',
+      lines: [
+        '廢土的秩序由我守護。',
+        '你沒有資格存在於此。',
+      ],
+    },
   },
 
   // ── Chapter 4: 機械廢都 ──────────────────────────────────────────────────
@@ -160,6 +211,13 @@ export const STAGES: Stage[] = [
       { id: 'forge_bot', name: '鑄造機器人', baseStats: { hp: 160, atk: 28, def: 25, spd: 7 }, skillIds: [] },
     ],
     expReward: 260, currencyReward: 130,
+    preDialog: {
+      speaker: 'Rook',
+      lines: [
+        '有本事闖進來的人，不多。',
+        '先幫我打穿這裡，再說其他的。',
+      ],
+    },
   },
   {
     id: '4-3', chapterId: 'ch4', name: '數據中心', stageIndex: 2,
@@ -186,6 +244,13 @@ export const STAGES: Stage[] = [
     isBoss: true, isSideQuest: false, unlockCharacterId: 'dex',
     enemies: [{ id: 'dex', name: 'Dex', baseStats: { hp: 400, atk: 40, def: 35, spd: 10 }, skillIds: [] }],
     expReward: 340, currencyReward: 200,
+    preDialog: {
+      speaker: 'Dex',
+      lines: [
+        '鐵壁不可逾越。',
+        '你的隊伍將在此終結。',
+      ],
+    },
   },
 
   // ── Chapter 5: 亡靈禁地 ──────────────────────────────────────────────────
@@ -218,6 +283,13 @@ export const STAGES: Stage[] = [
       { id: 'shadow_c', name: '暗影刺客', baseStats: { hp: 100, atk: 40, def: 12, spd: 24 }, skillIds: [] },
     ],
     expReward: 380, currencyReward: 190,
+    preDialog: {
+      speaker: 'Echo',
+      lines: [
+        '你能感知到我⋯⋯有趣。',
+        '清掉這些暗影刺客，我便追隨你。',
+      ],
+    },
   },
   {
     id: '5-4', chapterId: 'ch5', name: '絕頂天台', stageIndex: 3,
@@ -234,6 +306,13 @@ export const STAGES: Stage[] = [
     isBoss: true, isSideQuest: false, unlockCharacterId: 'aaaa',
     enemies: [{ id: 'aaaa', name: 'AAAA', baseStats: { hp: 600, atk: 50, def: 40, spd: 20 }, skillIds: [] }],
     expReward: 500, currencyReward: 300,
+    preDialog: {
+      speaker: 'AAAA',
+      lines: [
+        '[AAAA 發出低沉的嗡鳴聲⋯⋯]',
+        '⋯⋯⋯⋯',
+      ],
+    },
   },
 
   // ── Side Quests ──────────────────────────────────────────────────────────
