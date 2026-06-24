@@ -87,6 +87,7 @@ export interface BattleSceneData {
   playerParty: Character[];
   stageIndex: number;
   expPool?: number;
+  gameState?: GameState;
 }
 
 export interface ResultSceneData {
@@ -96,6 +97,7 @@ export interface ResultSceneData {
   expGained: number;
   expPool?: number;
   recruitedEnemy?: Character;  // set if a recruit succeeded during battle
+  gameState?: GameState;
 }
 
 export interface PrepSceneData {

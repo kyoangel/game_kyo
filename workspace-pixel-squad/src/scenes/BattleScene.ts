@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Character, BattleSceneData, BattlePhase, PendingCommand } from '../types';
+import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState } from '../types';
 import { createCharacter, createEnemy } from '../battle/CharacterFactory';
 import { computeTurnOrder } from '../battle/TurnEngine';
 import { calcDamage } from '../battle/DamageCalc';
@@ -22,6 +22,7 @@ export class BattleScene extends Phaser.Scene {
   private enemyParty: Character[] = [];
   private stageIndex = 0;
   private expPool = 0;
+  private gameState?: GameState;
   private views = new Map<string, CharacterView>();
   private actionMenu!: Phaser.GameObjects.Container;
   private messageText!: Phaser.GameObjects.Text;
@@ -59,6 +60,7 @@ export class BattleScene extends Phaser.Scene {
       : PLAYER_TEMPLATES.map(t => createCharacter(t, 1));
     this.stageIndex = data.stageIndex ?? 0;
     this.expPool = data.expPool ?? 0;
+    this.gameState = data.gameState;
     const stage = STAGES[this.stageIndex];
     this.enemyParty = stage.enemies.map(e => createEnemy(e));
     this.views.clear();
@@ -514,6 +516,7 @@ export class BattleScene extends Phaser.Scene {
           expGained,
           expPool: this.expPool,
           recruitedEnemy: this.recruitedEnemy,
+          gameState: this.gameState,
         });
       });
       return true;
