@@ -61,9 +61,23 @@ export interface EnemyTemplate {
 
 export interface Stage {
   id: string;
+  chapterId: string;
   name: string;
+  stageIndex: number;           // 0–4 within chapter (or 0 for side quests)
+  isBoss: boolean;
+  isSideQuest: boolean;
+  unlockAfterStageId?: string;  // side quests only
   enemies: EnemyTemplate[];
-  expReward: number;   // total EXP split among surviving player chars
+  expReward: number;
+  currencyReward: number;
+  unlockCharacterId?: string;   // character unlocked on first clear
+}
+
+export interface Chapter {
+  id: string;
+  name: string;
+  stageIds: string[];           // ordered, 5 entries
+  unlockAfterChapterId?: string;
 }
 
 export interface BattleSceneData {
