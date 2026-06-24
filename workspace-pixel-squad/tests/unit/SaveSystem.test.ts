@@ -100,3 +100,32 @@ describe('listSlots', () => {
     expect(slots[2].chapterName).toBe('基地');
   });
 });
+
+import { newGame } from '../../src/save/GameState';
+
+describe('newGame', () => {
+  it('creates a GameState with the given slot', () => {
+    const state = newGame(1);
+    expect(state.slotId).toBe(1);
+  });
+
+  it('starts with protagonist as the only pool member', () => {
+    const state = newGame(0);
+    expect(state.pool).toHaveLength(1);
+    expect(state.pool[0].isProtagonist).toBe(true);
+    expect(state.squad).toHaveLength(1);
+    expect(state.squad[0].isProtagonist).toBe(true);
+  });
+
+  it('starts with zero currency and zero expPool', () => {
+    const state = newGame(0);
+    expect(state.currency).toBe(0);
+    expect(state.expPool).toBe(0);
+  });
+
+  it('starts with empty stage progress', () => {
+    const state = newGame(0);
+    expect(state.stageProgress.completedStageIds).toHaveLength(0);
+    expect(state.stageProgress.inChapterRun).toBeUndefined();
+  });
+});
