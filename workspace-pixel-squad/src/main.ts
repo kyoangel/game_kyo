@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TitleScene } from './scenes/TitleScene';
 import { BattleScene } from './scenes/BattleScene';
 import { ResultScene } from './scenes/ResultScene';
 import { PrepScene } from './scenes/PrepScene';
@@ -14,7 +15,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
   },
-  scene: [BattleScene, ResultScene, PrepScene],
+  scene: [TitleScene, BattleScene, ResultScene, PrepScene],
 };
 
 new Phaser.Game(config);
