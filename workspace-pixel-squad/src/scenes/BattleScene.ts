@@ -4,6 +4,8 @@ import { createCharacter, createEnemy } from '../battle/CharacterFactory';
 import { computeTurnOrder } from '../battle/TurnEngine';
 import { calcDamage } from '../battle/DamageCalc';
 import { chooseTarget } from '../battle/AI';
+import { getBossPhase, executeBossAction, type BossConfig, type BossPhase } from '../battle/BossAI';
+import { BOSS_CONFIGS } from '../data/bossConfigs';
 import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
@@ -41,6 +43,10 @@ export class BattleScene extends Phaser.Scene {
   // Recruit state
   private recruitedEnemy?: Character;
 
+  // Boss AI state
+  private bossConfig?: BossConfig;
+  private triggeredPhaseThresholds = new Set<number>();
+
   // Target selection state
   private targetHighlights = new Map<string, Phaser.GameObjects.Rectangle>();
   private targetSelectActive = false;
@@ -73,6 +79,12 @@ export class BattleScene extends Phaser.Scene {
     this.targetSelectActive = false;
     this.waitingForInput = false;
     this.recruitedEnemy = undefined;
+    this.bossConfig = undefined;
+    this.triggeredPhaseThresholds = new Set<number>();
+    if (stage.isBoss && this.enemyParty.length === 1) {
+      const bossTemplateId = this.enemyParty[0].templateId;
+      this.bossConfig = BOSS_CONFIGS[bossTemplateId];
+    }
   }
 
   create() {
@@ -476,10 +488,70 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private executeEnemyAction(enemy: Character, next: () => void) {
+    if (this.bossConfig && enemy.templateId === this.bossConfig.templateId) {
+      const hpRatio = enemy.stats.hp / enemy.stats.maxHp;
+      const phase = getBossPhase(this.bossConfig, hpRatio);
+
+      if (phase.message && !this.triggeredPhaseThresholds.has(phase.hpThreshold)) {
+        this.triggeredPhaseThresholds.add(phase.hpThreshold);
+        this.showPhaseBanner(phase);
+        this.time.delayedCall(2000, () => this.executeBossPhaseAction(enemy, phase, next));
+        return;
+      }
+
+      this.executeBossPhaseAction(enemy, phase, next);
+      return;
+    }
+
     const target = chooseTarget(this.playerParty);
     if (!target) { next(); return; }
     const dmg = calcDamage(enemy, target);
     this.applyDamageAndAdvance(enemy, target, dmg, undefined, next);
+  }
+
+  private executeBossPhaseAction(enemy: Character, phase: BossPhase, next: () => void) {
+    const action = executeBossAction(enemy, this.playerParty, phase);
+
+    if (action.type === 'defend') {
+      enemy.defending = true;
+      this.showMessage(`${enemy.name} 進入防禦姿態！`);
+      this.time.delayedCall(900, () => { this.clearMessage(); next(); });
+      return;
+    }
+
+    if (!action.target) { next(); return; }
+
+    if (action.type === 'double_attack') {
+      const target = action.target;
+      const dmg1 = action.ignoreDefense
+        ? Math.max(1, enemy.stats.atk)
+        : calcDamage(enemy, target);
+      this.applyDamageAndAdvance(enemy, target, dmg1, '連擊①', () => {
+        if (!target.alive) { next(); return; }
+        const dmg2 = action.ignoreDefense
+          ? Math.max(1, enemy.stats.atk)
+          : calcDamage(enemy, target);
+        this.applyDamageAndAdvance(enemy, target, dmg2, '連擊②', next);
+      });
+      return;
+    }
+
+    const dmg = action.ignoreDefense
+      ? Math.max(1, enemy.stats.atk)
+      : calcDamage(enemy, action.target);
+    this.applyDamageAndAdvance(enemy, action.target, dmg, undefined, next);
+  }
+
+  private showPhaseBanner(phase: BossPhase) {
+    const W = 360;
+    const banner = this.add.text(W / 2, 100, phase.message!, {
+      fontSize: '14px', color: '#f59e0b', fontFamily: 'monospace',
+      backgroundColor: '#111827',
+      padding: { x: 12, y: 8 },
+    }).setOrigin(0.5).setDepth(20);
+    this.time.delayedCall(1800, () => {
+      if (banner.active) banner.destroy();
+    });
   }
 
   private applyDamageAndAdvance(
