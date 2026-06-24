@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { listSlots, saveSlot, loadSlot } from '../save/SaveSystem';
+import { listSlots, saveSlot, loadSlot, deleteSlot } from '../save/SaveSystem';
 import { newGame } from '../save/GameState';
 import type { SlotMeta } from '../save/SaveSystem';
 import type { GameState } from '../types';
@@ -39,42 +39,45 @@ export class TitleScene extends Phaser.Scene {
     const W = 360;
     const slots = listSlots();
     slots.forEach((meta, i) => {
-      const y = 220 + i * 110;
+      const y = 220 + i * 130;
       this.renderSlotCard(meta, W / 2, y);
     });
-
-    const newBtn = this.add.rectangle(W / 2, 570, 160, 40, 0x374151)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(W / 2, 570, '新遊戲', {
-      fontSize: '14px', color: '#e5e7eb', fontFamily: 'monospace',
-    }).setOrigin(0.5);
-    newBtn.on('pointerdown', () => this.handleNewGame());
-    newBtn.on('pointerover', () => newBtn.setAlpha(0.8));
-    newBtn.on('pointerout', () => newBtn.setAlpha(1));
   }
 
   private renderSlotCard(meta: SlotMeta, x: number, y: number) {
-    const bg = this.add.rectangle(x, y, 300, 90, meta.empty ? 0x1f2937 : 0x374151)
+    const bg = this.add.rectangle(x, y, 300, 100, meta.empty ? 0x1f2937 : 0x374151)
       .setStrokeStyle(1, 0x4b5563)
       .setInteractive({ useHandCursor: true });
 
-    const slotLabel = `存檔 ${meta.slot + 1}`;
-    this.add.text(x - 120, y - 26, slotLabel, {
+    this.add.text(x - 120, y - 32, `存檔 ${meta.slot + 1}`, {
       fontSize: '13px', color: '#9ca3af', fontFamily: 'monospace',
     });
 
     if (meta.empty) {
-      this.add.text(x, y, '空白', {
-        fontSize: '14px', color: '#6b7280', fontFamily: 'monospace',
+      this.add.text(x - 20, y, '空白  點擊開始', {
+        fontSize: '13px', color: '#6b7280', fontFamily: 'monospace',
       }).setOrigin(0.5);
     } else {
       const dateStr = meta.savedAt ? new Date(meta.savedAt).toLocaleDateString('zh-TW') : '';
-      this.add.text(x - 120, y - 4, `${meta.chapterName}`, {
+      this.add.text(x - 120, y - 10, `${meta.chapterName}`, {
         fontSize: '14px', color: '#e5e7eb', fontFamily: 'monospace',
       });
-      this.add.text(x - 120, y + 20, `${meta.squadSize} 名隊員  ${dateStr}`, {
+      this.add.text(x - 120, y + 16, `${meta.squadSize} 名隊員  ${dateStr}`, {
         fontSize: '11px', color: '#9ca3af', fontFamily: 'monospace',
       });
+
+      // Delete button — only on filled slots
+      const delBtn = this.add.rectangle(x + 110, y, 52, 30, 0x7f1d1d)
+        .setInteractive({ useHandCursor: true });
+      this.add.text(x + 110, y, '刪除', {
+        fontSize: '12px', color: '#fca5a5', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+      delBtn.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        pointer.event.stopPropagation();
+        this.confirmDelete(meta.slot);
+      });
+      delBtn.on('pointerover', () => delBtn.setFillStyle(0x991b1b));
+      delBtn.on('pointerout', () => delBtn.setFillStyle(0x7f1d1d));
     }
 
     bg.on('pointerdown', () => this.handleSlotTap(meta));
@@ -96,42 +99,43 @@ export class TitleScene extends Phaser.Scene {
     }
   }
 
-  private handleNewGame() {
-    const slots = listSlots();
-    const emptySlot = slots.find(s => s.empty);
-    if (emptySlot) {
-      this.startNewGameInSlot(emptySlot.slot);
-    } else {
-      this.showOverwritePicker();
-    }
-  }
-
   private startNewGameInSlot(slot: 0 | 1 | 2) {
     const state = newGame(slot);
     saveSlot(state);
     this.scene.start('BaseScene', state);
   }
 
-  private showOverwritePicker() {
+  private confirmDelete(slot: 0 | 1 | 2) {
     const W = 360, H = 640;
-    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7)
-      .setInteractive();
-    this.add.text(W / 2, H / 2 - 80, '選擇存檔位置：', {
-      fontSize: '14px', color: '#e5e7eb', fontFamily: 'monospace',
+    const overlay = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75)
+      .setInteractive().setDepth(20);
+    const panel = this.add.container(W / 2, H / 2).setDepth(21);
+
+    const panelBg = this.add.rectangle(0, 0, 280, 160, 0x1f2937).setStrokeStyle(2, 0x7f1d1d);
+    const msg = this.add.text(0, -44, `刪除存檔 ${slot + 1}？`, {
+      fontSize: '15px', color: '#fca5a5', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    const sub = this.add.text(0, -14, '此操作無法復原', {
+      fontSize: '12px', color: '#6b7280', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    const slots = listSlots();
-    slots.forEach((meta, i) => {
-      const x = 60 + i * 120;
-      const btn = this.add.rectangle(x, H / 2, 100, 50, 0x7c3aed)
-        .setInteractive({ useHandCursor: true });
-      this.add.text(x, H / 2, `存檔 ${meta.slot + 1}`, {
-        fontSize: '12px', color: '#fff', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      btn.on('pointerdown', () => {
-        overlay.destroy();
-        this.startNewGameInSlot(meta.slot);
-      });
+    const confirmBtn = this.add.rectangle(-60, 44, 100, 36, 0x7f1d1d).setInteractive({ useHandCursor: true });
+    const confirmTxt = this.add.text(-60, 44, '確認刪除', { fontSize: '12px', color: '#fca5a5', fontFamily: 'monospace' }).setOrigin(0.5);
+    confirmBtn.on('pointerdown', () => {
+      deleteSlot(slot);
+      overlay.destroy();
+      panel.destroy();
+      this.scene.restart();
     });
+    confirmBtn.on('pointerover', () => confirmBtn.setFillStyle(0x991b1b));
+    confirmBtn.on('pointerout', () => confirmBtn.setFillStyle(0x7f1d1d));
+
+    const cancelBtn = this.add.rectangle(60, 44, 80, 36, 0x374151).setInteractive({ useHandCursor: true });
+    const cancelTxt = this.add.text(60, 44, '取消', { fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace' }).setOrigin(0.5);
+    cancelBtn.on('pointerdown', () => { overlay.destroy(); panel.destroy(); });
+    cancelBtn.on('pointerover', () => cancelBtn.setFillStyle(0x4b5563));
+    cancelBtn.on('pointerout', () => cancelBtn.setFillStyle(0x374151));
+
+    panel.add([panelBg, msg, sub, confirmBtn, confirmTxt, cancelBtn, cancelTxt]);
   }
 }
