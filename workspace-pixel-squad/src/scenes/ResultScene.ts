@@ -50,6 +50,18 @@ export class ResultScene extends Phaser.Scene {
         this.add.text(W / 2, 346, `新成員：${recruitedEnemy.name} 加入了！`, {
           fontSize: '14px', color: '#a78bfa', fontFamily: 'monospace',
         }).setOrigin(0.5);
+      } else if (gameState && updatedGameState) {
+        // Story-join: show announcement for any character newly added to pool
+        const newChar = updatedGameState.pool.find(
+          c => !gameState.pool.some(p => p.id === c.id)
+        );
+        if (newChar) {
+          const joinedSquad = updatedGameState.squad.some(s => s.id === newChar.id);
+          const msg = joinedSquad ? `${newChar.name} 加入了小隊！` : `${newChar.name} 加入了基地！`;
+          this.add.text(W / 2, 346, msg, {
+            fontSize: '14px', color: '#a78bfa', fontFamily: 'monospace',
+          }).setOrigin(0.5);
+        }
       }
 
       let y = 374;

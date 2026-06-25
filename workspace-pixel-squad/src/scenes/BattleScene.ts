@@ -137,23 +137,11 @@ export class BattleScene extends Phaser.Scene {
   private renderParty(party: Character[], x: number, isPlayer: boolean) {
     const topY = 40, bottomY = 470;
     const n = Math.max(1, party.length);
-    const useTwoCol = n >= 4;
-    const colOffset = 26;
 
     party.forEach((char, i) => {
-      let cx: number;
-      let cy: number;
-
-      if (useTwoCol) {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
-        const rows = Math.ceil(n / 2);
-        cy = topY + ((bottomY - topY) * (row + 0.5)) / rows;
-        cx = x + (col === 0 ? -colOffset : colOffset);
-      } else {
-        cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
-        cx = x;
-      }
+      // Single column — position index i is the formation slot (0=front, 4=back)
+      const cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
+      const cx = x;
 
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
       const body = this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
@@ -270,9 +258,14 @@ export class BattleScene extends Phaser.Scene {
       },
     );
 
-    // 勸降 — only show when exactly 1 alive enemy remains and it's below 50% HP
+    // 勸降 — only when 1 enemy alive, below 50% HP, and NOT a story-join character
     const aliveEnemies = this.enemyParty.filter(e => e.alive);
-    if (aliveEnemies.length === 1 && canAttemptRecruit(aliveEnemies[0])) {
+    const stageUnlockId = STAGES[this.stageIndex].unlockCharacterId;
+    if (
+      aliveEnemies.length === 1 &&
+      canAttemptRecruit(aliveEnemies[0]) &&
+      aliveEnemies[0].templateId !== stageUnlockId
+    ) {
       const recruitTarget = aliveEnemies[0];
       entries.push({
         label: '勸降',

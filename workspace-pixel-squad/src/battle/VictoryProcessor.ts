@@ -40,7 +40,12 @@ export function processVictory(
     if (!alreadyInPool) {
       const template = PLAYER_TEMPLATES.find(t => t.id === stage.unlockCharacterId);
       if (template) {
-        state.pool.push(createCharacter(template, 1));
+        const newChar = createCharacter(template, 1);
+        state.pool.push(newChar);
+        // Non-boss story companions join squad directly if space (劇情加入)
+        if (!stage.isBoss && state.squad.length < 5) {
+          state.squad.push(newChar);
+        }
       }
     }
   }

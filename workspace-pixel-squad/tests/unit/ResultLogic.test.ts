@@ -75,6 +75,35 @@ describe('processVictory', () => {
     expect(result.pool.filter(c => c.templateId === 'rex')).toHaveLength(1);
   });
 
+  it('non-boss story character auto-joins squad on first clear if space', () => {
+    const state = makeGameState();
+    const stage = makeStage({ unlockCharacterId: 'rex', isBoss: false });
+    const result = processVictory(state, stage, 0, undefined);
+    const inSquad = result.squad.some(c => c.templateId === 'rex');
+    expect(inSquad).toBe(true);
+  });
+
+  it('boss unlock character goes to pool only, not squad', () => {
+    const state = makeGameState();
+    const stage = makeStage({ unlockCharacterId: 'vega', isBoss: true });
+    const result = processVictory(state, stage, 0, undefined);
+    expect(result.pool.some(c => c.templateId === 'vega')).toBe(true);
+    expect(result.squad.some(c => c.templateId === 'vega')).toBe(false);
+  });
+
+  it('non-boss story character does not join squad if squad is full', () => {
+    const state = makeGameState();
+    // Fill squad to 5 using mock chars
+    for (let i = 0; i < 4; i++) {
+      state.squad.push({ id: `filler_${i}`, templateId: 'filler' } as Character);
+    }
+    expect(state.squad.length).toBe(5);
+    const stage = makeStage({ unlockCharacterId: 'rex', isBoss: false });
+    const result = processVictory(state, stage, 0, undefined);
+    expect(result.pool.some(c => c.templateId === 'rex')).toBe(true);
+    expect(result.squad.some(c => c.templateId === 'rex')).toBe(false);
+  });
+
   it('adds recruited enemy to pool', () => {
     const state = makeGameState();
     const stage = makeStage();
