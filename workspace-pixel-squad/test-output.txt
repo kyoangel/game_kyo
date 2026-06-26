@@ -1,0 +1,37 @@
+
+> pixel-squad@0.1.0 test:unit
+> vitest run
+
+
+ RUN  v3.2.6 /Users/kyo.lai82/Projects/Personal/game-factory/workspace-pixel-squad
+
+ ✓ tests/unit/DamageCalc.test.ts (5 tests) 2ms
+ ✓ tests/unit/TurnEngine.test.ts (4 tests) 2ms
+ ✓ tests/unit/AI.test.ts (7 tests) 2ms
+ ✓ tests/unit/LevelUpSystem.test.ts (9 tests) 3ms
+ ✓ tests/unit/ExpSystem.test.ts (5 tests) 2ms
+ ✓ tests/unit/SaveSystem.test.ts (12 tests) 3ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/StageData.test.ts [ tests/unit/StageData.test.ts ]
+Error: Cannot find module '../../src/data/chapters' imported from '/Users/kyo.lai82/Projects/Personal/game-factory/workspace-pixel-squad/tests/unit/StageData.test.ts'
+ ❯ tests/unit/StageData.test.ts:3:1
+      1| import { describe, it, expect } from 'vitest';
+      2| import { STAGES } from '../../src/data/stages';
+      3| import { CHAPTERS } from '../../src/data/chapters';
+       | ^
+      4| 
+      5| describe('STAGES data', () => {
+
+Caused by: Error: Failed to load url ../../src/data/chapters (resolved id: ../../src/data/chapters) in /Users/kyo.lai82/Projects/Personal/game-factory/workspace-pixel-squad/tests/unit/StageData.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35835:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  42 passed (42)
+   Start at  20:47:33
+   Duration  562ms (transform 345ms, setup 0ms, collect 501ms, tests 14ms, environment 1ms, prepare 934ms)
+

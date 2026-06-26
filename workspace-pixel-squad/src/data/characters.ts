@@ -25,14 +25,14 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
   {
     id: 'vega', name: 'Vega', isProtagonist: false,
     baseStats: { hp: 90, atk: 35, def: 12, spd: 16 },
-    skillIds: [],
+    skillIds: ['combat_stim'],
     statGrowth: { hp: 6, atk: 6, def: 2, spd: 2 },
     unlockMethod: 'recruit', unlockStageId: '1-5',
   },
   {
     id: 'ash', name: 'Ash', isProtagonist: false,
     baseStats: { hp: 110, atk: 22, def: 18, spd: 13 },
-    skillIds: [],
+    skillIds: ['iron_will'],
     statGrowth: { hp: 8, atk: 4, def: 3, spd: 2 },
     unlockMethod: 'stage', unlockStageId: '2-2',
   },
@@ -46,7 +46,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
   {
     id: 'mira', name: 'Mira', isProtagonist: false,
     baseStats: { hp: 120, atk: 18, def: 28, spd: 14 },
-    skillIds: [],
+    skillIds: ['field_medic'],
     statGrowth: { hp: 10, atk: 2, def: 5, spd: 2 },
     unlockMethod: 'stage', unlockStageId: '3-3',
   },

@@ -32,6 +32,7 @@ export function createCharacter(template: CharacterTemplate, level: number): Cha
     archetype: computeArchetype(s),
     alive: true,
     defending: false,
+    activeBuffs: [],
   };
 }
 
@@ -52,6 +53,7 @@ export function createEnemy(template: EnemyTemplate): Character {
     archetype: computeArchetype(s),
     alive: true,
     defending: false,
+    activeBuffs: [],
   };
 }
 

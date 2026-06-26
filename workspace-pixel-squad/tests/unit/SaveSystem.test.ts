@@ -27,6 +27,7 @@ function makeState(slot: 0 | 1 | 2): GameState {
     currency: 100,
     stageProgress: { completedStageIds: ['1-1', '1-2'] },
     savedAt: 1234567890,
+    inventory: [],
   };
 }
 

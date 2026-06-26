@@ -1,14 +1,27 @@
 import Phaser from 'phaser';
-import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState } from '../types';
+import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState, Skill } from '../types';
 import { createCharacter, createEnemy } from '../battle/CharacterFactory';
 import { computeTurnOrder } from '../battle/TurnEngine';
-import { calcDamage } from '../battle/DamageCalc';
+import { calcDamage, calcHeal } from '../battle/DamageCalc';
 import { chooseTarget } from '../battle/AI';
+import { applyBuff, tickBuffs } from '../battle/Buffs';
+import { decideAction } from '../battle/SkillAI';
 import { getBossPhase, executeBossAction, type BossConfig, type BossPhase } from '../battle/BossAI';
 import { BOSS_CONFIGS } from '../data/bossConfigs';
 import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
+import { rollCrit } from '../battle/ArchetypeEffects';
+
+const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
+
+const ARCHETYPE_TOOLTIP: Record<string, string> = {
+  '坦克': '減傷15%',
+  '輸出': '傷害+10%',
+  '狙擊': '暴擊20%',
+  '輔助': '治療/增益+20%',
+  '全能': '全屬性+5%',
+};
 
 interface CharacterView {
   body: Phaser.GameObjects.Rectangle;
@@ -53,6 +66,9 @@ export class BattleScene extends Phaser.Scene {
   private targetSelectChars: Character[] = [];
   private targetSelectIndex = 0;
   private targetSelectCallback?: (target: Character) => void;
+
+  // Skill picker state
+  private skillPickerActive = false;
 
   // Keyboard state
   private keyboardActionIndex = 0;
@@ -150,7 +166,7 @@ export class BattleScene extends Phaser.Scene {
       const nameText = this.add.text(cx, cy - 36, char.name, {
         fontSize: '10px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const archetypeText = this.add.text(cx, cy - 26, `[${char.archetype}]`, {
+      const archetypeText = this.add.text(cx, cy - 26, `[${char.archetype}] ${ARCHETYPE_TOOLTIP[char.archetype]}`, {
         fontSize: '8px', color: '#6b7280', fontFamily: 'monospace',
       }).setOrigin(0.5);
       const hpText = this.add.text(cx, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
@@ -202,6 +218,8 @@ export class BattleScene extends Phaser.Scene {
     this.commandIndex = 0;
     this.playerParty.forEach(c => { c.defending = false; });
     this.enemyParty.forEach(c => { c.defending = false; });
+    tickBuffs(this.playerParty);
+    tickBuffs(this.enemyParty);
     this.clearCommandIcons();
     this.advanceCommandInput();
   }
@@ -236,20 +254,26 @@ export class BattleScene extends Phaser.Scene {
         label: '攻擊', action: () => {
           this.waitingForInput = false;
           this.actionMenu.removeAll(true);
-          this.enterTargetSelection(character, 'attack', this.enemyParty.filter(e => e.alive), (target) => {
+          this.enterTargetSelection(character, this.enemyParty.filter(e => e.alive), (target) => {
             this.confirmCommand({ character, action: 'attack', target });
           });
         }
       },
-      {
+    );
+    if (character.skills.length > 0) {
+      entries.push({
         label: '技能', action: () => {
           this.waitingForInput = false;
           this.actionMenu.removeAll(true);
-          this.enterTargetSelection(character, 'skill', this.enemyParty.filter(e => e.alive), (target) => {
-            this.confirmCommand({ character, action: 'skill', target });
-          });
+          if (character.skills.length === 1) {
+            this.beginSkillTargeting(character, character.skills[0]);
+          } else {
+            this.showSkillPicker(character);
+          }
         }
-      },
+      });
+    }
+    entries.push(
       {
         label: '防禦', action: () => {
           this.waitingForInput = false;
@@ -322,9 +346,61 @@ export class BattleScene extends Phaser.Scene {
 
   // ─── Target Selection ─────────────────────────────────────────────────────
 
+  private showSkillPicker(character: Character) {
+    this.actionMenu.removeAll(true);
+    this.waitingForInput = true;
+    this.skillPickerActive = true;
+
+    const entries = character.skills.map(skill => ({
+      label: skill.name,
+      action: () => {
+        this.waitingForInput = false;
+        this.skillPickerActive = false;
+        this.actionMenu.removeAll(true);
+        this.beginSkillTargeting(character, skill);
+      },
+    }));
+
+    this.keyboardActions = entries;
+    this.keyboardActionIndex = 0;
+
+    const btnW = 76;
+    const totalW = entries.length * btnW + (entries.length - 1) * 4;
+    const startX = -totalW / 2 + btnW / 2;
+
+    entries.forEach(({ label, action }, i) => {
+      const bx = startX + i * (btnW + 4);
+      const focused = i === this.keyboardActionIndex;
+      const bg = this.add.rectangle(bx, 0, btnW, 36, focused ? 0x4b5563 : 0x374151)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(bx, 0, label, {
+        fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+      bg.on('pointerdown', () => {
+        if (this.phase !== 'command' || !this.waitingForInput) return;
+        action();
+      });
+      bg.on('pointerover', () => bg.setFillStyle(0x4b5563));
+      bg.on('pointerout', () => bg.setFillStyle(focused ? 0x4b5563 : 0x374151));
+      this.actionMenu.add([bg, txt]);
+    });
+  }
+
+  private beginSkillTargeting(character: Character, skill: Skill) {
+    if (skill.target === 'self') {
+      this.confirmCommand({ character, action: 'skill', skill, target: character });
+      return;
+    }
+    const targets = skill.target === 'ally'
+      ? (character.isPlayer ? this.playerParty : this.enemyParty).filter(c => c.alive)
+      : this.enemyParty.filter(e => e.alive);
+    this.enterTargetSelection(character, targets, (target) => {
+      this.confirmCommand({ character, action: 'skill', skill, target });
+    });
+  }
+
   private enterTargetSelection(
     _character: Character,
-    _action: 'attack' | 'skill',
     targets: Character[],
     onConfirm: (target: Character) => void,
   ) {
@@ -433,6 +509,20 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (cmd.action === 'skill' && cmd.skill?.type === 'heal') {
+      const target = cmd.target;
+      if (!target || !target.alive) { next(); return; }
+      this.applyHealAndAdvance(cmd.character, target, cmd.skill, next);
+      return;
+    }
+
+    if (cmd.action === 'skill' && cmd.skill?.type === 'buff') {
+      const target = cmd.target;
+      if (!target || !target.alive) { next(); return; }
+      this.applyBuffAndAdvance(cmd.character, target, cmd.skill, next);
+      return;
+    }
+
     let target = cmd.target;
     if (!target || !target.alive) {
       const aliveEnemies = this.enemyParty.filter(e => e.alive);
@@ -440,11 +530,10 @@ export class BattleScene extends Phaser.Scene {
       target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
     }
 
-    const skill = cmd.action === 'skill'
-      ? cmd.character.skills.find(s => s.type === 'attack')
-      : undefined;
-    const dmg = calcDamage(cmd.character, target, skill);
-    this.applyDamageAndAdvance(cmd.character, target, dmg, skill?.name, next);
+    const skill = cmd.action === 'skill' ? cmd.skill : undefined;
+    const isCrit = rollCrit(cmd.character);
+    const dmg = calcDamage(cmd.character, target, skill, isCrit);
+    this.applyDamageAndAdvance(cmd.character, target, dmg, skill?.name, next, isCrit);
   }
 
   private attemptRecruitAction(_attacker: Character, enemy: Character) {
@@ -486,10 +575,11 @@ export class BattleScene extends Phaser.Scene {
         this.checkBattleEnd();
         return;
       }
-      const dmg = calcDamage(enemy, target);
+      const isCrit = rollCrit(enemy);
+      const dmg = calcDamage(enemy, target, undefined, isCrit);
       this.applyDamageAndAdvance(enemy, target, dmg, undefined, () => {
         this.startCommandPhase();
-      });
+      }, isCrit);
     });
   }
 
@@ -509,10 +599,20 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const target = chooseTarget(this.playerParty);
+    const decision = decideAction(enemy, this.enemyParty, this.playerParty);
+    if (decision.skill?.type === 'heal') {
+      this.applyHealAndAdvance(enemy, decision.target, decision.skill, next);
+      return;
+    }
+    if (decision.skill?.type === 'buff') {
+      this.applyBuffAndAdvance(enemy, decision.target, decision.skill, next);
+      return;
+    }
+    const target = decision.target ?? chooseTarget(this.playerParty);
     if (!target) { next(); return; }
-    const dmg = calcDamage(enemy, target);
-    this.applyDamageAndAdvance(enemy, target, dmg, undefined, next);
+    const isCrit = rollCrit(enemy);
+    const dmg = calcDamage(enemy, target, decision.skill, isCrit);
+    this.applyDamageAndAdvance(enemy, target, dmg, decision.skill?.name, next, isCrit);
   }
 
   private executeBossPhaseAction(enemy: Character, phase: BossPhase, next: () => void) {
@@ -529,23 +629,26 @@ export class BattleScene extends Phaser.Scene {
 
     if (action.type === 'double_attack') {
       const target = action.target;
+      const crit1 = !action.ignoreDefense && rollCrit(enemy);
       const dmg1 = action.ignoreDefense
         ? Math.max(1, enemy.stats.atk)
-        : calcDamage(enemy, target);
+        : calcDamage(enemy, target, undefined, crit1);
       this.applyDamageAndAdvance(enemy, target, dmg1, '連擊①', () => {
         if (!target.alive) { next(); return; }
+        const crit2 = !action.ignoreDefense && rollCrit(enemy);
         const dmg2 = action.ignoreDefense
           ? Math.max(1, enemy.stats.atk)
-          : calcDamage(enemy, target);
-        this.applyDamageAndAdvance(enemy, target, dmg2, '連擊②', next);
-      });
+          : calcDamage(enemy, target, undefined, crit2);
+        this.applyDamageAndAdvance(enemy, target, dmg2, '連擊②', next, crit2);
+      }, crit1);
       return;
     }
 
+    const crit = !action.ignoreDefense && rollCrit(enemy);
     const dmg = action.ignoreDefense
       ? Math.max(1, enemy.stats.atk)
-      : calcDamage(enemy, action.target);
-    this.applyDamageAndAdvance(enemy, action.target, dmg, undefined, next);
+      : calcDamage(enemy, action.target, undefined, crit);
+    this.applyDamageAndAdvance(enemy, action.target, dmg, undefined, next, crit);
   }
 
   private showPhaseBanner(phase: BossPhase) {
@@ -566,18 +669,37 @@ export class BattleScene extends Phaser.Scene {
     dmg: number,
     skillName: string | undefined,
     next: () => void,
+    isCrit = false,
   ) {
     target.stats.hp = Math.max(0, target.stats.hp - dmg);
     if (target.stats.hp === 0) target.alive = false;
     this.updateHpBar(target);
 
     const label = skillName ? `【${skillName}】` : '';
-    this.showMessage(`${attacker.name}${label} → ${target.name} -${dmg} HP`);
+    const critLabel = isCrit ? '暴擊! ' : '';
+    this.showMessage(`${critLabel}${attacker.name}${label} → ${target.name} -${dmg} HP`);
 
     this.time.delayedCall(900, () => {
       this.clearMessage();
       next();
     });
+  }
+
+  private applyHealAndAdvance(caster: Character, target: Character, skill: Skill, next: () => void) {
+    const amount = calcHeal(caster, skill);
+    target.stats.hp = Math.min(target.stats.maxHp, target.stats.hp + amount);
+    this.updateHpBar(target);
+
+    this.showMessage(`${caster.name}【${skill.name}】→ ${target.name} +${amount} HP`);
+    this.time.delayedCall(900, () => { this.clearMessage(); next(); });
+  }
+
+  private applyBuffAndAdvance(caster: Character, target: Character, skill: Skill, next: () => void) {
+    applyBuff(target, skill, caster);
+    const label = skill.buffStat ? STAT_LABEL[skill.buffStat] : '';
+
+    this.showMessage(`${caster.name}【${skill.name}】→ ${target.name} ${label}↑`);
+    this.time.delayedCall(900, () => { this.clearMessage(); next(); });
   }
 
   private checkBattleEnd(): boolean {
@@ -619,12 +741,12 @@ export class BattleScene extends Phaser.Scene {
     this.playerParty.filter(c => c.alive).forEach(c => {
       const aliveEnemies = this.enemyParty.filter(e => e.alive);
       if (aliveEnemies.length === 0) return;
-      const useSkill = Math.random() < 0.5 && c.skills.some(s => s.type === 'attack');
-      const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+      const decision = decideAction(c, this.playerParty, this.enemyParty);
       this.pendingCommands.set(c.id, {
         character: c,
-        action: useSkill ? 'skill' : 'attack',
-        target,
+        action: decision.skill ? 'skill' : 'attack',
+        skill: decision.skill,
+        target: decision.target,
       });
     });
 
@@ -719,6 +841,12 @@ export class BattleScene extends Phaser.Scene {
   private onKeyEsc() {
     if (this.targetSelectActive) {
       this.cancelTargetSelection();
+      return;
+    }
+    if (this.skillPickerActive) {
+      this.skillPickerActive = false;
+      this.actionMenu.removeAll(true);
+      this.showCommandMenu(this.playerParty[this.commandIndex]);
       return;
     }
     if (!this.waitingForInput || this.commandIndex <= 0) return;

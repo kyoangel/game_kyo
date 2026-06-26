@@ -1,13 +1,28 @@
 export type ArchetypeLabel = '坦克' | '輸出' | '狙擊' | '輔助' | '全能';
 export type SkillType = 'attack' | 'heal' | 'buff';
+export type SkillTarget = 'enemy' | 'ally' | 'self';
+export type BuffStat = 'atk' | 'def' | 'spd';
 
 export interface Skill {
   id: string;
   name: string;
   type: SkillType;
-  /** For attack skills: damage multiplier applied to ATK */
+  /** Who this skill can be aimed at */
+  target: SkillTarget;
+  /** attack: ATK multiplier for damage. heal: ATK multiplier for heal amount. unused for buff. */
   multiplier: number;
   description: string;
+  /** buff-only fields */
+  buffStat?: BuffStat;
+  buffAmountPct?: number;
+  buffDuration?: number;
+}
+
+export interface ActiveBuff {
+  stat: BuffStat;
+  amountPct: number;
+  turnsRemaining: number;
+  sourceSkillId: string;
 }
 
 export interface StatBlock {
@@ -53,6 +68,7 @@ export interface Character {
   alive: boolean;
   defending: boolean;   // true = -50% damage this round
   recruited?: boolean;  // true = this enemy was convinced to join
+  activeBuffs: ActiveBuff[];
 }
 
 export interface EnemyTemplate {
@@ -65,6 +81,11 @@ export interface EnemyTemplate {
 export interface StageDialog {
   speaker: string;
   lines: string[];
+}
+
+export interface StageItemReward {
+  itemId: string;   // resolves against SHOP_ITEMS or EXCLUSIVE_ITEMS
+  quantity: number;
 }
 
 export interface Stage {
@@ -80,6 +101,7 @@ export interface Stage {
   currencyReward: number;
   unlockCharacterId?: string;   // character unlocked on first clear
   preDialog?: StageDialog;      // shown before battle on first visit
+  itemRewards?: StageItemReward[]; // side quests only, granted on first clear
 }
 
 export interface Chapter {
@@ -117,6 +139,7 @@ export type BattlePhase = 'command' | 'executing' | 'auto';
 export interface PendingCommand {
   character: Character;
   action: 'attack' | 'skill' | 'defend';
+  skill?: Skill;       // the specific skill chosen when action === 'skill'
   target?: Character; // undefined for 防禦
 }
 
@@ -139,4 +162,22 @@ export interface GameState {
   currency: number;            // 廢土幣
   stageProgress: StageProgress;
   savedAt: number;             // Date.now() timestamp
+  inventory: InventoryEntry[];
+}
+
+export type ShopItemType = 'skill_scroll' | 'supply';
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  type: ShopItemType;
+  price: number;
+  description: string;
+  skillId?: string;      // skill_scroll only — id into SKILLS
+  healAmount?: number;   // supply only — flat HP restored
+}
+
+export interface InventoryEntry {
+  itemId: string;        // ShopItem.id, supply items only
+  quantity: number;
 }

@@ -1,6 +1,7 @@
 import type { Character, GameState, Stage } from '../types';
 import { createCharacter } from './CharacterFactory';
 import { PLAYER_TEMPLATES } from '../data/characters';
+import { addToInventory } from './ShopSystem';
 
 export function processVictory(
   gameState: GameState,
@@ -12,6 +13,7 @@ export function processVictory(
     ...gameState,
     pool: [...gameState.pool],
     squad: [...gameState.squad],
+    inventory: [...gameState.inventory],
     stageProgress: {
       ...gameState.stageProgress,
       completedStageIds: [...gameState.stageProgress.completedStageIds],
@@ -48,6 +50,17 @@ export function processVictory(
         }
       }
     }
+  }
+
+  // Item rewards (side quests only, granted on first clear)
+  if (isFirstClear && stage.itemRewards) {
+    let inventory = state.inventory;
+    for (const reward of stage.itemRewards) {
+      for (let i = 0; i < reward.quantity; i++) {
+        inventory = addToInventory(inventory, reward.itemId);
+      }
+    }
+    state.inventory = inventory;
   }
 
   // Recruit: add recruited enemy to pool (if not already there), then auto-join squad if space.

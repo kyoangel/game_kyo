@@ -12,7 +12,7 @@ function makeEnemy(hp: number, maxHp: number): Character {
     id: 'e1', templateId: 'mutant', name: '變種人', isProtagonist: false, isPlayer: false,
     level: 1, exp: 0, expToNext: 50,
     stats: { hp, maxHp, atk: 10, def: 5, spd: 8 },
-    skills: [], statPoints: 0, archetype: '坦克', alive: true, defending: false,
+    skills: [], statPoints: 0, archetype: '坦克', alive: true, defending: false, activeBuffs: [],
   };
 }
 

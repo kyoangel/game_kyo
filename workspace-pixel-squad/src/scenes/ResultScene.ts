@@ -3,6 +3,7 @@ import type { ResultSceneData } from '../types';
 import { STAGES } from '../data/stages';
 import { saveSlot } from '../save/SaveSystem';
 import { processVictory } from '../battle/VictoryProcessor';
+import { findItemById } from '../battle/ShopSystem';
 
 export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
@@ -26,6 +27,7 @@ export class ResultScene extends Phaser.Scene {
 
     if (victory) {
       let updatedGameState = gameState;
+      const isFirstClear = !!gameState && !!stage && !gameState.stageProgress.completedStageIds.includes(stage.id);
       if (gameState && stage) {
         updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy);
         saveSlot(updatedGameState);
@@ -46,10 +48,23 @@ export class ResultScene extends Phaser.Scene {
         }).setOrigin(0.5);
       }
 
+      let nextY = 346;
+      if (isFirstClear && stage?.itemRewards) {
+        stage.itemRewards.forEach(reward => {
+          const item = findItemById(reward.itemId);
+          const name = item?.name ?? reward.itemId;
+          this.add.text(W / 2, nextY, `獲得：${name} ×${reward.quantity}`, {
+            fontSize: '13px', color: '#fde047', fontFamily: 'monospace',
+          }).setOrigin(0.5);
+          nextY += 22;
+        });
+      }
+
       if (recruitedEnemy) {
-        this.add.text(W / 2, 346, `新成員：${recruitedEnemy.name} 加入了！`, {
+        this.add.text(W / 2, nextY, `新成員：${recruitedEnemy.name} 加入了！`, {
           fontSize: '14px', color: '#a78bfa', fontFamily: 'monospace',
         }).setOrigin(0.5);
+        nextY += 22;
       } else if (gameState && updatedGameState) {
         // Story-join: show announcement for any character newly added to pool
         const newChar = updatedGameState.pool.find(
@@ -58,13 +73,14 @@ export class ResultScene extends Phaser.Scene {
         if (newChar) {
           const joinedSquad = updatedGameState.squad.some(s => s.id === newChar.id);
           const msg = joinedSquad ? `${newChar.name} 加入了小隊！` : `${newChar.name} 加入了基地！`;
-          this.add.text(W / 2, 346, msg, {
+          this.add.text(W / 2, nextY, msg, {
             fontSize: '14px', color: '#a78bfa', fontFamily: 'monospace',
           }).setOrigin(0.5);
+          nextY += 22;
         }
       }
 
-      let y = 374;
+      let y = Math.max(374, nextY + 4);
       playerParty.forEach(c => {
         this.add.text(W / 2, y, `${c.name}  Lv.${c.level}`, {
           fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',

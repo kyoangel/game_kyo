@@ -21,7 +21,7 @@ function makeEnemy(templateId: string, name: string): Character {
     id: 'e1', templateId, name, isProtagonist: false, isPlayer: false,
     level: 1, exp: 0, expToNext: 50,
     stats: { hp: 0, maxHp: 100, atk: 10, def: 5, spd: 8 },
-    skills: [], statPoints: 0, archetype: '坦克', alive: false, defending: false,
+    skills: [], statPoints: 0, archetype: '坦克', alive: false, defending: false, activeBuffs: [],
     recruited: true,
   };
 }

@@ -1,4 +1,5 @@
 import type { Character } from '../types';
+import { effectiveAtk } from './Buffs';
 
 export type EnemyAIType = 'random' | 'lowest-hp' | 'highest-atk';
 
@@ -13,7 +14,7 @@ export function chooseTarget(
     return alive.reduce((lowest, c) => (c.stats.hp < lowest.stats.hp ? c : lowest));
   }
   if (aiType === 'highest-atk') {
-    return alive.reduce((highest, c) => (c.stats.atk > highest.stats.atk ? c : highest));
+    return alive.reduce((highest, c) => (effectiveAtk(c) > effectiveAtk(highest) ? c : highest));
   }
   return alive[Math.floor(Math.random() * alive.length)];
 }

@@ -13,5 +13,6 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     currency: 0,
     stageProgress: { completedStageIds: [] },
     savedAt: Date.now(),
+    inventory: [],
   };
 }

@@ -7,7 +7,7 @@ function makeChar(isProtagonist: boolean, level: number, exp: number): Character
     id: 'c', templateId: 'c', name: 'c', isProtagonist, isPlayer: true,
     level, exp, expToNext: level * 50,
     stats: { hp: 100, maxHp: 100, atk: 20, def: 10, spd: 15 },
-    skills: [], statPoints: 0, archetype: '全能', alive: true, defending: false,
+    skills: [], statPoints: 0, archetype: '全能', alive: true, defending: false, activeBuffs: [],
   };
 }
 

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Character, GameState } from '../types';
 import { canLevelUp, applyLevelUp, DEFAULT_LEVEL_UP_CONFIG } from '../battle/LevelUpSystem';
 import { allocateStat } from '../battle/ExpSystem';
+import { canUseSupply, useSupply, findItemById } from '../battle/ShopSystem';
 import { saveSlot } from '../save/SaveSystem';
 import { CHAPTERS } from '../data/chapters';
 import { STAGES } from '../data/stages';
@@ -16,6 +17,8 @@ export class BaseScene extends Phaser.Scene {
   private currentAllocChar?: Character;
   private pointsText?: Phaser.GameObjects.Text;
   private statValueTexts = new Map<string, Phaser.GameObjects.Text>();
+
+  private supplyPanel?: Phaser.GameObjects.Container;
 
   constructor() { super({ key: 'BaseScene' }); }
 
@@ -64,8 +67,14 @@ export class BaseScene extends Phaser.Scene {
     this.add.text(20, 90, '出戰中 (最多5人)', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
     this.renderSquadSection(104);
 
-    const mapBtn = this.add.rectangle(W / 2, 600, 200, 40, 0x1d4ed8).setInteractive({ useHandCursor: true });
-    this.add.text(W / 2, 600, '世界地圖', { fontSize: '15px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    const shopBtn = this.add.rectangle(120, 600, 100, 40, 0x7c3aed).setInteractive({ useHandCursor: true });
+    this.add.text(120, 600, '商店', { fontSize: '15px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    shopBtn.on('pointerdown', () => { saveSlot(this.gameState); this.scene.start('ShopScene', { gameState: this.gameState }); });
+    shopBtn.on('pointerover', () => shopBtn.setAlpha(0.8));
+    shopBtn.on('pointerout', () => shopBtn.setAlpha(1));
+
+    const mapBtn = this.add.rectangle(240, 600, 100, 40, 0x1d4ed8).setInteractive({ useHandCursor: true });
+    this.add.text(240, 600, '世界地圖', { fontSize: '13px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
     mapBtn.on('pointerdown', () => { saveSlot(this.gameState); this.scene.start('WorldMapScene', { gameState: this.gameState }); });
     mapBtn.on('pointerover', () => mapBtn.setAlpha(0.8));
     mapBtn.on('pointerout', () => mapBtn.setAlpha(1));
@@ -90,6 +99,93 @@ export class BaseScene extends Phaser.Scene {
         y = this.renderCharCard(char, y, false);
       });
     }
+
+    if (!this.gameState.stageProgress.inChapterRun) {
+      this.renderInventorySection(y);
+    }
+  }
+
+  private renderInventorySection(startY: number) {
+    const inventory = this.gameState.inventory ?? [];
+    if (inventory.length === 0) return;
+
+    let y = startY + 4;
+    const sep = this.add.text(20, y, '補給品', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
+    this.rowObjects.push(sep);
+    y += 22;
+
+    inventory.forEach((entry) => {
+      const item = findItemById(entry.itemId);
+      const name = item?.name ?? entry.itemId;
+      const rowBg = this.add.rectangle(180, y + 16, 340, 32, 0x1f2937).setStrokeStyle(1, 0x4b5563);
+      const label = this.add.text(24, y + 16, `${name}  x${entry.quantity}`, { fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace' }).setOrigin(0, 0.5);
+      this.rowObjects.push(rowBg, label);
+
+      const canUse = item ? this.gameState.squad.some(m => canUseSupply(m)) : false;
+      const useBtn = this.add.rectangle(320, y + 16, 50, 28, canUse ? 0x16a34a : 0x374151);
+      const useTxt = this.add.text(320, y + 16, '使用', { fontSize: '11px', color: canUse ? '#fff' : '#6b7280', fontFamily: 'monospace' }).setOrigin(0.5);
+      this.rowObjects.push(useBtn, useTxt);
+      if (canUse && item) {
+        useBtn.setInteractive({ useHandCursor: true });
+        useBtn.on('pointerdown', () => this.showSupplyTargetPanel(item));
+        useBtn.on('pointerover', () => useBtn.setAlpha(0.8));
+        useBtn.on('pointerout', () => useBtn.setAlpha(1));
+      }
+
+      y += 36;
+    });
+  }
+
+  private showSupplyTargetPanel(item: { id: string; healAmount?: number }) {
+    if (this.allocationPanel || this.supplyPanel) return;
+    const targets = this.gameState.squad.filter(m => canUseSupply(m));
+    if (targets.length === 0) return;
+
+    const W = 360, H = 640;
+    const panel = this.add.container(W / 2, H / 2);
+    panel.setDepth(10);
+    const bg = this.add.rectangle(0, 0, 300, 80 + targets.length * 40, 0x1f2937).setStrokeStyle(2, 0x16a34a);
+    panel.add(bg);
+    const title = this.add.text(0, -(40 + targets.length * 20) + 10, '選擇使用對象', {
+      fontSize: '13px', color: '#a78bfa', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    panel.add(title);
+
+    let y = -(20 + targets.length * 20) + 30;
+    targets.forEach((target) => {
+      const rowBtn = this.add.rectangle(0, y, 260, 32, 0x374151).setInteractive({ useHandCursor: true });
+      const rowTxt = this.add.text(0, y, `${target.name}  HP:${target.stats.hp}/${target.stats.maxHp}`, {
+        fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace',
+      }).setOrigin(0.5);
+      rowBtn.on('pointerdown', () => this.applySupply(item, target));
+      rowBtn.on('pointerover', () => rowBtn.setFillStyle(0x4b5563));
+      rowBtn.on('pointerout', () => rowBtn.setFillStyle(0x374151));
+      panel.add([rowBtn, rowTxt]);
+      y += 40;
+    });
+
+    const cancelBtn = this.add.rectangle(0, y, 120, 32, 0x7f1d1d).setInteractive({ useHandCursor: true });
+    const cancelTxt = this.add.text(0, y, '取消', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    cancelBtn.on('pointerdown', () => this.closeSupplyPanel());
+    cancelBtn.on('pointerover', () => cancelBtn.setAlpha(0.8));
+    cancelBtn.on('pointerout', () => cancelBtn.setAlpha(1));
+    panel.add([cancelBtn, cancelTxt]);
+
+    this.supplyPanel = panel;
+  }
+
+  private applySupply(item: { id: string; healAmount?: number }, target: Character) {
+    const result = useSupply(this.gameState.inventory ?? [], item.id, item.healAmount ?? 0, target);
+    this.updateCharInState(result.character);
+    this.gameState.inventory = result.inventory;
+    saveSlot(this.gameState);
+    this.closeSupplyPanel();
+  }
+
+  private closeSupplyPanel() {
+    this.supplyPanel?.destroy();
+    this.supplyPanel = undefined;
+    this.renderSquadSection(104);
   }
 
   private renderCharCard(char: Character, y: number, inSquad: boolean): number {

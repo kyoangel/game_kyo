@@ -326,6 +326,7 @@ export const STAGES: Stage[] = [
       { id: 'arena_champ', name: '競技場冠軍', baseStats: { hp: 150, atk: 30, def: 15, spd: 12 }, skillIds: [] },
     ],
     expReward: 160, currencyReward: 200,
+    itemRewards: [{ itemId: 'scroll_overdrive', quantity: 1 }],
   },
   {
     id: 'SQ-2', chapterId: 'sq', name: '黑市突襲', stageIndex: 0,
@@ -336,6 +337,7 @@ export const STAGES: Stage[] = [
       { id: 'market_boss', name: '黑市老大', baseStats: { hp: 170, atk: 32, def: 18, spd: 13 }, skillIds: [] },
     ],
     expReward: 220, currencyReward: 280,
+    itemRewards: [{ itemId: 'supply_nano_kit', quantity: 2 }],
   },
   {
     id: 'SQ-3', chapterId: 'sq', name: '古代遺跡探索', stageIndex: 0,
@@ -346,5 +348,9 @@ export const STAGES: Stage[] = [
       { id: 'ruin_deity', name: '遺跡主神', baseStats: { hp: 300, atk: 38, def: 35, spd: 10 }, skillIds: [] },
     ],
     expReward: 360, currencyReward: 350,
+    itemRewards: [
+      { itemId: 'scroll_field_medic', quantity: 1 },
+      { itemId: 'supply_nano_kit', quantity: 1 },
+    ],
   },
 ];

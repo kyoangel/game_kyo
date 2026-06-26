@@ -7,11 +7,11 @@ function makeChar(atk: number, def: number): Character {
     id: 'x', templateId: 'x', name: 'x', isProtagonist: false, isPlayer: true,
     level: 1, exp: 0, expToNext: 50,
     stats: { hp: 100, maxHp: 100, atk, def, spd: 10 },
-    skills: [], statPoints: 0, archetype: '全能', alive: true, defending: false,
+    skills: [], statPoints: 0, archetype: '全能', alive: true, defending: false, activeBuffs: [],
   };
 }
 
-const attackSkill: Skill = { id: 's', name: 'S', type: 'attack', multiplier: 1.5, description: '' };
+const attackSkill: Skill = { id: 's', name: 'S', type: 'attack', target: 'enemy', multiplier: 1.5, description: '' };
 
 describe('calcDamage', () => {
   it('base formula: ATK − DEF×0.5, floored', () => {
@@ -24,15 +24,15 @@ describe('calcDamage', () => {
   });
 
   it('applies skill multiplier to ATK before subtracting DEF', () => {
-    // (20×1.5) − 10×0.5 = 30 − 5 = 25
-    expect(calcDamage(makeChar(20, 0), makeChar(0, 10), attackSkill)).toBe(25);
+    // 全能 archetype boosts effectiveAtk/Def by 1.05: (20×1.05×1.5) − (10×1.05)×0.5 = 31.5 − 5.25 = 26.25 → floor 26
+    expect(calcDamage(makeChar(20, 0), makeChar(0, 10), attackSkill)).toBe(26);
   });
 
   it('defending target takes half damage (rounded up)', () => {
     const defender = makeChar(0, 0);
     defender.defending = true;
-    // base = 20, after defending = ceil(20/2) = 10
-    expect(calcDamage(makeChar(20, 0), defender)).toBe(10);
+    // 全能 archetype: effectiveAtk = 20×1.05 = 21; base = 21, after defending = ceil(21/2) = 11
+    expect(calcDamage(makeChar(20, 0), defender)).toBe(11);
   });
 
   it('minimum 1 still applies after defend halving', () => {
