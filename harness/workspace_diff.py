@@ -2,9 +2,9 @@ import subprocess
 from pathlib import Path
 
 
-def changed_paths(repo_root: Path) -> set[str]:
+def changed_paths(repo_root: Path, workspace_dir: str = "workspace/") -> set[str]:
     result = subprocess.run(
-        ["git", "status", "--porcelain", "workspace/"],
+        ["git", "status", "--porcelain", workspace_dir],
         cwd=repo_root,
         capture_output=True,
         text=True,

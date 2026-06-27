@@ -48,3 +48,18 @@ def test_changed_paths_expands_new_untracked_directory_to_its_files(repo: Path) 
         "workspace/public/manifest.json",
         "workspace/public/icons/icon.svg",
     }
+
+
+def test_changed_paths_uses_custom_workspace_dir(repo: Path) -> None:
+    alt_workspace = repo / "workspace-pixel-squad"
+    alt_workspace.mkdir()
+    (alt_workspace / "new_file.ts").write_text("export const x = 1;\n")
+
+    result = workspace_diff.changed_paths(repo, workspace_dir="workspace-pixel-squad/")
+    assert result == {"workspace-pixel-squad/new_file.ts"}
+
+
+def test_changed_paths_default_workspace_dir_unchanged(repo: Path) -> None:
+    (repo / "workspace" / "new_file.ts").write_text("export const y = 2;\n")
+    result = workspace_diff.changed_paths(repo)
+    assert "workspace/new_file.ts" in result

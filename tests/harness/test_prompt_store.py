@@ -71,3 +71,16 @@ def test_rollback_restores_prior_content(repo: Path) -> None:
         ["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True, check=True
     ).stdout
     assert status == ""
+
+
+def test_load_with_workspace_returns_workspace_specific_file(repo: Path) -> None:
+    (repo / "prompts" / "coder-pixel-squad.txt").write_text("pixel-squad coder\n")
+    assert prompt_store.load("coder", repo_root=repo, workspace="pixel-squad") == "pixel-squad coder\n"
+
+
+def test_load_with_workspace_falls_back_to_base_when_specific_missing(repo: Path) -> None:
+    assert prompt_store.load("coder", repo_root=repo, workspace="pixel-squad") == "original coder prompt\n"
+
+
+def test_load_without_workspace_unchanged(repo: Path) -> None:
+    assert prompt_store.load("coder", repo_root=repo) == "original coder prompt\n"

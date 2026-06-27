@@ -6,7 +6,11 @@ class PromptStoreError(Exception):
     pass
 
 
-def load(name: str, repo_root: Path) -> str:
+def load(name: str, repo_root: Path, workspace: str | None = None) -> str:
+    if workspace:
+        specific = repo_root / "prompts" / f"{name}-{workspace}.txt"
+        if specific.exists():
+            return specific.read_text()
     return (repo_root / "prompts" / f"{name}.txt").read_text()
 
 
