@@ -36,8 +36,13 @@ export function createCharacter(template: CharacterTemplate, level: number): Cha
   };
 }
 
-export function createEnemy(template: EnemyTemplate): Character {
-  const s = { ...template.baseStats };
+export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Character {
+  const s = {
+    ...template.baseStats,
+    hp: Math.round(template.baseStats.hp * statMultiplier),
+    atk: Math.round(template.baseStats.atk * statMultiplier),
+    def: Math.round(template.baseStats.def * statMultiplier),
+  };
   return {
     id: nextId(template.id),
     templateId: template.id,

@@ -14,5 +14,16 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     stageProgress: { completedStageIds: [] },
     savedAt: Date.now(),
     inventory: [],
+    ngPlusCycle: 0,
+    hasClearedGame: false,
+  };
+}
+
+export function startNewGamePlus(gameState: GameState): GameState {
+  return {
+    ...gameState,
+    stageProgress: { completedStageIds: [], inChapterRun: undefined },
+    ngPlusCycle: gameState.ngPlusCycle + 1,
+    savedAt: Date.now(),
   };
 }

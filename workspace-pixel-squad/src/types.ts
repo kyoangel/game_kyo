@@ -116,6 +116,7 @@ export interface BattleSceneData {
   stageIndex: number;
   expPool?: number;
   gameState?: GameState;
+  isChallengeRun?: boolean;
 }
 
 export interface ResultSceneData {
@@ -126,6 +127,7 @@ export interface ResultSceneData {
   expPool?: number;
   recruitedEnemy?: Character;  // set if a recruit succeeded during battle
   gameState?: GameState;
+  isChallengeRun?: boolean;
 }
 
 export interface PrepSceneData {
@@ -154,6 +156,12 @@ export interface StageProgress {
   inChapterRun?: ChapterRunState;
 }
 
+export interface ChallengeRunState {
+  bossStageIds: string[];      // remaining boss stage ids to fight, in order
+  lockedSquad: Character[];    // squad snapshot, HP/buffs carry between fights
+  accumulatedCurrency: number; // running total of currencyReward across cleared bosses this run
+}
+
 export interface GameState {
   slotId: 0 | 1 | 2;
   pool: Character[];           // all unlocked characters
@@ -163,6 +171,9 @@ export interface GameState {
   stageProgress: StageProgress;
   savedAt: number;             // Date.now() timestamp
   inventory: InventoryEntry[];
+  ngPlusCycle: number;         // 0 = first playthrough; +1 each time NG+ is started
+  hasClearedGame: boolean;     // true once stage '5-5' is cleared the first time; NEVER reset by NG+
+  challengeRun?: ChallengeRunState; // present while a Boss Rush attempt is in progress
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply';

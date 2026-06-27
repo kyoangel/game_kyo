@@ -8,7 +8,11 @@ export function processVictory(
   stage: Stage,
   expGained: number,
   recruitedEnemy: Character | undefined,
+  ngPlusCycle = 0,
 ): GameState {
+  const rewardMultiplier = 1 + ngPlusCycle * 0.2;
+  const scaledExpGained = Math.round(expGained * rewardMultiplier);
+  const scaledCurrencyReward = Math.round(stage.currencyReward * rewardMultiplier);
   const state: GameState = {
     ...gameState,
     pool: [...gameState.pool],
@@ -31,10 +35,15 @@ export function processVictory(
   }
 
   // Add currency
-  state.currency += stage.currencyReward;
+  state.currency += scaledCurrencyReward;
 
   // Add EXP to pool
-  state.expPool += expGained;
+  state.expPool += scaledExpGained;
+
+  // hasClearedGame is set permanently once the final boss is cleared; never reset (incl. by NG+)
+  if (stage.id === '5-5') {
+    state.hasClearedGame = true;
+  }
 
   // Stage unlock (only on first clear)
   if (isFirstClear && stage.unlockCharacterId) {
