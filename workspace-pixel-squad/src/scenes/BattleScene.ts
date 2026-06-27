@@ -13,7 +13,9 @@ import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_ASSETS } from '../data/sprites';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS } from '../data/sprites';
+import { CharacterAnimator } from '../battle/CharacterAnimator';
+import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
@@ -30,6 +32,7 @@ const ARCHETYPE_TOOLTIP: Record<string, string> = {
 
 interface CharacterView {
   body: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Sprite;
+  animator: CharacterAnimator;
   hpBarBg: Phaser.GameObjects.Rectangle;
   hpBar: Phaser.GameObjects.Rectangle;
   nameText: Phaser.GameObjects.Text;
@@ -82,7 +85,11 @@ export class BattleScene extends Phaser.Scene {
   constructor() { super({ key: 'BattleScene' }); }
 
   preload() {
-    this.load.image(SPRITE_KEYS.protagonistIdle, SPRITE_ASSETS[SPRITE_KEYS.protagonistIdle]);
+    const asset = SPRITE_SHEET_ASSETS[SPRITE_KEYS.protagonistSheet];
+    this.load.spritesheet(SPRITE_KEYS.protagonistSheet, asset.path, {
+      frameWidth: asset.frameWidth,
+      frameHeight: asset.frameHeight,
+    });
   }
 
   init(data: BattleSceneData) {
@@ -139,6 +146,26 @@ export class BattleScene extends Phaser.Scene {
     this.add.line(W / 2, 482, -W / 2, 0, W / 2, 0, 0x374151).setLineWidth(1);
     this.add.line(W / 2, 560, -W / 2, 0, W / 2, 0, 0x374151).setLineWidth(1);
 
+    const sheetKey = SPRITE_KEYS.protagonistSheet;
+    const animDefs = [
+      { key: PROTAGONIST_ANIM_KEYS.walkRight,   start: 30, end: 38, frameRate: 12, repeat: -1 },
+      { key: PROTAGONIST_ANIM_KEYS.walkLeft,    start: 10, end: 18, frameRate: 12, repeat: -1 },
+      { key: PROTAGONIST_ANIM_KEYS.attackRight, start: 70, end: 75, frameRate: 17, repeat: 0  },
+      { key: PROTAGONIST_ANIM_KEYS.attackLeft,  start: 50, end: 55, frameRate: 17, repeat: 0  },
+      { key: PROTAGONIST_ANIM_KEYS.death,       start: 80, end: 85, frameRate: 13, repeat: 0  },
+      { key: PROTAGONIST_ANIM_KEYS.idle,        start: 90, end: 90, frameRate: 1,  repeat: -1 },
+    ];
+    animDefs.forEach(def => {
+      if (!this.anims.exists(def.key)) {
+        this.anims.create({
+          key: def.key,
+          frames: this.anims.generateFrameNumbers(sheetKey, { start: def.start, end: def.end }),
+          frameRate: def.frameRate,
+          repeat: def.repeat,
+        });
+      }
+    });
+
     this.renderParty(this.playerParty, 90, true);
     this.renderParty(this.enemyParty, 270, false);
 
@@ -170,10 +197,11 @@ export class BattleScene extends Phaser.Scene {
       const cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
       const cx = x;
 
-      const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistIdle);
+      const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistSheet);
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
-      const body = shouldUseProtagonistSprite(char, textureLoaded)
-        ? this.add.sprite(cx, cy, SPRITE_KEYS.protagonistIdle).setDisplaySize(44, 56)
+      const useSprite = shouldUseProtagonistSprite(char, textureLoaded);
+      const body = useSprite
+        ? this.add.sprite(cx, cy, SPRITE_KEYS.protagonistSheet, 90).setDisplaySize(44, 56)
         : this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
       const hpBarBg = this.add.rectangle(cx, cy + 34, 60, 6, 0x374151);
       const hpBar = this.add.rectangle(cx - 30, cy + 34, 60, 6, 0x22c55e).setOrigin(0, 0.5);
@@ -186,7 +214,9 @@ export class BattleScene extends Phaser.Scene {
       const hpText = this.add.text(cx, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
         fontSize: '9px', color: '#9ca3af', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      this.views.set(char.id, { body, hpBarBg, hpBar, nameText, hpText, archetypeText });
+      const animator = new CharacterAnimator(this, body, useSprite);
+      animator.playIdleLoop();
+      this.views.set(char.id, { body, animator, hpBarBg, hpBar, nameText, hpText, archetypeText });
 
       if (isPlayer) {
         const icon = this.add.text(cx + 28, cy - 36, '', {
@@ -207,11 +237,6 @@ export class BattleScene extends Phaser.Scene {
     view.hpBar.width = 60 * pct;
     view.hpBar.fillColor = pct > 0.5 ? 0x22c55e : pct > 0.25 ? 0xf59e0b : 0xef4444;
     view.hpText.setText(`${char.stats.hp}/${char.stats.maxHp}`);
-    if (!char.alive) {
-      view.body.setAlpha(0.2);
-      view.nameText.setAlpha(0.3);
-      view.archetypeText.setAlpha(0.3);
-    }
   }
 
   private setCommandIcon(char: Character, action: PendingCommand['action']) {
@@ -690,19 +715,43 @@ export class BattleScene extends Phaser.Scene {
     isCrit = false,
   ) {
     const sfx = getSfx(this);
-    sfx.play(SFX_KEYS.attack);
-    sfx.play(SFX_KEYS.hit);
-    if (isCrit) sfx.play(SFX_KEYS.crit);
+    const attackerView = this.views.get(attacker.id);
+    const targetView = this.views.get(target.id);
+    const facing = deriveFacing(attacker.isPlayer);
 
     target.stats.hp = Math.max(0, target.stats.hp - dmg);
-    if (target.stats.hp === 0) target.alive = false;
+    const died = target.stats.hp === 0;
+    if (died) target.alive = false;
     this.updateHpBar(target);
 
     const label = skillName ? `【${skillName}】` : '';
     const critLabel = isCrit ? '暴擊! ' : '';
     this.showMessage(`${critLabel}${attacker.name}${label} → ${target.name} -${dmg} HP`);
 
-    this.time.delayedCall(900, () => {
+    if (attackerView) {
+      attackerView.animator.playWalk(facing, () => {
+        sfx.play(SFX_KEYS.attack);
+        attackerView.animator.playAttack(facing, () => {
+          sfx.play(SFX_KEYS.hit);
+          if (isCrit) sfx.play(SFX_KEYS.crit);
+          if (targetView) {
+            if (died) {
+              targetView.animator.playDie(deriveFacing(target.isPlayer), () => {});
+            } else {
+              targetView.animator.playHit(isCrit, () => targetView.animator.returnToIdle());
+            }
+          }
+          attackerView.animator.returnToIdle();
+        });
+      });
+    } else {
+      sfx.play(SFX_KEYS.attack);
+      sfx.play(SFX_KEYS.hit);
+      if (isCrit) sfx.play(SFX_KEYS.crit);
+    }
+
+    const delay = died ? Math.max(900, DIE_CONFIG.sprite.totalDuration + 200) : 900;
+    this.time.delayedCall(delay, () => {
       this.clearMessage();
       next();
     });
@@ -714,6 +763,9 @@ export class BattleScene extends Phaser.Scene {
     target.stats.hp = Math.min(target.stats.maxHp, target.stats.hp + amount);
     this.updateHpBar(target);
 
+    const casterView = this.views.get(caster.id);
+    if (casterView) casterView.animator.playSkillCast('blue', () => {});
+
     this.showMessage(`${caster.name}【${skill.name}】→ ${target.name} +${amount} HP`);
     this.time.delayedCall(900, () => { this.clearMessage(); next(); });
   }
@@ -722,6 +774,9 @@ export class BattleScene extends Phaser.Scene {
     getSfx(this).play(SFX_KEYS.buff);
     applyBuff(target, skill, caster);
     const label = skill.buffStat ? STAT_LABEL[skill.buffStat] : '';
+
+    const casterView = this.views.get(caster.id);
+    if (casterView) casterView.animator.playSkillCast('green', () => {});
 
     this.showMessage(`${caster.name}【${skill.name}】→ ${target.name} ${label}↑`);
     this.time.delayedCall(900, () => { this.clearMessage(); next(); });
@@ -734,6 +789,7 @@ export class BattleScene extends Phaser.Scene {
       const victory = !enemyAlive;
       getSfx(this).play(victory ? SFX_KEYS.victory : SFX_KEYS.defeat);
       const expGained = victory ? STAGES[this.stageIndex].expReward : 0;
+      this.views.forEach(view => view.animator.killAllTweens());
       this.time.delayedCall(400, () => {
         this.scene.start('ResultScene', {
           victory,

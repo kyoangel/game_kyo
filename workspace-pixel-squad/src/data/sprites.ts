@@ -73,3 +73,13 @@ export const SPRITE_ASSETS: Record<string, string> = {
   [SPRITE_KEYS.protagonistIdle]: 'sprites/character_rogue.png',
   [SPRITE_KEYS.protagonistSheet]: 'sprites/character_rogue.png',
 };
+
+// Phaser animation keys for the protagonist LPC spritesheet
+export const PROTAGONIST_ANIM_KEYS = {
+  walkRight:   'protagonist_walk_right',   // row 3, 9 frames
+  walkLeft:    'protagonist_walk_left',    // row 1, 9 frames
+  attackRight: 'protagonist_attack_right', // row 7, 6 frames
+  attackLeft:  'protagonist_attack_left',  // row 5, 6 frames
+  death:       'protagonist_death',        // row 8, 6 frames
+  idle:        'protagonist_idle_gesture', // row 9, single frame
+} as const;
