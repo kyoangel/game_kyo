@@ -14,6 +14,8 @@ import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } fr
 import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite } from '../battle/SpriteSelection';
 import { SPRITE_KEYS, SPRITE_ASSETS } from '../data/sprites';
+import { getSfx } from '../audio/SfxManager';
+import { SFX_KEYS } from '../data/audio';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
 
@@ -323,6 +325,7 @@ export class BattleScene extends Phaser.Scene {
       }).setOrigin(0.5);
       bg.on('pointerdown', () => {
         if (this.phase !== 'command' || !this.waitingForInput) return;
+        getSfx(this).play(SFX_KEYS.buttonClick);
         action();
       });
       bg.on('pointerover', () => bg.setFillStyle(0x4b5563));
@@ -387,6 +390,7 @@ export class BattleScene extends Phaser.Scene {
       }).setOrigin(0.5);
       bg.on('pointerdown', () => {
         if (this.phase !== 'command' || !this.waitingForInput) return;
+        getSfx(this).play(SFX_KEYS.buttonClick);
         action();
       });
       bg.on('pointerover', () => bg.setFillStyle(0x4b5563));
@@ -432,6 +436,7 @@ export class BattleScene extends Phaser.Scene {
       view.body.setInteractive({ useHandCursor: true });
       view.body.on('pointerdown', () => {
         if (!this.targetSelectActive) return;
+        getSfx(this).play(SFX_KEYS.buttonClick);
         this.confirmTargetSelection(t);
       });
     });
@@ -563,6 +568,7 @@ export class BattleScene extends Phaser.Scene {
       enemy.recruited = true;
     }
 
+    getSfx(this).play(success ? SFX_KEYS.recruitSuccess : SFX_KEYS.recruitFail);
     this.showMessage(resultMsg);
 
     if (success) {
@@ -680,6 +686,11 @@ export class BattleScene extends Phaser.Scene {
     next: () => void,
     isCrit = false,
   ) {
+    const sfx = getSfx(this);
+    sfx.play(SFX_KEYS.attack);
+    sfx.play(SFX_KEYS.hit);
+    if (isCrit) sfx.play(SFX_KEYS.crit);
+
     target.stats.hp = Math.max(0, target.stats.hp - dmg);
     if (target.stats.hp === 0) target.alive = false;
     this.updateHpBar(target);
@@ -695,6 +706,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private applyHealAndAdvance(caster: Character, target: Character, skill: Skill, next: () => void) {
+    getSfx(this).play(SFX_KEYS.heal);
     const amount = calcHeal(caster, skill);
     target.stats.hp = Math.min(target.stats.maxHp, target.stats.hp + amount);
     this.updateHpBar(target);
@@ -704,6 +716,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private applyBuffAndAdvance(caster: Character, target: Character, skill: Skill, next: () => void) {
+    getSfx(this).play(SFX_KEYS.buff);
     applyBuff(target, skill, caster);
     const label = skill.buffStat ? STAT_LABEL[skill.buffStat] : '';
 
@@ -716,6 +729,7 @@ export class BattleScene extends Phaser.Scene {
     const enemyAlive = this.enemyParty.some(c => c.alive);
     if (!playerAlive || !enemyAlive) {
       const victory = !enemyAlive;
+      getSfx(this).play(victory ? SFX_KEYS.victory : SFX_KEYS.defeat);
       const expGained = victory ? STAGES[this.stageIndex].expReward : 0;
       this.time.delayedCall(400, () => {
         this.scene.start('ResultScene', {

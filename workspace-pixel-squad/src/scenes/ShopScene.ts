@@ -3,6 +3,8 @@ import type { Character, GameState, ShopItem } from '../types';
 import { SHOP_ITEMS } from '../data/shopItems';
 import { canAfford, hasAnyEligibleCharacter, isEligibleForScroll, teachSkill, addToInventory } from '../battle/ShopSystem';
 import { saveSlot } from '../save/SaveSystem';
+import { getSfx } from '../audio/SfxManager';
+import { SFX_KEYS } from '../data/audio';
 
 export class ShopScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -26,7 +28,7 @@ export class ShopScene extends Phaser.Scene {
 
     const backBtn = this.add.rectangle(40, 24, 60, 28, 0x374151).setInteractive({ useHandCursor: true });
     this.add.text(40, 24, '← 基地', { fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace' }).setOrigin(0.5);
-    backBtn.on('pointerdown', () => this.scene.start('BaseScene', this.gameState));
+    backBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.scene.start('BaseScene', this.gameState); });
     backBtn.on('pointerover', () => backBtn.setFillStyle(0x4b5563));
     backBtn.on('pointerout', () => backBtn.setFillStyle(0x374151));
 
@@ -88,6 +90,7 @@ export class ShopScene extends Phaser.Scene {
   private handleBuy(item: ShopItem) {
     if (this.pickerPanel) return;
     if (item.type === 'supply') {
+      getSfx(this).play(SFX_KEYS.purchase);
       this.gameState.currency -= item.price;
       this.gameState.inventory = addToInventory(this.gameState.inventory ?? [], item.id);
       saveSlot(this.gameState);
@@ -130,7 +133,7 @@ export class ShopScene extends Phaser.Scene {
 
     const cancelBtn = this.add.rectangle(0, y, 120, 32, 0x7f1d1d).setInteractive({ useHandCursor: true });
     const cancelTxt = this.add.text(0, y, '取消', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
-    cancelBtn.on('pointerdown', () => this.closePicker());
+    cancelBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.closePicker(); });
     cancelBtn.on('pointerover', () => cancelBtn.setAlpha(0.8));
     cancelBtn.on('pointerout', () => cancelBtn.setAlpha(1));
     panel.add([cancelBtn, cancelTxt]);
@@ -139,6 +142,7 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private handleTeach(item: ShopItem, char: Character) {
+    getSfx(this).play(SFX_KEYS.purchase);
     this.gameState.currency -= item.price;
     const updated = teachSkill(char, item.skillId!);
     this.updateCharInState(updated);

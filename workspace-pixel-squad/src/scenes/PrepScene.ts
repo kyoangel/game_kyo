@@ -3,6 +3,8 @@ import type { Character, PrepSceneData } from '../types';
 import { canLevelUp, applyLevelUp, DEFAULT_LEVEL_UP_CONFIG } from '../battle/LevelUpSystem';
 import { allocateStat } from '../battle/ExpSystem';
 import { STAGES } from '../data/stages';
+import { getSfx } from '../audio/SfxManager';
+import { SFX_KEYS } from '../data/audio';
 
 export class PrepScene extends Phaser.Scene {
   private party: Character[] = [];
@@ -56,7 +58,7 @@ export class PrepScene extends Phaser.Scene {
     this.add.text(W / 2, 590, btnLabel, {
       fontSize: '15px', color: '#fff', fontFamily: 'monospace',
     }).setOrigin(0.5);
-    btn.on('pointerdown', () => this.goToNextBattle());
+    btn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.goToNextBattle(); });
     btn.on('pointerover', () => btn.setAlpha(0.8));
     btn.on('pointerout', () => btn.setAlpha(1));
   }
@@ -96,7 +98,7 @@ export class PrepScene extends Phaser.Scene {
         const lvTxt = this.add.text(294, y + 45, '升級', {
           fontSize: '13px', color: '#fff', fontFamily: 'monospace',
         }).setOrigin(0.5);
-        lvBtn.on('pointerdown', () => this.handleLevelUp(i));
+        lvBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.handleLevelUp(i); });
         lvBtn.on('pointerover', () => lvBtn.setAlpha(0.8));
         lvBtn.on('pointerout', () => lvBtn.setAlpha(1));
         this.rowObjects.push(lvBtn, lvTxt);

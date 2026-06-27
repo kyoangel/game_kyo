@@ -6,6 +6,8 @@ import { canUseSupply, useSupply, findItemById } from '../battle/ShopSystem';
 import { saveSlot } from '../save/SaveSystem';
 import { CHAPTERS } from '../data/chapters';
 import { STAGES } from '../data/stages';
+import { getSfx } from '../audio/SfxManager';
+import { SFX_KEYS } from '../data/audio';
 
 export class BaseScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -69,13 +71,13 @@ export class BaseScene extends Phaser.Scene {
 
     const shopBtn = this.add.rectangle(120, 600, 100, 40, 0x7c3aed).setInteractive({ useHandCursor: true });
     this.add.text(120, 600, '商店', { fontSize: '15px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
-    shopBtn.on('pointerdown', () => { saveSlot(this.gameState); this.scene.start('ShopScene', { gameState: this.gameState }); });
+    shopBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('ShopScene', { gameState: this.gameState }); });
     shopBtn.on('pointerover', () => shopBtn.setAlpha(0.8));
     shopBtn.on('pointerout', () => shopBtn.setAlpha(1));
 
     const mapBtn = this.add.rectangle(240, 600, 100, 40, 0x1d4ed8).setInteractive({ useHandCursor: true });
     this.add.text(240, 600, '世界地圖', { fontSize: '13px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
-    mapBtn.on('pointerdown', () => { saveSlot(this.gameState); this.scene.start('WorldMapScene', { gameState: this.gameState }); });
+    mapBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('WorldMapScene', { gameState: this.gameState }); });
     mapBtn.on('pointerover', () => mapBtn.setAlpha(0.8));
     mapBtn.on('pointerout', () => mapBtn.setAlpha(1));
   }

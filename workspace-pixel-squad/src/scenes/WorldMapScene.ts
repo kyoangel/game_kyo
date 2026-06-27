@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import type { GameState, Stage } from '../types';
 import { CHAPTERS } from '../data/chapters';
 import { STAGES } from '../data/stages';
+import { getSfx } from '../audio/SfxManager';
+import { SFX_KEYS } from '../data/audio';
 
 interface StageRowView {
   background: Phaser.GameObjects.Rectangle;
@@ -47,7 +49,7 @@ export class WorldMapScene extends Phaser.Scene {
       color: '#e5e7eb',
       fontFamily: 'monospace',
     }).setOrigin(0.5);
-    backBtnBg.on('pointerdown', () => this.scene.start('BaseScene', this.gameState));
+    backBtnBg.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.scene.start('BaseScene', this.gameState); });
     backBtnBg.on('pointerover', () => backBtnBg.setFillStyle(0x4b5563));
     backBtnBg.on('pointerout', () => backBtnBg.setFillStyle(0x374151));
 
@@ -143,7 +145,7 @@ export class WorldMapScene extends Phaser.Scene {
 
         if (isAvailable) {
           background.setInteractive({ useHandCursor: true });
-          background.on('pointerdown', () => this.launchStage(stage));
+          background.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.launchStage(stage); });
           background.on('pointerover', () => background.setFillStyle(0x2d5a8c));
           background.on('pointerout', () => background.setFillStyle(bgColor));
         }

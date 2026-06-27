@@ -3,9 +3,17 @@ import { listSlots, saveSlot, loadSlot, deleteSlot } from '../save/SaveSystem';
 import { newGame } from '../save/GameState';
 import type { SlotMeta } from '../save/SaveSystem';
 import type { GameState } from '../types';
+import { SfxManager, getSfx } from '../audio/SfxManager';
+import { SFX_KEYS } from '../data/audio';
 
 export class TitleScene extends Phaser.Scene {
+  private muteIcon!: Phaser.GameObjects.Text;
+
   constructor() { super({ key: 'TitleScene' }); }
+
+  preload() {
+    SfxManager.preload(this);
+  }
 
   create() {
     // E2E test shortcut: ?e2e=1 bypasses TitleScene and jumps directly to BattleScene
@@ -32,7 +40,19 @@ export class TitleScene extends Phaser.Scene {
       fontSize: '13px', color: '#6b7280', fontFamily: 'monospace',
     }).setOrigin(0.5);
 
+    this.renderMuteIcon();
     this.renderSlots();
+  }
+
+  private renderMuteIcon() {
+    const sfx = getSfx(this);
+    this.muteIcon = this.add.text(336, 16, sfx.isMuted() ? '🔇' : '🔊', {
+      fontSize: '16px',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this.muteIcon.on('pointerdown', () => {
+      const muted = sfx.toggleMute();
+      this.muteIcon.setText(muted ? '🔇' : '🔊');
+    });
   }
 
   private renderSlots() {
@@ -80,7 +100,7 @@ export class TitleScene extends Phaser.Scene {
       delBtn.on('pointerout', () => delBtn.setFillStyle(0x7f1d1d));
     }
 
-    bg.on('pointerdown', () => this.handleSlotTap(meta));
+    bg.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.handleSlotTap(meta); });
     bg.on('pointerover', () => bg.setAlpha(0.8));
     bg.on('pointerout', () => bg.setAlpha(1));
   }
