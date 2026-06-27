@@ -12,6 +12,8 @@ import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
+import { shouldUseProtagonistSprite } from '../battle/SpriteSelection';
+import { SPRITE_KEYS, SPRITE_ASSETS } from '../data/sprites';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
 
@@ -24,7 +26,7 @@ const ARCHETYPE_TOOLTIP: Record<string, string> = {
 };
 
 interface CharacterView {
-  body: Phaser.GameObjects.Rectangle;
+  body: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Sprite;
   hpBarBg: Phaser.GameObjects.Rectangle;
   hpBar: Phaser.GameObjects.Rectangle;
   nameText: Phaser.GameObjects.Text;
@@ -75,6 +77,10 @@ export class BattleScene extends Phaser.Scene {
   private keyboardActions: Array<{ label: string; action: () => void }> = [];
 
   constructor() { super({ key: 'BattleScene' }); }
+
+  preload() {
+    this.load.image(SPRITE_KEYS.protagonistIdle, SPRITE_ASSETS[SPRITE_KEYS.protagonistIdle]);
+  }
 
   init(data: BattleSceneData) {
     this.playerParty = data.playerParty?.length
@@ -159,8 +165,11 @@ export class BattleScene extends Phaser.Scene {
       const cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
       const cx = x;
 
+      const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistIdle);
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
-      const body = this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
+      const body = shouldUseProtagonistSprite(char, textureLoaded)
+        ? this.add.sprite(cx, cy, SPRITE_KEYS.protagonistIdle).setDisplaySize(44, 56)
+        : this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
       const hpBarBg = this.add.rectangle(cx, cy + 34, 60, 6, 0x374151);
       const hpBar = this.add.rectangle(cx - 30, cy + 34, 60, 6, 0x22c55e).setOrigin(0, 0.5);
       const nameText = this.add.text(cx, cy - 36, char.name, {
