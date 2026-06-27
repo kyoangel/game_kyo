@@ -7,7 +7,8 @@ import { saveSlot } from '../save/SaveSystem';
 import { CHAPTERS } from '../data/chapters';
 import { STAGES } from '../data/stages';
 import { getSfx } from '../audio/SfxManager';
-import { SFX_KEYS } from '../data/audio';
+import { getMusic } from '../audio/MusicManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 
 export class BaseScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -27,6 +28,7 @@ export class BaseScene extends Phaser.Scene {
   create(gameState: GameState) {
     this.gameState = gameState;
     this.rowObjects = [];
+    getMusic(this).playTrack(MUSIC_KEYS.theme);
 
     const W = 360, H = 640;
     this.add.rectangle(W / 2, H / 2, W, H, 0x111827);

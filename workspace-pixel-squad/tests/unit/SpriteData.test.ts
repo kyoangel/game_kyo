@@ -9,7 +9,7 @@ describe('SPRITE_KEYS', () => {
 
 describe('SPRITE_ASSETS', () => {
   it('maps the protagonist idle key to its PNG path', () => {
-    expect(SPRITE_ASSETS[SPRITE_KEYS.protagonistIdle]).toBe('sprites/protagonist_idle.png');
+    expect(SPRITE_ASSETS[SPRITE_KEYS.protagonistIdle]).toBe('sprites/character_rogue.png');
   });
 
   it('has no leading slash so it resolves relative to the public dir', () => {

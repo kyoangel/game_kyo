@@ -4,7 +4,8 @@ import { SHOP_ITEMS } from '../data/shopItems';
 import { canAfford, hasAnyEligibleCharacter, isEligibleForScroll, teachSkill, addToInventory } from '../battle/ShopSystem';
 import { saveSlot } from '../save/SaveSystem';
 import { getSfx } from '../audio/SfxManager';
-import { SFX_KEYS } from '../data/audio';
+import { getMusic } from '../audio/MusicManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 
 export class ShopScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -19,6 +20,8 @@ export class ShopScene extends Phaser.Scene {
   }
 
   create() {
+    getMusic(this).playTrack(MUSIC_KEYS.theme);
+
     const W = 360;
     this.add.rectangle(W / 2, 320, W, 640, 0x111827);
 

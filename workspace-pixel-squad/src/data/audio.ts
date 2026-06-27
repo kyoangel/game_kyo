@@ -29,3 +29,28 @@ export const SFX_ASSETS: Record<SfxKey, string> = {
   [SFX_KEYS.buttonClick]: 'audio/button_click.mp3',
   [SFX_KEYS.purchase]: 'audio/purchase.mp3',
 };
+
+export const MUSIC_KEYS = {
+  title: 'music_title',
+  theme: 'music_theme',
+  battle: 'music_battle',
+  victory: 'music_victory',
+  defeat: 'music_defeat',
+} as const;
+
+export type MusicKey = typeof MUSIC_KEYS[keyof typeof MUSIC_KEYS];
+
+export const MUSIC_ASSETS: Record<MusicKey, string> = {
+  [MUSIC_KEYS.title]: 'audio/music_title.mp3',
+  [MUSIC_KEYS.theme]: 'audio/music_theme.mp3',
+  [MUSIC_KEYS.battle]: 'audio/music_battle.mp3',
+  [MUSIC_KEYS.victory]: 'audio/music_victory.mp3',
+  [MUSIC_KEYS.defeat]: 'audio/music_defeat.mp3',
+};
+
+export const MUSIC_LOOP_KEYS: ReadonlySet<MusicKey> = new Set([
+  MUSIC_KEYS.title, MUSIC_KEYS.theme, MUSIC_KEYS.battle,
+]);
+
+export const MUSIC_VOLUME = 0.4;
+export const MUSIC_FADE_MS = 500;

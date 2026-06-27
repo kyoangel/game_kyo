@@ -4,15 +4,18 @@ import { newGame } from '../save/GameState';
 import type { SlotMeta } from '../save/SaveSystem';
 import type { GameState } from '../types';
 import { SfxManager, getSfx } from '../audio/SfxManager';
-import { SFX_KEYS } from '../data/audio';
+import { MusicManager, getMusic } from '../audio/MusicManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 
 export class TitleScene extends Phaser.Scene {
   private muteIcon!: Phaser.GameObjects.Text;
+  private musicMuteIcon!: Phaser.GameObjects.Text;
 
   constructor() { super({ key: 'TitleScene' }); }
 
   preload() {
     SfxManager.preload(this);
+    MusicManager.preload(this);
   }
 
   create() {
@@ -41,7 +44,10 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.renderMuteIcon();
+    this.renderMusicMuteIcon();
     this.renderSlots();
+
+    getMusic(this).playTrack(MUSIC_KEYS.title);
   }
 
   private renderMuteIcon() {
@@ -52,6 +58,17 @@ export class TitleScene extends Phaser.Scene {
     this.muteIcon.on('pointerdown', () => {
       const muted = sfx.toggleMute();
       this.muteIcon.setText(muted ? '🔇' : '🔊');
+    });
+  }
+
+  private renderMusicMuteIcon() {
+    const music = getMusic(this);
+    this.musicMuteIcon = this.add.text(336, 40, music.isMuted() ? '🔇' : '🎵', {
+      fontSize: '16px',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this.musicMuteIcon.on('pointerdown', () => {
+      const muted = music.toggleMute();
+      this.musicMuteIcon.setText(muted ? '🔇' : '🎵');
     });
   }
 

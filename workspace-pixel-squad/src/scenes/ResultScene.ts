@@ -4,12 +4,15 @@ import { STAGES } from '../data/stages';
 import { saveSlot } from '../save/SaveSystem';
 import { processVictory } from '../battle/VictoryProcessor';
 import { findItemById } from '../battle/ShopSystem';
+import { getMusic } from '../audio/MusicManager';
+import { MUSIC_KEYS } from '../data/audio';
 
 export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
 
   create(data: ResultSceneData) {
     const { victory, playerParty, stageIndex, expGained, expPool = 0, recruitedEnemy, gameState } = data;
+    getMusic(this).playTrack(victory ? MUSIC_KEYS.victory : MUSIC_KEYS.defeat);
     const W = 360, H = 640;
 
     this.add.rectangle(W / 2, H / 2, W, H, 0x111827);

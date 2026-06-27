@@ -4,7 +4,8 @@ import { canLevelUp, applyLevelUp, DEFAULT_LEVEL_UP_CONFIG } from '../battle/Lev
 import { allocateStat } from '../battle/ExpSystem';
 import { STAGES } from '../data/stages';
 import { getSfx } from '../audio/SfxManager';
-import { SFX_KEYS } from '../data/audio';
+import { getMusic } from '../audio/MusicManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 
 export class PrepScene extends Phaser.Scene {
   private party: Character[] = [];
@@ -24,6 +25,8 @@ export class PrepScene extends Phaser.Scene {
   constructor() { super({ key: 'PrepScene' }); }
 
   create(data: PrepSceneData) {
+    getMusic(this).playTrack(MUSIC_KEYS.theme);
+
     this.party = data.playerParty.map(c => ({ ...c, stats: { ...c.stats } }));
     this.stageIndex = data.stageIndex;
     this.expPool = data.expPool;

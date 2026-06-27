@@ -3,7 +3,8 @@ import type { GameState, Stage } from '../types';
 import { CHAPTERS } from '../data/chapters';
 import { STAGES } from '../data/stages';
 import { getSfx } from '../audio/SfxManager';
-import { SFX_KEYS } from '../data/audio';
+import { getMusic } from '../audio/MusicManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 
 interface StageRowView {
   background: Phaser.GameObjects.Rectangle;
@@ -29,6 +30,8 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   create() {
+    getMusic(this).playTrack(MUSIC_KEYS.theme);
+
     const W = 360;
 
     // Background

@@ -15,7 +15,8 @@ import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite } from '../battle/SpriteSelection';
 import { SPRITE_KEYS, SPRITE_ASSETS } from '../data/sprites';
 import { getSfx } from '../audio/SfxManager';
-import { SFX_KEYS } from '../data/audio';
+import { getMusic } from '../audio/MusicManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
 
@@ -112,6 +113,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create() {
+    getMusic(this).playTrack(MUSIC_KEYS.battle);
+
     const W = 360, H = 640;
 
     this.add.rectangle(W / 2, H / 2, W, H, 0x111827);
