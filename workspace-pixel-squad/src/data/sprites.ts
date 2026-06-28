@@ -74,6 +74,26 @@ export const SPRITE_ASSETS: Record<string, string> = {
   [SPRITE_KEYS.protagonistSheet]: 'sprites/character_rogue.png',
 };
 
+// Party member sprite keys (one per character id)
+export const PARTY_MEMBER_IDS = ['rex', 'nyx', 'vega', 'ash', 'crow', 'mira', 'zora', 'rook', 'dex', 'echo', 'aaaa'] as const;
+export type PartyMemberId = typeof PARTY_MEMBER_IDS[number];
+
+export function partySpritKey(id: string): string {
+  return `party_${id}`;
+}
+
+export function partySpritePath(id: string): string {
+  return `sprites/party/${id}.png`;
+}
+
+export function monsterIdleKey(type: MonsterType): string {
+  return `monster_idle_${type}`;
+}
+
+export function monsterIdlePath(type: MonsterType): string {
+  return MONSTER_FRAMES[type].idle[0];
+}
+
 export const MONSTER_ANIM_FPS: Record<MonsterAnimKey, number> = {
   idle:   8,
   walk:   8,

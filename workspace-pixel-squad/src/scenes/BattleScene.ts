@@ -12,8 +12,9 @@ import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
-import { shouldUseProtagonistSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS } from '../data/sprites';
+import { shouldUseProtagonistSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, partySpritKey, partySpritePath, monsterIdleKey, monsterIdlePath, MONSTER_FRAMES } from '../data/sprites';
+import type { MonsterType } from '../data/sprites';
 import { CharacterAnimator } from '../battle/CharacterAnimator';
 import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
 import { getSfx } from '../audio/SfxManager';
@@ -31,7 +32,7 @@ const ARCHETYPE_TOOLTIP: Record<string, string> = {
 };
 
 interface CharacterView {
-  body: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Sprite;
+  body: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
   animator: CharacterAnimator;
   hpBarBg: Phaser.GameObjects.Rectangle;
   hpBar: Phaser.GameObjects.Rectangle;
@@ -90,6 +91,15 @@ export class BattleScene extends Phaser.Scene {
       frameWidth: asset.frameWidth,
       frameHeight: asset.frameHeight,
     });
+    // Party member sprites
+    for (const id of PARTY_MEMBER_IDS) {
+      this.load.image(partySpritKey(id), partySpritePath(id));
+    }
+    // Monster idle frames (one per type)
+    const monsterTypes = Object.keys(MONSTER_FRAMES) as MonsterType[];
+    for (const type of monsterTypes) {
+      this.load.image(monsterIdleKey(type), monsterIdlePath(type));
+    }
   }
 
   init(data: BattleSceneData) {
@@ -199,10 +209,17 @@ export class BattleScene extends Phaser.Scene {
 
       const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistSheet);
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
+      let body: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle;
+      if (shouldUseProtagonistSprite(char, textureLoaded)) {
+        body = this.add.sprite(cx, cy, SPRITE_KEYS.protagonistSheet, 90).setDisplaySize(44, 56);
+      } else if (shouldUsePartySprite(char, this)) {
+        body = this.add.image(cx, cy, partySpritKey(char.templateId)).setDisplaySize(44, 56);
+      } else if (shouldUseMonsterSprite(char, this)) {
+        body = this.add.image(cx, cy, monsterIdleKey(char._monsterType as MonsterType)).setDisplaySize(44, 56);
+      } else {
+        body = this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
+      }
       const useSprite = shouldUseProtagonistSprite(char, textureLoaded);
-      const body = useSprite
-        ? this.add.sprite(cx, cy, SPRITE_KEYS.protagonistSheet, 90).setDisplaySize(44, 56)
-        : this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
       const hpBarBg = this.add.rectangle(cx, cy + 34, 60, 6, 0x374151);
       const hpBar = this.add.rectangle(cx - 30, cy + 34, 60, 6, 0x22c55e).setOrigin(0, 0.5);
       const nameText = this.add.text(cx, cy - 36, char.name, {

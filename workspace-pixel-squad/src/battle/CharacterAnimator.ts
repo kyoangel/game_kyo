@@ -16,7 +16,7 @@ export class CharacterAnimator {
 
   constructor(
     private scene: Phaser.Scene,
-    private body: Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle,
+    private body: Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
     private isSprite: boolean,
   ) {
     this.originX = body.x;
