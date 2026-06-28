@@ -74,6 +74,18 @@ export const SPRITE_ASSETS: Record<string, string> = {
   [SPRITE_KEYS.protagonistSheet]: 'sprites/character_rogue.png',
 };
 
+export const MONSTER_ANIM_FPS: Record<MonsterAnimKey, number> = {
+  idle:   8,
+  walk:   8,
+  attack: 10,
+  hurt:   10,
+  death:  6,
+};
+
+export function monsterAnimKey(type: MonsterType, anim: MonsterAnimKey): string {
+  return `monster_${type}_${anim}`;
+}
+
 // Phaser animation keys for the protagonist LPC spritesheet
 export const PROTAGONIST_ANIM_KEYS = {
   walkRight:   'protagonist_walk_right',   // row 3, 9 frames

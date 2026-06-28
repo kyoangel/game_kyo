@@ -43,7 +43,7 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
     atk: Math.round(template.baseStats.atk * statMultiplier),
     def: Math.round(template.baseStats.def * statMultiplier),
   };
-  return {
+  const char: Character = {
     id: nextId(template.id),
     templateId: template.id,
     name: template.name,
@@ -60,6 +60,8 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
     defending: false,
     activeBuffs: [],
   };
+  char._monsterType = template.monsterType;
+  return char;
 }
 
 export function expToNextLevel(level: number): number {

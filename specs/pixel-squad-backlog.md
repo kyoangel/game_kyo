@@ -10,6 +10,6 @@
 - [x] 音效
 - [x] 音樂
 - [x] 角色攻擊動作 (Walk, Idle, Attack, Hit, Die, Skill) 
-- [ ] 像素怪物素材
+- [x] 像素怪物素材
 - [ ] 技能的冷卻時間設計
 - [ ] UI Design

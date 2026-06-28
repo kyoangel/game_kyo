@@ -1,3 +1,5 @@
+import type { MonsterType } from './data/sprites';
+
 export type ArchetypeLabel = '坦克' | '輸出' | '狙擊' | '輔助' | '全能';
 export type SkillType = 'attack' | 'heal' | 'buff';
 export type SkillTarget = 'enemy' | 'ally' | 'self';
@@ -69,6 +71,7 @@ export interface Character {
   defending: boolean;   // true = -50% damage this round
   recruited?: boolean;  // true = this enemy was convinced to join
   activeBuffs: ActiveBuff[];
+  _monsterType?: MonsterType;
 }
 
 export interface EnemyTemplate {
@@ -76,6 +79,7 @@ export interface EnemyTemplate {
   name: string;
   baseStats: StatBlock;
   skillIds: string[];
+  monsterType?: MonsterType;
 }
 
 export interface StageDialog {
