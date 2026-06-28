@@ -12,4 +12,4 @@
 - [x] 角色攻擊動作 (Walk, Idle, Attack, Hit, Die, Skill) 
 - [x] 像素怪物素材
 - [x] 技能的冷卻時間設計
-- [ ] UI Design
+- [x] UI Design
