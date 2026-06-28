@@ -8,7 +8,7 @@ function makeChar(overrides: Partial<Character> = {}): Character {
     level: 1, exp: 0, expToNext: 50,
     stats: { hp: 100, maxHp: 100, atk: 20, def: 10, spd: 15 },
     skills: [], statPoints: 0, archetype: '全能', alive: true, defending: false,
-    activeBuffs: [],
+    activeBuffs: [], skillCooldowns: {},
     ...overrides,
   };
 }

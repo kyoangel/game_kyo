@@ -33,6 +33,7 @@ export function createCharacter(template: CharacterTemplate, level: number): Cha
     alive: true,
     defending: false,
     activeBuffs: [],
+    skillCooldowns: {},
   };
 }
 
@@ -59,6 +60,7 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
     alive: true,
     defending: false,
     activeBuffs: [],
+    skillCooldowns: {},
   };
   char._monsterType = template.monsterType;
   return char;

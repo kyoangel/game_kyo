@@ -1,5 +1,6 @@
 import type { BuffStat, Character, Skill } from '../types';
 import { effectiveAtk, effectiveDef, effectiveSpd } from './Buffs';
+import { isSkillReady, triggerCooldown } from './SkillCooldown';
 
 export interface SkillDecision {
   skill?: Skill;          // undefined => basic attack
@@ -16,17 +17,18 @@ export function decideAction(actor: Character, allies: Character[], enemies: Cha
   const aliveAllies = allies.filter(c => c.alive);
   const aliveEnemies = enemies.filter(c => c.alive);
 
-  const healSkill = actor.skills.find(s => s.type === 'heal');
+  const healSkill = actor.skills.find(s => s.type === 'heal' && isSkillReady(actor, s));
   if (healSkill && aliveAllies.length > 0) {
     const lowest = aliveAllies.reduce((l, c) =>
       c.stats.hp / c.stats.maxHp < l.stats.hp / l.stats.maxHp ? c : l
     );
     if (lowest.stats.hp / lowest.stats.maxHp < 0.5) {
+      triggerCooldown(actor, healSkill);
       return { skill: healSkill, target: lowest };
     }
   }
 
-  const buffSkill = actor.skills.find(s => s.type === 'buff');
+  const buffSkill = actor.skills.find(s => s.type === 'buff' && isSkillReady(actor, s));
   if (buffSkill && buffSkill.buffStat) {
     const target = buffSkill.target === 'self'
       ? actor
@@ -35,14 +37,16 @@ export function decideAction(actor: Character, allies: Character[], enemies: Cha
       );
     const alreadyBuffed = target.activeBuffs.some(b => b.stat === buffSkill.buffStat);
     if (!alreadyBuffed) {
+      triggerCooldown(actor, buffSkill);
       return { skill: buffSkill, target };
     }
   }
 
-  const attackSkills = actor.skills.filter(s => s.type === 'attack');
+  const attackSkills = actor.skills.filter(s => s.type === 'attack' && isSkillReady(actor, s));
   if (attackSkills.length > 0 && Math.random() < 0.5 && aliveEnemies.length > 0) {
     const skill = attackSkills[Math.floor(Math.random() * attackSkills.length)];
     const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+    triggerCooldown(actor, skill);
     return { skill, target };
   }
 

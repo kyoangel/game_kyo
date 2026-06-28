@@ -8,6 +8,7 @@ export const SKILLS: Record<string, Skill> = {
     target: 'enemy',
     multiplier: 1.5,
     description: 'ATK × 1.5 的傷害',
+    cooldown: 3,
   },
   shield_bash: {
     id: 'shield_bash',
@@ -16,6 +17,7 @@ export const SKILLS: Record<string, Skill> = {
     target: 'enemy',
     multiplier: 1.2,
     description: 'ATK × 1.2 的傷害',
+    cooldown: 2,
   },
   swift_strike: {
     id: 'swift_strike',
@@ -24,6 +26,7 @@ export const SKILLS: Record<string, Skill> = {
     target: 'enemy',
     multiplier: 1.3,
     description: 'ATK × 1.3 的傷害',
+    cooldown: 2,
   },
   field_medic: {
     id: 'field_medic',
@@ -32,6 +35,7 @@ export const SKILLS: Record<string, Skill> = {
     target: 'ally',
     multiplier: 0.8,
     description: '以 ATK × 0.8 治療一名隊友',
+    cooldown: 2,
   },
   combat_stim: {
     id: 'combat_stim',
@@ -43,6 +47,7 @@ export const SKILLS: Record<string, Skill> = {
     buffAmountPct: 0.3,
     buffDuration: 3,
     description: '自身 ATK 提升 30%，持續 3 回合',
+    cooldown: 3,
   },
   iron_will: {
     id: 'iron_will',
@@ -54,6 +59,7 @@ export const SKILLS: Record<string, Skill> = {
     buffAmountPct: 0.4,
     buffDuration: 3,
     description: '一名隊友 DEF 提升 40%，持續 3 回合',
+    cooldown: 3,
   },
   overdrive: {
     id: 'overdrive',
@@ -65,5 +71,6 @@ export const SKILLS: Record<string, Skill> = {
     buffAmountPct: 0.5,
     buffDuration: 2,
     description: '自身 ATK 提升 50%，持續 2 回合',
+    cooldown: 4,
   },
 };

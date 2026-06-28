@@ -14,6 +14,8 @@ export interface Skill {
   /** attack: ATK multiplier for damage. heal: ATK multiplier for heal amount. unused for buff. */
   multiplier: number;
   description: string;
+  /** Number of rounds this skill is locked after use. 0 or absent = no cooldown. */
+  cooldown?: number;
   /** buff-only fields */
   buffStat?: BuffStat;
   buffAmountPct?: number;
@@ -71,6 +73,8 @@ export interface Character {
   defending: boolean;   // true = -50% damage this round
   recruited?: boolean;  // true = this enemy was convinced to join
   activeBuffs: ActiveBuff[];
+  /** Maps skill.id → remaining locked rounds (0 = ready). Only non-zero entries need to be present. */
+  skillCooldowns: Record<string, number>;
   _monsterType?: MonsterType;
 }
 
