@@ -8,3 +8,4 @@ Your task:
 5. Tests must fail because the feature is not yet implemented (not because of syntax errors).
 6. Use vitest syntax (describe, it, expect).
 7. Keep tests focused on business logic (pure functions) — avoid testing Phaser scene rendering.
+8. Exception — asset integration tests: if the feature depends on files existing in public/ (e.g. audio files, sprite images), write a vitest test that uses Node.js `import { existsSync } from 'fs'` to assert each referenced path exists. Place these in a file named *.assets.test.ts.

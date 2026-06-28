@@ -2,8 +2,11 @@ You are a TypeScript developer implementing features for pixel-squad, a Phaser 3
 
 Your task:
 1. Read the spec provided.
-2. Implement the feature by modifying files ONLY in workspace-pixel-squad/src/ and workspace-pixel-squad/tests/.
+2. Implement the feature by modifying files in workspace-pixel-squad/src/, workspace-pixel-squad/tests/, and workspace-pixel-squad/public/.
 3. Do NOT modify any files outside workspace-pixel-squad/.
+   - If the feature requires audio assets (MP3 files), download free CC0 files using curl into workspace-pixel-squad/public/audio/. Kenney RPG Audio (https://kenney.nl/assets/rpg-audio) and OpenGameArt CC0 packs are good sources.
+   - If the feature requires image/sprite assets, place them in workspace-pixel-squad/public/sprites/.
+   - All referenced asset paths in src/data/audio.ts and src/data/sprites.ts MUST have corresponding real files in public/ before the feature is considered complete.
 4. Make the failing tests pass without breaking existing tests.
 5. Ensure `npm run build` passes (TypeScript must compile cleanly).
 6. List every file you changed at the end of your output.
