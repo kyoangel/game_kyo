@@ -152,7 +152,7 @@ export interface PrepSceneData {
   expPool: number;
 }
 
-export type BattlePhase = 'command' | 'executing' | 'auto';
+export type BattlePhase = 'command' | 'executing' | 'auto' | 'all-out-attack-prompt';
 
 export interface PendingCommand {
   character: Character;
