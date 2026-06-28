@@ -44,7 +44,7 @@ describe('calcDamage with buffed stats', () => {
     });
     const defender = makeChar(0, 10);
     // effectiveAtk = 26, 26 - 10*0.5 = 21
-    expect(calcDamage(attacker, defender)).toBe(21);
+    expect(calcDamage(attacker, defender).damage).toBe(21);
   });
 
   it('uses effectiveDef of the defender when buffed', () => {
@@ -53,11 +53,11 @@ describe('calcDamage with buffed stats', () => {
       activeBuffs: [{ stat: 'def', amountPct: 0.4, turnsRemaining: 3, sourceSkillId: 'iron_will' }],
     });
     // effectiveDef = 14, 20 - 14*0.5 = 13
-    expect(calcDamage(attacker, defender)).toBe(13);
+    expect(calcDamage(attacker, defender).damage).toBe(13);
   });
 
   it('existing attack-skill behavior is unchanged when no buffs are active', () => {
     const attackSkill: Skill = { id: 's', name: 'S', type: 'attack', target: 'enemy', multiplier: 1.5, description: '' };
-    expect(calcDamage(makeChar(20, 0), makeChar(0, 10), attackSkill)).toBe(25);
+    expect(calcDamage(makeChar(20, 0), makeChar(0, 10), attackSkill).damage).toBe(25);
   });
 });

@@ -53,3 +53,31 @@ export function decideAction(actor: Character, allies: Character[], enemies: Cha
   const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
   return { target };
 }
+
+/**
+ * Weakness-aware variant of decideAction for auto-battle.
+ * If a discovered weakness matches a ready elemental skill, that skill is used preferentially.
+ */
+export function decideActionWithAwareness(
+  actor: Character,
+  allies: Character[],
+  enemies: Character[],
+  discoveredWeaknesses: Record<string, string>,
+): SkillDecision {
+  const aliveEnemies = enemies.filter(c => c.alive);
+
+  for (const enemy of aliveEnemies) {
+    const knownWeakness = discoveredWeaknesses[enemy.templateId];
+    if (!knownWeakness) continue;
+
+    const matchingSkill = actor.skills.find(
+      s => s.type === 'attack' && (s as any).element === knownWeakness && isSkillReady(actor, s),
+    );
+    if (matchingSkill) {
+      triggerCooldown(actor, matchingSkill);
+      return { skill: matchingSkill, target: enemy };
+    }
+  }
+
+  return decideAction(actor, allies, enemies);
+}

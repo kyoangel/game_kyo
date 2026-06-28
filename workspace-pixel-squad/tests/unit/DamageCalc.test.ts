@@ -16,28 +16,28 @@ const attackSkill: Skill = { id: 's', name: 'S', type: 'attack', target: 'enemy'
 describe('calcDamage', () => {
   it('base formula: ATK − DEF×0.5, floored', () => {
     // 20 − 10×0.5 = 15
-    expect(calcDamage(makeChar(20, 10), makeChar(0, 10))).toBe(15);
+    expect(calcDamage(makeChar(20, 10), makeChar(0, 10)).damage).toBe(15);
   });
 
   it('minimum damage is 1 even when DEF is very high', () => {
-    expect(calcDamage(makeChar(5, 0), makeChar(0, 100))).toBe(1);
+    expect(calcDamage(makeChar(5, 0), makeChar(0, 100)).damage).toBe(1);
   });
 
   it('applies skill multiplier to ATK before subtracting DEF', () => {
     // 全能 archetype boosts effectiveAtk/Def by 1.05: (20×1.05×1.5) − (10×1.05)×0.5 = 31.5 − 5.25 = 26.25 → floor 26
-    expect(calcDamage(makeChar(20, 0), makeChar(0, 10), attackSkill)).toBe(26);
+    expect(calcDamage(makeChar(20, 0), makeChar(0, 10), attackSkill).damage).toBe(26);
   });
 
   it('defending target takes half damage (rounded up)', () => {
     const defender = makeChar(0, 0);
     defender.defending = true;
     // 全能 archetype: effectiveAtk = 20×1.05 = 21; base = 21, after defending = ceil(21/2) = 11
-    expect(calcDamage(makeChar(20, 0), defender)).toBe(11);
+    expect(calcDamage(makeChar(20, 0), defender).damage).toBe(11);
   });
 
   it('minimum 1 still applies after defend halving', () => {
     const defender = makeChar(0, 100);
     defender.defending = true;
-    expect(calcDamage(makeChar(5, 0), defender)).toBe(1);
+    expect(calcDamage(makeChar(5, 0), defender).damage).toBe(1);
   });
 });

@@ -591,8 +591,8 @@ export class BattleScene extends Phaser.Scene {
 
     const skill = cmd.action === 'skill' ? cmd.skill : undefined;
     const isCrit = rollCrit(cmd.character);
-    const dmg = calcDamage(cmd.character, target, skill, isCrit);
-    this.applyDamageAndAdvance(cmd.character, target, dmg, skill?.name, next, isCrit);
+    const dmgResult = calcDamage(cmd.character, target, skill, isCrit);
+    this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, next, isCrit);
   }
 
   private attemptRecruitAction(_attacker: Character, enemy: Character) {
@@ -636,8 +636,8 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       const isCrit = rollCrit(enemy);
-      const dmg = calcDamage(enemy, target, undefined, isCrit);
-      this.applyDamageAndAdvance(enemy, target, dmg, undefined, () => {
+      const dmgResult = calcDamage(enemy, target, undefined, isCrit);
+      this.applyDamageAndAdvance(enemy, target, dmgResult.damage, undefined, () => {
         this.startCommandPhase();
       }, isCrit);
     });
@@ -671,8 +671,8 @@ export class BattleScene extends Phaser.Scene {
     const target = decision.target ?? chooseTarget(this.playerParty);
     if (!target) { next(); return; }
     const isCrit = rollCrit(enemy);
-    const dmg = calcDamage(enemy, target, decision.skill, isCrit);
-    this.applyDamageAndAdvance(enemy, target, dmg, decision.skill?.name, next, isCrit);
+    const dmgResult = calcDamage(enemy, target, decision.skill, isCrit);
+    this.applyDamageAndAdvance(enemy, target, dmgResult.damage, decision.skill?.name, next, isCrit);
   }
 
   private executeBossPhaseAction(enemy: Character, phase: BossPhase, next: () => void) {
@@ -692,13 +692,13 @@ export class BattleScene extends Phaser.Scene {
       const crit1 = !action.ignoreDefense && rollCrit(enemy);
       const dmg1 = action.ignoreDefense
         ? Math.max(1, enemy.stats.atk)
-        : calcDamage(enemy, target, undefined, crit1);
+        : calcDamage(enemy, target, undefined, crit1).damage;
       this.applyDamageAndAdvance(enemy, target, dmg1, '連擊①', () => {
         if (!target.alive) { next(); return; }
         const crit2 = !action.ignoreDefense && rollCrit(enemy);
         const dmg2 = action.ignoreDefense
           ? Math.max(1, enemy.stats.atk)
-          : calcDamage(enemy, target, undefined, crit2);
+          : calcDamage(enemy, target, undefined, crit2).damage;
         this.applyDamageAndAdvance(enemy, target, dmg2, '連擊②', next, crit2);
       }, crit1);
       return;
@@ -707,7 +707,7 @@ export class BattleScene extends Phaser.Scene {
     const crit = !action.ignoreDefense && rollCrit(enemy);
     const dmg = action.ignoreDefense
       ? Math.max(1, enemy.stats.atk)
-      : calcDamage(enemy, action.target, undefined, crit);
+      : calcDamage(enemy, action.target, undefined, crit).damage;
     this.applyDamageAndAdvance(enemy, action.target, dmg, undefined, next, crit);
   }
 

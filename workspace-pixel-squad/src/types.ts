@@ -4,6 +4,7 @@ export type ArchetypeLabel = '坦克' | '輸出' | '狙擊' | '輔助' | '全能
 export type SkillType = 'attack' | 'heal' | 'buff';
 export type SkillTarget = 'enemy' | 'ally' | 'self';
 export type BuffStat = 'atk' | 'def' | 'spd';
+export type Element = 'fire' | 'ice' | 'thunder' | 'toxin' | 'physical';
 
 export interface Skill {
   id: string;
@@ -16,6 +17,8 @@ export interface Skill {
   description: string;
   /** Number of rounds this skill is locked after use. 0 or absent = no cooldown. */
   cooldown?: number;
+  /** Elemental type. undefined treated as 'physical'; heal/buff skills have no element. */
+  element?: Element;
   /** buff-only fields */
   buffStat?: BuffStat;
   buffAmountPct?: number;
@@ -76,6 +79,10 @@ export interface Character {
   /** Maps skill.id → remaining locked rounds (0 = ready). Only non-zero entries need to be present. */
   skillCooldowns: Record<string, number>;
   _monsterType?: MonsterType;
+  /** True if this character was hit by a weakness this round (visual stagger only). */
+  knockedDown?: boolean;
+  /** True if this character already earned a bonus action this round. */
+  bonusActionUsed?: boolean;
 }
 
 export interface EnemyTemplate {
@@ -84,6 +91,7 @@ export interface EnemyTemplate {
   baseStats: StatBlock;
   skillIds: string[];
   monsterType?: MonsterType;
+  weakness?: Element;
 }
 
 export interface StageDialog {
@@ -182,6 +190,7 @@ export interface GameState {
   ngPlusCycle: number;         // 0 = first playthrough; +1 each time NG+ is started
   hasClearedGame: boolean;     // true once stage '5-5' is cleared the first time; NEVER reset by NG+
   challengeRun?: ChallengeRunState; // present while a Boss Rush attempt is in progress
+  discoveredWeaknesses?: Record<string, Element>; // key = EnemyTemplate.id
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply';

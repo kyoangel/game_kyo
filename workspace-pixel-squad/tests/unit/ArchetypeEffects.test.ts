@@ -85,14 +85,14 @@ describe('calcDamage — 坦克 damage reduction', () => {
     attacker.stats.atk = 110;
     defender.stats.def = 20;
     // attacker is 全能, so effectiveAtk = 110 * 1.05 = 115.5; raw = 115.5 - 10 = 105.5; *0.85 = 89.675 -> floor 89
-    expect(calcDamage(attacker, defender)).toBe(89);
+    expect(calcDamage(attacker, defender).damage).toBe(89);
   });
 
   it('applies archetype reduction before defend halving (defending 坦克)', () => {
     const attacker = makeChar('全能', { stats: { hp: 100, maxHp: 100, atk: 40, def: 0, spd: 15 } });
     const defender = makeChar('坦克', { defending: true, stats: { hp: 100, maxHp: 100, atk: 20, def: 0, spd: 15 } });
     // attacker is 全能, so effectiveAtk = 40 * 1.05 = 42; raw = 42 - 0 = 42; *0.85 = 35.7 -> floor 35; ceil(35/2) = 18
-    expect(calcDamage(attacker, defender)).toBe(18);
+    expect(calcDamage(attacker, defender).damage).toBe(18);
   });
 });
 
@@ -101,14 +101,14 @@ describe('calcDamage — 輸出 bonus damage', () => {
     const attacker = makeChar('輸出', { stats: { hp: 100, maxHp: 100, atk: 110, def: 0, spd: 15 } });
     const defender = makeChar('全能', { stats: { hp: 100, maxHp: 100, atk: 20, def: 20, spd: 15 } });
     // defender is 全能, so effectiveDef = 20 * 1.05 = 21; raw = 110 - 10.5 = 99.5; *1.1 = 109.45 -> floor 109
-    expect(calcDamage(attacker, defender)).toBe(109);
+    expect(calcDamage(attacker, defender).damage).toBe(109);
   });
 
   it('stacks multiplicatively with 坦克 reduction', () => {
     const attacker = makeChar('輸出', { stats: { hp: 100, maxHp: 100, atk: 110, def: 0, spd: 15 } });
     const defender = makeChar('坦克', { stats: { hp: 100, maxHp: 100, atk: 20, def: 20, spd: 15 } });
     // raw = 100; *1.1*0.85 = 93.5 -> floor 93
-    expect(calcDamage(attacker, defender)).toBe(93);
+    expect(calcDamage(attacker, defender).damage).toBe(93);
   });
 });
 
@@ -117,13 +117,13 @@ describe('calcDamage — 狙擊 crit', () => {
     const attacker = makeChar('狙擊', { stats: { hp: 100, maxHp: 100, atk: 50, def: 0, spd: 15 } });
     const defender = makeChar('全能', { stats: { hp: 100, maxHp: 100, atk: 20, def: 0, spd: 15 } });
     // raw = 50; crit -> 75
-    expect(calcDamage(attacker, defender, undefined, true)).toBe(75);
+    expect(calcDamage(attacker, defender, undefined, true).damage).toBe(75);
   });
 
   it('does not crit when isCrit is false even for a 狙擊 attacker', () => {
     const attacker = makeChar('狙擊', { stats: { hp: 100, maxHp: 100, atk: 50, def: 0, spd: 15 } });
     const defender = makeChar('全能', { stats: { hp: 100, maxHp: 100, atk: 20, def: 0, spd: 15 } });
-    expect(calcDamage(attacker, defender, undefined, false)).toBe(50);
+    expect(calcDamage(attacker, defender, undefined, false).damage).toBe(50);
   });
 });
 

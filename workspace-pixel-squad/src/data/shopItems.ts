@@ -7,6 +7,10 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'scroll_field_medic', type: 'skill_scroll', name: '戰地醫療卷軸', price: 60, description: '教導一名角色「戰地醫療」', skillId: 'field_medic' },
   { id: 'scroll_combat_stim', type: 'skill_scroll', name: '戰鬥興奮劑卷軸', price: 55, description: '教導一名角色「戰鬥興奮劑」', skillId: 'combat_stim' },
   { id: 'scroll_iron_will', type: 'skill_scroll', name: '鋼鐵意志卷軸', price: 55, description: '教導一名角色「鋼鐵意志」', skillId: 'iron_will' },
+  { id: 'scroll_cryo_round', type: 'skill_scroll', name: '冰凍彈卷軸', price: 45, description: '教導一名角色「冰凍彈」', skillId: 'cryo_round' },
+  { id: 'scroll_acid_splash', type: 'skill_scroll', name: '酸液噴灑卷軸', price: 40, description: '教導一名角色「酸液噴灑」', skillId: 'acid_splash' },
+  { id: 'scroll_fire_grenade', type: 'skill_scroll', name: '燃燒手榴彈卷軸', price: 55, description: '教導一名角色「燃燒手榴彈」', skillId: 'fire_grenade' },
+  { id: 'scroll_emp_pulse', type: 'skill_scroll', name: '電磁衝擊卷軸', price: 50, description: '教導一名角色「電磁衝擊」', skillId: 'emp_pulse' },
   { id: 'supply_medkit_s', type: 'supply', name: '小型醫療包', price: 25, description: '恢復 50 HP', healAmount: 50 },
   { id: 'supply_medkit_l', type: 'supply', name: '大型醫療包', price: 70, description: '恢復 150 HP', healAmount: 150 },
 ];
