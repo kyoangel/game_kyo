@@ -197,10 +197,9 @@ def autonomous_loop(
 
             feedback = "\n".join(review.comments)
         else:
-            print(f"⚠️  All Coder retries failed for iter {i} — will resume from Coder next run")
-            # Restore backlog only if Designer ran in this iteration (resume was empty at start)
-            if "spec_path" not in resume:
-                backlog_path.write_text(backlog_snapshot)
+            print(f"⚠️  All Coder retries failed for iter {i} — skipping spec")
+            backlog_path.write_text(backlog_snapshot)
+            _clear_resume(workspace, repo_root)
 
 
 def main(argv: list[str] | None = None) -> int:

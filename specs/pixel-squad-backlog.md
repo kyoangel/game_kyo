@@ -14,6 +14,17 @@
 - [x] 技能的冷卻時間設計
 - [x] UI Design
 
+## 🐛 Bug 修復（高優先）
+
+- [ ] **勸降入伍失效**：勸降成功後敵人無法真正入伍，ResultScene 顯示「新成員加入了！」但下場戰鬥／整備找不到該角色。
+  - **根因**：`VictoryProcessor.ts` line 81、`PLAYER_TEMPLATES.find(t => t.id === recruitedEnemy.templateId)` 用敵人的 `templateId`（如 `mutant`、`wolf_a`、`raider_sniper`）去 `PLAYER_TEMPLATES` 找，但敵人模板 id 不在玩家模板清單中（玩家只有 protagonist/rex/nyx/vega/ash/crow/mira/zora/rook/dex/echo/aaaa），`template` 為 undefined → 不會 push 進 pool → 靜默失敗。
+  - **修復方向**：勸降入伍時不要依賴 `PLAYER_TEMPLATES` 配對。直接以 recruited enemy 的實際資料（name / baseStats / skills / 等級）建立一個 player Character（`isPlayer: true`、保留原始 `templateId` 或產生獨立 id），push 進 `pool`，再依 squad < 5 自動加入 squad。可考慮在 `CharacterFactory` 新增 `enemyToPlayerCharacter(enemy)` 之類的轉換函式。
+  - **同時修**：`ResultScene.ts` line 94 的「整備」按鈕，只有在 `updatedGameState` 存在時才持久化；若 `data.gameState` 為 undefined（非章節流程進入），recruitedEnemy 完全不會被存檔。需確保任何勝利路徑下 recruitedEnemy 都會被持久化，或至少在無 gameState 時不要顯示「加入了！」誤導文案。
+  - **驗收**：
+    - 新增單元測試 `VictoryProcessor.recruit.test.ts`：傳入一個 templateId 不在 PLAYER_TEMPLATES 的 recruited enemy，斷言回傳的 state.pool 含有該角色且 `isPlayer === true`，squad 有空位時自動加入。
+    - 斷言入伍角色保留原敵人的 name 與合理 stats（非 0／非 undefined）。
+    - 既有的 recruit / VictoryProcessor 測試不得破壞。
+
 ## 下一輪優化 — 遊玩體驗提升
 
 ### 戰鬥深度

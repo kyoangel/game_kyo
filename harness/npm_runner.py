@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -8,10 +9,11 @@ UNIT_TIMEOUT_S = 120
 E2E_TIMEOUT_S = 300
 
 
-def _run_npm(cmd: list[str], cwd: Path, timeout: int) -> SandboxResult:
+def _run_npm(cmd: list[str], cwd: Path, timeout: int, extra_env: dict | None = None) -> SandboxResult:
+    env = {**os.environ, **(extra_env or {})}
     try:
         result = subprocess.run(
-            cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout
+            cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env
         )
     except subprocess.TimeoutExpired:
         return SandboxResult(
@@ -38,6 +40,9 @@ def run_unit_tests(workspace: str, repo_root: Path) -> SandboxResult:
 
 
 def run_e2e_tests(workspace: str, repo_root: Path) -> SandboxResult:
+    # CI=1 forces Playwright to own the webServer lifecycle (start + kill per run)
+    # Without it, reuseExistingServer=true leaves orphaned vite processes after tests
     return _run_npm(
-        ["npm", "run", "test:e2e"], repo_root / f"workspace-{workspace}", E2E_TIMEOUT_S
+        ["npm", "run", "test:e2e"], repo_root / f"workspace-{workspace}", E2E_TIMEOUT_S,
+        extra_env={"CI": "1"},
     )
