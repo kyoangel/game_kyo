@@ -63,13 +63,8 @@ export class ResultScene extends Phaser.Scene {
         });
       }
 
-      if (recruitedEnemy) {
-        this.add.text(W / 2, nextY, `新成員：${recruitedEnemy.name} 加入了！`, {
-          fontSize: '14px', color: '#a78bfa', fontFamily: 'monospace',
-        }).setOrigin(0.5);
-        nextY += 22;
-      } else if (gameState && updatedGameState) {
-        // Story-join: show announcement for any character newly added to pool
+      if (gameState && updatedGameState) {
+        // Show announcement for any character newly added to pool (story-join or recruit)
         const newChar = updatedGameState.pool.find(
           c => !gameState.pool.some(p => p.id === c.id)
         );

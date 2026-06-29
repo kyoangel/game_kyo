@@ -69,3 +69,31 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
 export function expToNextLevel(level: number): number {
   return level * 50;
 }
+
+/**
+ * Converts a defeated-then-recruited enemy Character into a player-controlled
+ * Character, for enemies that have no matching entry in PLAYER_TEMPLATES.
+ * Enemy is restored to full HP and keeps its current atk/def/spd and skills.
+ */
+export function enemyToPlayerCharacter(enemy: Character, maxHp: number): Character {
+  const level = Math.max(1, enemy.level);
+  const stats = { hp: maxHp, maxHp, atk: enemy.stats.atk, def: enemy.stats.def, spd: enemy.stats.spd };
+  return {
+    id: nextId(enemy.templateId),
+    templateId: enemy.templateId,
+    name: enemy.name,
+    isProtagonist: false,
+    isPlayer: true,
+    level,
+    exp: 0,
+    expToNext: expToNextLevel(level),
+    stats,
+    skills: enemy.skills,
+    statPoints: 0,
+    archetype: computeArchetype(stats),
+    alive: true,
+    defending: false,
+    activeBuffs: [],
+    skillCooldowns: {},
+  };
+}

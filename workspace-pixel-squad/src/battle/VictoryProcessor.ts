@@ -1,5 +1,5 @@
 import type { Character, GameState, Stage } from '../types';
-import { createCharacter } from './CharacterFactory';
+import { createCharacter, enemyToPlayerCharacter } from './CharacterFactory';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { addToInventory } from './ShopSystem';
 
@@ -79,9 +79,10 @@ export function processVictory(
     const alreadyInPool = state.pool.some(c => c.templateId === recruitedEnemy.templateId);
     if (!alreadyInPool) {
       const template = PLAYER_TEMPLATES.find(t => t.id === recruitedEnemy.templateId);
-      if (template) {
-        state.pool.push(createCharacter(template, Math.max(1, recruitedEnemy.level)));
-      }
+      const newChar = template
+        ? createCharacter(template, Math.max(1, recruitedEnemy.level))
+        : enemyToPlayerCharacter(recruitedEnemy, recruitedEnemy.stats.maxHp);
+      state.pool.push(newChar);
     }
     const poolChar = state.pool.find(c => c.templateId === recruitedEnemy.templateId);
     if (poolChar && !state.squad.some(s => s.id === poolChar.id) && state.squad.length < 5) {
