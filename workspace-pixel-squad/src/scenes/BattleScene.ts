@@ -1,14 +1,16 @@
 import Phaser from 'phaser';
-import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState, Skill } from '../types';
+import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState, Skill, Element } from '../types';
 import { createCharacter, createEnemy } from '../battle/CharacterFactory';
 import { computeTurnOrder } from '../battle/TurnEngine';
 import { calcDamage, calcHeal } from '../battle/DamageCalc';
 import { chooseTarget } from '../battle/AI';
 import { applyBuff, tickBuffs, applyStatusEffect, tickStatusEffects, type StatusTickEvent } from '../battle/Buffs';
 import { getStatusIconData } from '../ui/battleStatusIcons';
+import { ELEMENT_LABELS, ELEMENT_ICONS } from '../ui/elementLabels';
 import type { StatusEffectType } from '../types';
 import { decideAction } from '../battle/SkillAI';
 import { getBossPhase, executeBossAction, type BossConfig, type BossPhase } from '../battle/BossAI';
+import { revealBossWeakness } from '../battle/BossWeaknessReveal';
 import { BOSS_CONFIGS } from '../data/bossConfigs';
 import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
@@ -42,6 +44,7 @@ interface CharacterView {
   hpText: Phaser.GameObjects.Text;
   archetypeText: Phaser.GameObjects.Text;
   statusText: Phaser.GameObjects.Text;
+  weaknessIcon: Phaser.GameObjects.Text;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -237,10 +240,14 @@ export class BattleScene extends Phaser.Scene {
       const statusText = this.add.text(cx, cy + 54, '', {
         fontSize: '9px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0.5);
+      const weaknessIcon = this.add.text(cx + 22, cy - 26, '', {
+        fontSize: '10px', fontFamily: 'monospace',
+      }).setOrigin(0.5);
       const animator = new CharacterAnimator(this, body, useSprite);
       animator.playIdleLoop();
-      this.views.set(char.id, { body, animator, hpBarBg, hpBar, nameText, hpText, archetypeText, statusText });
+      this.views.set(char.id, { body, animator, hpBarBg, hpBar, nameText, hpText, archetypeText, statusText, weaknessIcon });
       this.updateStatusIcons(char);
+      this.updateWeaknessIcon(char);
 
       if (isPlayer) {
         const icon = this.add.text(cx + 28, cy - 36, '', {
@@ -268,6 +275,12 @@ export class BattleScene extends Phaser.Scene {
     if (!view) return;
     const icons = getStatusIconData(char);
     view.statusText.setText(icons.map(i => i.icon).join(' '));
+  }
+
+  private updateWeaknessIcon(char: Character) {
+    const view = this.views.get(char.id);
+    if (!view) return;
+    view.weaknessIcon.setText(char.weakness ? ELEMENT_ICONS[char.weakness] : '');
   }
 
   private setCommandIcon(char: Character, action: PendingCommand['action']) {
@@ -699,11 +712,24 @@ export class BattleScene extends Phaser.Scene {
     if (this.bossConfig && enemy.templateId === this.bossConfig.templateId) {
       const hpRatio = enemy.stats.hp / enemy.stats.maxHp;
       const phase = getBossPhase(this.bossConfig, hpRatio);
+      const isFirstEntry = (phase.message || phase.weaknessOverride) && !this.triggeredPhaseThresholds.has(phase.hpThreshold);
 
-      if (phase.message && !this.triggeredPhaseThresholds.has(phase.hpThreshold)) {
+      if (isFirstEntry) {
         this.triggeredPhaseThresholds.add(phase.hpThreshold);
-        this.showPhaseBanner(phase);
-        this.time.delayedCall(2000, () => this.executeBossPhaseAction(enemy, phase, next));
+
+        if (phase.weaknessOverride) {
+          revealBossWeakness(enemy, phase, this.gameState);
+          this.updateWeaknessIcon(enemy);
+        }
+
+        if (phase.message) this.showPhaseBanner(phase);
+
+        const revealDelay = phase.message ? 2000 : 0;
+        if (phase.weaknessOverride) {
+          this.time.delayedCall(revealDelay, () => this.showWeaknessRevealBanner(phase.weaknessOverride!));
+        }
+        const actDelay = revealDelay + (phase.weaknessOverride ? 1800 : 0);
+        this.time.delayedCall(actDelay, () => this.executeBossPhaseAction(enemy, phase, next));
         return;
       }
 
@@ -773,6 +799,16 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(1800, () => {
       if (banner.active) banner.destroy();
     });
+  }
+
+  private showWeaknessRevealBanner(element: Element) {
+    const W = 360;
+    const label = ELEMENT_LABELS[element];
+    const banner = this.add.text(W / 2, 130, `💢 弱點外露：${label}屬性！`, {
+      fontSize: '13px', color: '#f87171', fontFamily: 'monospace',
+      backgroundColor: '#111827', padding: { x: 12, y: 8 },
+    }).setOrigin(0.5).setDepth(20);
+    this.time.delayedCall(1800, () => { if (banner.active) banner.destroy(); });
   }
 
   private applyDamageAndAdvance(

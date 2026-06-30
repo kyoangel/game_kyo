@@ -63,6 +63,7 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
     activeBuffs: [],
     activeStatusEffects: [],
     skillCooldowns: {},
+    weakness: template.weakness,
   };
   char._monsterType = template.monsterType;
   return char;

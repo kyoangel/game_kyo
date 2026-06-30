@@ -1,4 +1,4 @@
-import type { Character } from '../types';
+import type { Character, Element } from '../types';
 
 export type BossAIType = 'normal' | 'aggressive' | 'defensive' | 'berserk' | 'desperation';
 
@@ -6,6 +6,8 @@ export interface BossPhase {
   hpThreshold: number;
   aiType: BossAIType;
   message?: string;
+  /** Set on first entering this phase: grants the boss this elemental weakness for the rest of the battle. */
+  weaknessOverride?: Element;
 }
 
 export interface BossConfig {

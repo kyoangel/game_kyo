@@ -90,6 +90,8 @@ export interface Character {
   /** Maps skill.id → remaining locked rounds (0 = ready). Only non-zero entries need to be present. */
   skillCooldowns: Record<string, number>;
   _monsterType?: MonsterType;
+  /** Elemental weakness, if any. Copied from EnemyTemplate at creation for enemies; bosses may gain one mid-battle via BossPhase.weaknessOverride. */
+  weakness?: Element;
   /** True if this character was hit by a weakness this round (visual stagger only). */
   knockedDown?: boolean;
   /** True if this character already earned a bonus action this round. */

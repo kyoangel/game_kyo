@@ -22,7 +22,7 @@ export function calcDamage(attacker: Character, defender: Character, skill?: Ski
   let base = Math.max(1, Math.floor(raw));
   if (defender.defending) base = Math.max(1, Math.ceil(base / 2));
 
-  const isWeaknessHit = !!(skill?.element) && !!((defender as any).weakness) && skill.element === (defender as any).weakness;
+  const isWeaknessHit = !!(skill?.element) && !!defender.weakness && skill.element === defender.weakness;
   if (isWeaknessHit) base = Math.floor(base * 1.5);
 
   return { damage: base, isWeaknessHit, isCrit };
