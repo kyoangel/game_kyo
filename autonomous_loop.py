@@ -43,6 +43,13 @@ def _git_commit(workspace: str, spec_path: Path, repo_root: Path, iter_n: int) -
     subprocess.run(["git", "add", str(spec_path)], cwd=repo_root, check=True)
     if backlog_path.exists():
         subprocess.run(["git", "add", str(backlog_path)], cwd=repo_root, check=True)
+    # Skip if nothing staged (coder succeeded on a previous attempt that already committed)
+    nothing_to_commit = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"], cwd=repo_root
+    ).returncode == 0
+    if nothing_to_commit:
+        print(f"ℹ️  Nothing to commit for {slug} — already committed in a prior attempt")
+        return
     subprocess.run(["git", "commit", "-m", msg], cwd=repo_root, check=True)
 
 
