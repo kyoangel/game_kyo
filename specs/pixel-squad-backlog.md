@@ -49,3 +49,11 @@
 - [ ] 永久死亡模式（Hard Mode）：角色死亡後從隊伍永久消失
 - [ ] 隨機事件系統：行軍途中隨機觸發事件（補給、伏擊、商旅），影響資源
 - [ ] Run 解鎖進度：通關後解鎖「挑戰詞條」（限制條件 + 高額獎勵）
+
+## 🤖 Meta-Review 建議
+
+- [ ] 🔄 spec 的 seeding 說明寫「wherever `this.gameState` is first assigned」而非直接指定方法名——建議改為「在 `create()` 的 `scenes/BattleScene.ts:117` 行 `this.gameState = data.gameState` 之後插入」，讓 Coder 不需額外 grep 確認插入位置
+- [ ] 🔄 AC-9 的 regression 測試完全落在 `WeaknessDiscovery.test.ts` 的 `isWeaknessIconVisible` 單元測試已覆蓋範圍內——建議未來 regression section 只列「執行既有測試套件應通過」，不重複定義已有 gate 行為的新 AC
+- [ ] 💰 `makeGameState()` factory 在 `WeaknessDiscovery.test.ts`（第 19 行）與 `GeneralWeaknessWiring.test.ts`（第 24 行）各自獨立定義、結構完全相同——建議抽取到 `tests/unit/helpers/gameState.ts` 共用，兩個檔案合計可省 ~15 行重複程式碼
+- [ ] 💰 `StageData.weakness.test.ts` 的 `EXPECTED_WEAKNESS` 查找表（~50 行）完整鏡像 spec 的 assignment table——每新增一個敵人需在 spec、`stages.ts`、此表三處同步；建議改為存在性斷言（`expect(enemy.weakness).toBeDefined()`）加上抽查 3-4 個固定 id，消除維護負擔
+- [ ] 🎮 沒有測試覆蓋「weakness hit 同時秒殺最後一隻敵人」的邊界情況——`delayedCall(900, () => showWeaknessRevealBanner(...))` callback 在 900ms 後可能對已轉場的 BattleScene 執行，建議在 callback 中加入 `if (!this.scene.isActive()) return` guard 並補充對應的邊界測試
