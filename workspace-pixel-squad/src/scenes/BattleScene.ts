@@ -8,9 +8,10 @@ import { applyBuff, tickBuffs, applyStatusEffect, tickStatusEffects, type Status
 import { getStatusIconData } from '../ui/battleStatusIcons';
 import { ELEMENT_LABELS, ELEMENT_ICONS } from '../ui/elementLabels';
 import type { StatusEffectType } from '../types';
-import { decideAction } from '../battle/SkillAI';
+import { decideAction, decideActionWithAwareness } from '../battle/SkillAI';
 import { getBossPhase, executeBossAction, type BossConfig, type BossPhase } from '../battle/BossAI';
 import { revealBossWeakness } from '../battle/BossWeaknessReveal';
+import { seedDiscoveredThisBattle, recordHitDiscovery, isWeaknessIconVisible } from '../battle/WeaknessDiscovery';
 import { BOSS_CONFIGS } from '../data/bossConfigs';
 import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
@@ -53,6 +54,7 @@ export class BattleScene extends Phaser.Scene {
   private stageIndex = 0;
   private expPool = 0;
   private gameState?: GameState;
+  private discoveredThisBattle: Set<string> = new Set();
   private views = new Map<string, CharacterView>();
   private actionMenu!: Phaser.GameObjects.Container;
   private messageText!: Phaser.GameObjects.Text;
@@ -115,6 +117,7 @@ export class BattleScene extends Phaser.Scene {
     this.stageIndex = data.stageIndex ?? 0;
     this.expPool = data.expPool ?? 0;
     this.gameState = data.gameState;
+    this.discoveredThisBattle = seedDiscoveredThisBattle(this.gameState?.discoveredWeaknesses);
     const stage = STAGES[this.stageIndex];
     this.enemyParty = stage.enemies.map(e => createEnemy(e));
     this.views.clear();
@@ -280,7 +283,7 @@ export class BattleScene extends Phaser.Scene {
   private updateWeaknessIcon(char: Character) {
     const view = this.views.get(char.id);
     if (!view) return;
-    view.weaknessIcon.setText(char.weakness ? ELEMENT_ICONS[char.weakness] : '');
+    view.weaknessIcon.setText(isWeaknessIconVisible(char, this.discoveredThisBattle) ? ELEMENT_ICONS[char.weakness!] : '');
   }
 
   private setCommandIcon(char: Character, action: PendingCommand['action']) {
@@ -657,6 +660,13 @@ export class BattleScene extends Phaser.Scene {
     const skill = cmd.action === 'skill' ? cmd.skill : undefined;
     const isCrit = rollCrit(cmd.character);
     const dmgResult = calcDamage(cmd.character, target, skill, isCrit);
+    const isNewDiscovery = recordHitDiscovery(dmgResult.isWeaknessHit, target, this.discoveredThisBattle, this.gameState);
+    if (isNewDiscovery) {
+      this.enemyParty
+        .filter(e => e.templateId === target.templateId)
+        .forEach(e => this.updateWeaknessIcon(e));
+      this.time.delayedCall(900, () => this.showWeaknessRevealBanner(target.weakness!));
+    }
     this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, next, isCrit, skill?.appliesStatus, skill?.id);
   }
 
@@ -719,6 +729,7 @@ export class BattleScene extends Phaser.Scene {
 
         if (phase.weaknessOverride) {
           revealBossWeakness(enemy, phase, this.gameState);
+          this.discoveredThisBattle.add(enemy.templateId);
           this.updateWeaknessIcon(enemy);
         }
 
@@ -941,7 +952,7 @@ export class BattleScene extends Phaser.Scene {
     this.playerParty.filter(c => c.alive).forEach(c => {
       const aliveEnemies = this.enemyParty.filter(e => e.alive);
       if (aliveEnemies.length === 0) return;
-      const decision = decideAction(c, this.playerParty, this.enemyParty);
+      const decision = decideActionWithAwareness(c, this.playerParty, this.enemyParty, this.gameState?.discoveredWeaknesses ?? {});
       this.pendingCommands.set(c.id, {
         character: c,
         action: decision.skill ? 'skill' : 'attack',

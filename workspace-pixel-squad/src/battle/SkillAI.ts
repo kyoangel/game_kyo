@@ -71,7 +71,7 @@ export function decideActionWithAwareness(
     if (!knownWeakness) continue;
 
     const matchingSkill = actor.skills.find(
-      s => s.type === 'attack' && (s as any).element === knownWeakness && isSkillReady(actor, s),
+      s => s.type === 'attack' && s.element === knownWeakness && isSkillReady(actor, s),
     );
     if (matchingSkill) {
       triggerCooldown(actor, matchingSkill);
