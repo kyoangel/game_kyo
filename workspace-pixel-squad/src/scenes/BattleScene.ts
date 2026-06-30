@@ -4,7 +4,9 @@ import { createCharacter, createEnemy } from '../battle/CharacterFactory';
 import { computeTurnOrder } from '../battle/TurnEngine';
 import { calcDamage, calcHeal } from '../battle/DamageCalc';
 import { chooseTarget } from '../battle/AI';
-import { applyBuff, tickBuffs } from '../battle/Buffs';
+import { applyBuff, tickBuffs, applyStatusEffect, tickStatusEffects, type StatusTickEvent } from '../battle/Buffs';
+import { getStatusIconData } from '../ui/battleStatusIcons';
+import type { StatusEffectType } from '../types';
 import { decideAction } from '../battle/SkillAI';
 import { getBossPhase, executeBossAction, type BossConfig, type BossPhase } from '../battle/BossAI';
 import { BOSS_CONFIGS } from '../data/bossConfigs';
@@ -39,6 +41,7 @@ interface CharacterView {
   nameText: Phaser.GameObjects.Text;
   hpText: Phaser.GameObjects.Text;
   archetypeText: Phaser.GameObjects.Text;
+  statusText: Phaser.GameObjects.Text;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -104,7 +107,7 @@ export class BattleScene extends Phaser.Scene {
 
   init(data: BattleSceneData) {
     this.playerParty = data.playerParty?.length
-      ? data.playerParty.map(c => ({ ...c, stats: { ...c.stats, hp: c.stats.maxHp }, alive: true, defending: false }))
+      ? data.playerParty.map(c => ({ ...c, stats: { ...c.stats, hp: c.stats.maxHp }, alive: true, defending: false, activeStatusEffects: [] }))
       : PLAYER_TEMPLATES.map(t => createCharacter(t, 1));
     this.stageIndex = data.stageIndex ?? 0;
     this.expPool = data.expPool ?? 0;
@@ -231,9 +234,13 @@ export class BattleScene extends Phaser.Scene {
       const hpText = this.add.text(cx, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
         fontSize: '9px', color: '#9ca3af', fontFamily: 'monospace',
       }).setOrigin(0.5);
+      const statusText = this.add.text(cx, cy + 54, '', {
+        fontSize: '9px', color: '#e5e7eb', fontFamily: 'monospace',
+      }).setOrigin(0.5);
       const animator = new CharacterAnimator(this, body, useSprite);
       animator.playIdleLoop();
-      this.views.set(char.id, { body, animator, hpBarBg, hpBar, nameText, hpText, archetypeText });
+      this.views.set(char.id, { body, animator, hpBarBg, hpBar, nameText, hpText, archetypeText, statusText });
+      this.updateStatusIcons(char);
 
       if (isPlayer) {
         const icon = this.add.text(cx + 28, cy - 36, '', {
@@ -254,6 +261,13 @@ export class BattleScene extends Phaser.Scene {
     view.hpBar.width = 60 * pct;
     view.hpBar.fillColor = pct > 0.5 ? 0x22c55e : pct > 0.25 ? 0xf59e0b : 0xef4444;
     view.hpText.setText(`${char.stats.hp}/${char.stats.maxHp}`);
+  }
+
+  private updateStatusIcons(char: Character) {
+    const view = this.views.get(char.id);
+    if (!view) return;
+    const icons = getStatusIconData(char);
+    view.statusText.setText(icons.map(i => i.icon).join(' '));
   }
 
   private setCommandIcon(char: Character, action: PendingCommand['action']) {
@@ -277,7 +291,35 @@ export class BattleScene extends Phaser.Scene {
     tickBuffs(this.playerParty);
     tickBuffs(this.enemyParty);
     this.clearCommandIcons();
-    this.advanceCommandInput();
+    this.runStartOfRoundTicks(() => this.advanceCommandInput());
+  }
+
+  private runStartOfRoundTicks(onDone: () => void) {
+    const events = [
+      ...tickStatusEffects(this.playerParty),
+      ...tickStatusEffects(this.enemyParty),
+    ];
+    [...this.playerParty, ...this.enemyParty].forEach(c => this.updateStatusIcons(c));
+
+    if (events.length === 0) {
+      onDone();
+      return;
+    }
+
+    const showNext = (i: number) => {
+      if (i >= events.length) {
+        this.clearMessage();
+        if (this.checkBattleEnd()) return;
+        onDone();
+        return;
+      }
+      const event: StatusTickEvent = events[i];
+      this.updateHpBar(event.character);
+      const label = event.type === 'poison' ? `${event.character.name} 中毒 -${event.damage} HP` : `${event.character.name} ${event.type}`;
+      this.showMessage(label);
+      this.time.delayedCall(600, () => showNext(i + 1));
+    };
+    showNext(0);
   }
 
   private advanceCommandInput() {
@@ -542,6 +584,16 @@ export class BattleScene extends Phaser.Scene {
 
     const current = order[idx];
 
+    const frozen = current.activeStatusEffects?.some(s => s.type === 'freeze');
+    if (frozen) {
+      this.showMessage(`${current.name} 被凍結，跳過回合！`);
+      this.time.delayedCall(600, () => {
+        this.clearMessage();
+        this.executeNextInOrder(order, idx + 1);
+      });
+      return;
+    }
+
     if (current.isPlayer) {
       const cmd = this.pendingCommands.get(current.id);
       if (!cmd) {
@@ -592,7 +644,7 @@ export class BattleScene extends Phaser.Scene {
     const skill = cmd.action === 'skill' ? cmd.skill : undefined;
     const isCrit = rollCrit(cmd.character);
     const dmgResult = calcDamage(cmd.character, target, skill, isCrit);
-    this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, next, isCrit);
+    this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, next, isCrit, skill?.appliesStatus, skill?.id);
   }
 
   private attemptRecruitAction(_attacker: Character, enemy: Character) {
@@ -672,7 +724,7 @@ export class BattleScene extends Phaser.Scene {
     if (!target) { next(); return; }
     const isCrit = rollCrit(enemy);
     const dmgResult = calcDamage(enemy, target, decision.skill, isCrit);
-    this.applyDamageAndAdvance(enemy, target, dmgResult.damage, decision.skill?.name, next, isCrit);
+    this.applyDamageAndAdvance(enemy, target, dmgResult.damage, decision.skill?.name, next, isCrit, decision.skill?.appliesStatus, decision.skill?.id);
   }
 
   private executeBossPhaseAction(enemy: Character, phase: BossPhase, next: () => void) {
@@ -730,6 +782,8 @@ export class BattleScene extends Phaser.Scene {
     skillName: string | undefined,
     next: () => void,
     isCrit = false,
+    appliesStatus?: StatusEffectType,
+    skillId?: string,
   ) {
     const sfx = getSfx(this);
     const attackerView = this.views.get(attacker.id);
@@ -741,9 +795,20 @@ export class BattleScene extends Phaser.Scene {
     if (died) target.alive = false;
     this.updateHpBar(target);
 
+    let statusLabel = '';
+    if (appliesStatus && target.alive) {
+      const durationMap: Record<StatusEffectType, number> = { poison: 3, burn: 2, freeze: 1, stun: 1 };
+      applyStatusEffect(target, appliesStatus, durationMap[appliesStatus], skillId ?? 'unknown');
+      this.updateStatusIcons(target);
+      const STATUS_LABEL: Record<StatusEffectType, string> = {
+        poison: '中毒！', burn: '灼燒！', freeze: '凍結！', stun: '眩暈！',
+      };
+      statusLabel = ` ${STATUS_LABEL[appliesStatus]}`;
+    }
+
     const label = skillName ? `【${skillName}】` : '';
     const critLabel = isCrit ? '暴擊! ' : '';
-    this.showMessage(`${critLabel}${attacker.name}${label} → ${target.name} -${dmg} HP`);
+    this.showMessage(`${critLabel}${attacker.name}${label} → ${target.name} -${dmg} HP${statusLabel}`);
 
     if (attackerView) {
       attackerView.animator.playWalk(facing, () => {

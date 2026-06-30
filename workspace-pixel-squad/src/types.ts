@@ -5,6 +5,14 @@ export type SkillType = 'attack' | 'heal' | 'buff';
 export type SkillTarget = 'enemy' | 'ally' | 'self';
 export type BuffStat = 'atk' | 'def' | 'spd';
 export type Element = 'fire' | 'ice' | 'thunder' | 'toxin' | 'physical';
+export type StatusEffectType = 'poison' | 'burn' | 'freeze' | 'stun';
+
+export interface ActiveStatusEffect {
+  type: StatusEffectType;
+  /** Decremented by 1 at the start of each command phase tick. Removed when reaches 0. */
+  turnsRemaining: number;
+  sourceSkillId: string;
+}
 
 export interface Skill {
   id: string;
@@ -23,6 +31,8 @@ export interface Skill {
   buffStat?: BuffStat;
   buffAmountPct?: number;
   buffDuration?: number;
+  /** attack skills only — applied on hit if target survives */
+  appliesStatus?: StatusEffectType;
 }
 
 export interface ActiveBuff {
@@ -76,6 +86,7 @@ export interface Character {
   defending: boolean;   // true = -50% damage this round
   recruited?: boolean;  // true = this enemy was convinced to join
   activeBuffs: ActiveBuff[];
+  activeStatusEffects: ActiveStatusEffect[];
   /** Maps skill.id → remaining locked rounds (0 = ready). Only non-zero entries need to be present. */
   skillCooldowns: Record<string, number>;
   _monsterType?: MonsterType;

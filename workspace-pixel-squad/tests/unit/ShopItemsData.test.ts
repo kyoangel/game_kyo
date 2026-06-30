@@ -3,13 +3,13 @@ import { SHOP_ITEMS } from '../../src/data/shopItems';
 import { SKILLS } from '../../src/data/skills';
 
 describe('SHOP_ITEMS', () => {
-  it('contains exactly 12 items', () => {
-    expect(SHOP_ITEMS).toHaveLength(12);
+  it('contains exactly 13 items', () => {
+    expect(SHOP_ITEMS).toHaveLength(13);
   });
 
-  it('contains 10 skill_scroll items, one per non-exclusive catalog skill', () => {
+  it('contains 11 skill_scroll items, one per non-exclusive catalog skill', () => {
     const scrolls = SHOP_ITEMS.filter(i => i.type === 'skill_scroll');
-    expect(scrolls).toHaveLength(10);
+    expect(scrolls).toHaveLength(11);
     const skillIds = scrolls.map(s => s.skillId).sort();
     const purchasableSkillIds = Object.keys(SKILLS).filter(id => id !== 'overdrive').sort();
     expect(skillIds).toEqual(purchasableSkillIds);

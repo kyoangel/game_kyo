@@ -11,6 +11,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'scroll_acid_splash', type: 'skill_scroll', name: '酸液噴灑卷軸', price: 40, description: '教導一名角色「酸液噴灑」', skillId: 'acid_splash' },
   { id: 'scroll_fire_grenade', type: 'skill_scroll', name: '燃燒手榴彈卷軸', price: 55, description: '教導一名角色「燃燒手榴彈」', skillId: 'fire_grenade' },
   { id: 'scroll_emp_pulse', type: 'skill_scroll', name: '電磁衝擊卷軸', price: 50, description: '教導一名角色「電磁衝擊」', skillId: 'emp_pulse' },
+  { id: 'scroll_toxic_spray', type: 'skill_scroll', name: '毒霧噴灑卷軸', price: 45, description: '教導一名角色「毒霧噴灑」', skillId: 'toxic_spray' },
   { id: 'supply_medkit_s', type: 'supply', name: '小型醫療包', price: 25, description: '恢復 50 HP', healAmount: 50 },
   { id: 'supply_medkit_l', type: 'supply', name: '大型醫療包', price: 70, description: '恢復 150 HP', healAmount: 150 },
 ];
