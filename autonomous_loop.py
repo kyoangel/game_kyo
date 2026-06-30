@@ -6,7 +6,7 @@ import sys
 import uuid
 from pathlib import Path
 
-from agents import claude_cli, designer_agent, reviewer_agent
+from agents import claude_cli, designer_agent, meta_reviewer_agent, reviewer_agent
 from agents.claude_cli import ClaudeCliError
 from harness import npm_runner, prompt_store, trace_logger, workspace_diff
 
@@ -44,6 +44,24 @@ def _git_commit(workspace: str, spec_path: Path, repo_root: Path, iter_n: int) -
     if backlog_path.exists():
         subprocess.run(["git", "add", str(backlog_path)], cwd=repo_root, check=True)
     subprocess.run(["git", "commit", "-m", msg], cwd=repo_root, check=True)
+
+
+def _append_meta_review(backlog_path: Path, items: list[str], spec_slug: str, repo_root: Path) -> None:
+    content = backlog_path.read_text()
+    section = "## 🤖 Meta-Review 建議"
+    new_block = "\n".join(items)
+    if section not in content:
+        content = content.rstrip() + f"\n\n{section}\n\n{new_block}\n"
+    else:
+        # append under existing section
+        content = content.rstrip() + "\n" + new_block + "\n"
+    backlog_path.write_text(content)
+
+    subprocess.run(["git", "add", str(backlog_path)], cwd=repo_root, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", f"chore: meta-review suggestions after {spec_slug}"],
+        cwd=repo_root, check=True,
+    )
 
 
 def autonomous_loop(
@@ -193,6 +211,15 @@ def autonomous_loop(
             if review.approved:
                 _git_commit(workspace, spec_path, repo_root, i)
                 _clear_resume(workspace, repo_root)
+                try:
+                    meta_items = meta_reviewer_agent.run_meta_review(
+                        spec_path, changed_paths_list, repo_root, workspace=workspace
+                    )
+                    if meta_items:
+                        _append_meta_review(backlog_path, meta_items, spec_path.stem, repo_root)
+                        print(f"🤖 Meta-review: {len(meta_items)} suggestions added to backlog")
+                except Exception as e:
+                    print(f"⚠️  Meta-review failed (non-fatal): {e}")
                 break
 
             feedback = "\n".join(review.comments)

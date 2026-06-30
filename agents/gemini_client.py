@@ -10,7 +10,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 GEMINI_MODEL = "gemini-2.5-flash"
-_RETRY_DELAYS = [10, 30, 60]  # seconds between retries on 503
+_RETRY_DELAYS = [10]  # one retry; caller falls back to Claude CLI if still failing
 
 
 class GeminiClientError(Exception):
