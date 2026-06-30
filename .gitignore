@@ -10,3 +10,4 @@ workspace/test-results/
 test-results/
 .DS_Store
 .superpowers/
+specs/.pixel-squad-resume.json
