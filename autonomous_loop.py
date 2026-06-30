@@ -95,6 +95,9 @@ def autonomous_loop(
                     traces_root=repo_root / "traces",
                 )
                 print(f"⚠️  Designer failed (iter {i}): {e}")
+                if "session limit" in str(e).lower():
+                    print(f"⛔ Session limit hit — stopping loop (retry is pointless)")
+                    return
                 continue
             trace_logger.log_step(
                 run_id=run_id, agent="designer",
@@ -127,6 +130,9 @@ def autonomous_loop(
                     result={"success": False, "error": str(e)},
                     traces_root=repo_root / "traces",
                 )
+                if "session limit" in str(e).lower():
+                    print(f"⛔ Session limit hit — stopping loop (retry is pointless)")
+                    return
                 # QA failed before writing tests — only restore backlog if Designer just ran
                 if "spec_path" not in resume:
                     backlog_path.write_text(backlog_snapshot)
@@ -162,6 +168,9 @@ def autonomous_loop(
                     result={"success": False, "error": str(e)},
                     traces_root=repo_root / "traces",
                 )
+                if "session limit" in feedback.lower():
+                    print(f"⛔ Session limit hit — stopping loop (retry is pointless)")
+                    return
                 continue
 
             changed = sorted(workspace_diff.changed_paths(repo_root, workspace_dir=workspace_dir) - before)
