@@ -35,6 +35,7 @@ export function createCharacter(template: CharacterTemplate, level: number): Cha
     activeBuffs: [],
     activeStatusEffects: [],
     skillCooldowns: {},
+    equipment: {},
   };
 }
 
@@ -63,6 +64,7 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
     activeBuffs: [],
     activeStatusEffects: [],
     skillCooldowns: {},
+    equipment: {},
     weakness: template.weakness,
   };
   char._monsterType = template.monsterType;
@@ -99,5 +101,6 @@ export function enemyToPlayerCharacter(enemy: Character, maxHp: number): Charact
     activeBuffs: [],
     activeStatusEffects: [],
     skillCooldowns: {},
+    equipment: {},
   };
 }

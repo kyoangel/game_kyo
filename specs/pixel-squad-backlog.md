@@ -36,7 +36,7 @@
 - [x] All-Out Attack BattleScene 串接：`TurnEngine.applyWeaknessBonus`（加成回合）、`Character.knockedDown`（stagger）、`battle/AllOutAttack.ts`（全體攻擊觸發）均已有獨立單元測試，但 `scenes/BattleScene.ts` 完全沒有呼叫點 —— 弱點命中從不觸發 stagger、不給予 bonus action、也不會引發 All-Out Attack，與背板「連鎖攻擊」已勾選的狀態矛盾。需要在 `executePlayerCommand` 的傷害結算後正確排序：命中弱點 → knockedDown → 判斷 allEnemiesKnockedDown → 觸發 All-Out Attack 動畫 → 移除 knockedDown 標記。Spec: `specs/pixel-squad-all-out-attack-wiring.md`
 
 ### 成長與建構
-- [ ] 裝備系統：武器 / 防具欄位，商店可買裝備，提供屬性加成
+- [x] 裝備系統：武器 / 防具欄位，商店可買裝備，提供屬性加成。Spec: `specs/pixel-squad-equipment-system.md`
 - [ ] 技能樹：每個角色有獨立的技能解鎖路徑（3 個分支）
 - [ ] 傭兵評鑑系統：戰鬥結束依表現（傷害輸出、存活率、弱點利用）給星評分，影響獎勵
 

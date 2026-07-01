@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import type { Character, GameState, ShopItem } from '../types';
+import type { Character, EquipmentItem, GameState, ShopItem } from '../types';
 import { SHOP_ITEMS } from '../data/shopItems';
+import { EQUIPMENT_ITEMS } from '../data/equipmentItems';
 import { canAfford, hasAnyEligibleCharacter, isEligibleForScroll, teachSkill, addToInventory } from '../battle/ShopSystem';
+import { addEquipmentToInventory } from '../battle/EquipmentSystem';
 import { saveSlot } from '../save/SaveSystem';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
@@ -62,6 +64,43 @@ export class ShopScene extends Phaser.Scene {
     SHOP_ITEMS.filter(i => i.type === 'supply').forEach((item) => {
       y = this.renderRow(item, y);
     });
+
+    const equipLabel = this.add.text(20, y + 4, '裝備', { fontSize: '13px', color: '#9ca3af', fontFamily: 'monospace' });
+    this.rowObjects.push(equipLabel);
+    y += 26;
+    EQUIPMENT_ITEMS.forEach((item) => {
+      y = this.renderEquipmentRow(item, y);
+    });
+  }
+
+  private renderEquipmentRow(item: EquipmentItem, y: number): number {
+    const W = 360;
+    const rowBg = this.add.rectangle(W / 2, y + 24, 340, 48, 0x1f2937).setStrokeStyle(1, 0x4b5563);
+    const nameText = this.add.text(20, y + 12, `${item.name}  ${item.price}幣`, { fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace' });
+    const descText = this.add.text(20, y + 30, item.description, { fontSize: '10px', color: '#9ca3af', fontFamily: 'monospace' });
+    this.rowObjects.push(rowBg, nameText, descText);
+
+    const canBuy = canAfford(this.gameState.currency, item.price);
+
+    const buyBtn = this.add.rectangle(310, y + 24, 60, 32, canBuy ? 0x16a34a : 0x374151);
+    const buyTxt = this.add.text(310, y + 24, '購買', { fontSize: '12px', color: canBuy ? '#fff' : '#6b7280', fontFamily: 'monospace' }).setOrigin(0.5);
+    this.rowObjects.push(buyBtn, buyTxt);
+    if (canBuy) {
+      buyBtn.setInteractive({ useHandCursor: true });
+      buyBtn.on('pointerdown', () => this.handleBuyEquipment(item));
+      buyBtn.on('pointerover', () => buyBtn.setAlpha(0.8));
+      buyBtn.on('pointerout', () => buyBtn.setAlpha(1));
+    }
+
+    return y + 56;
+  }
+
+  private handleBuyEquipment(item: EquipmentItem) {
+    getSfx(this).play(SFX_KEYS.purchase);
+    this.gameState.currency -= item.price;
+    this.gameState.equipmentInventory = addEquipmentToInventory(this.gameState.equipmentInventory ?? [], item.id);
+    saveSlot(this.gameState);
+    this.renderList();
   }
 
   private renderRow(item: ShopItem, y: number): number {

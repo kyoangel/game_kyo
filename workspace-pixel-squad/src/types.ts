@@ -96,6 +96,8 @@ export interface Character {
   knockedDown?: boolean;
   /** True if this character already earned a bonus action this round. */
   bonusActionUsed?: boolean;
+  /** Currently equipped weapon/armor, if any. Always {} for enemy characters. */
+  equipment: CharacterEquipment;
 }
 
 export interface EnemyTemplate {
@@ -204,6 +206,7 @@ export interface GameState {
   hasClearedGame: boolean;     // true once stage '5-5' is cleared the first time; NEVER reset by NG+
   challengeRun?: ChallengeRunState; // present while a Boss Rush attempt is in progress
   discoveredWeaknesses?: Record<string, Element>; // key = EnemyTemplate.id
+  equipmentInventory: EquipmentInventoryEntry[]; // owned, currently-unequipped equipment
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply';
@@ -220,5 +223,27 @@ export interface ShopItem {
 
 export interface InventoryEntry {
   itemId: string;        // ShopItem.id, supply items only
+  quantity: number;
+}
+
+export type EquipmentSlot = 'weapon' | 'armor';
+
+export interface EquipmentItem {
+  id: string;
+  name: string;
+  slot: EquipmentSlot;
+  price: number;
+  description: string;
+  /** Flat stat bonus while equipped. Applied live via battle/Buffs.ts, never baked into Character.stats. */
+  statBonus: Partial<Record<'atk' | 'def' | 'spd', number>>;
+}
+
+export interface CharacterEquipment {
+  weapon?: EquipmentItem;
+  armor?: EquipmentItem;
+}
+
+export interface EquipmentInventoryEntry {
+  itemId: string;   // EquipmentItem.id
   quantity: number;
 }

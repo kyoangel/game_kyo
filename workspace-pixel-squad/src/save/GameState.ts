@@ -17,6 +17,7 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     ngPlusCycle: 0,
     hasClearedGame: false,
     discoveredWeaknesses: {},
+    equipmentInventory: [],
   };
 }
 

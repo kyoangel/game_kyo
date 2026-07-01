@@ -3,23 +3,27 @@ import { ALL_ROUNDER_STAT_MULT, ARCHETYPE_SUPPORT_POTENCY_MULT } from './Archety
 
 function effectiveStat(c: Character, stat: BuffStat, base: number): number {
   const buff = c.activeBuffs.find(b => b.stat === stat);
-  const buffed = buff ? base * (1 + buff.amountPct) : base;
+  const buffed = buff ? Math.floor(base * (1 + buff.amountPct)) : base;
   return c.archetype === '全能' ? buffed * ALL_ROUNDER_STAT_MULT : buffed;
 }
 
+function gearBonus(c: Character, stat: 'atk' | 'def' | 'spd'): number {
+  return (c.equipment?.weapon?.statBonus[stat] ?? 0) + (c.equipment?.armor?.statBonus[stat] ?? 0);
+}
+
 export function effectiveAtk(c: Character): number {
-  const base = effectiveStat(c, 'atk', c.stats.atk);
+  const base = effectiveStat(c, 'atk', c.stats.atk + gearBonus(c, 'atk'));
   const hasBurn = c.activeStatusEffects?.some(s => s.type === 'burn');
   return hasBurn ? Math.floor(base * 0.70) : base;
 }
 
 export function effectiveDef(c: Character): number {
-  return effectiveStat(c, 'def', c.stats.def);
+  return effectiveStat(c, 'def', c.stats.def + gearBonus(c, 'def'));
 }
 
 export function effectiveSpd(c: Character): number {
   if (c.activeStatusEffects?.some(s => s.type === 'stun')) return 0;
-  return effectiveStat(c, 'spd', c.stats.spd);
+  return effectiveStat(c, 'spd', c.stats.spd + gearBonus(c, 'spd'));
 }
 
 export function applyBuff(target: Character, skill: Skill, caster?: Character): void {

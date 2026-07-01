@@ -95,6 +95,14 @@ export class PrepScene extends Phaser.Scene {
 
       this.rowObjects.push(rowBg, nameText, statsText, costText);
 
+      const gearParts: string[] = [];
+      if (char.equipment?.weapon) gearParts.push(`⚔${char.equipment.weapon.name}`);
+      if (char.equipment?.armor) gearParts.push(`🛡${char.equipment.armor.name}`);
+      if (gearParts.length > 0) {
+        const gearText = this.add.text(24, y + 84, gearParts.join(' '), { fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' });
+        this.rowObjects.push(gearText);
+      }
+
       if (canUp) {
         const lvBtn = this.add.rectangle(294, y + 45, 76, 36, 0x16a34a)
           .setInteractive({ useHandCursor: true });

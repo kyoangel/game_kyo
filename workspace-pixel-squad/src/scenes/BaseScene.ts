@@ -71,14 +71,20 @@ export class BaseScene extends Phaser.Scene {
     this.add.text(20, 90, '出戰中 (最多5人)', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
     this.renderSquadSection(104);
 
-    const shopBtn = this.add.rectangle(120, 600, 100, 40, 0x7c3aed).setInteractive({ useHandCursor: true });
-    this.add.text(120, 600, '商店', { fontSize: '15px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    const shopBtn = this.add.rectangle(70, 600, 90, 40, 0x7c3aed).setInteractive({ useHandCursor: true });
+    this.add.text(70, 600, '商店', { fontSize: '14px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
     shopBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('ShopScene', { gameState: this.gameState }); });
     shopBtn.on('pointerover', () => shopBtn.setAlpha(0.8));
     shopBtn.on('pointerout', () => shopBtn.setAlpha(1));
 
-    const mapBtn = this.add.rectangle(240, 600, 100, 40, 0x1d4ed8).setInteractive({ useHandCursor: true });
-    this.add.text(240, 600, '世界地圖', { fontSize: '13px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    const equipBtn = this.add.rectangle(180, 600, 90, 40, 0xb45309).setInteractive({ useHandCursor: true });
+    this.add.text(180, 600, '裝備', { fontSize: '14px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    equipBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('EquipmentScene', { gameState: this.gameState }); });
+    equipBtn.on('pointerover', () => equipBtn.setAlpha(0.8));
+    equipBtn.on('pointerout', () => equipBtn.setAlpha(1));
+
+    const mapBtn = this.add.rectangle(290, 600, 90, 40, 0x1d4ed8).setInteractive({ useHandCursor: true });
+    this.add.text(290, 600, '世界地圖', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
     mapBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('WorldMapScene', { gameState: this.gameState }); });
     mapBtn.on('pointerover', () => mapBtn.setAlpha(0.8));
     mapBtn.on('pointerout', () => mapBtn.setAlpha(1));
@@ -199,6 +205,14 @@ export class BaseScene extends Phaser.Scene {
     const nameText = this.add.text(24, y + 14, `${char.name}  Lv.${char.level}  ${char.archetype}`, { fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace' });
     const statsText = this.add.text(24, y + 34, `HP:${char.stats.hp}  ATK:${char.stats.atk}  DEF:${char.stats.def}  SPD:${char.stats.spd}`, { fontSize: '11px', color: '#9ca3af', fontFamily: 'monospace' });
     this.rowObjects.push(rowBg, nameText, statsText);
+
+    const gearParts: string[] = [];
+    if (char.equipment?.weapon) gearParts.push(`⚔${char.equipment.weapon.name}`);
+    if (char.equipment?.armor) gearParts.push(`🛡${char.equipment.armor.name}`);
+    if (gearParts.length > 0) {
+      const gearText = this.add.text(24, y + 52, gearParts.join(' '), { fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' });
+      this.rowObjects.push(gearText);
+    }
 
     if (canUp) {
       const lvBtn = this.add.rectangle(260, y + 42, 66, 32, 0x16a34a).setInteractive({ useHandCursor: true });
