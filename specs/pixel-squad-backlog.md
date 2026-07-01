@@ -33,7 +33,7 @@
 - [x] 狀態異常擴充：毒（持續傷害）、灼燒（攻擊力下降）、凍結（跳過回合）、眩暈（速度歸零）。Spec: `specs/pixel-squad-status-effects.md`
 - [x] Boss 分段機制：Boss HP 降至 50% 時進入狂暴形態，開放新弱點。Spec: `specs/pixel-squad-boss-phase-weakness.md`
 - [x] 一般弱點系統收尾：`DamageCalc`/`TurnEngine` 的元素弱點計算與加成已存在並有測試，但內容面從未串接 —— 沒有任何非 Boss `EnemyTemplate` 指派 `weakness`、`createEnemy` 不會把 weakness 複製到 `Character`、`recordWeaknessDiscovery` 從未被呼叫、也沒有對應的弱點揭露 UI。需要替一般敵人指派弱點屬性，並在命中時記錄/顯示弱點圖示（`specs/pixel-squad-boss-phase-weakness.md` 已先把這條路在 Boss 身上接通，可參考其作法）。Spec: `specs/pixel-squad-general-weakness-wiring.md`
-- [ ] All-Out Attack BattleScene 串接：`TurnEngine.applyWeaknessBonus`（加成回合）、`Character.knockedDown`（stagger）、`battle/AllOutAttack.ts`（全體攻擊觸發）均已有獨立單元測試，但 `scenes/BattleScene.ts` 完全沒有呼叫點 —— 弱點命中從不觸發 stagger、不給予 bonus action、也不會引發 All-Out Attack，與背板「連鎖攻擊」已勾選的狀態矛盾。需要在 `executePlayerCommand` 的傷害結算後正確排序：命中弱點 → knockedDown → 判斷 allEnemiesKnockedDown → 觸發 All-Out Attack 動畫 → 移除 knockedDown 標記。
+- [x] All-Out Attack BattleScene 串接：`TurnEngine.applyWeaknessBonus`（加成回合）、`Character.knockedDown`（stagger）、`battle/AllOutAttack.ts`（全體攻擊觸發）均已有獨立單元測試，但 `scenes/BattleScene.ts` 完全沒有呼叫點 —— 弱點命中從不觸發 stagger、不給予 bonus action、也不會引發 All-Out Attack，與背板「連鎖攻擊」已勾選的狀態矛盾。需要在 `executePlayerCommand` 的傷害結算後正確排序：命中弱點 → knockedDown → 判斷 allEnemiesKnockedDown → 觸發 All-Out Attack 動畫 → 移除 knockedDown 標記。Spec: `specs/pixel-squad-all-out-attack-wiring.md`
 
 ### 成長與建構
 - [ ] 裝備系統：武器 / 防具欄位，商店可買裝備，提供屬性加成

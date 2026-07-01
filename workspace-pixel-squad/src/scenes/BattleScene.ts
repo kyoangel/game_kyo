@@ -1,7 +1,14 @@
 import Phaser from 'phaser';
 import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState, Skill, Element } from '../types';
 import { createCharacter, createEnemy } from '../battle/CharacterFactory';
-import { computeTurnOrder } from '../battle/TurnEngine';
+import { computeTurnOrder, applyWeaknessBonus, resetRoundFlags } from '../battle/TurnEngine';
+import {
+  canKnockDown,
+  shouldTriggerAoa,
+  applyAllOutAttack,
+  resetAoaRoundState,
+  type AoaRoundState,
+} from '../battle/AllOutAttack';
 import { calcDamage, calcHeal } from '../battle/DamageCalc';
 import { chooseTarget } from '../battle/AI';
 import { applyBuff, tickBuffs, applyStatusEffect, tickStatusEffects, type StatusTickEvent } from '../battle/Buffs';
@@ -77,6 +84,9 @@ export class BattleScene extends Phaser.Scene {
   private bossConfig?: BossConfig;
   private triggeredPhaseThresholds = new Set<number>();
 
+  // All-Out Attack state
+  private aoaState: AoaRoundState = { usedThisRound: false };
+
   // Target selection state
   private targetHighlights = new Map<string, Phaser.GameObjects.Rectangle>();
   private targetSelectActive = false;
@@ -132,6 +142,7 @@ export class BattleScene extends Phaser.Scene {
     this.recruitedEnemy = undefined;
     this.bossConfig = undefined;
     this.triggeredPhaseThresholds = new Set<number>();
+    this.aoaState = { usedThisRound: false };
     if (stage.isBoss && this.enemyParty.length === 1) {
       const bossTemplateId = this.enemyParty[0].templateId;
       this.bossConfig = BOSS_CONFIGS[bossTemplateId];
@@ -299,6 +310,8 @@ export class BattleScene extends Phaser.Scene {
   // ─── Command Phase ────────────────────────────────────────────────────────
 
   private startCommandPhase() {
+    resetRoundFlags([...this.playerParty, ...this.enemyParty]);
+    resetAoaRoundState(this.aoaState);
     this.phase = 'command';
     this.pendingCommands.clear();
     this.commandIndex = 0;
@@ -574,14 +587,15 @@ export class BattleScene extends Phaser.Scene {
   private startExecution() {
     this.phase = 'executing';
     this.actionMenu.removeAll(true);
-    const order = computeTurnOrder([...this.playerParty, ...this.enemyParty]);
-    this.executeNextInOrder(order, 0);
+    const queue = computeTurnOrder([...this.playerParty, ...this.enemyParty]);
+    this.executeNextInQueue(queue);
   }
 
-  private executeNextInOrder(order: Character[], idx: number) {
-    while (idx < order.length && !order[idx].alive) idx++;
+  private executeNextInQueue(queue: Character[]) {
+    // Drain dead entries from the front
+    while (queue.length > 0 && !queue[0].alive) queue.shift();
 
-    if (idx >= order.length) {
+    if (queue.length === 0) {
       this.time.delayedCall(400, () => {
         if (this.phase === 'auto') {
           if (this.stopRequested) {
@@ -598,37 +612,40 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const current = order[idx];
+    const current = queue.shift()!;
 
     const frozen = current.activeStatusEffects?.some(s => s.type === 'freeze');
     if (frozen) {
       this.showMessage(`${current.name} 被凍結，跳過回合！`);
       this.time.delayedCall(600, () => {
         this.clearMessage();
-        this.executeNextInOrder(order, idx + 1);
+        this.executeNextInQueue(queue);
       });
       return;
     }
 
+    const afterAction = () => {
+      if (this.checkBattleEnd()) return;
+      if (shouldTriggerAoa(this.enemyParty, this.aoaState)) {
+        this.showAoaPrompt(() => this.executeNextInQueue(queue));
+        return;
+      }
+      this.executeNextInQueue(queue);
+    };
+
     if (current.isPlayer) {
       const cmd = this.pendingCommands.get(current.id);
       if (!cmd) {
-        this.executeNextInOrder(order, idx + 1);
+        this.executeNextInQueue(queue);
         return;
       }
-      this.executePlayerCommand(cmd, () => {
-        if (this.checkBattleEnd()) return;
-        this.executeNextInOrder(order, idx + 1);
-      });
+      this.executePlayerCommand(cmd, queue, afterAction);
     } else {
-      this.executeEnemyAction(current, () => {
-        if (this.checkBattleEnd()) return;
-        this.executeNextInOrder(order, idx + 1);
-      });
+      this.executeEnemyAction(current, afterAction);
     }
   }
 
-  private executePlayerCommand(cmd: PendingCommand, next: () => void) {
+  private executePlayerCommand(cmd: PendingCommand, queue: Character[], next: () => void) {
     if (cmd.action === 'defend') {
       cmd.character.defending = true;
       this.showMessage(`${cmd.character.name} 防禦！傷害減半`);
@@ -665,8 +682,25 @@ export class BattleScene extends Phaser.Scene {
       this.enemyParty
         .filter(e => e.templateId === target.templateId)
         .forEach(e => this.updateWeaknessIcon(e));
-      this.time.delayedCall(900, () => this.showWeaknessRevealBanner(target.weakness!));
+      this.time.delayedCall(900, () => {
+        if (!this.scene.isActive()) return;
+        this.showWeaknessRevealBanner(target.weakness!);
+      });
     }
+
+    const hpAfterHit = Math.max(0, target.stats.hp - dmgResult.damage);
+
+    // Knockdown stagger
+    if (dmgResult.isWeaknessHit && hpAfterHit > 0 && canKnockDown(target)) {
+      target.knockedDown = true;
+      const targetView = this.views.get(target.id);
+      if (targetView) targetView.animator.playHit(false, () => {});
+      this.showStaggerBanner(target);
+    }
+
+    // Bonus action
+    applyWeaknessBonus(cmd.character, hpAfterHit, dmgResult.isWeaknessHit, queue);
+
     this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, next, isCrit, skill?.appliesStatus, skill?.id);
   }
 
@@ -822,6 +856,87 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(1800, () => { if (banner.active) banner.destroy(); });
   }
 
+  private showStaggerBanner(target: Character) {
+    const view = this.views.get(target.id);
+    if (!view) return;
+    const W = 360;
+    const banner = this.add.text(W / 2, 160, '↓ STAGGER!', {
+      fontSize: '13px', color: '#facc15', fontFamily: 'monospace',
+      backgroundColor: '#111827', padding: { x: 10, y: 6 },
+    }).setOrigin(0.5).setDepth(20);
+    this.time.delayedCall(800, () => { if (banner.active) banner.destroy(); });
+  }
+
+  private showAoaPrompt(onDone: () => void) {
+    this.phase = 'all-out-attack-prompt';
+    this.actionMenu.removeAll(true);
+    const W = 360;
+
+    const banner = this.add.text(W / 2, 150, '⚡ ALL-OUT ATTACK!', {
+      fontSize: '15px', color: '#fbbf24', fontFamily: 'monospace',
+      backgroundColor: '#111827', padding: { x: 12, y: 8 },
+    }).setOrigin(0.5).setDepth(20);
+    this.time.delayedCall(1000, () => { if (banner.active) banner.destroy(); });
+
+    const confirmBtn = this.add.rectangle(-44, 0, 80, 36, 0x15803d)
+      .setInteractive({ useHandCursor: true });
+    const confirmTxt = this.add.text(-44, 0, '確認', {
+      fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    const declineBtn = this.add.rectangle(44, 0, 80, 36, 0x7f1d1d)
+      .setInteractive({ useHandCursor: true });
+    const declineTxt = this.add.text(44, 0, '放棄', {
+      fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    this.actionMenu.add([confirmBtn, confirmTxt, declineBtn, declineTxt]);
+
+    const cleanup = () => { this.actionMenu.removeAll(true); };
+
+    confirmBtn.once('pointerdown', () => {
+      if (this.phase !== 'all-out-attack-prompt') return;
+      getSfx(this).play(SFX_KEYS.crit);
+      cleanup();
+
+      // Flash all alive player characters
+      this.playerParty.filter(m => m.alive).forEach(m => {
+        this.views.get(m.id)?.animator.playSkillCast('white', () => {});
+      });
+
+      applyAllOutAttack(this.playerParty, this.enemyParty);
+
+      // Post-damage: set alive=false, update bars, play die anims
+      this.enemyParty.forEach(e => {
+        if (e.stats.hp <= 0) {
+          e.alive = false;
+          this.views.get(e.id)?.animator.playDie('left', () => {});
+        }
+        this.updateHpBar(e);
+      });
+
+      this.aoaState.usedThisRound = true;
+      this.phase = 'executing';
+      this.showMessage('⚡ 全體攻擊！');
+
+      this.time.delayedCall(1200, () => {
+        if (!this.scene.isActive()) return;
+        this.clearMessage();
+        if (this.checkBattleEnd()) return;
+        onDone();
+      });
+    });
+
+    declineBtn.once('pointerdown', () => {
+      if (this.phase !== 'all-out-attack-prompt') return;
+      getSfx(this).play(SFX_KEYS.buttonClick);
+      cleanup();
+      this.aoaState.usedThisRound = true;
+      this.phase = 'executing';
+      onDone();
+    });
+  }
+
   private applyDamageAndAdvance(
     attacker: Character,
     target: Character,
@@ -961,8 +1076,8 @@ export class BattleScene extends Phaser.Scene {
       });
     });
 
-    const order = computeTurnOrder([...this.playerParty, ...this.enemyParty]);
-    this.executeNextInOrder(order, 0);
+    const queue = computeTurnOrder([...this.playerParty, ...this.enemyParty]);
+    this.executeNextInQueue(queue);
   }
 
   private showStopButton() {
