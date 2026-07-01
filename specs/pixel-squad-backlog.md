@@ -66,3 +66,8 @@
 - [ ] 🎮 新增的兩個 wiring 測試檔全是對原始碼文字做 regex/brace-matching，並非驗證實際行為，邏輯錯誤只要字串樣式吻合仍會通過、單純改變數名就會假性失敗，建議把純狀態轉換邏輯抽成不依賴 Phaser 的純函式以便真正做行為測試
 - [ ] 🎮 AC-7 沒定義「AOA 傷害未能全滅、部分敵人存活但仍標記 knockedDown」時是否會在同回合重複觸發 AOA 提示，建議補上對應 AC 與測試
 - [ ] 💰 spec 的 Rules 段落與 UI Changes 段落幾乎逐字重複描述同一段邏輯，建議 Rules 改為簡短條列並指向程式碼區塊，省去重複篇幅
+- [ ] 🔄 Spec 聲稱「`effectiveStat` 本體不變，只改 base 運算式」，但驗收條件 `Math.floor(26*1.2)===31` 實際上迫使 Coder 修改了 `effectiveStat` 內部（加入 `Math.floor`），造成規格文字與可驗證行為互相矛盾；未來 spec 應直接寫明「`effectiveStat` 的 buffed 計算需加上 `Math.floor`」，避免 Coder 需要自行判斷是否違反明文限制。
+- [ ] 💰 `battle/EquipmentSystem.ts` 的 `addEquipmentToInventory`/`removeOneFromInventory` 與 `battle/ShopSystem.ts` 的 `addToInventory` 邏輯完全相同（都是操作 `{itemId, quantity}[]`），建議抽成共用的 generic inventory helper（例如 `battle/InventoryUtils.ts`）供兩邊 import，減少未來修改時需要同步兩份程式碼。
+- [ ] 💰 `scenes/BaseScene.ts` 的 `renderCharCard` 與 `scenes/PrepScene.ts` 的 `renderPartyList` 內含逐字相同的裝備摘要區塊（`⚔${weapon.name} 🛡${armor.name}` 組字邏輯），建議抽成 `battle/EquipmentSystem.ts` 裡的 `formatGearSummary(character): string` 共用函式。
+- [ ] 🎮 目前沒有測試涵蓋負數 SPD 裝備（如 `weapon_heavy_cannon` SPD-2、`armor_titan_shell` SPD-3）疊加後把 `effectiveSpd` 壓到 0 以下的情況，而 `TurnEngine.ts:8` 的出手順序排序直接使用該值相減；請在 `Buffs.equipment.test.ts` 補上低基礎 SPD 角色同時裝備這兩件負面裝備的案例，並確認 `TurnEngine` 排序在負值下仍合理。
+- [ ] 🎮 `EquipmentScene.showEquipmentPicker` 的「該格位無可用裝備」placeholder 分支（`entries.length === 0` 顯示「（無可用裝備，請先至商店購買）」）目前完全沒有自動化測試覆蓋，建議至少在 `EquipmentSystem.test.ts` 新增一個案例驗證：當 `equipmentInventory` 對某個 slot 過濾後為空陣列時，呼叫端能正確取得空陣列而非 `undefined`，避免 UI 端過濾邏輯的隱性假設之後被破壞而不被發現。
