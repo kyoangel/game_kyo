@@ -3,8 +3,8 @@ import { SHOP_ITEMS } from '../../src/data/shopItems';
 import { SKILLS } from '../../src/data/skills';
 
 describe('SHOP_ITEMS', () => {
-  it('contains exactly 13 items', () => {
-    expect(SHOP_ITEMS).toHaveLength(13);
+  it('contains exactly 14 items', () => {
+    expect(SHOP_ITEMS).toHaveLength(14);
   });
 
   it('contains 11 skill_scroll items, one per non-exclusive catalog skill', () => {

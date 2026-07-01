@@ -71,6 +71,13 @@ export class ShopScene extends Phaser.Scene {
     EQUIPMENT_ITEMS.forEach((item) => {
       y = this.renderEquipmentRow(item, y);
     });
+
+    const specialLabel = this.add.text(20, y + 4, '特殊道具', { fontSize: '13px', color: '#9ca3af', fontFamily: 'monospace' });
+    this.rowObjects.push(specialLabel);
+    y += 26;
+    SHOP_ITEMS.filter(i => i.type === 'respec').forEach((item) => {
+      y = this.renderRow(item, y);
+    });
   }
 
   private renderEquipmentRow(item: EquipmentItem, y: number): number {
@@ -131,7 +138,7 @@ export class ShopScene extends Phaser.Scene {
 
   private handleBuy(item: ShopItem) {
     if (this.pickerPanel) return;
-    if (item.type === 'supply') {
+    if (item.type === 'supply' || item.type === 'respec') {
       getSfx(this).play(SFX_KEYS.purchase);
       this.gameState.currency -= item.price;
       this.gameState.inventory = addToInventory(this.gameState.inventory ?? [], item.id);

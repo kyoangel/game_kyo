@@ -1,5 +1,7 @@
 import type { ShopItem } from '../types';
 
+export const RESPEC_ITEM_ID = 'item_respec_module';
+
 export const SHOP_ITEMS: ShopItem[] = [
   { id: 'scroll_burst_shot', type: 'skill_scroll', name: '爆發射擊卷軸', price: 40, description: '教導一名角色「爆發射擊」', skillId: 'burst_shot' },
   { id: 'scroll_shield_bash', type: 'skill_scroll', name: '盾擊卷軸', price: 35, description: '教導一名角色「盾擊」', skillId: 'shield_bash' },
@@ -14,4 +16,5 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'scroll_toxic_spray', type: 'skill_scroll', name: '毒霧噴灑卷軸', price: 45, description: '教導一名角色「毒霧噴灑」', skillId: 'toxic_spray' },
   { id: 'supply_medkit_s', type: 'supply', name: '小型醫療包', price: 25, description: '恢復 50 HP', healAmount: 50 },
   { id: 'supply_medkit_l', type: 'supply', name: '大型醫療包', price: 70, description: '恢復 150 HP', healAmount: 150 },
+  { id: RESPEC_ITEM_ID, type: 'respec', name: '神經重塑模組', price: 80, description: '重置一名角色的技能樹分配，返還已花費的技能點數' },
 ];

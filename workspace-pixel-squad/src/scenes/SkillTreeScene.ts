@@ -1,7 +1,16 @@
 import Phaser from 'phaser';
 import type { Character, GameState, SkillTreeNode } from '../types';
-import { getSkillTree, canUnlockNode, unlockNode, isNodeUnlocked } from '../battle/SkillTree';
+import {
+  getSkillTree,
+  canUnlockNode,
+  unlockNode,
+  isNodeUnlocked,
+  calculateRespecRefund,
+  canRespec,
+  respecCharacter,
+} from '../battle/SkillTree';
 import { SKILLS } from '../data/skills';
+import { RESPEC_ITEM_ID } from '../data/shopItems';
 import { saveSlot } from '../save/SaveSystem';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
@@ -19,6 +28,7 @@ export class SkillTreeScene extends Phaser.Scene {
   private gameState!: GameState;
   private rowObjects: Phaser.GameObjects.GameObject[] = [];
   private detailPanel?: Phaser.GameObjects.Container;
+  private respecConfirmPanel?: Phaser.GameObjects.Container;
 
   constructor() { super({ key: 'SkillTreeScene' }); }
 
@@ -114,8 +124,78 @@ export class SkillTreeScene extends Phaser.Scene {
       });
     });
 
-    this.addCloseButton(panel, 190);
+    this.addRespecButton(panel, char, tree);
+    this.addCloseButton(panel, 190, 65);
     this.detailPanel = panel;
+  }
+
+  private addRespecButton(panel: Phaser.GameObjects.Container, char: Character, tree: SkillTreeNode[]) {
+    const enabled = canRespec(char, this.gameState.inventory ?? [], RESPEC_ITEM_ID);
+    const color = enabled ? 0xb45309 : 0x4b5563;
+    const label = enabled
+      ? `重置技能\n(返還${calculateRespecRefund(char, tree)}點)`
+      : '重置技能';
+
+    const btn = this.add.rectangle(-65, 190, 110, 32, color);
+    const txt = this.add.text(-65, 190, label, {
+      fontSize: '10px', color: '#fff', fontFamily: 'monospace', align: 'center',
+    }).setOrigin(0.5);
+    panel.add([btn, txt]);
+
+    if (enabled) {
+      btn.setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.showRespecConfirm(char, tree); });
+      btn.on('pointerover', () => btn.setAlpha(0.8));
+      btn.on('pointerout', () => btn.setAlpha(1));
+    }
+  }
+
+  private showRespecConfirm(char: Character, tree: SkillTreeNode[]) {
+    if (this.respecConfirmPanel) return;
+
+    const W = 360, H = 640;
+    const panel = this.add.container(W / 2, H / 2);
+    panel.setDepth(20);
+
+    const bg = this.add.rectangle(0, 0, 280, 180, 0x1f2937).setStrokeStyle(2, 0xb45309);
+    const refund = calculateRespecRefund(char, tree);
+    const text = this.add.text(0, -30,
+      `重置 ${char.name} 的技能樹？\n返還 ${refund} 點技能點\n消耗 1 個 神經重塑模組`,
+      { fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace', align: 'center' },
+    ).setOrigin(0.5);
+    panel.add([bg, text]);
+
+    const confirmBtn = this.add.rectangle(-65, 50, 110, 32, 0xb45309).setInteractive({ useHandCursor: true });
+    const confirmTxt = this.add.text(-65, 50, '確定', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    confirmBtn.on('pointerdown', () => this.handleRespecConfirm(char, tree));
+    confirmBtn.on('pointerover', () => confirmBtn.setAlpha(0.8));
+    confirmBtn.on('pointerout', () => confirmBtn.setAlpha(1));
+    panel.add([confirmBtn, confirmTxt]);
+
+    const cancelBtn = this.add.rectangle(65, 50, 110, 32, 0x7f1d1d).setInteractive({ useHandCursor: true });
+    const cancelTxt = this.add.text(65, 50, '取消', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+    cancelBtn.on('pointerdown', () => {
+      getSfx(this).play(SFX_KEYS.buttonClick);
+      this.respecConfirmPanel?.destroy();
+      this.respecConfirmPanel = undefined;
+    });
+    cancelBtn.on('pointerover', () => cancelBtn.setAlpha(0.8));
+    cancelBtn.on('pointerout', () => cancelBtn.setAlpha(1));
+    panel.add([cancelBtn, cancelTxt]);
+
+    this.respecConfirmPanel = panel;
+  }
+
+  private handleRespecConfirm(char: Character, tree: SkillTreeNode[]) {
+    getSfx(this).play(SFX_KEYS.purchase);
+    const result = respecCharacter(char, tree, this.gameState.inventory ?? [], RESPEC_ITEM_ID);
+    this.updateCharInState(result.character);
+    this.gameState.inventory = result.inventory;
+    saveSlot(this.gameState);
+    this.respecConfirmPanel?.destroy();
+    this.respecConfirmPanel = undefined;
+    this.closeDetailPanel();
+    this.showDetailPanel(result.character);
   }
 
   private renderNode(
@@ -146,9 +226,9 @@ export class SkillTreeScene extends Phaser.Scene {
     }
   }
 
-  private addCloseButton(panel: Phaser.GameObjects.Container, y: number) {
-    const closeBtn = this.add.rectangle(0, y, 120, 32, 0x7f1d1d).setInteractive({ useHandCursor: true });
-    const closeTxt = this.add.text(0, y, '關閉', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+  private addCloseButton(panel: Phaser.GameObjects.Container, y: number, x = 0) {
+    const closeBtn = this.add.rectangle(x, y, 110, 32, 0x7f1d1d).setInteractive({ useHandCursor: true });
+    const closeTxt = this.add.text(x, y, '關閉', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
     closeBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.closeDetailPanel(); });
     closeBtn.on('pointerover', () => closeBtn.setAlpha(0.8));
     closeBtn.on('pointerout', () => closeBtn.setAlpha(1));

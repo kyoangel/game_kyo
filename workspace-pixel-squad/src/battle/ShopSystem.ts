@@ -2,6 +2,7 @@ import type { Character, InventoryEntry, ShopItem } from '../types';
 import { SKILLS } from '../data/skills';
 import { SHOP_ITEMS } from '../data/shopItems';
 import { EXCLUSIVE_ITEMS } from '../data/exclusiveItems';
+import { addOneToInventory, removeOneFromInventory } from './InventoryUtils';
 
 export const MAX_SKILLS_PER_CHARACTER = 4;
 
@@ -28,13 +29,7 @@ export function teachSkill(character: Character, skillId: string): Character {
 }
 
 export function addToInventory(inventory: InventoryEntry[], itemId: string): InventoryEntry[] {
-  const idx = inventory.findIndex(e => e.itemId === itemId);
-  if (idx >= 0) {
-    const updated = [...inventory];
-    updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + 1 };
-    return updated;
-  }
-  return [...inventory, { itemId, quantity: 1 }];
+  return addOneToInventory(inventory, itemId);
 }
 
 export function canUseSupply(target: Character): boolean {
@@ -52,19 +47,7 @@ export function useSupply(
     stats: { ...target.stats, hp: Math.min(target.stats.maxHp, target.stats.hp + healAmount) },
   };
 
-  const idx = inventory.findIndex(e => e.itemId === itemId);
-  let updatedInventory: InventoryEntry[];
-  if (idx >= 0) {
-    const newQuantity = inventory[idx].quantity - 1;
-    if (newQuantity <= 0) {
-      updatedInventory = inventory.filter((_, i) => i !== idx);
-    } else {
-      updatedInventory = [...inventory];
-      updatedInventory[idx] = { ...updatedInventory[idx], quantity: newQuantity };
-    }
-  } else {
-    updatedInventory = [...inventory];
-  }
+  const updatedInventory = removeOneFromInventory(inventory, itemId);
 
   return { character, inventory: updatedInventory };
 }

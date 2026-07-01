@@ -222,7 +222,7 @@ export interface GameState {
   equipmentInventory: EquipmentInventoryEntry[]; // owned, currently-unequipped equipment
 }
 
-export type ShopItemType = 'skill_scroll' | 'supply';
+export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';
 
 export interface ShopItem {
   id: string;

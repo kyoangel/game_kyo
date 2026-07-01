@@ -1,7 +1,8 @@
-import type { Character, Skill, SkillTreeNode } from '../types';
+import type { Character, InventoryEntry, Skill, SkillTreeNode } from '../types';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { SKILLS } from '../data/skills';
 import { MAX_SKILLS_PER_CHARACTER } from './ShopSystem';
+import { removeOneFromInventory } from './InventoryUtils';
 
 export function getSkillTree(templateId: string): SkillTreeNode[] | undefined {
   return PLAYER_TEMPLATES.find(t => t.id === templateId)?.skillTree;
@@ -34,5 +35,39 @@ export function unlockNode(character: Character, node: SkillTreeNode): Character
     skillPoints: (character.skillPoints ?? 0) - node.cost,
     unlockedSkillNodeIds: [...(character.unlockedSkillNodeIds ?? []), node.id],
     skills: alreadyKnown ? character.skills : [...character.skills, skill],
+  };
+}
+
+export function calculateRespecRefund(character: Character, tree: SkillTreeNode[]): number {
+  const unlockedIds = character.unlockedSkillNodeIds ?? [];
+  return tree
+    .filter(n => unlockedIds.includes(n.id))
+    .reduce((sum, n) => sum + n.cost, 0);
+}
+
+export function resetSkillTree(character: Character, tree: SkillTreeNode[]): Character {
+  const refund = calculateRespecRefund(character, tree);
+  return {
+    ...character,
+    skillPoints: (character.skillPoints ?? 0) + refund,
+    unlockedSkillNodeIds: [],
+  };
+}
+
+export function canRespec(character: Character, inventory: InventoryEntry[], itemId: string): boolean {
+  const hasUnlocked = (character.unlockedSkillNodeIds ?? []).length > 0;
+  const owned = inventory.find(e => e.itemId === itemId)?.quantity ?? 0;
+  return hasUnlocked && owned > 0;
+}
+
+export function respecCharacter(
+  character: Character,
+  tree: SkillTreeNode[],
+  inventory: InventoryEntry[],
+  itemId: string
+): { character: Character; inventory: InventoryEntry[] } {
+  return {
+    character: resetSkillTree(character, tree),
+    inventory: removeOneFromInventory(inventory, itemId),
   };
 }
