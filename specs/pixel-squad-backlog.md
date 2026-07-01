@@ -57,3 +57,12 @@
 - [ ] 💰 `makeGameState()` factory 在 `WeaknessDiscovery.test.ts`（第 19 行）與 `GeneralWeaknessWiring.test.ts`（第 24 行）各自獨立定義、結構完全相同——建議抽取到 `tests/unit/helpers/gameState.ts` 共用，兩個檔案合計可省 ~15 行重複程式碼
 - [ ] 💰 `StageData.weakness.test.ts` 的 `EXPECTED_WEAKNESS` 查找表（~50 行）完整鏡像 spec 的 assignment table——每新增一個敵人需在 spec、`stages.ts`、此表三處同步；建議改為存在性斷言（`expect(enemy.weakness).toBeDefined()`）加上抽查 3-4 個固定 id，消除維護負擔
 - [ ] 🎮 沒有測試覆蓋「weakness hit 同時秒殺最後一隻敵人」的邊界情況——`delayedCall(900, () => showWeaknessRevealBanner(...))` callback 在 900ms 後可能對已轉場的 BattleScene 執行，建議在 callback 中加入 `if (!this.scene.isActive()) return` guard 並補充對應的邊界測試
+
+- [ ] 🔄 「Scene active guard」段落先寫「All `this.time.delayedCall(...)` callbacks...must start with guard」（全域規則），但後面只列出兩個明確要加 guard 的地點——導致 `executeNextInQueue` 的凍結跳過 `delayedCall(600, ...)`、defend 的 `delayedCall(900, ...)`、`executeEnemyAction` 的 boss phase `delayedCall`（`scenes/BattleScene.ts` 現有程式碼）都沒有加 guard，卻同樣會在 checkBattleEnd 轉場後對已失效的 scene 操作。建議 spec 明確列出檔案中「每一個」需要 guard 的 delayedCall 呼叫點，或明確縮小範圍為「僅新增的呼叫點」，避免全域宣告與明確清單互相矛盾
+- [ ] 🎮 `BattleScene.aoaWiring.test.ts`／`BattleScene.sceneGuard.test.ts` 全部是對原始碼文字做 regex/brace-matching 斷言（因為 Phaser Scene 無法在 Node vitest 環境實例化），而非驗證實際行為——即使邏輯錯誤（例如 queue 插入順序錯、HP 扣減錯誤）只要字串樣式吻合仍會通過，且日後單純改變數命名（如 `queue` → `remaining`）就會讓測試假性失敗。建議把 `executeNextInQueue`／`showAoaPrompt` 內的純狀態轉換（knockdown 判定、queue 插入、AOA 傷害後的 alive/hp 更新）抽成不依賴 Phaser 的純函式，讓這類 wiring 測試改用真實輸入輸出驗證，取代目前的原始碼字串比對
+- [ ] 🎮 AC-7 只驗證「AOA 傷害後 `stats.hp <= 0` 的敵人會被設為 `alive = false`」，沒有規範或測試「部分知覺敵人被 AOA 打傷但沒死」的情況——這些敵人仍保留 `knockedDown = true` 直到下回合 `resetRoundFlags`，理論上若同回合又有新的 weakness hit，`shouldTriggerAoa` 會因為 `aoaState.usedThisRound = true` 被擋下，但目前沒有 AC 或測試明確驗證「AOA 未全滅時的殘存 knockedDown 狀態不會導致同回合重複觸發 AOA 提示」。建議新增 AC 明確定義此邊界情況並補測試
+- [ ] 💰 spec 的「Rules」段落用文字重述 knockdown／bonus action／AOA 的條件邏輯，「UI Changes」段落再用近乎逐字的完整程式碼區塊重複同一段邏輯一次——Coder 只需依照程式碼區塊即可滿足所有 Rules 條件，文字說明沒有提供額外資訊卻佔了大量篇幅。建議 Rules 段落改為簡短條列並註明「詳細實作見 UI Changes 程式碼區塊」，省去重複描述
+- [ ] 🔄 「Scene active guard」段落先寫全域規則（所有 delayedCall 都要 guard），但後面只明確列出兩個地點——導致 `executeNextInQueue` 凍結跳過的 delayedCall、defend 的 delayedCall、boss phase 的 delayedCall 都沒補 guard，規則與明確清單互相矛盾，建議 spec 列出檔案中每一個需要 guard 的呼叫點或明確縮小範圍
+- [ ] 🎮 新增的兩個 wiring 測試檔全是對原始碼文字做 regex/brace-matching，並非驗證實際行為，邏輯錯誤只要字串樣式吻合仍會通過、單純改變數名就會假性失敗，建議把純狀態轉換邏輯抽成不依賴 Phaser 的純函式以便真正做行為測試
+- [ ] 🎮 AC-7 沒定義「AOA 傷害未能全滅、部分敵人存活但仍標記 knockedDown」時是否會在同回合重複觸發 AOA 提示，建議補上對應 AC 與測試
+- [ ] 💰 spec 的 Rules 段落與 UI Changes 段落幾乎逐字重複描述同一段邏輯，建議 Rules 改為簡短條列並指向程式碼區塊，省去重複篇幅
