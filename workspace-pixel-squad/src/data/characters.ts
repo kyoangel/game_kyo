@@ -1,4 +1,20 @@
-import type { CharacterTemplate } from '../types';
+import type { CharacterTemplate, SkillTreeNode } from '../types';
+
+function buildSkillTree(
+  templateId: string,
+  offense: [string, string],
+  control: [string, string],
+  support: [string, string],
+): SkillTreeNode[] {
+  return [
+    { id: `${templateId}_offense_1`, branch: 'offense', tier: 1, skillId: offense[0], cost: 1 },
+    { id: `${templateId}_offense_2`, branch: 'offense', tier: 2, skillId: offense[1], cost: 2 },
+    { id: `${templateId}_control_1`, branch: 'control', tier: 1, skillId: control[0], cost: 1 },
+    { id: `${templateId}_control_2`, branch: 'control', tier: 2, skillId: control[1], cost: 2 },
+    { id: `${templateId}_support_1`, branch: 'support', tier: 1, skillId: support[0], cost: 1 },
+    { id: `${templateId}_support_2`, branch: 'support', tier: 2, skillId: support[1], cost: 2 },
+  ];
+}
 
 export const PLAYER_TEMPLATES: CharacterTemplate[] = [
   {
@@ -7,6 +23,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: ['burst_shot'],
     statGrowth: { hp: 0, atk: 0, def: 0, spd: 0 },
     unlockMethod: 'start',
+    skillTree: buildSkillTree('protagonist', ['swift_strike', 'fire_grenade'], ['cryo_round', 'emp_pulse'], ['combat_stim', 'overdrive']),
   },
   {
     id: 'rex', name: 'Rex', isProtagonist: false,
@@ -14,6 +31,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: ['shield_bash'],
     statGrowth: { hp: 12, atk: 2, def: 4, spd: 1 },
     unlockMethod: 'stage', unlockStageId: '1-2',
+    skillTree: buildSkillTree('rex', ['burst_shot', 'fire_grenade'], ['acid_splash', 'toxic_spray'], ['iron_will', 'overdrive']),
   },
   {
     id: 'nyx', name: 'Nyx', isProtagonist: false,
@@ -21,6 +39,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: ['swift_strike'],
     statGrowth: { hp: 5, atk: 5, def: 1, spd: 3 },
     unlockMethod: 'stage', unlockStageId: '1-4',
+    skillTree: buildSkillTree('nyx', ['burst_shot', 'fire_grenade'], ['emp_pulse', 'cryo_round'], ['combat_stim', 'overdrive']),
   },
   {
     id: 'vega', name: 'Vega', isProtagonist: false,
@@ -28,6 +47,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: ['combat_stim'],
     statGrowth: { hp: 6, atk: 6, def: 2, spd: 2 },
     unlockMethod: 'recruit', unlockStageId: '1-5',
+    skillTree: buildSkillTree('vega', ['shield_bash', 'swift_strike'], ['acid_splash', 'emp_pulse'], ['iron_will', 'overdrive']),
   },
   {
     id: 'ash', name: 'Ash', isProtagonist: false,
@@ -35,6 +55,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: ['iron_will'],
     statGrowth: { hp: 8, atk: 4, def: 3, spd: 2 },
     unlockMethod: 'stage', unlockStageId: '2-2',
+    skillTree: buildSkillTree('ash', ['shield_bash', 'burst_shot'], ['toxic_spray', 'cryo_round'], ['field_medic', 'overdrive']),
   },
   {
     id: 'crow', name: 'Crow', isProtagonist: false,
@@ -42,6 +63,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: [],
     statGrowth: { hp: 4, atk: 6, def: 1, spd: 4 },
     unlockMethod: 'recruit', unlockStageId: '2-5',
+    skillTree: buildSkillTree('crow', ['swift_strike', 'fire_grenade'], ['emp_pulse', 'acid_splash'], ['combat_stim', 'iron_will']),
   },
   {
     id: 'mira', name: 'Mira', isProtagonist: false,
@@ -49,6 +71,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: ['field_medic'],
     statGrowth: { hp: 10, atk: 2, def: 5, spd: 2 },
     unlockMethod: 'stage', unlockStageId: '3-3',
+    skillTree: buildSkillTree('mira', ['burst_shot', 'shield_bash'], ['toxic_spray', 'cryo_round'], ['iron_will', 'combat_stim']),
   },
   {
     id: 'zora', name: 'Zora', isProtagonist: false,
@@ -56,6 +79,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: [],
     statGrowth: { hp: 12, atk: 2, def: 6, spd: 1 },
     unlockMethod: 'recruit', unlockStageId: '3-5',
+    skillTree: buildSkillTree('zora', ['shield_bash', 'fire_grenade'], ['cryo_round', 'toxic_spray'], ['iron_will', 'field_medic']),
   },
   {
     id: 'rook', name: 'Rook', isProtagonist: false,
@@ -63,6 +87,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: [],
     statGrowth: { hp: 15, atk: 2, def: 5, spd: 1 },
     unlockMethod: 'stage', unlockStageId: '4-2',
+    skillTree: buildSkillTree('rook', ['shield_bash', 'burst_shot'], ['emp_pulse', 'toxic_spray'], ['iron_will', 'overdrive']),
   },
   {
     id: 'dex', name: 'Dex', isProtagonist: false,
@@ -70,6 +95,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: [],
     statGrowth: { hp: 18, atk: 2, def: 6, spd: 1 },
     unlockMethod: 'recruit', unlockStageId: '4-5',
+    skillTree: buildSkillTree('dex', ['fire_grenade', 'shield_bash'], ['acid_splash', 'cryo_round'], ['field_medic', 'iron_will']),
   },
   {
     id: 'echo', name: 'Echo', isProtagonist: false,
@@ -77,6 +103,7 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: [],
     statGrowth: { hp: 5, atk: 7, def: 1, spd: 4 },
     unlockMethod: 'stage', unlockStageId: '5-3',
+    skillTree: buildSkillTree('echo', ['swift_strike', 'burst_shot'], ['emp_pulse', 'acid_splash'], ['combat_stim', 'overdrive']),
   },
   {
     id: 'aaaa', name: 'AAAA', isProtagonist: false,
@@ -84,5 +111,6 @@ export const PLAYER_TEMPLATES: CharacterTemplate[] = [
     skillIds: [],
     statGrowth: { hp: 10, atk: 8, def: 3, spd: 3 },
     unlockMethod: 'recruit', unlockStageId: '5-5',
+    skillTree: buildSkillTree('aaaa', ['fire_grenade', 'burst_shot'], ['toxic_spray', 'cryo_round'], ['overdrive', 'combat_stim']),
   },
 ];

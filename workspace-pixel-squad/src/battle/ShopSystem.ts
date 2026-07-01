@@ -3,7 +3,7 @@ import { SKILLS } from '../data/skills';
 import { SHOP_ITEMS } from '../data/shopItems';
 import { EXCLUSIVE_ITEMS } from '../data/exclusiveItems';
 
-export const MAX_SKILLS_PER_CHARACTER = 3;
+export const MAX_SKILLS_PER_CHARACTER = 4;
 
 export function findItemById(itemId: string): ShopItem | undefined {
   return SHOP_ITEMS.find(i => i.id === itemId) ?? EXCLUSIVE_ITEMS.find(i => i.id === itemId);

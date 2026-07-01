@@ -7,6 +7,7 @@ import { PrepScene } from './scenes/PrepScene';
 import { WorldMapScene } from './scenes/WorldMapScene';
 import { ShopScene } from './scenes/ShopScene';
 import { EquipmentScene } from './scenes/EquipmentScene';
+import { SkillTreeScene } from './scenes/SkillTreeScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -19,7 +20,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
   },
-  scene: [TitleScene, BaseScene, BattleScene, ResultScene, PrepScene, WorldMapScene, ShopScene, EquipmentScene],
+  scene: [TitleScene, BaseScene, BattleScene, ResultScene, PrepScene, WorldMapScene, ShopScene, EquipmentScene, SkillTreeScene],
 };
 
 new Phaser.Game(config);

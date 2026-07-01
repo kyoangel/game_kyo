@@ -37,7 +37,8 @@
 
 ### 成長與建構
 - [x] 裝備系統：武器 / 防具欄位，商店可買裝備，提供屬性加成。Spec: `specs/pixel-squad-equipment-system.md`
-- [ ] 技能樹：每個角色有獨立的技能解鎖路徑（3 個分支）
+- [x] 技能樹：每個角色有獨立的技能解鎖路徑（3 個分支）。Spec: `specs/pixel-squad-skill-tree.md`
+- [ ] 技能樹重置（洗點）道具：允許玩家花費資源清空單一角色的 `unlockedSkillNodeIds` 並全額返還已花費的 `skillPoints`，修正誤點分配的問題（`specs/pixel-squad-skill-tree.md` 已定義的樹狀結構為前提）
 - [ ] 傭兵評鑑系統：戰鬥結束依表現（傷害輸出、存活率、弱點利用）給星評分，影響獎勵
 
 ### 探索與劇情

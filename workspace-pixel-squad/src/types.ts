@@ -7,6 +7,16 @@ export type BuffStat = 'atk' | 'def' | 'spd';
 export type Element = 'fire' | 'ice' | 'thunder' | 'toxin' | 'physical';
 export type StatusEffectType = 'poison' | 'burn' | 'freeze' | 'stun';
 
+export type SkillTreeBranch = 'offense' | 'control' | 'support';
+
+export interface SkillTreeNode {
+  id: string;           // `${templateId}_${branch}_${tier}`, e.g. 'rex_offense_1'
+  branch: SkillTreeBranch;
+  tier: 1 | 2;           // tier 2 requires tier 1 of the same branch unlocked first
+  skillId: string;       // key into SKILLS
+  cost: number;          // skillPoints required; 1 for tier 1, 2 for tier 2
+}
+
 export interface ActiveStatusEffect {
   type: StatusEffectType;
   /** Decremented by 1 at the start of each command phase tick. Removed when reaches 0. */
@@ -60,6 +70,7 @@ export interface CharacterTemplate {
   statGrowth: StatBlock;
   unlockMethod: 'start' | 'stage' | 'recruit';
   unlockStageId?: string;  // for 'stage' and 'recruit' types
+  skillTree: SkillTreeNode[];  // exactly 6 nodes: 3 branches × 2 tiers
 }
 
 /** Live combat instance */
@@ -98,6 +109,8 @@ export interface Character {
   bonusActionUsed?: boolean;
   /** Currently equipped weapon/armor, if any. Always {} for enemy characters. */
   equipment: CharacterEquipment;
+  skillPoints?: number;             // earned +1 per level-up; spent unlocking skill-tree nodes
+  unlockedSkillNodeIds?: string[];  // SkillTreeNode.id values this character has unlocked
 }
 
 export interface EnemyTemplate {

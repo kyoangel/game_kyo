@@ -4,6 +4,7 @@ import { canLevelUp, applyLevelUp, DEFAULT_LEVEL_UP_CONFIG } from '../battle/Lev
 import { allocateStat } from '../battle/ExpSystem';
 import { canUseSupply, useSupply, findItemById } from '../battle/ShopSystem';
 import { saveSlot } from '../save/SaveSystem';
+import { computeBaseHubButtons } from './BaseButtonLayout';
 import { CHAPTERS } from '../data/chapters';
 import { STAGES } from '../data/stages';
 import { getSfx } from '../audio/SfxManager';
@@ -71,23 +72,13 @@ export class BaseScene extends Phaser.Scene {
     this.add.text(20, 90, '出戰中 (最多5人)', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
     this.renderSquadSection(104);
 
-    const shopBtn = this.add.rectangle(70, 600, 90, 40, 0x7c3aed).setInteractive({ useHandCursor: true });
-    this.add.text(70, 600, '商店', { fontSize: '14px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
-    shopBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('ShopScene', { gameState: this.gameState }); });
-    shopBtn.on('pointerover', () => shopBtn.setAlpha(0.8));
-    shopBtn.on('pointerout', () => shopBtn.setAlpha(1));
-
-    const equipBtn = this.add.rectangle(180, 600, 90, 40, 0xb45309).setInteractive({ useHandCursor: true });
-    this.add.text(180, 600, '裝備', { fontSize: '14px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
-    equipBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('EquipmentScene', { gameState: this.gameState }); });
-    equipBtn.on('pointerover', () => equipBtn.setAlpha(0.8));
-    equipBtn.on('pointerout', () => equipBtn.setAlpha(1));
-
-    const mapBtn = this.add.rectangle(290, 600, 90, 40, 0x1d4ed8).setInteractive({ useHandCursor: true });
-    this.add.text(290, 600, '世界地圖', { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
-    mapBtn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start('WorldMapScene', { gameState: this.gameState }); });
-    mapBtn.on('pointerover', () => mapBtn.setAlpha(0.8));
-    mapBtn.on('pointerout', () => mapBtn.setAlpha(1));
+    computeBaseHubButtons().forEach(def => {
+      const btn = this.add.rectangle(def.x, def.y, def.width, def.height, def.color).setInteractive({ useHandCursor: true });
+      this.add.text(def.x, def.y, def.label, { fontSize: '12px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5);
+      btn.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); saveSlot(this.gameState); this.scene.start(def.targetScene, { gameState: this.gameState }); });
+      btn.on('pointerover', () => btn.setAlpha(0.8));
+      btn.on('pointerout', () => btn.setAlpha(1));
+    });
   }
 
   private renderSquadSection(startY: number) {

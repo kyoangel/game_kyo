@@ -34,8 +34,8 @@ function makeCharacter(overrides: Partial<Character> = {}): Character {
 }
 
 describe('MAX_SKILLS_PER_CHARACTER', () => {
-  it('is 3', () => {
-    expect(MAX_SKILLS_PER_CHARACTER).toBe(3);
+  it('is 4', () => {
+    expect(MAX_SKILLS_PER_CHARACTER).toBe(4);
   });
 });
 
@@ -66,7 +66,7 @@ describe('isEligibleForScroll', () => {
 
   it('returns false when the character is at MAX_SKILLS_PER_CHARACTER', () => {
     const char = makeCharacter({
-      skills: [SKILLS.burst_shot, SKILLS.shield_bash, SKILLS.swift_strike],
+      skills: [SKILLS.burst_shot, SKILLS.shield_bash, SKILLS.swift_strike, SKILLS.cryo_round],
     });
     expect(isEligibleForScroll(char, 'field_medic')).toBe(false);
   });
@@ -88,8 +88,8 @@ describe('hasAnyEligibleCharacter', () => {
 
   it('returns false when every pool member is at cap', () => {
     const pool = [
-      makeCharacter({ id: 'a', skills: [SKILLS.burst_shot, SKILLS.shield_bash, SKILLS.swift_strike] }),
-      makeCharacter({ id: 'b', skills: [SKILLS.burst_shot, SKILLS.shield_bash, SKILLS.field_medic] }),
+      makeCharacter({ id: 'a', skills: [SKILLS.burst_shot, SKILLS.shield_bash, SKILLS.swift_strike, SKILLS.cryo_round] }),
+      makeCharacter({ id: 'b', skills: [SKILLS.burst_shot, SKILLS.shield_bash, SKILLS.field_medic, SKILLS.swift_strike] }),
     ];
     expect(hasAnyEligibleCharacter(pool, 'iron_will')).toBe(false);
   });

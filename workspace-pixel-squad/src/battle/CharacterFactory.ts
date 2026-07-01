@@ -36,6 +36,8 @@ export function createCharacter(template: CharacterTemplate, level: number): Cha
     activeStatusEffects: [],
     skillCooldowns: {},
     equipment: {},
+    skillPoints: 0,
+    unlockedSkillNodeIds: [],
   };
 }
 
@@ -102,5 +104,7 @@ export function enemyToPlayerCharacter(enemy: Character, maxHp: number): Charact
     activeStatusEffects: [],
     skillCooldowns: {},
     equipment: {},
+    skillPoints: 0,
+    unlockedSkillNodeIds: [],
   };
 }

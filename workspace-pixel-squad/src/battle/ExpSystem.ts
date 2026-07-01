@@ -12,6 +12,7 @@ export function applyExp(character: Character, exp: number): Character {
     c.exp -= c.expToNext;
     c.level += 1;
     c.expToNext = expToNextLevel(c.level);
+    c.skillPoints = (c.skillPoints ?? 0) + 1;
 
     if (c.isProtagonist) {
       c.statPoints += STAT_POINTS_PER_LEVEL;
