@@ -77,3 +77,8 @@
 - [ ] 🎮 `SkillTree.ts` 缺少「skillPoints 恰好等於 node.cost」的邊界測試（`canUnlockNode` 在 `skillPoints === cost` 時應為 true），目前測試只涵蓋 `skillPoints: 1`（等於 tier1 cost）與 `skillPoints: 0`，未單獨驗證 tier2 cost=2 時 `skillPoints: 2` 恰好足夠的情況。
 - [ ] 🎮 `SkillTreeScene.renderNode` 解鎖成功後只重播 `SFX_KEYS.purchase` 並重繪面板，沒有針對「剛解鎖的節點」加上短暫的高亮/縮放等視覺回饋，建議之後追蹤加入解鎖動畫，讓玩家能明顯感知哪個節點剛被點亮（尤其一次可連續解鎖多個節點時容易忽略变化）。
 - [ ] 🔄 Rule 6 提到 `getSkillTree` 對 recruited-enemy 角色會回傳 `undefined` 並引用外部 spec 檔 `specs/pixel-squad-recruit-fix.md`，但沒有在 Test plan 中明確要求驗證「squad 中混合一般角色與 recruited-enemy 角色時列表渲染不出錯」的整合情境，僅涵蓋單一角色的 AC-8，建議之後補一個涵蓋混合陣容的測試案例。
+- [ ] 🔄 AC-3 的措辭「reference-unchanged in content (same skill ids, same length)」混用了「參照不變」與「內容相同」兩種不同斷言，容易誤導 Coder 寫成 `toBe` 而非 `toEqual`；未來 spec 中類似的陣列/物件不變性 AC 應明確寫「內容相等（toEqual），不要求物件參照相同」以消除歧義。
+- [ ] 💰 `SkillTreeScene.ts` 的 `addRespecButton`、`showRespecConfirm`、`addCloseButton` 三處重複寫死了按鈕尺寸（110x32）與顏色碼（0xb45309 橘 / 0x7f1d1d 紅 / 0x4b5563 灰），可抽成場景頂部的共用常數（如 `BUTTON_SIZE`、`COLOR_RESPEC`、`COLOR_CANCEL`、`COLOR_DISABLED`）減少重複字面值。
+- [ ] 💰 `tests/unit/SkillTree.respec.test.ts` 第 12 行手動宣告 `const RESPEC_ITEM_ID = 'item_respec_module'`，而非像 `ShopData.respec.test.ts`／`SaveSystem.skillTreeRespec.test.ts` 一樣從 `data/shopItems.ts` import 匯出的常數，未來若該 id 變動，此測試不會同步反映，應改為 import。
+- [ ] 🎮 `calculateRespecRefund` 對 `unlockedSkillNodeIds` 中「已不存在於目前 `getSkillTree()` 回傳陣列」的節點 id 會透過 `tree.filter` 靜默忽略其花費，若未來技能樹改版移除/改名節點，玩家洗點時會悄悄少退還點數且無任何警告；應在 `SkillTree.respec.test.ts` 新增一個「unlockedSkillNodeIds 含有 tree 中不存在的 id」情境測試，確認此行為是否為預期。
+- [ ] 🎮 `showRespecConfirm` 的確認文案（`重置 ${char.name} 的技能樹？...`）沒有提及「已學會的技能不會被移除」這個 Rule 4 的關鍵限制，玩家容易誤以為洗點會連技能一起清空，建議在確認面板文字加一行提示以降低誤解與客服詢問。
