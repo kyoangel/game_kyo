@@ -72,3 +72,8 @@
 - [ ] 💰 `scenes/BaseScene.ts` 的 `renderCharCard` 與 `scenes/PrepScene.ts` 的 `renderPartyList` 內含逐字相同的裝備摘要區塊（`⚔${weapon.name} 🛡${armor.name}` 組字邏輯），建議抽成 `battle/EquipmentSystem.ts` 裡的 `formatGearSummary(character): string` 共用函式。
 - [ ] 🎮 目前沒有測試涵蓋負數 SPD 裝備（如 `weapon_heavy_cannon` SPD-2、`armor_titan_shell` SPD-3）疊加後把 `effectiveSpd` 壓到 0 以下的情況，而 `TurnEngine.ts:8` 的出手順序排序直接使用該值相減；請在 `Buffs.equipment.test.ts` 補上低基礎 SPD 角色同時裝備這兩件負面裝備的案例，並確認 `TurnEngine` 排序在負值下仍合理。
 - [ ] 🎮 `EquipmentScene.showEquipmentPicker` 的「該格位無可用裝備」placeholder 分支（`entries.length === 0` 顯示「（無可用裝備，請先至商店購買）」）目前完全沒有自動化測試覆蓋，建議至少在 `EquipmentSystem.test.ts` 新增一個案例驗證：當 `equipmentInventory` 對某個 slot 過濾後為空陣列時，呼叫端能正確取得空陣列而非 `undefined`，避免 UI 端過濾邏輯的隱性假設之後被破壞而不被發現。
+- [ ] 🔄 在 spec 的 Rules 區塊中，Rule 4 與 Rule 5 對「已學會技能跳過上限檢查」描述重複兩次（"same rule... same check, not a separate exemption"），可合併成一條規則並讓 AC-6/AC-7 直接引用，減少 Coder 需要交叉比對兩處措辭是否一致的認知負擔。
+- [ ] 💰 `data/characters.ts` 的技能樹指派表（12 個角色 × 3 分支）目前以 Markdown 表格 + 對應的 `buildSkillTree(...)` 呼叫重複描述兩次（表格與 code example），未來新增角色時建議只保留程式碼範例或改用更精簡的 CSV/JSON 片段，減少 spec token 量。
+- [ ] 🎮 `SkillTree.ts` 缺少「skillPoints 恰好等於 node.cost」的邊界測試（`canUnlockNode` 在 `skillPoints === cost` 時應為 true），目前測試只涵蓋 `skillPoints: 1`（等於 tier1 cost）與 `skillPoints: 0`，未單獨驗證 tier2 cost=2 時 `skillPoints: 2` 恰好足夠的情況。
+- [ ] 🎮 `SkillTreeScene.renderNode` 解鎖成功後只重播 `SFX_KEYS.purchase` 並重繪面板，沒有針對「剛解鎖的節點」加上短暫的高亮/縮放等視覺回饋，建議之後追蹤加入解鎖動畫，讓玩家能明顯感知哪個節點剛被點亮（尤其一次可連續解鎖多個節點時容易忽略变化）。
+- [ ] 🔄 Rule 6 提到 `getSkillTree` 對 recruited-enemy 角色會回傳 `undefined` 並引用外部 spec 檔 `specs/pixel-squad-recruit-fix.md`，但沒有在 Test plan 中明確要求驗證「squad 中混合一般角色與 recruited-enemy 角色時列表渲染不出錯」的整合情境，僅涵蓋單一角色的 AC-8，建議之後補一個涵蓋混合陣容的測試案例。
