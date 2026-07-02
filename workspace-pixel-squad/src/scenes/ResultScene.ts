@@ -52,7 +52,7 @@ export class ResultScene extends Phaser.Scene {
       let updatedGameState = gameState;
       const isFirstClear = !!gameState && !!stage && !gameState.stageProgress.completedStageIds.includes(stage.id);
       if (gameState && stage) {
-        updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy, undefined, starRating, alliesSurvived);
+        updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy, undefined, starRating, alliesSurvived, playerParty);
         saveSlot(updatedGameState);
       }
       const newExpPool = updatedGameState?.expPool ?? (expPool + expGained);

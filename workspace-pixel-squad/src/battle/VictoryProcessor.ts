@@ -2,6 +2,7 @@ import type { Character, GameState, Stage } from '../types';
 import { createCharacter, enemyToPlayerCharacter } from './CharacterFactory';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { addToInventory } from './ShopSystem';
+import { applyBondGains } from './BondSystem';
 
 export function processVictory(
   gameState: GameState,
@@ -11,6 +12,7 @@ export function processVictory(
   ngPlusCycle = 0,
   starRating = 1,
   alliesSurvived = false,
+  playerParty: Character[] = [],
 ): GameState {
   const rewardMultiplier = 1 + ngPlusCycle * 0.2;
   const starMultiplier = 1 + (Math.max(1, Math.min(3, starRating)) - 1) * 0.1;
@@ -56,6 +58,9 @@ export function processVictory(
   if (alliesSurvived && !state.perfectClearStageIds.includes(stage.id)) {
     state.perfectClearStageIds.push(stage.id);
   }
+
+  // Bond gain: every unique pair of alive characters in the post-battle party gains bond
+  state.bondLevels = applyBondGains(gameState.bondLevels, playerParty);
 
   // hasClearedGame is set permanently once the final boss is cleared; never reset (incl. by NG+)
   if (stage.id === '5-5') {

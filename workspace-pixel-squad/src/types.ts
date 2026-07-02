@@ -111,6 +111,8 @@ export interface Character {
   equipment: CharacterEquipment;
   skillPoints?: number;             // earned +1 per level-up; spent unlocking skill-tree nodes
   unlockedSkillNodeIds?: string[];  // SkillTreeNode.id values this character has unlocked
+  /** True if this character already performed a support attack this round (bond system). */
+  supportUsedThisRound?: boolean;
 }
 
 export interface EnemyTemplate {
@@ -231,6 +233,8 @@ export interface GameState {
   equipmentInventory: EquipmentInventoryEntry[]; // owned, currently-unequipped equipment
   bestStarRatings?: Record<string, number>; // key = Stage.id, value = best star rating (1-3) ever achieved for that stage
   perfectClearStageIds?: string[]; // Stage.id values ever cleared with battleStats.playerKOCount === 0
+  /** key = bondKey(templateIdA, templateIdB); value = accumulated bond points between that pair. */
+  bondLevels?: Record<string, number>;
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';

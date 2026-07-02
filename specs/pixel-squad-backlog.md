@@ -44,7 +44,7 @@
 
 ### 探索與劇情
 - [x] 隱藏關卡：符合條件（如全員存活通關）才解鎖的秘密地圖。Spec: `specs/pixel-squad-hidden-stage.md`
-- [ ] 角色關係系統：隊員之間的羈絆值，高羈絆觸發援護攻擊
+- [x] 角色關係系統：隊員之間的羈絆值，高羈絆觸發援護攻擊。Spec: `specs/pixel-squad-bond-system.md`
 - [ ] 世界末日計時器：全域倒數，時間壓力機制，逼迫玩家優先完成主線
 
 ### Roguelite 要素

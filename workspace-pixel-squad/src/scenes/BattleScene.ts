@@ -10,6 +10,7 @@ import {
   type AoaRoundState,
 } from '../battle/AllOutAttack';
 import { calcDamage, calcHeal } from '../battle/DamageCalc';
+import { pickSupporter, getBond, rollSupportAttack, calcSupportDamage, resetSupportRoundFlags } from '../battle/BondSystem';
 import { chooseTarget } from '../battle/AI';
 import { applyBuff, tickBuffs, applyStatusEffect, tickStatusEffects, type StatusTickEvent } from '../battle/Buffs';
 import { getStatusIconData } from '../ui/battleStatusIcons';
@@ -316,6 +317,7 @@ export class BattleScene extends Phaser.Scene {
   private startCommandPhase() {
     this.battleStats.roundsUsed++;
     resetRoundFlags([...this.playerParty, ...this.enemyParty]);
+    resetSupportRoundFlags(this.playerParty);
     resetAoaRoundState(this.aoaState);
     this.phase = 'command';
     this.pendingCommands.clear();
@@ -708,7 +710,19 @@ export class BattleScene extends Phaser.Scene {
     // Bonus action
     applyWeaknessBonus(cmd.character, hpAfterHit, dmgResult.isWeaknessHit, queue);
 
-    this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, next, isCrit, skill?.appliesStatus, skill?.id);
+    const finalTarget = target;
+    const afterPrimaryHit = () => {
+      if (!finalTarget.alive) { next(); return; }
+      const supporter = pickSupporter(cmd.character, this.playerParty, this.gameState?.bondLevels);
+      if (!supporter) { next(); return; }
+      const bond = getBond(this.gameState?.bondLevels, cmd.character.templateId, supporter.templateId);
+      if (!rollSupportAttack(bond)) { next(); return; }
+      supporter.supportUsedThisRound = true;
+      const supportDmg = calcSupportDamage(supporter, finalTarget);
+      this.applyDamageAndAdvance(supporter, finalTarget, supportDmg, '援護攻擊', next);
+    };
+
+    this.applyDamageAndAdvance(cmd.character, target, dmgResult.damage, skill?.name, afterPrimaryHit, isCrit, skill?.appliesStatus, skill?.id);
   }
 
   private attemptRecruitAction(_attacker: Character, enemy: Character) {
