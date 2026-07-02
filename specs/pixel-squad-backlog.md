@@ -93,3 +93,8 @@
 - [ ] 💰 `tests/unit/support/extractMethod.ts` 與新增的 `tests/unit/support/extractWorldMapMethod.ts` 內含幾乎完全相同的 35 行大括號比對演算法（`extractMethod` 函式），應合併成單一 `extractMethod(source, methodName)` 通用工具，場景檔路徑改用參數傳入（如 `readSceneSource(path)`），供 BattleScene 與 WorldMapScene 測試共用。
 - [ ] 🎮 `WorldMapScene.createStageList()` 中 `'★'.repeat(bestRating)` 沒有下限保護，若 `bestRating` 為負值（例如存檔被手動竄改或未來合併邏輯出錯寫入負數）會直接拋出 `RangeError: Invalid count value`，導致整個世界地圖畫面無法渲染；應在讀取後加上 `Math.max(0, Math.min(3, bestRating))` 並補一則「bestRating 為 -1 或 4」的邊界測試。
 - [ ] 🎮 玩家重玩已通關關卡並刷新最佳星等時（例如從 1★ 進步到 3★），目前沒有任何「New Best!」提示或強化回饋，玩家可能完全沒注意到自己的紀錄被更新；建議在 `ResultScene` 偵測 `starRating > previousBest` 時加入額外文字或動畫提示。
+- [ ] 🔄 spec 應明確要求 WorldMapScene.hiddenStage.test.ts 用 `stageRows.length` 差異驗證 AC-4（未解鎖時 row 數量不變）與 AC-5（解鎖後恰好 +1），目前測試計畫只做 source-text 斷言，並未真正驗證 rule 7「不影響 scroll 高度」這條最核心的行為
+- [ ] 🔄 VictoryProcessor 簽名已連續兩次在末尾追加可選參數（starRating、alliesSurvived），建議之後的 spec 在 Rules 區塊固定寫明「新增參數必須是目前最後一個可選參數，禁止插入既有參數之間」，避免下一次功能疊加時位置搞錯
+- [ ] 💰 WorldMapScene 的 hidden-stage render pass 幾乎完整複製了 per-chapter 迴圈裡 background/text/interactive 的建構邏輯（約 30 行），建議抽出共用 `createStageRow(stage, bgColor, textColor, prefix, isAvailable)` helper，兩處都呼叫它，減少重複並避免未來只改一處導致行為分歧
+- [ ] 🎮 沒有任何測試驗證 HS-1 的 `preDialog`（'???' 說話者、三行台詞）真的會在首次進入戰鬥前顯示，建議補一個 BattleScene 或 stage-transition 測試斷言 `preDialog.lines` 被正確讀取並渲染
+- [ ] 🎮 HS-1 的敵人數值（vault_keeper HP220/ATK34/DEF24）相對前置關卡 2-5（Crow boss）沒有數值比較測試來保證「隱藏關卡應更具挑戰性」的設計意圖，建議新增一個測試斷言 HS-1 敵人平均 HP/ATK 高於 2-5 的敵人平均值，把平衡意圖變成可驗證的迴歸防線
