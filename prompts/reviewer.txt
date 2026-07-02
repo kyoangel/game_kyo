@@ -16,7 +16,7 @@
 - [ ] GameGrid 相關操作皆為純函式，不會直接 mutate 傳入的 grid 參數
 - [ ] workspace/public/manifest.json 與 workspace/public/sw.js 存在（Vite 預設靜態資源目錄，會以 /manifest.json 與 /sw.js 提供），且 workspace/index.html 已正確連結兩者
 - [ ] 若 src/data/audio.ts 有定義音檔路徑（如 `audio/attack.mp3`），對應的實體檔案必須存在於 workspace-pixel-squad/public/ 下（例如 public/audio/attack.mp3）；若尚未存在則 approved=false
-- [ ] 若 BattleScene.ts 渲染角色，敵方單位必須使用 `add.sprite()` 或 `add.image()` 顯示像素素材，不可使用純色的 `add.rectangle()` 作為角色主體
+- [ ] 若 BattleScene.ts 渲染角色，敵方單位主路徑必須使用 `add.sprite()` 或 `add.image()` 顯示像素素材；允許在 sprite/image 皆不符合時有一個最後的 `add.rectangle()` 防禦性 fallback（例如未知 templateId 的兜底渲染），此 fallback 不視為違規
 <!-- CHECKLIST_END -->
 
 限制：

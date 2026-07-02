@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -14,22 +15,38 @@ class ReviewResult(BaseModel):
     comments: list[str]
 
 
-def _format_changed_files(changed_files: list[Path], repo_root: Path) -> str:
+def _get_diff(changed_files: list[Path], repo_root: Path) -> str:
     if not changed_files:
         return "No files were changed."
 
-    blocks = []
+    # Send unified diff instead of full file content — much smaller payload
+    result = subprocess.run(
+        ["git", "diff", "HEAD", "--"] + [str(p) for p in changed_files],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    diff = result.stdout.strip()
+
+    # Also include untracked new files as full content (not in git diff)
+    new_file_blocks = []
     for path in changed_files:
         full_path = repo_root / path
-        if not full_path.exists():
-            blocks.append(f"## {path}\n(file deleted)")
-        elif full_path.is_dir():
-            blocks.append(f"## {path}\n(new directory)")
-        else:
-            content = full_path.read_text()
-            blocks.append(f"## {path}\n{content}")
+        if full_path.exists() and full_path.is_file():
+            status = subprocess.run(
+                ["git", "ls-files", "--error-unmatch", str(path)],
+                cwd=repo_root, capture_output=True,
+            ).returncode
+            if status != 0:  # untracked = new file
+                new_file_blocks.append(f"### New file: {path}\n{full_path.read_text()}")
 
-    return "\n\n".join(blocks)
+    parts = []
+    if diff:
+        parts.append(f"## Git diff (modified files)\n```diff\n{diff}\n```")
+    if new_file_blocks:
+        parts.append("## New files (full content)\n\n" + "\n\n".join(new_file_blocks))
+
+    return "\n\n".join(parts) if parts else "No changes detected."
 
 
 def _claude_fallback_review(task: str, system_prompt: str, repo_root: Path) -> ReviewResult:
@@ -67,7 +84,7 @@ def _claude_fallback_review(task: str, system_prompt: str, repo_root: Path) -> R
 
 def run_reviewer(changed_files: list[Path], repo_root: Path) -> ReviewResult:
     system_prompt = prompt_store.load("reviewer", repo_root)
-    task = _format_changed_files(changed_files, repo_root)
+    task = _get_diff(changed_files, repo_root)
 
     try:
         return gemini_client.call_gemini(
