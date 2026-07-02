@@ -146,6 +146,8 @@ export interface Stage {
   unlockCharacterId?: string;   // character unlocked on first clear
   preDialog?: StageDialog;      // shown before battle on first visit
   itemRewards?: StageItemReward[]; // side quests only, granted on first clear
+  isHidden?: boolean;                    // true = never listed by the normal per-chapter render loop; see WorldMapScene changes
+  unlockRequiresPerfectClear?: string;    // Stage.id that must appear in GameState.perfectClearStageIds to reveal this stage
 }
 
 export interface Chapter {
@@ -228,6 +230,7 @@ export interface GameState {
   discoveredWeaknesses?: Record<string, Element>; // key = EnemyTemplate.id
   equipmentInventory: EquipmentInventoryEntry[]; // owned, currently-unequipped equipment
   bestStarRatings?: Record<string, number>; // key = Stage.id, value = best star rating (1-3) ever achieved for that stage
+  perfectClearStageIds?: string[]; // Stage.id values ever cleared with battleStats.playerKOCount === 0
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';

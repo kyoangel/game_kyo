@@ -10,6 +10,7 @@ export function processVictory(
   recruitedEnemy: Character | undefined,
   ngPlusCycle = 0,
   starRating = 1,
+  alliesSurvived = false,
 ): GameState {
   const rewardMultiplier = 1 + ngPlusCycle * 0.2;
   const starMultiplier = 1 + (Math.max(1, Math.min(3, starRating)) - 1) * 0.1;
@@ -49,6 +50,12 @@ export function processVictory(
     ...(gameState.bestStarRatings ?? {}),
     [stage.id]: Math.max(existingBest, starRating),
   };
+
+  // Track hidden-stage unlock progress — perfect (zero-KO) clears only, never removed once earned
+  state.perfectClearStageIds = [...(gameState.perfectClearStageIds ?? [])];
+  if (alliesSurvived && !state.perfectClearStageIds.includes(stage.id)) {
+    state.perfectClearStageIds.push(stage.id);
+  }
 
   // hasClearedGame is set permanently once the final boss is cleared; never reset (incl. by NG+)
   if (stage.id === '5-5') {

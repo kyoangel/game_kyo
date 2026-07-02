@@ -43,7 +43,7 @@
 - [x] 傭兵評鑑歷史記錄：目前星評分只在單場戰鬥的 `ResultScene` 顯示與影響當場獎勵，不會持久化——`GameState` 未新增任何欄位記錄各關卡最佳星等。若要在世界地圖或關卡選擇畫面顯示「最佳評鑑」，需額外設計 `bestStarRatings?: Record<string, number>` 之類的持久化欄位與存檔遷移。Spec: `specs/pixel-squad-mercenary-rating-history.md`
 
 ### 探索與劇情
-- [ ] 隱藏關卡：符合條件（如全員存活通關）才解鎖的秘密地圖
+- [x] 隱藏關卡：符合條件（如全員存活通關）才解鎖的秘密地圖。Spec: `specs/pixel-squad-hidden-stage.md`
 - [ ] 角色關係系統：隊員之間的羈絆值，高羈絆觸發援護攻擊
 - [ ] 世界末日計時器：全域倒數，時間壓力機制，逼迫玩家優先完成主線
 

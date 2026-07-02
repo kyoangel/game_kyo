@@ -28,6 +28,8 @@ export class ResultScene extends Phaser.Scene {
       ? calculateStarRating(victory, battleStats.playerKOCount, battleStats.roundsUsed, battleStats.weaknessHitCount)
       : (victory ? 1 : 0);
 
+    const alliesSurvived = victory && !!battleStats && battleStats.playerKOCount === 0;
+
     if (victory && starRating > 0) {
       for (let i = 0; i < 3; i++) {
         const filled = i < starRating;
@@ -50,7 +52,7 @@ export class ResultScene extends Phaser.Scene {
       let updatedGameState = gameState;
       const isFirstClear = !!gameState && !!stage && !gameState.stageProgress.completedStageIds.includes(stage.id);
       if (gameState && stage) {
-        updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy, undefined, starRating);
+        updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy, undefined, starRating, alliesSurvived);
         saveSlot(updatedGameState);
       }
       const newExpPool = updatedGameState?.expPool ?? (expPool + expGained);

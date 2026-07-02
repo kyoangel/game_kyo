@@ -177,6 +177,50 @@ export class WorldMapScene extends Phaser.Scene {
       });
     });
 
+    // Hidden stages: absent from the list entirely until unlocked (secret, not just locked)
+    STAGES.filter((s) => s.isHidden).forEach((stage) => {
+      if (!this.isHiddenStageUnlocked(stage)) return;
+
+      const isAvailable = this.isStageAvailable(stage);
+      const isCompleted = this.isStageCompleted(stage.id);
+      const bestRating = this.gameState.bestStarRatings?.[stage.id] ?? 0;
+
+      let bgColor = 0x374151;
+      let textColor = '#6b7280';
+      let prefix = '🌟 ';
+
+      if (isCompleted) {
+        bgColor = 0x065f46;
+        textColor = '#d1d5db';
+        prefix = '🌟✅ ';
+      } else if (isAvailable) {
+        bgColor = 0x4c1d95;
+        textColor = '#ffffff';
+        prefix = '🌟▶ ';
+      }
+
+      const background = this.add.rectangle(0, 0, 320, rowHeight, bgColor).setOrigin(0);
+
+      if (isAvailable) {
+        background.setInteractive({ useHandCursor: true });
+        background.on('pointerdown', () => { getSfx(this).play(SFX_KEYS.buttonClick); this.launchStage(stage); });
+        background.on('pointerover', () => background.setFillStyle(0x2d5a8c));
+        background.on('pointerout', () => background.setFillStyle(bgColor));
+      }
+
+      const starSuffix = isCompleted
+        ? `  ${'★'.repeat(bestRating)}${'☆'.repeat(Math.max(0, 3 - bestRating))}`
+        : '';
+
+      const text = this.add.text(20, 0, `${prefix}${stage.name}${starSuffix}`, {
+        fontSize: '13px',
+        color: textColor,
+        fontFamily: 'monospace',
+      }).setOrigin(0);
+
+      this.stageRows.push({ background, text, stage });
+    });
+
     // Calculate max scroll
     const totalContentHeight = this.stageRows.length * rowHeight;
     this.maxScroll = Math.max(0, totalContentHeight - (600 - baseY));
@@ -220,6 +264,8 @@ export class WorldMapScene extends Phaser.Scene {
   }
 
   private isStageAvailable(stage: Stage): boolean {
+    if (stage.isHidden) return this.isHiddenStageUnlocked(stage);
+
     // Side quest: check if unlockAfterStageId is completed
     if (stage.isSideQuest) {
       if (!stage.unlockAfterStageId) return false;
@@ -245,6 +291,11 @@ export class WorldMapScene extends Phaser.Scene {
 
   private isStageCompleted(stageId: string): boolean {
     return this.gameState.stageProgress.completedStageIds.includes(stageId);
+  }
+
+  private isHiddenStageUnlocked(stage: Stage): boolean {
+    if (!stage.unlockRequiresPerfectClear) return false;
+    return (this.gameState.perfectClearStageIds ?? []).includes(stage.unlockRequiresPerfectClear);
   }
 
   private launchStage(stage: Stage) {

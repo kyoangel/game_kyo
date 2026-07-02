@@ -19,6 +19,7 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     discoveredWeaknesses: {},
     equipmentInventory: [],
     bestStarRatings: {},
+    perfectClearStageIds: [],
   };
 }
 

@@ -20,8 +20,8 @@ describe('side quest itemRewards data', () => {
     ]);
   });
 
-  it('no story stage (isSideQuest: false) defines itemRewards', () => {
-    const offenders = STAGES.filter(s => !s.isSideQuest && s.itemRewards);
+  it('no story stage (isSideQuest: false, isHidden: false) defines itemRewards', () => {
+    const offenders = STAGES.filter(s => !s.isSideQuest && !s.isHidden && s.itemRewards);
     expect(offenders.map(s => s.id)).toEqual([]);
   });
 

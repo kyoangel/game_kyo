@@ -353,4 +353,26 @@ export const STAGES: Stage[] = [
       { itemId: 'supply_nano_kit', quantity: 1 },
     ],
   },
+
+  // ── Hidden Stage ────────────────────────────────────────────────────────
+  {
+    id: 'HS-1', chapterId: 'hidden', name: '隱藏關卡：廢土密室', stageIndex: 0,
+    isBoss: false, isSideQuest: false, isHidden: true,
+    unlockRequiresPerfectClear: '2-5',
+    enemies: [
+      { id: 'vault_guardian_a', name: '密室守衛', baseStats: { hp: 150, atk: 30, def: 20, spd: 15 }, skillIds: [], monsterType: 'jinn', weakness: 'thunder' },
+      { id: 'vault_guardian_b', name: '密室守衛', baseStats: { hp: 150, atk: 30, def: 20, spd: 15 }, skillIds: [], monsterType: 'jinn', weakness: 'thunder' },
+      { id: 'vault_keeper', name: '密室看守者', baseStats: { hp: 220, atk: 34, def: 24, spd: 13 }, skillIds: [], monsterType: 'jinn', weakness: 'ice' },
+    ],
+    expReward: 300, currencyReward: 300,
+    itemRewards: [{ itemId: 'supply_nano_kit', quantity: 3 }],
+    preDialog: {
+      speaker: '???',
+      lines: [
+        '你們竟然毫髮無傷地走到這裡⋯⋯',
+        '這座密室只為未曾倒下的隊伍敞開。',
+        '證明你們的實力吧。',
+      ],
+    },
+  },
 ];

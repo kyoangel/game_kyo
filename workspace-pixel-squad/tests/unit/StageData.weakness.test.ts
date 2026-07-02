@@ -42,6 +42,9 @@ const EXPECTED_WEAKNESS: Record<string, Element> = {
   sniper: 'physical',
   elite_a: 'physical', elite_b: 'physical', elite_c: 'physical',
   arena_a: 'physical', arena_b: 'physical', arena_c: 'physical', arena_champ: 'physical',
+  // hidden stage
+  vault_guardian_a: 'thunder', vault_guardian_b: 'thunder',
+  vault_keeper: 'ice',
 };
 
 function allEnemyTemplates() {

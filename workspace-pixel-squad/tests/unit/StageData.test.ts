@@ -3,8 +3,8 @@ import { STAGES } from '../../src/data/stages';
 import { CHAPTERS } from '../../src/data/chapters';
 
 describe('STAGES data', () => {
-  it('has exactly 28 entries (25 main + 3 side quests)', () => {
-    expect(STAGES).toHaveLength(28);
+  it('has exactly 29 entries (25 main + 3 side quests + 1 hidden)', () => {
+    expect(STAGES).toHaveLength(29);
   });
 
   it('every stage has required fields', () => {
