@@ -6,6 +6,7 @@ import type { GameState } from '../types';
 import { SfxManager, getSfx } from '../audio/SfxManager';
 import { MusicManager, getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
+import { isDoomsdayExpired } from '../battle/DoomsdayClock';
 
 export class TitleScene extends Phaser.Scene {
   private muteIcon!: Phaser.GameObjects.Text;
@@ -129,11 +130,26 @@ export class TitleScene extends Phaser.Scene {
     }
     const state: GameState | null = loadSlot(meta.slot);
     if (!state) { this.startNewGameInSlot(meta.slot); return; }
+    if (isDoomsdayExpired(state)) {
+      this.showDoomsdayLockedMessage();
+      return;
+    }
     if (state.stageProgress.inChapterRun) {
       this.scene.start('WorldMapScene', state);
     } else {
       this.scene.start('BaseScene', state);
     }
+  }
+
+  private showDoomsdayLockedMessage() {
+    const W = 360, H = 640;
+    const msg = this.add.text(W / 2, H - 40, '此存檔的世界已終結，請刪除後重新開始', {
+      fontSize: '12px', color: '#ef4444', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.time.delayedCall(2500, () => {
+      if (!this.scene.isActive()) return;
+      msg.destroy();
+    });
   }
 
   private startNewGameInSlot(slot: 0 | 1 | 2) {

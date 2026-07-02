@@ -5,6 +5,8 @@ import { STAGES } from '../data/stages';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
+import { getDoomsdayColor, formatDoomsdayLabel } from '../ui/doomsdayDisplay';
+import { getDoomsdayDaysRemaining } from '../battle/DoomsdayClock';
 
 interface StageRowView {
   background: Phaser.GameObjects.Rectangle;
@@ -60,6 +62,13 @@ export class WorldMapScene extends Phaser.Scene {
     this.add.text(W - 20, 30, `${this.gameState.currency} 💰`, {
       fontSize: '14px',
       color: '#fbbf24',
+      fontFamily: 'monospace',
+    }).setOrigin(1, 0.5);
+
+    const doomsdayDays = getDoomsdayDaysRemaining(this.gameState);
+    this.add.text(W - 20, 48, formatDoomsdayLabel(doomsdayDays), {
+      fontSize: '12px',
+      color: getDoomsdayColor(doomsdayDays),
       fontFamily: 'monospace',
     }).setOrigin(1, 0.5);
 

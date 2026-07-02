@@ -3,6 +3,7 @@ import { createCharacter, enemyToPlayerCharacter } from './CharacterFactory';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { addToInventory } from './ShopSystem';
 import { applyBondGains } from './BondSystem';
+import { tickDoomsdayClock } from './DoomsdayClock';
 
 export function processVictory(
   gameState: GameState,
@@ -120,6 +121,9 @@ export function processVictory(
       state.stageProgress.inChapterRun.currentStageIndex = stage.stageIndex + 1;
     }
   }
+
+  // Doomsday clock: ticks down on every clear (main story cheapest, side/hidden content costs more)
+  state.doomsdayDaysRemaining = tickDoomsdayClock(gameState, stage);
 
   state.savedAt = Date.now();
   return state;

@@ -10,6 +10,8 @@ import { STAGES } from '../data/stages';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
+import { getDoomsdayColor, formatDoomsdayLabel } from '../ui/doomsdayDisplay';
+import { getDoomsdayDaysRemaining } from '../battle/DoomsdayClock';
 
 export class BaseScene extends Phaser.Scene {
   private gameState!: GameState;
@@ -42,6 +44,13 @@ export class BaseScene extends Phaser.Scene {
 
     this.add.text(320, 24, `幣:${gameState.currency}`, {
       fontSize: '12px', color: '#fde047', fontFamily: 'monospace',
+    }).setOrigin(1, 0.5);
+
+    const doomsdayDays = getDoomsdayDaysRemaining(gameState);
+    this.add.text(320, 40, formatDoomsdayLabel(doomsdayDays), {
+      fontSize: '11px',
+      color: getDoomsdayColor(doomsdayDays),
+      fontFamily: 'monospace',
     }).setOrigin(1, 0.5);
 
     this.add.text(20, 48, 'EXP池', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });

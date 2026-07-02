@@ -1,6 +1,7 @@
 import type { GameState, Element } from '../types';
 import { createCharacter } from '../battle/CharacterFactory';
 import { PLAYER_TEMPLATES } from '../data/characters';
+import { DOOMSDAY_INITIAL_DAYS } from '../battle/DoomsdayClock';
 
 export function newGame(slot: 0 | 1 | 2): GameState {
   const protagonist = PLAYER_TEMPLATES.find(t => t.isProtagonist)!;
@@ -20,6 +21,7 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     equipmentInventory: [],
     bestStarRatings: {},
     perfectClearStageIds: [],
+    doomsdayDaysRemaining: DOOMSDAY_INITIAL_DAYS,
   };
 }
 
@@ -28,6 +30,7 @@ export function startNewGamePlus(gameState: GameState): GameState {
     ...gameState,
     stageProgress: { completedStageIds: [], inChapterRun: undefined },
     ngPlusCycle: gameState.ngPlusCycle + 1,
+    doomsdayDaysRemaining: DOOMSDAY_INITIAL_DAYS,
     savedAt: Date.now(),
   };
 }

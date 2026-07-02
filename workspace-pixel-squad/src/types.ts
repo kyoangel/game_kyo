@@ -235,6 +235,7 @@ export interface GameState {
   perfectClearStageIds?: string[]; // Stage.id values ever cleared with battleStats.playerKOCount === 0
   /** key = bondKey(templateIdA, templateIdB); value = accumulated bond points between that pair. */
   bondLevels?: Record<string, number>;
+  doomsdayDaysRemaining?: number; // days left on the global countdown; undefined = DOOMSDAY_INITIAL_DAYS (legacy save / not yet ticked)
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';

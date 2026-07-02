@@ -7,6 +7,7 @@ import { findItemById } from '../battle/ShopSystem';
 import { getMusic } from '../audio/MusicManager';
 import { MUSIC_KEYS } from '../data/audio';
 import { calculateStarRating, STAR_ANIMATION_DELAY_MS } from '../ui/starRating';
+import { isDoomsdayExpired } from '../battle/DoomsdayClock';
 
 export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
@@ -55,6 +56,12 @@ export class ResultScene extends Phaser.Scene {
         updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy, undefined, starRating, alliesSurvived, playerParty);
         saveSlot(updatedGameState);
       }
+
+      if (updatedGameState && isDoomsdayExpired(updatedGameState)) {
+        this.renderDoomsdayEnding();
+        return;
+      }
+
       const newExpPool = updatedGameState?.expPool ?? (expPool + expGained);
 
       this.add.text(W / 2, 270, `獲得 EXP: +${expGained}`, {
@@ -141,6 +148,17 @@ export class ResultScene extends Phaser.Scene {
         }
       });
     }
+  }
+
+  private renderDoomsdayEnding() {
+    const W = 360;
+    this.add.text(W / 2, 300, '然而，廢土的時間已耗盡……', {
+      fontSize: '13px', color: '#9ca3af', fontFamily: 'monospace',
+    }).setOrigin(0.5);
+    this.add.text(W / 2, 336, '世界末日降臨了', {
+      fontSize: '20px', color: '#ef4444', fontFamily: 'monospace', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.makeButton(W / 2, 480, '返回標題', 0x374151, () => this.scene.start('TitleScene'));
   }
 
   private makeButton(x: number, y: number, label: string, color: number, cb: () => void) {
