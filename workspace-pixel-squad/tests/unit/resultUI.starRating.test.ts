@@ -1,49 +1,42 @@
 /**
- * AC-10: Result — star rating display
+ * Spec: pixel-squad-mercenary-rating
+ * Result — star rating display
  * Stars (1–3) appear above VICTORY based on performance:
- *   1 star  = any win
- *   2 stars = win with no player KOs
- *   3 stars = win with no KOs AND completed in ≤5 turns
+ *   1 star  = any win with playerKOs > 0 (survival gate fails)
+ *   2 stars = win with no player KOs, and (roundsUsed > 5 OR weaknessHitCount === 0)
+ *   3 stars = win with no player KOs, roundsUsed <= 5, AND weaknessHitCount >= 1
  * Defeat = 0 stars (no stars shown).
  */
 import { describe, it, expect } from 'vitest';
 import { calculateStarRating } from '../../src/ui/starRating';
 
 describe('calculateStarRating', () => {
-  it('returns 0 stars on defeat regardless of conditions', () => {
-    expect(calculateStarRating(false, 0, 3)).toBe(0);
+  it('AC-5: returns 0 stars on defeat regardless of conditions', () => {
+    expect(calculateStarRating(false, 0, 3, 0)).toBe(0);
   });
 
-  it('returns at least 1 star for any victory', () => {
-    expect(calculateStarRating(true, 5, 20)).toBeGreaterThanOrEqual(1);
+  it('AC-4: returns 1 star when victory but player had KOs (KO gate overrides everything else)', () => {
+    expect(calculateStarRating(true, 1, 3, 1)).toBe(1);
   });
 
-  it('returns 1 star when victory but player had KOs', () => {
-    expect(calculateStarRating(true, 1, 3)).toBe(1);
+  it('AC-3: returns 2 stars when victory, no KOs, >=1 weakness hit, but rounds > 5 (rounds gate caps it)', () => {
+    expect(calculateStarRating(true, 0, 6, 1)).toBe(2);
   });
 
-  it('returns 2 stars when victory with no player KOs but over 5 turns', () => {
-    expect(calculateStarRating(true, 0, 6)).toBe(2);
+  it('AC-1: returns 2 stars when victory, no KOs, fast rounds, but zero weakness hits (weakness gate caps it)', () => {
+    expect(calculateStarRating(true, 0, 3, 0)).toBe(2);
   });
 
-  it('returns 3 stars when victory, no KOs, and completed in exactly 5 turns', () => {
-    expect(calculateStarRating(true, 0, 5)).toBe(3);
+  it('AC-2: returns 3 stars when victory, no KOs, exactly 5 rounds (inclusive boundary), and >=1 weakness hit', () => {
+    expect(calculateStarRating(true, 0, 5, 1)).toBe(3);
   });
 
-  it('returns 3 stars when victory, no KOs, and completed in fewer than 5 turns', () => {
-    expect(calculateStarRating(true, 0, 2)).toBe(3);
+  it('AC-2: returns 3 stars when victory, no KOs, fewer than 5 rounds, and >=1 weakness hit', () => {
+    expect(calculateStarRating(true, 0, 2, 1)).toBe(3);
   });
 
-  it('returns 2 stars when victory, no KOs, and turns === 5+1', () => {
-    expect(calculateStarRating(true, 0, 6)).toBe(2);
-  });
-
-  it('maximum possible rating is 3', () => {
-    expect(calculateStarRating(true, 0, 1)).toBeLessThanOrEqual(3);
-  });
-
-  it('minimum possible on victory is 1', () => {
-    expect(calculateStarRating(true, 99, 99)).toBeGreaterThanOrEqual(1);
+  it('AC-4: KO gate wins regardless of rounds/weakness stats', () => {
+    expect(calculateStarRating(true, 99, 99, 0)).toBe(1);
   });
 });
 

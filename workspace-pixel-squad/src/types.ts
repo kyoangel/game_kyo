@@ -163,6 +163,12 @@ export interface BattleSceneData {
   isChallengeRun?: boolean;
 }
 
+export interface BattlePerformanceStats {
+  playerKOCount: number;
+  weaknessHitCount: number;
+  roundsUsed: number;
+}
+
 export interface ResultSceneData {
   victory: boolean;
   playerParty: Character[];
@@ -172,6 +178,7 @@ export interface ResultSceneData {
   recruitedEnemy?: Character;  // set if a recruit succeeded during battle
   gameState?: GameState;
   isChallengeRun?: boolean;
+  battleStats?: BattlePerformanceStats;
 }
 
 export interface PrepSceneData {

@@ -39,7 +39,8 @@
 - [x] 裝備系統：武器 / 防具欄位，商店可買裝備，提供屬性加成。Spec: `specs/pixel-squad-equipment-system.md`
 - [x] 技能樹：每個角色有獨立的技能解鎖路徑（3 個分支）。Spec: `specs/pixel-squad-skill-tree.md`
 - [x] 技能樹重置（洗點）道具：允許玩家花費資源清空單一角色的 `unlockedSkillNodeIds` 並全額返還已花費的 `skillPoints`，修正誤點分配的問題（`specs/pixel-squad-skill-tree.md` 已定義的樹狀結構為前提）。Spec: `specs/pixel-squad-skill-tree-respec.md`
-- [ ] 傭兵評鑑系統：戰鬥結束依表現（傷害輸出、存活率、弱點利用）給星評分，影響獎勵
+- [x] 傭兵評鑑系統：戰鬥結束依表現（傷害輸出、存活率、弱點利用）給星評分，影響獎勵。Spec: `specs/pixel-squad-mercenary-rating.md`
+- [ ] 傭兵評鑑歷史記錄：目前星評分只在單場戰鬥的 `ResultScene` 顯示與影響當場獎勵，不會持久化——`GameState` 未新增任何欄位記錄各關卡最佳星等。若要在世界地圖或關卡選擇畫面顯示「最佳評鑑」，需額外設計 `bestStarRatings?: Record<string, number>` 之類的持久化欄位與存檔遷移。
 
 ### 探索與劇情
 - [ ] 隱藏關卡：符合條件（如全員存活通關）才解鎖的秘密地圖

@@ -6,12 +6,13 @@ import { processVictory } from '../battle/VictoryProcessor';
 import { findItemById } from '../battle/ShopSystem';
 import { getMusic } from '../audio/MusicManager';
 import { MUSIC_KEYS } from '../data/audio';
+import { calculateStarRating, STAR_ANIMATION_DELAY_MS } from '../ui/starRating';
 
 export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
 
   create(data: ResultSceneData) {
-    const { victory, playerParty, stageIndex, expGained, expPool = 0, recruitedEnemy, gameState } = data;
+    const { victory, playerParty, stageIndex, expGained, expPool = 0, recruitedEnemy, gameState, battleStats } = data;
     getMusic(this).playTrack(victory ? MUSIC_KEYS.victory : MUSIC_KEYS.defeat);
     const W = 360, H = 640;
 
@@ -23,6 +24,23 @@ export class ResultScene extends Phaser.Scene {
       fontSize: '36px', color: titleColor, fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5);
 
+    const starRating = battleStats
+      ? calculateStarRating(victory, battleStats.playerKOCount, battleStats.roundsUsed, battleStats.weaknessHitCount)
+      : (victory ? 1 : 0);
+
+    if (victory && starRating > 0) {
+      for (let i = 0; i < 3; i++) {
+        const filled = i < starRating;
+        const star = this.add.text(W / 2 - 30 + i * 30, 190, filled ? '★' : '☆', {
+          fontSize: '22px', color: filled ? '#fbbf24' : '#4b5563', fontFamily: 'monospace',
+        }).setOrigin(0.5).setAlpha(0);
+        this.time.delayedCall(STAR_ANIMATION_DELAY_MS * i, () => {
+          if (!this.scene.isActive()) return;
+          star.setAlpha(1);
+        });
+      }
+    }
+
     const stage = STAGES[stageIndex];
     this.add.text(W / 2, 220, stage?.name ?? '', {
       fontSize: '14px', color: '#9ca3af', fontFamily: 'monospace',
@@ -32,7 +50,7 @@ export class ResultScene extends Phaser.Scene {
       let updatedGameState = gameState;
       const isFirstClear = !!gameState && !!stage && !gameState.stageProgress.completedStageIds.includes(stage.id);
       if (gameState && stage) {
-        updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy);
+        updatedGameState = processVictory(gameState, stage, expGained, recruitedEnemy, undefined, starRating);
         saveSlot(updatedGameState);
       }
       const newExpPool = updatedGameState?.expPool ?? (expPool + expGained);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState, Skill, Element } from '../types';
+import type { Character, BattleSceneData, BattlePhase, PendingCommand, GameState, Skill, Element, BattlePerformanceStats } from '../types';
 import { createCharacter, createEnemy } from '../battle/CharacterFactory';
 import { computeTurnOrder, applyWeaknessBonus, resetRoundFlags } from '../battle/TurnEngine';
 import {
@@ -87,6 +87,9 @@ export class BattleScene extends Phaser.Scene {
   // All-Out Attack state
   private aoaState: AoaRoundState = { usedThisRound: false };
 
+  // Performance rating state
+  private battleStats: BattlePerformanceStats = { playerKOCount: 0, weaknessHitCount: 0, roundsUsed: 0 };
+
   // Target selection state
   private targetHighlights = new Map<string, Phaser.GameObjects.Rectangle>();
   private targetSelectActive = false;
@@ -143,6 +146,7 @@ export class BattleScene extends Phaser.Scene {
     this.bossConfig = undefined;
     this.triggeredPhaseThresholds = new Set<number>();
     this.aoaState = { usedThisRound: false };
+    this.battleStats = { playerKOCount: 0, weaknessHitCount: 0, roundsUsed: 0 };
     if (stage.isBoss && this.enemyParty.length === 1) {
       const bossTemplateId = this.enemyParty[0].templateId;
       this.bossConfig = BOSS_CONFIGS[bossTemplateId];
@@ -310,6 +314,7 @@ export class BattleScene extends Phaser.Scene {
   // ─── Command Phase ────────────────────────────────────────────────────────
 
   private startCommandPhase() {
+    this.battleStats.roundsUsed++;
     resetRoundFlags([...this.playerParty, ...this.enemyParty]);
     resetAoaRoundState(this.aoaState);
     this.phase = 'command';
@@ -603,6 +608,7 @@ export class BattleScene extends Phaser.Scene {
             this.hideStopButton();
             this.startCommandPhase();
           } else {
+            this.battleStats.roundsUsed++;
             this.runAutoRound();
           }
         } else {
@@ -677,6 +683,7 @@ export class BattleScene extends Phaser.Scene {
     const skill = cmd.action === 'skill' ? cmd.skill : undefined;
     const isCrit = rollCrit(cmd.character);
     const dmgResult = calcDamage(cmd.character, target, skill, isCrit);
+    if (dmgResult.isWeaknessHit) this.battleStats.weaknessHitCount++;
     const isNewDiscovery = recordHitDiscovery(dmgResult.isWeaknessHit, target, this.discoveredThisBattle, this.gameState);
     if (isNewDiscovery) {
       this.enemyParty
@@ -954,6 +961,7 @@ export class BattleScene extends Phaser.Scene {
 
     target.stats.hp = Math.max(0, target.stats.hp - dmg);
     const died = target.stats.hp === 0;
+    if (died && target.isPlayer) this.battleStats.playerKOCount++;
     if (died) target.alive = false;
     this.updateHpBar(target);
 
@@ -1043,6 +1051,7 @@ export class BattleScene extends Phaser.Scene {
           expPool: this.expPool,
           recruitedEnemy: this.recruitedEnemy,
           gameState: this.gameState,
+          battleStats: this.battleStats,
         });
       });
       return true;

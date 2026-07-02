@@ -9,10 +9,13 @@ export function processVictory(
   expGained: number,
   recruitedEnemy: Character | undefined,
   ngPlusCycle = 0,
+  starRating = 1,
 ): GameState {
   const rewardMultiplier = 1 + ngPlusCycle * 0.2;
-  const scaledExpGained = Math.round(expGained * rewardMultiplier);
-  const scaledCurrencyReward = Math.round(stage.currencyReward * rewardMultiplier);
+  const starMultiplier = 1 + (Math.max(1, Math.min(3, starRating)) - 1) * 0.1;
+  const totalMultiplier = rewardMultiplier * starMultiplier;
+  const scaledExpGained = Math.round(expGained * totalMultiplier);
+  const scaledCurrencyReward = Math.round(stage.currencyReward * totalMultiplier);
   const state: GameState = {
     ...gameState,
     pool: [...gameState.pool],
