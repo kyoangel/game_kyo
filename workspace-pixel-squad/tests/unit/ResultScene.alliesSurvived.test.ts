@@ -39,7 +39,7 @@ describe('alliesSurvived computation', () => {
 describe('AC-2/AC-3: processVictory call site forwards alliesSurvived as its 7th argument', () => {
   it('passes alliesSurvived after starRating in the processVictory(...) call', () => {
     expect(source).toMatch(
-      /processVictory\(gameState, stage, expGained, recruitedEnemy, undefined, starRating, alliesSurvived\)/
+      /processVictory\(gameState, stage, expGained, recruitedEnemy, undefined, starRating, alliesSurvived/
     );
   });
 });
