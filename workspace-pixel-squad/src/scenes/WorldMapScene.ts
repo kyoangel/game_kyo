@@ -115,6 +115,7 @@ export class WorldMapScene extends Phaser.Scene {
 
         const isAvailable = this.isStageAvailable(stage);
         const isCompleted = this.isStageCompleted(stage.id);
+        const bestRating = this.gameState.bestStarRatings?.[stage.id] ?? 0;
 
         // Determine styling
         let bgColor = 0x374151;
@@ -153,10 +154,14 @@ export class WorldMapScene extends Phaser.Scene {
           background.on('pointerout', () => background.setFillStyle(bgColor));
         }
 
+        const starSuffix = isCompleted
+          ? `  ${'★'.repeat(bestRating)}${'☆'.repeat(Math.max(0, 3 - bestRating))}`
+          : '';
+
         const text = this.add.text(
           20,
           0,
-          `${prefix}${stage.name}`,
+          `${prefix}${stage.name}${starSuffix}`,
           {
             fontSize: '13px',
             color: textColor,

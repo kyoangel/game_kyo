@@ -227,6 +227,7 @@ export interface GameState {
   challengeRun?: ChallengeRunState; // present while a Boss Rush attempt is in progress
   discoveredWeaknesses?: Record<string, Element>; // key = EnemyTemplate.id
   equipmentInventory: EquipmentInventoryEntry[]; // owned, currently-unequipped equipment
+  bestStarRatings?: Record<string, number>; // key = Stage.id, value = best star rating (1-3) ever achieved for that stage
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';

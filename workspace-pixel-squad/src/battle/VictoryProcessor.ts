@@ -43,6 +43,13 @@ export function processVictory(
   // Add EXP to pool
   state.expPool += scaledExpGained;
 
+  // Track best-ever star rating per stage (only improves, never decreases)
+  const existingBest = gameState.bestStarRatings?.[stage.id] ?? 0;
+  state.bestStarRatings = {
+    ...(gameState.bestStarRatings ?? {}),
+    [stage.id]: Math.max(existingBest, starRating),
+  };
+
   // hasClearedGame is set permanently once the final boss is cleared; never reset (incl. by NG+)
   if (stage.id === '5-5') {
     state.hasClearedGame = true;
