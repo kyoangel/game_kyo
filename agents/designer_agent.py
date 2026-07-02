@@ -5,10 +5,9 @@ from agents import claude_cli, lm_studio_client
 from agents.lm_studio_client import LmStudioError
 from harness import prompt_store
 
-_TYPES_MAX_LINES = 150
+_TYPES_MAX_LINES = 80
 _CONTEXT_FILES = [
     "workspace-pixel-squad/src/types.ts",
-    "workspace-pixel-squad/src/data/skills.ts",
 ]
 
 
@@ -17,7 +16,10 @@ class DesignerError(Exception):
 
 
 def _build_lm_context(backlog_path: Path, repo_root: Path) -> str:
-    parts = [backlog_path.read_text()]
+    # Only send unchecked items to save context space
+    backlog_full = backlog_path.read_text()
+    unchecked = [l for l in backlog_full.splitlines() if l.strip().startswith("- [ ]")]
+    parts = ["## Unchecked backlog items\n" + "\n".join(unchecked)]
 
     for rel in _CONTEXT_FILES:
         p = repo_root / rel
@@ -27,8 +29,8 @@ def _build_lm_context(backlog_path: Path, repo_root: Path) -> str:
 
     existing = sorted((repo_root / "specs").glob("pixel-squad-*.md"))
     if existing:
-        names = "\n".join(f"- {p.name}" for p in existing)
-        parts.append(f"\n## Already-written specs\n{names}")
+        names = "\n".join(f"- {p.name}" for p in existing[-5:])
+        parts.append(f"\n## Recently-written specs (last 5)\n{names}")
 
     return "\n".join(parts)
 
