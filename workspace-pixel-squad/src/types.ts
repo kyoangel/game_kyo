@@ -152,6 +152,25 @@ export interface Stage {
   itemRewards?: StageItemReward[]; // side quests only, granted on first clear
   isHidden?: boolean;                    // true = never listed by the normal per-chapter render loop; see WorldMapScene changes
   unlockRequiresPerfectClear?: string;    // Stage.id that must appear in GameState.perfectClearStageIds to reveal this stage
+  unlocksChallengePhraseId?: string;      // ChallengePhrase.id unlocked on clearing this stage, if any
+}
+
+export interface ChallengePhraseConstraint {
+  type: 'turnLimit' | 'physicalOnly';
+  turnLimit?: number; // turnLimit constraint only
+}
+
+export interface ChallengePhraseReward {
+  currencyBonus: number;
+}
+
+export interface ChallengePhrase {
+  id: string;
+  name: string;
+  description: string;
+  unlockStageId: string;               // Stage.id whose clear unlocks this phrase
+  constraint: ChallengePhraseConstraint;
+  reward: ChallengePhraseReward;
 }
 
 export interface Chapter {
@@ -240,6 +259,10 @@ export interface GameState {
   doomsdayDaysRemaining?: number; // days left on the global countdown; undefined = DOOMSDAY_INITIAL_DAYS (legacy save / not yet ticked)
   /** IDs of every character still belonging to this run (Hard Mode roster tracking); undefined = legacy save / not yet tracked. */
   currentRosterIds?: string[];
+  /** ChallengePhrase.id values unlocked via post-clear stage progression; undefined = legacy save / not yet tracked. */
+  unlockedChallengePhraseIds?: string[];
+  /** The ChallengePhrase.id currently selected for the next run, if any. */
+  activeChallengePhraseId?: string;
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';

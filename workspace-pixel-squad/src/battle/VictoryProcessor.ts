@@ -126,6 +126,12 @@ export function processVictory(
   // Doomsday clock: ticks down on every clear (main story cheapest, side/hidden content costs more)
   state.doomsdayDaysRemaining = tickDoomsdayClock(gameState, stage);
 
+  // Challenge phrase unlock: any clear (not just first) may carry a linked phrase id, no duplicates
+  state.unlockedChallengePhraseIds = [...(gameState.unlockedChallengePhraseIds ?? [])];
+  if (stage.unlocksChallengePhraseId && !state.unlockedChallengePhraseIds.includes(stage.unlocksChallengePhraseId)) {
+    state.unlockedChallengePhraseIds.push(stage.unlocksChallengePhraseId);
+  }
+
   // Hard Mode: strip anyone permanently lost during the battle from pool/squad/roster
   const finalState = removePermanentLosses(state, playerParty);
   finalState.savedAt = Date.now();

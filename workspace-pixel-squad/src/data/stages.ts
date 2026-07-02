@@ -53,6 +53,7 @@ export const STAGES: Stage[] = [
   {
     id: '1-5', chapterId: 'ch1', name: '[BOSS] 鐵拳 Vega', stageIndex: 4,
     isBoss: true, isSideQuest: false, unlockCharacterId: 'vega',
+    unlocksChallengePhraseId: 'phrase_vega_speedrun',
     enemies: [{ id: 'vega', name: 'Vega', baseStats: { hp: 200, atk: 35, def: 15, spd: 14 }, skillIds: [], monsterType: 'demon' }],
     expReward: 120, currencyReward: 80,
     preDialog: {
@@ -115,6 +116,7 @@ export const STAGES: Stage[] = [
   {
     id: '2-5', chapterId: 'ch2', name: '[BOSS] 影鴉 Crow', stageIndex: 4,
     isBoss: true, isSideQuest: false, unlockCharacterId: 'crow',
+    unlocksChallengePhraseId: 'phrase_crow_speedrun',
     enemies: [{ id: 'crow', name: 'Crow', baseStats: { hp: 220, atk: 38, def: 12, spd: 22 }, skillIds: [], monsterType: 'jinn' }],
     expReward: 180, currencyReward: 120,
     preDialog: {
@@ -179,6 +181,7 @@ export const STAGES: Stage[] = [
   {
     id: '3-5', chapterId: 'ch3', name: '[BOSS] 廢土聖女 Zora', stageIndex: 4,
     isBoss: true, isSideQuest: false, unlockCharacterId: 'zora',
+    unlocksChallengePhraseId: 'phrase_zora_purist',
     enemies: [{ id: 'zora', name: 'Zora', baseStats: { hp: 260, atk: 32, def: 25, spd: 16 }, skillIds: [], monsterType: 'medusa' }],
     expReward: 260, currencyReward: 160,
     preDialog: {
@@ -242,6 +245,7 @@ export const STAGES: Stage[] = [
   {
     id: '4-5', chapterId: 'ch4', name: '[BOSS] 鐵壁 Dex', stageIndex: 4,
     isBoss: true, isSideQuest: false, unlockCharacterId: 'dex',
+    unlocksChallengePhraseId: 'phrase_dex_purist',
     enemies: [{ id: 'dex', name: 'Dex', baseStats: { hp: 400, atk: 40, def: 35, spd: 10 }, skillIds: [], monsterType: 'dragon' }],
     expReward: 340, currencyReward: 200,
     preDialog: {

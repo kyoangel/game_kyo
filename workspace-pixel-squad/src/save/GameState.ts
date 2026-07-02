@@ -23,6 +23,7 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     perfectClearStageIds: [],
     doomsdayDaysRemaining: DOOMSDAY_INITIAL_DAYS,
     currentRosterIds: [char.id],
+    unlockedChallengePhraseIds: [],
   };
 }
 
