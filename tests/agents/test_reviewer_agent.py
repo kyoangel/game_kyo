@@ -76,3 +76,16 @@ def test_format_changed_files_marks_directories_without_crashing(tmp_path: Path)
 
     assert "## workspace/public" in formatted
     assert "directory" in formatted.lower()
+
+
+def test_format_changed_files_truncates_large_files(tmp_path: Path) -> None:
+    (tmp_path / "workspace").mkdir()
+    lines = [f"line {i}" for i in range(300)]
+    (tmp_path / "workspace" / "big.ts").write_text("\n".join(lines))
+
+    formatted = _format_changed_files([Path("workspace/big.ts")], repo_root=tmp_path)
+
+    assert "line 0" in formatted
+    assert "line 199" in formatted
+    assert "line 200" not in formatted
+    assert "truncated" in formatted

@@ -1,6 +1,6 @@
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 
@@ -28,6 +28,7 @@ def test_run_build_success(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
+        env=ANY,
     )
 
 
@@ -60,6 +61,7 @@ def test_run_unit_tests_runs_in_workspace_dir(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
+        env=ANY,
     )
 
 

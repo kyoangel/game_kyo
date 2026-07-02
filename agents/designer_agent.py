@@ -72,7 +72,9 @@ def run_designer(workspace: str, backlog_path: Path, repo_root: Path) -> Path | 
             print(f"⚠️  LM Studio designer failed, falling back to Claude CLI: {e}")
 
     system_prompt = prompt_store.load("designer", repo_root, workspace=workspace)
-    task = backlog_path.read_text()
+    backlog_full = backlog_path.read_text()
+    unchecked = [l for l in backlog_full.splitlines() if l.strip().startswith("- [ ]")]
+    task = "\n".join(unchecked) + "\n" if unchecked else backlog_full
 
     output = claude_cli.call_coder(
         system_prompt=system_prompt,

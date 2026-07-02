@@ -20,7 +20,8 @@ def test_run_designer_returns_spec_path(tmp_path: Path) -> None:
     repo, backlog = _make_repo(tmp_path)
     output = "Designed the skill system.\nSPEC_PATH: specs/pixel-squad-skill-system.md"
 
-    with patch("agents.designer_agent.claude_cli.call_coder", return_value=output) as mock_call:
+    with patch("agents.designer_agent.lm_studio_client.is_available", return_value=False), \
+         patch("agents.designer_agent.claude_cli.call_coder", return_value=output) as mock_call:
         result = run_designer("pixel-squad", backlog, repo)
 
     assert result == Path("specs/pixel-squad-skill-system.md")
@@ -34,7 +35,8 @@ def test_run_designer_returns_spec_path(tmp_path: Path) -> None:
 def test_run_designer_returns_none_when_done(tmp_path: Path) -> None:
     repo, backlog = _make_repo(tmp_path, backlog_text="- [x] all done\n")
 
-    with patch("agents.designer_agent.claude_cli.call_coder", return_value="SPEC_PATH: DONE"):
+    with patch("agents.designer_agent.lm_studio_client.is_available", return_value=False), \
+         patch("agents.designer_agent.claude_cli.call_coder", return_value="SPEC_PATH: DONE"):
         result = run_designer("pixel-squad", backlog, repo)
 
     assert result is None
@@ -44,7 +46,8 @@ def test_run_designer_parses_spec_path_from_multiline_output(tmp_path: Path) -> 
     repo, backlog = _make_repo(tmp_path)
     output = "Line 1\nLine 2\nLine 3\nSPEC_PATH: specs/pixel-squad-archetype.md"
 
-    with patch("agents.designer_agent.claude_cli.call_coder", return_value=output):
+    with patch("agents.designer_agent.lm_studio_client.is_available", return_value=False), \
+         patch("agents.designer_agent.claude_cli.call_coder", return_value=output):
         result = run_designer("pixel-squad", backlog, repo)
 
     assert result == Path("specs/pixel-squad-archetype.md")
@@ -53,7 +56,8 @@ def test_run_designer_parses_spec_path_from_multiline_output(tmp_path: Path) -> 
 def test_run_designer_raises_on_missing_signal(tmp_path: Path) -> None:
     repo, backlog = _make_repo(tmp_path)
 
-    with patch("agents.designer_agent.claude_cli.call_coder", return_value="I made a great spec"):
+    with patch("agents.designer_agent.lm_studio_client.is_available", return_value=False), \
+         patch("agents.designer_agent.claude_cli.call_coder", return_value="I made a great spec"):
         with pytest.raises(DesignerError, match="missing SPEC_PATH"):
             run_designer("pixel-squad", backlog, repo)
 
@@ -61,8 +65,21 @@ def test_run_designer_raises_on_missing_signal(tmp_path: Path) -> None:
 def test_run_designer_loads_workspace_specific_prompt(tmp_path: Path) -> None:
     repo, backlog = _make_repo(tmp_path)
 
-    with patch("agents.designer_agent.claude_cli.call_coder", return_value="SPEC_PATH: specs/x.md") as mock_call:
+    with patch("agents.designer_agent.lm_studio_client.is_available", return_value=False), \
+         patch("agents.designer_agent.claude_cli.call_coder", return_value="SPEC_PATH: specs/x.md") as mock_call:
         run_designer("pixel-squad", backlog, repo)
 
     system_prompt_used = mock_call.call_args.kwargs["system_prompt"]
     assert system_prompt_used == "you are a designer\n"
+
+
+def test_run_designer_sends_only_unchecked_backlog_items_to_claude(tmp_path: Path) -> None:
+    repo, _ = _make_repo(tmp_path, backlog_text="- [x] done item\n- [ ] pending item\n")
+
+    with patch("agents.designer_agent.lm_studio_client.is_available", return_value=False), \
+         patch("agents.designer_agent.claude_cli.call_coder", return_value="SPEC_PATH: specs/x.md") as mock_call:
+        run_designer("pixel-squad", repo / "specs" / "pixel-squad-backlog.md", repo)
+
+    task_sent = mock_call.call_args.kwargs["task"]
+    assert "- [ ] pending item" in task_sent
+    assert "- [x] done item" not in task_sent

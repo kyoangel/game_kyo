@@ -15,6 +15,18 @@ BUILD_FAIL = SandboxResult(success=False, stdout="", stderr="build error", retur
 UNIT_OK = SandboxResult(success=True, stdout="103 pass", stderr="", returncode=0)
 UNIT_FAIL = SandboxResult(success=False, stdout="1 fail", stderr="", returncode=1)
 E2E_OK = SandboxResult(success=True, stdout="", stderr="", returncode=0)
+_CHANGED = {"workspace-pixel-squad/changed.ts"}
+
+
+def _make_alternating_paths():
+    """Factory: returns empty set on odd calls (before-coder), non-empty on even calls (after-coder)."""
+    state = {"n": 0}
+
+    def side_effect(*args, **kwargs):
+        state["n"] += 1
+        return _CHANGED if state["n"] % 2 == 0 else set()
+
+    return side_effect
 
 
 def _make_repo(tmp_path: Path) -> tuple[Path, Path]:
@@ -51,7 +63,7 @@ def test_loop_runs_full_cycle_on_success(tmp_path: Path) -> None:
          patch("autonomous_loop.npm_runner.run_e2e_tests", return_value=E2E_OK), \
          patch("autonomous_loop.reviewer_agent.run_reviewer", return_value=APPROVED), \
          patch("autonomous_loop._git_commit") as mock_commit, \
-         patch("autonomous_loop.workspace_diff.changed_paths", return_value=set()), \
+         patch("autonomous_loop.workspace_diff.changed_paths", side_effect=_make_alternating_paths()), \
          patch("autonomous_loop.trace_logger.log_step"):
         autonomous_loop("pixel-squad", max_iter=5, repo_root=repo)
 
@@ -77,7 +89,7 @@ def test_loop_retries_coder_on_build_failure(tmp_path: Path) -> None:
          patch("autonomous_loop.npm_runner.run_e2e_tests", return_value=E2E_OK), \
          patch("autonomous_loop.reviewer_agent.run_reviewer", return_value=APPROVED), \
          patch("autonomous_loop._git_commit"), \
-         patch("autonomous_loop.workspace_diff.changed_paths", return_value=set()), \
+         patch("autonomous_loop.workspace_diff.changed_paths", side_effect=_make_alternating_paths()), \
          patch("autonomous_loop.trace_logger.log_step"):
         autonomous_loop("pixel-squad", max_iter=5, repo_root=repo)
 
@@ -123,6 +135,65 @@ def test_loop_skips_commit_when_all_retries_fail(tmp_path: Path) -> None:
         autonomous_loop("pixel-squad", max_iter=5, repo_root=repo)
 
     mock_commit.assert_not_called()
+
+
+def test_reviewer_not_called_when_no_files_changed(tmp_path: Path) -> None:
+    repo, _ = _make_repo(tmp_path)
+    spec = tmp_path / "specs" / "pixel-squad-skill.md"
+    spec.write_text("# Skill spec\n")
+
+    with patch("autonomous_loop.designer_agent.run_designer", side_effect=[spec, None]), \
+         patch("autonomous_loop.claude_cli.call_coder", return_value="done"), \
+         patch("autonomous_loop.npm_runner.run_build", return_value=BUILD_OK), \
+         patch("autonomous_loop.npm_runner.run_unit_tests", return_value=UNIT_OK), \
+         patch("autonomous_loop.npm_runner.run_e2e_tests", return_value=E2E_OK), \
+         patch("autonomous_loop.reviewer_agent.run_reviewer") as mock_reviewer, \
+         patch("autonomous_loop._git_commit"), \
+         patch("autonomous_loop.workspace_diff.changed_paths", return_value=set()), \
+         patch("autonomous_loop.trace_logger.log_step"):
+        autonomous_loop("pixel-squad", max_iter=5, repo_root=repo)
+
+    mock_reviewer.assert_not_called()
+
+
+def test_meta_reviewer_not_called_by_default(tmp_path: Path) -> None:
+    repo, _ = _make_repo(tmp_path)
+    spec = tmp_path / "specs" / "pixel-squad-skill.md"
+    spec.write_text("# Skill spec\n")
+
+    with patch("autonomous_loop.designer_agent.run_designer", side_effect=[spec, None]), \
+         patch("autonomous_loop.claude_cli.call_coder", return_value="done"), \
+         patch("autonomous_loop.npm_runner.run_build", return_value=BUILD_OK), \
+         patch("autonomous_loop.npm_runner.run_unit_tests", return_value=UNIT_OK), \
+         patch("autonomous_loop.npm_runner.run_e2e_tests", return_value=E2E_OK), \
+         patch("autonomous_loop.reviewer_agent.run_reviewer", return_value=APPROVED), \
+         patch("autonomous_loop._git_commit"), \
+         patch("autonomous_loop.workspace_diff.changed_paths", return_value=set()), \
+         patch("autonomous_loop.trace_logger.log_step"), \
+         patch("autonomous_loop.meta_reviewer_agent.run_meta_review") as mock_meta:
+        autonomous_loop("pixel-squad", max_iter=5, repo_root=repo)
+
+    mock_meta.assert_not_called()
+
+
+def test_meta_reviewer_called_when_flag_enabled(tmp_path: Path) -> None:
+    repo, _ = _make_repo(tmp_path)
+    spec = tmp_path / "specs" / "pixel-squad-skill.md"
+    spec.write_text("# Skill spec\n")
+
+    with patch("autonomous_loop.designer_agent.run_designer", side_effect=[spec, None]), \
+         patch("autonomous_loop.claude_cli.call_coder", return_value="done"), \
+         patch("autonomous_loop.npm_runner.run_build", return_value=BUILD_OK), \
+         patch("autonomous_loop.npm_runner.run_unit_tests", return_value=UNIT_OK), \
+         patch("autonomous_loop.npm_runner.run_e2e_tests", return_value=E2E_OK), \
+         patch("autonomous_loop.reviewer_agent.run_reviewer", return_value=APPROVED), \
+         patch("autonomous_loop._git_commit"), \
+         patch("autonomous_loop.workspace_diff.changed_paths", side_effect=_make_alternating_paths()), \
+         patch("autonomous_loop.trace_logger.log_step"), \
+         patch("autonomous_loop.meta_reviewer_agent.run_meta_review", return_value=[]) as mock_meta:
+        autonomous_loop("pixel-squad", max_iter=5, repo_root=repo, meta_review=True)
+
+    mock_meta.assert_called_once()
 
 
 def test_git_commit_runs_correct_commands(tmp_path: Path) -> None:

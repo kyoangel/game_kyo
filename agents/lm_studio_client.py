@@ -1,9 +1,14 @@
 import os
+import time
 
 from openai import OpenAI
 
 LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
 LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "google/gemma-4-e4b")
+_CACHE_TTL_S = 60.0
+
+_availability_cache: bool | None = None
+_cache_ts: float = 0.0
 
 
 class LmStudioError(Exception):
@@ -30,8 +35,13 @@ def call_lm_studio(system_prompt: str, task: str, temperature: float = 0.3) -> s
 
 
 def is_available() -> bool:
-    try:
-        _client().models.list()
-        return True
-    except Exception:
-        return False
+    global _availability_cache, _cache_ts
+    now = time.monotonic()
+    if _availability_cache is None or now - _cache_ts > _CACHE_TTL_S:
+        try:
+            _client().models.list()
+            _availability_cache = True
+        except Exception:
+            _availability_cache = False
+        _cache_ts = now
+    return _availability_cache

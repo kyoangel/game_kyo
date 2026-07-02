@@ -75,6 +75,7 @@ def autonomous_loop(
     workspace: str,
     max_iter: int = 20,
     repo_root: Path | None = None,
+    meta_review: bool = False,
 ) -> None:
     if repo_root is None:
         repo_root = REPO_ROOT
@@ -183,6 +184,10 @@ def autonomous_loop(
             changed = sorted(workspace_diff.changed_paths(repo_root, workspace_dir=workspace_dir) - before)
             changed_paths_list = [Path(p) for p in changed]
 
+            if not changed_paths_list:
+                feedback = "No files were changed — implement the required changes."
+                continue
+
             build = npm_runner.run_build(workspace, repo_root)
             trace_logger.log_step(
                 run_id=run_id, agent="build",
@@ -227,15 +232,16 @@ def autonomous_loop(
             if review.approved:
                 _git_commit(workspace, spec_path, repo_root, i)
                 _clear_resume(workspace, repo_root)
-                try:
-                    meta_items = meta_reviewer_agent.run_meta_review(
-                        spec_path, changed_paths_list, repo_root, workspace=workspace
-                    )
-                    if meta_items:
-                        _append_meta_review(backlog_path, meta_items, spec_path.stem, repo_root)
-                        print(f"🤖 Meta-review: {len(meta_items)} suggestions added to backlog")
-                except Exception as e:
-                    print(f"⚠️  Meta-review failed (non-fatal): {e}")
+                if meta_review:
+                    try:
+                        meta_items = meta_reviewer_agent.run_meta_review(
+                            spec_path, changed_paths_list, repo_root, workspace=workspace
+                        )
+                        if meta_items:
+                            _append_meta_review(backlog_path, meta_items, spec_path.stem, repo_root)
+                            print(f"🤖 Meta-review: {len(meta_items)} suggestions added to backlog")
+                    except Exception as e:
+                        print(f"⚠️  Meta-review failed (non-fatal): {e}")
                 break
 
             feedback = "\n".join(review.comments)
@@ -253,8 +259,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--workspace", required=True, help="Workspace name (e.g. pixel-squad)")
     parser.add_argument("--max-iter", type=int, default=20, help="Safety cap on iterations")
+    parser.add_argument("--meta-review", action="store_true", default=False, help="Run meta-reviewer after each commit")
     args = parser.parse_args(argv)
-    autonomous_loop(args.workspace, args.max_iter)
+    autonomous_loop(args.workspace, args.max_iter, meta_review=args.meta_review)
     return 0
 
 
