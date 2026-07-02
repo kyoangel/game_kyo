@@ -83,3 +83,8 @@
 - [ ] 💰 `tests/unit/SkillTree.respec.test.ts` 第 12 行手動宣告 `const RESPEC_ITEM_ID = 'item_respec_module'`，而非像 `ShopData.respec.test.ts`／`SaveSystem.skillTreeRespec.test.ts` 一樣從 `data/shopItems.ts` import 匯出的常數，未來若該 id 變動，此測試不會同步反映，應改為 import。
 - [ ] 🎮 `calculateRespecRefund` 對 `unlockedSkillNodeIds` 中「已不存在於目前 `getSkillTree()` 回傳陣列」的節點 id 會透過 `tree.filter` 靜默忽略其花費，若未來技能樹改版移除/改名節點，玩家洗點時會悄悄少退還點數且無任何警告；應在 `SkillTree.respec.test.ts` 新增一個「unlockedSkillNodeIds 含有 tree 中不存在的 id」情境測試，確認此行為是否為預期。
 - [ ] 🎮 `showRespecConfirm` 的確認文案（`重置 ${char.name} 的技能樹？...`）沒有提及「已學會的技能不會被移除」這個 Rule 4 的關鍵限制，玩家容易誤以為洗點會連技能一起清空，建議在確認面板文字加一行提示以降低誤解與客服詢問。
+- [ ] 🔄 為 AC-5（defeat 時不渲染星星）補一個 ResultScene 的原始碼斷言測試（比照 `BattleScene.mercenaryRating.test.ts` 手法），目前沒有任何測試檔案實際驗證 `ResultScene.ts` 裡 `if (victory && starRating > 0)` 這個守門條件，AC-5 只在 `resultUI.starRating.test.ts` 的純函式層級被間接覆蓋。
+- [ ] 🔄 AC-7/AC-8（roundsUsed 計數不重複/不漏算）目前僅用 regex 比對原始碼結構，無法偵測執行期的實際計數錯誤；建議建立一個可在 vitest 下執行的 `BattleScene` 最小 stub（mock 掉 Phaser.Scene 依賴），改寫成真正跑完 4 個回合後斷言 `battleStats.roundsUsed === 4` 的行為測試。
+- [ ] 💰 `{ playerKOCount: 0, weaknessHitCount: 0, roundsUsed: 0 }` 這個物件字面量在 `BattleScene.ts` 的欄位初始化與 `init()` reset 中重複兩次，且測試檔案裡又以完整 regex 重複比對三次；建議在 `types.ts` 加一個 `createEmptyBattleStats(): BattlePerformanceStats` 工廠函式取代重複字面量。
+- [ ] 🎮 3★ 與 1★ 的差異目前只有靜默淡入的星星圖示（22px 文字），沒有任何額外音效或視覺強化，玩家很容易忽略這個最高 +20% 獎勵的達成；建議在 `starRating === 3` 時加一個獨立 SFX（如複用 `SFX_KEYS.crit` 或新增專屬音效）強化回饋。
+- [ ] 🎮 目前沒有測試涵蓋「同一場戰鬥中玩家死而復生或多名隊員同時死亡」時 `playerKOCount` 是否正確累加超過 1 的情境（AC-9 只驗證 guard 邏輯，未驗證多次死亡的累加值）；建議補一則整合測試模擬兩名隊員各被擊倒一次，驗證 `playerKOCount === 2`。
