@@ -4,6 +4,7 @@ import { PLAYER_TEMPLATES } from '../data/characters';
 import { addToInventory } from './ShopSystem';
 import { applyBondGains } from './BondSystem';
 import { tickDoomsdayClock } from './DoomsdayClock';
+import { removePermanentLosses } from './HardMode';
 
 export function processVictory(
   gameState: GameState,
@@ -125,6 +126,8 @@ export function processVictory(
   // Doomsday clock: ticks down on every clear (main story cheapest, side/hidden content costs more)
   state.doomsdayDaysRemaining = tickDoomsdayClock(gameState, stage);
 
-  state.savedAt = Date.now();
-  return state;
+  // Hard Mode: strip anyone permanently lost during the battle from pool/squad/roster
+  const finalState = removePermanentLosses(state, playerParty);
+  finalState.savedAt = Date.now();
+  return finalState;
 }

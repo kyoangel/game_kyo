@@ -22,6 +22,7 @@ export function newGame(slot: 0 | 1 | 2): GameState {
     bestStarRatings: {},
     perfectClearStageIds: [],
     doomsdayDaysRemaining: DOOMSDAY_INITIAL_DAYS,
+    currentRosterIds: [char.id],
   };
 }
 

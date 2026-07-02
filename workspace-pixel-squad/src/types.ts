@@ -113,6 +113,8 @@ export interface Character {
   unlockedSkillNodeIds?: string[];  // SkillTreeNode.id values this character has unlocked
   /** True if this character already performed a support attack this round (bond system). */
   supportUsedThisRound?: boolean;
+  /** Hard Mode death tracking. 'alive' by default; 'knockedDown' = recoverable (standard mode death); 'permanentLoss' = removed from the roster for good (Hard Mode death). */
+  deathStatus?: 'alive' | 'knockedDown' | 'permanentLoss';
 }
 
 export interface EnemyTemplate {
@@ -236,6 +238,8 @@ export interface GameState {
   /** key = bondKey(templateIdA, templateIdB); value = accumulated bond points between that pair. */
   bondLevels?: Record<string, number>;
   doomsdayDaysRemaining?: number; // days left on the global countdown; undefined = DOOMSDAY_INITIAL_DAYS (legacy save / not yet ticked)
+  /** IDs of every character still belonging to this run (Hard Mode roster tracking); undefined = legacy save / not yet tracked. */
+  currentRosterIds?: string[];
 }
 
 export type ShopItemType = 'skill_scroll' | 'supply' | 'respec';

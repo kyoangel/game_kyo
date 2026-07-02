@@ -38,6 +38,7 @@ export function createCharacter(template: CharacterTemplate, level: number): Cha
     equipment: {},
     skillPoints: 0,
     unlockedSkillNodeIds: [],
+    deathStatus: 'alive',
   };
 }
 
@@ -68,6 +69,7 @@ export function createEnemy(template: EnemyTemplate, statMultiplier = 1): Charac
     skillCooldowns: {},
     equipment: {},
     weakness: template.weakness,
+    deathStatus: 'alive',
   };
   char._monsterType = template.monsterType;
   return char;
@@ -106,5 +108,6 @@ export function enemyToPlayerCharacter(enemy: Character, maxHp: number): Charact
     equipment: {},
     skillPoints: 0,
     unlockedSkillNodeIds: [],
+    deathStatus: 'alive',
   };
 }

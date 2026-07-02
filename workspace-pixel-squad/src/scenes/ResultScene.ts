@@ -8,6 +8,7 @@ import { getMusic } from '../audio/MusicManager';
 import { MUSIC_KEYS } from '../data/audio';
 import { calculateStarRating, STAR_ANIMATION_DELAY_MS } from '../ui/starRating';
 import { isDoomsdayExpired } from '../battle/DoomsdayClock';
+import { isHardModeWipeout } from '../battle/HardMode';
 
 export class ResultScene extends Phaser.Scene {
   constructor() { super({ key: 'ResultScene' }); }
@@ -107,8 +108,10 @@ export class ResultScene extends Phaser.Scene {
 
       let y = Math.max(374, nextY + 4);
       playerParty.forEach(c => {
-        this.add.text(W / 2, y, `${c.name}  Lv.${c.level}`, {
-          fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
+        const isPermanentLoss = c.deathStatus === 'permanentLoss';
+        const label = isPermanentLoss ? `${c.name}  Lv.${c.level}（Hard Mode：永久失去）` : `${c.name}  Lv.${c.level}`;
+        this.add.text(W / 2, y, label, {
+          fontSize: '13px', color: isPermanentLoss ? '#ef4444' : '#e5e7eb', fontFamily: 'monospace',
         }).setOrigin(0.5);
         y += 22;
       });
@@ -121,9 +124,17 @@ export class ResultScene extends Phaser.Scene {
         }
       });
     } else {
+      const isPermanentWipeout = isHardModeWipeout(playerParty);
+
       this.add.text(W / 2, 300, '隊伍全滅', {
         fontSize: '14px', color: '#6b7280', fontFamily: 'monospace',
       }).setOrigin(0.5);
+
+      if (isPermanentWipeout) {
+        this.add.text(W / 2, 326, 'Hard Mode：全員永久失去，此存檔無法繼續', {
+          fontSize: '12px', color: '#ef4444', fontFamily: 'monospace',
+        }).setOrigin(0.5);
+      }
 
       if (gameState?.stageProgress.inChapterRun) {
         const clearedState = {
@@ -131,6 +142,11 @@ export class ResultScene extends Phaser.Scene {
           stageProgress: { ...gameState.stageProgress, inChapterRun: undefined },
         };
         saveSlot(clearedState);
+      }
+
+      if (isPermanentWipeout) {
+        this.makeButton(W / 2, 430, '返回標題', 0x374151, () => this.scene.start('TitleScene'));
+        return;
       }
 
       this.makeButton(W / 2, 400, '重試', 0x374151, () => {
