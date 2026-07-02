@@ -88,3 +88,8 @@
 - [ ] 💰 `{ playerKOCount: 0, weaknessHitCount: 0, roundsUsed: 0 }` 這個物件字面量在 `BattleScene.ts` 的欄位初始化與 `init()` reset 中重複兩次，且測試檔案裡又以完整 regex 重複比對三次；建議在 `types.ts` 加一個 `createEmptyBattleStats(): BattlePerformanceStats` 工廠函式取代重複字面量。
 - [ ] 🎮 3★ 與 1★ 的差異目前只有靜默淡入的星星圖示（22px 文字），沒有任何額外音效或視覺強化，玩家很容易忽略這個最高 +20% 獎勵的達成；建議在 `starRating === 3` 時加一個獨立 SFX（如複用 `SFX_KEYS.crit` 或新增專屬音效）強化回饋。
 - [ ] 🎮 目前沒有測試涵蓋「同一場戰鬥中玩家死而復生或多名隊員同時死亡」時 `playerKOCount` 是否正確累加超過 1 的情境（AC-9 只驗證 guard 邏輯，未驗證多次死亡的累加值）；建議補一則整合測試模擬兩名隊員各被擊倒一次，驗證 `playerKOCount === 2`。
+- [ ] 🔄 Spec 描述「3-character star suffix」但實際程式碼是 `` `  ${'★'.repeat(bestRating)}${'☆'.repeat(...)}` ``（前面還有 2 個空格，共 5 字元），措辭與實作不符，未來 spec 應直接寫出精確字串範本（如 `` `  ★★☆` ``）而非用「3-character」這種會誤導 Coder 的字數描述。
+- [ ] 🔄 Spec 沒有為 `bestStarRatings` 存到超出 1-3 合法範圍（例如手動編輯存檔或未來 bug 寫入負值）定義行為與 AC，應新增一條 AC 要求 `WorldMapScene` 在讀取 `bestRating` 時 clamp 到 `[0,3]` 區間。
+- [ ] 💰 `tests/unit/support/extractMethod.ts` 與新增的 `tests/unit/support/extractWorldMapMethod.ts` 內含幾乎完全相同的 35 行大括號比對演算法（`extractMethod` 函式），應合併成單一 `extractMethod(source, methodName)` 通用工具，場景檔路徑改用參數傳入（如 `readSceneSource(path)`），供 BattleScene 與 WorldMapScene 測試共用。
+- [ ] 🎮 `WorldMapScene.createStageList()` 中 `'★'.repeat(bestRating)` 沒有下限保護，若 `bestRating` 為負值（例如存檔被手動竄改或未來合併邏輯出錯寫入負數）會直接拋出 `RangeError: Invalid count value`，導致整個世界地圖畫面無法渲染；應在讀取後加上 `Math.max(0, Math.min(3, bestRating))` 並補一則「bestRating 為 -1 或 4」的邊界測試。
+- [ ] 🎮 玩家重玩已通關關卡並刷新最佳星等時（例如從 1★ 進步到 3★），目前沒有任何「New Best!」提示或強化回饋，玩家可能完全沒注意到自己的紀錄被更新；建議在 `ResultScene` 偵測 `starRating > previousBest` 時加入額外文字或動畫提示。
