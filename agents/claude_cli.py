@@ -1,11 +1,22 @@
+import json
 import subprocess
 from pathlib import Path
 
 CLAUDE_TIMEOUT_S = 600
 
+_usage_log: list[dict] = []
+
 
 class ClaudeCliError(Exception):
     pass
+
+
+def reset_usage_log() -> list[dict]:
+    """Return and clear accumulated usage entries."""
+    global _usage_log
+    snapshot = _usage_log[:]
+    _usage_log = []
+    return snapshot
 
 
 def call_coder(
@@ -28,6 +39,8 @@ def call_coder(
                 system_prompt,
                 "--permission-mode",
                 "acceptEdits",
+                "--output-format",
+                "json",
             ],
             cwd=repo_root,
             capture_output=True,
@@ -45,4 +58,15 @@ def call_coder(
         )
         raise ClaudeCliError(detail)
 
-    return result.stdout.strip()
+    try:
+        parsed = json.loads(result.stdout)
+        usage = parsed.get("usage", {})
+        if usage:
+            _usage_log.append({
+                "usage": usage,
+                "cost_usd": parsed.get("total_cost_usd"),
+                "model": parsed.get("modelUsage", {}),
+            })
+        return parsed.get("result", result.stdout).strip()
+    except (json.JSONDecodeError, KeyError):
+        return result.stdout.strip()

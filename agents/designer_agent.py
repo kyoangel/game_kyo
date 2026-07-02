@@ -27,7 +27,9 @@ def _build_lm_context(backlog_path: Path, repo_root: Path) -> str:
             lines = p.read_text().splitlines()[:_TYPES_MAX_LINES]
             parts.append(f"\n## {rel} (first {_TYPES_MAX_LINES} lines)\n```typescript\n" + "\n".join(lines) + "\n```")
 
-    existing = sorted((repo_root / "specs").glob("pixel-squad-*.md"))
+    workspace = backlog_path.parent.name
+    existing = sorted((repo_root / "docs" / "specs" / workspace).glob("*.md"))
+    existing = [p for p in existing if p.name != "backlog.md"]
     if existing:
         names = "\n".join(f"- {p.name}" for p in existing[-5:])
         parts.append(f"\n## Recently-written specs (last 5)\n{names}")
@@ -52,7 +54,9 @@ def _run_lm_designer(workspace: str, backlog_path: Path, repo_root: Path) -> Pat
 
     slug = slug_match.group(1).strip().strip("-")
     spec_content = content_match.group(1).strip()
-    spec_path = repo_root / "specs" / f"{workspace}-{slug}.md"
+    spec_dir = repo_root / "docs" / "specs" / workspace
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = spec_dir / f"{slug}.md"
     spec_path.write_text(spec_content)
 
     # Mark first unchecked item in backlog

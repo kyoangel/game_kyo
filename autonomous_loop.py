@@ -7,14 +7,14 @@ import uuid
 from pathlib import Path
 
 from agents import claude_cli, designer_agent, meta_reviewer_agent, reviewer_agent
-from agents.claude_cli import ClaudeCliError
+from agents.claude_cli import ClaudeCliError, reset_usage_log
 from harness import npm_runner, prompt_store, trace_logger, workspace_diff
 
 REPO_ROOT = Path(__file__).resolve().parent
 
 
 def _resume_path(workspace: str, repo_root: Path) -> Path:
-    return repo_root / "specs" / f".{workspace}-resume.json"
+    return repo_root / "docs" / "specs" / workspace / ".resume.json"
 
 
 def _load_resume(workspace: str, repo_root: Path) -> dict:
@@ -38,7 +38,7 @@ def _git_commit(workspace: str, spec_path: Path, repo_root: Path, iter_n: int) -
         slug = slug.replace(prefix, "")
     msg = f"feat({workspace}): {slug} [autonomous loop iter {iter_n}]"
 
-    backlog_path = repo_root / "specs" / f"{workspace}-backlog.md"
+    backlog_path = repo_root / "docs" / "specs" / workspace / "backlog.md"
     subprocess.run(["git", "add", f"workspace-{workspace}/"], cwd=repo_root, check=True)
     subprocess.run(["git", "add", str(spec_path)], cwd=repo_root, check=True)
     if backlog_path.exists():
@@ -71,6 +71,24 @@ def _append_meta_review(backlog_path: Path, items: list[str], spec_slug: str, re
     )
 
 
+def _print_usage_summary(entries: list[dict], iter_n: int) -> None:
+    if not entries:
+        return
+    total_input = sum(e["usage"].get("input_tokens", 0) for e in entries)
+    total_cache_read = sum(e["usage"].get("cache_read_input_tokens", 0) for e in entries)
+    total_cache_write = sum(e["usage"].get("cache_creation_input_tokens", 0) for e in entries)
+    total_output = sum(e["usage"].get("output_tokens", 0) for e in entries)
+    total_cost = sum(e.get("cost_usd") or 0 for e in entries)
+    print(
+        f"\n📊 Iter {iter_n} token usage ({len(entries)} Claude CLI call(s)):\n"
+        f"   input:       {total_input:>8,}\n"
+        f"   cache_read:  {total_cache_read:>8,}\n"
+        f"   cache_write: {total_cache_write:>8,}\n"
+        f"   output:      {total_output:>8,}\n"
+        f"   cost (USD):  ${total_cost:>10.4f}\n"
+    )
+
+
 def autonomous_loop(
     workspace: str,
     max_iter: int = 20,
@@ -80,11 +98,12 @@ def autonomous_loop(
     if repo_root is None:
         repo_root = REPO_ROOT
 
-    backlog_path = repo_root / "specs" / f"{workspace}-backlog.md"
+    backlog_path = repo_root / "docs" / "specs" / workspace / "backlog.md"
     run_id = uuid.uuid4().hex
     workspace_dir = f"workspace-{workspace}/"
 
     for i in range(max_iter):
+        reset_usage_log()
         resume = _load_resume(workspace, repo_root)
         backlog_snapshot = backlog_path.read_text() if backlog_path.exists() else ""
 
@@ -232,6 +251,7 @@ def autonomous_loop(
             if review.approved:
                 _git_commit(workspace, spec_path, repo_root, i)
                 _clear_resume(workspace, repo_root)
+                _print_usage_summary(reset_usage_log(), i)
                 if meta_review:
                     try:
                         meta_items = meta_reviewer_agent.run_meta_review(
