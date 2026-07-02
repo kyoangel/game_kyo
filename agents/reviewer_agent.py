@@ -5,8 +5,9 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents import claude_cli, gemini_client
+from agents import claude_cli, gemini_client, lm_studio_client
 from agents.gemini_client import GeminiClientError
+from agents.lm_studio_client import LmStudioError
 from harness import prompt_store
 
 
@@ -49,9 +50,24 @@ def _get_diff(changed_files: list[Path], repo_root: Path) -> str:
     return "\n\n".join(parts) if parts else "No changes detected."
 
 
-def _claude_fallback_review(task: str, system_prompt: str, repo_root: Path) -> ReviewResult:
-    print("⚠️  Gemini unavailable — falling back to Claude CLI reviewer")
+def _parse_review_json(output: str, source: str) -> ReviewResult:
+    json_match = re.search(r'\{.*\}', output, re.DOTALL)
+    if not json_match:
+        return ReviewResult(
+            approved=True,
+            comments=[f"[{source} reviewer: could not parse output — auto-approved]"],
+        )
+    try:
+        data = json.loads(json_match.group())
+        return ReviewResult(**data)
+    except Exception:
+        return ReviewResult(
+            approved=True,
+            comments=[f"[{source} reviewer: parse error — auto-approved]"],
+        )
 
+
+def _fallback_review(task: str, system_prompt: str, repo_root: Path) -> ReviewResult:
     fallback_system = (
         system_prompt
         + "\n\n重要：你是唯讀審查員，絕對不能修改任何檔案。"
@@ -59,27 +75,21 @@ def _claude_fallback_review(task: str, system_prompt: str, repo_root: Path) -> R
         + "\n不要輸出任何其他文字，只有 JSON。"
     )
 
+    if lm_studio_client.is_available():
+        print("⚠️  Gemini unavailable — falling back to LM Studio reviewer")
+        try:
+            output = lm_studio_client.call_lm_studio(fallback_system, task)
+            return _parse_review_json(output, "LM Studio")
+        except LmStudioError as e:
+            print(f"⚠️  LM Studio reviewer also failed: {e} — falling back to Claude CLI")
+
+    print("⚠️  Falling back to Claude CLI reviewer")
     output = claude_cli.call_coder(
         system_prompt=fallback_system,
         task=task,
         repo_root=repo_root,
     )
-
-    json_match = re.search(r'\{.*\}', output, re.DOTALL)
-    if not json_match:
-        return ReviewResult(
-            approved=True,
-            comments=["[Claude fallback reviewer: could not parse output — auto-approved]"],
-        )
-
-    try:
-        data = json.loads(json_match.group())
-        return ReviewResult(**data)
-    except Exception:
-        return ReviewResult(
-            approved=True,
-            comments=["[Claude fallback reviewer: parse error — auto-approved]"],
-        )
+    return _parse_review_json(output, "Claude")
 
 
 def run_reviewer(changed_files: list[Path], repo_root: Path) -> ReviewResult:
@@ -93,4 +103,4 @@ def run_reviewer(changed_files: list[Path], repo_root: Path) -> ReviewResult:
             response_schema=ReviewResult,
         )
     except GeminiClientError:
-        return _claude_fallback_review(task, system_prompt, repo_root)
+        return _fallback_review(task, system_prompt, repo_root)
