@@ -34,6 +34,7 @@ import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 import { Colors } from '../ui/theme';
+import { computeRowAnchors, ROW_LAYOUT } from '../ui/characterRow';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
 
@@ -229,36 +230,40 @@ export class BattleScene extends Phaser.Scene {
     party.forEach((char, i) => {
       // Single column — position index i is the formation slot (0=front, 4=back)
       const cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
-      const cx = x;
+      const { labelX, barNearX, portraitX } = computeRowAnchors(x, isPlayer);
 
       const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistSheet);
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
       let body: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle;
       if (shouldUseProtagonistSprite(char, textureLoaded)) {
-        body = this.add.sprite(cx, cy, SPRITE_KEYS.protagonistSheet, 90).setDisplaySize(44, 56);
+        body = this.add.sprite(portraitX, cy, SPRITE_KEYS.protagonistSheet, 90).setDisplaySize(44, 56);
       } else if (shouldUsePartySprite(char, this)) {
-        body = this.add.image(cx, cy, partySpritKey(char.templateId)).setDisplaySize(44, 56);
+        body = this.add.image(portraitX, cy, partySpritKey(char.templateId)).setDisplaySize(44, 56);
       } else if (shouldUseMonsterSprite(char, this)) {
-        body = this.add.image(cx, cy, monsterIdleKey(char._monsterType as MonsterType)).setDisplaySize(44, 56);
+        body = this.add.image(portraitX, cy, monsterIdleKey(char._monsterType as MonsterType)).setDisplaySize(44, 56);
       } else {
-        body = this.add.rectangle(cx, cy, 44, 56, color).setAlpha(0.9);
+        body = this.add.rectangle(portraitX, cy, 44, 56, color).setAlpha(0.9);
       }
       const useSprite = shouldUseProtagonistSprite(char, textureLoaded);
-      const hpBarBg = this.add.rectangle(cx, cy + 34, 60, 6, 0x374151);
-      const hpBar = this.add.rectangle(cx - 30, cy + 34, 60, 6, 0x22c55e).setOrigin(0, 0.5);
-      const nameText = this.add.text(cx, cy - 36, char.name, {
+      const barOrigin = isPlayer ? 0 : 1;
+      const teamColor = isPlayer ? Colors.TEAM_ALLY : Colors.TEAM_ENEMY;
+      const hpBarBg = this.add.rectangle(barNearX, cy + 34, ROW_LAYOUT.BAR_WIDTH, ROW_LAYOUT.BAR_HEIGHT, 0x374151)
+        .setOrigin(barOrigin, 0.5);
+      const hpBar = this.add.rectangle(barNearX, cy + 34, ROW_LAYOUT.BAR_WIDTH, ROW_LAYOUT.BAR_HEIGHT, teamColor)
+        .setOrigin(barOrigin, 0.5);
+      const nameText = this.add.text(labelX, cy - 36, char.name, {
         fontSize: '10px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const archetypeText = this.add.text(cx, cy - 26, `[${char.archetype}] ${ARCHETYPE_TOOLTIP[char.archetype]}`, {
+      const archetypeText = this.add.text(labelX, cy - 26, `[${char.archetype}] ${ARCHETYPE_TOOLTIP[char.archetype]}`, {
         fontSize: '8px', color: '#6b7280', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const hpText = this.add.text(cx, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
+      const hpText = this.add.text(labelX, cy + 44, `${char.stats.hp}/${char.stats.maxHp}`, {
         fontSize: '9px', color: '#9ca3af', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const statusText = this.add.text(cx, cy + 54, '', {
+      const statusText = this.add.text(portraitX, cy + 54, '', {
         fontSize: '9px', color: '#e5e7eb', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const weaknessIcon = this.add.text(cx + 22, cy - 26, '', {
+      const weaknessIcon = this.add.text(portraitX + (isPlayer ? 22 : -22), cy - 26, '', {
         fontSize: '10px', fontFamily: 'monospace',
       }).setOrigin(0.5);
       const animator = new CharacterAnimator(this, body, useSprite);
@@ -268,7 +273,7 @@ export class BattleScene extends Phaser.Scene {
       this.updateWeaknessIcon(char);
 
       if (isPlayer) {
-        const icon = this.add.text(cx + 28, cy - 36, '', {
+        const icon = this.add.text(portraitX + 28, cy - 36, '', {
           fontSize: '11px', fontFamily: 'monospace',
         }).setOrigin(0.5);
         this.commandIcons.set(char.id, icon);
@@ -283,8 +288,7 @@ export class BattleScene extends Phaser.Scene {
     const view = this.views.get(char.id);
     if (!view) return;
     const pct = Math.max(0, char.stats.hp / char.stats.maxHp);
-    view.hpBar.width = 60 * pct;
-    view.hpBar.fillColor = pct > 0.5 ? 0x22c55e : pct > 0.25 ? 0xf59e0b : 0xef4444;
+    view.hpBar.width = ROW_LAYOUT.BAR_WIDTH * pct;
     view.hpText.setText(`${char.stats.hp}/${char.stats.maxHp}`);
   }
 
