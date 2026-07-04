@@ -5,6 +5,7 @@ from openai import OpenAI
 
 LM_STUDIO_BASE_URL = os.getenv("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
 LM_STUDIO_MODEL = os.getenv("LM_STUDIO_MODEL", "google/gemma-4-e4b")
+LM_STUDIO_MODEL_CODER = os.getenv("LM_STUDIO_MODEL_CODER", LM_STUDIO_MODEL)
 _CACHE_TTL_S = 60.0
 
 _availability_cache: bool | None = None
@@ -19,10 +20,12 @@ def _client() -> OpenAI:
     return OpenAI(base_url=LM_STUDIO_BASE_URL, api_key="lm-studio")
 
 
-def call_lm_studio(system_prompt: str, task: str, temperature: float = 0.3) -> str:
+def call_lm_studio(
+    system_prompt: str, task: str, model: str | None = None, temperature: float = 0.3
+) -> str:
     try:
         response = _client().chat.completions.create(
-            model=LM_STUDIO_MODEL,
+            model=model or LM_STUDIO_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": task},

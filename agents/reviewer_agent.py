@@ -66,7 +66,9 @@ def _fallback_review(task: str, system_prompt: str, repo_root: Path) -> ReviewRe
     if lm_studio_client.is_available():
         print("⚠️  Gemini unavailable — falling back to LM Studio reviewer")
         try:
-            output = lm_studio_client.call_lm_studio(fallback_system, task)
+            output = lm_studio_client.call_lm_studio(
+                fallback_system, task, model=lm_studio_client.LM_STUDIO_MODEL_CODER
+            )
             return _parse_review_json(output, "LM Studio")
         except LmStudioError as e:
             print(f"⚠️  LM Studio reviewer also failed: {e} — falling back to Claude CLI")
