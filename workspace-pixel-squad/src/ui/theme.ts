@@ -18,6 +18,9 @@ export const Colors = {
   HP_HIGH: 0x48bb78,
   HP_MID: 0xed8936,
   HP_LOW: 0xe53e3e,
+  TEAM_ALLY: 0xf5a623,
+  TEAM_ENEMY: 0xb083e6,
+  BG_BATTLE: 0x000000,
   ARCHETYPE: {
     坦克: 0x3182ce,
     輸出: 0xe53e3e,

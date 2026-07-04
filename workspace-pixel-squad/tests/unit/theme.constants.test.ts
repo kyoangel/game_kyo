@@ -83,6 +83,18 @@ describe('Colors palette', () => {
     expect(Colors.HP_LOW).toBe(0xe53e3e);
   });
 
+  it('TEAM_ALLY is 0xf5a623 (battle HUD ally bar/portrait color)', () => {
+    expect(Colors.TEAM_ALLY).toBe(0xf5a623);
+  });
+
+  it('TEAM_ENEMY is 0xb083e6 (battle HUD enemy bar/portrait color)', () => {
+    expect(Colors.TEAM_ENEMY).toBe(0xb083e6);
+  });
+
+  it('BG_BATTLE is 0x000000 (pure black battle background)', () => {
+    expect(Colors.BG_BATTLE).toBe(0x000000);
+  });
+
   describe('ARCHETYPE badge colors', () => {
     it('坦克 is 0x3182ce (blue)', () => {
       expect(Colors.ARCHETYPE['坦克']).toBe(0x3182ce);
