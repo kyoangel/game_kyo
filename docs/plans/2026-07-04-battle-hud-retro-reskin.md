@@ -176,7 +176,7 @@ git commit -m "feat(pixel-squad): add computeRowAnchors dual-anchor layout funct
 
 ---
 
-### Task 3: Paint the battlefield background pure black
+### Task 3: Paint the battlefield background pure black [DONE — commit 4865d3a]
 
 **Files:**
 - Modify: `workspace-pixel-squad/src/scenes/BattleScene.ts:1-2` (imports), `:160-165` (background block in `create()`)
@@ -261,7 +261,7 @@ git commit -m "feat(pixel-squad): paint battle HUD background pure black"
 
 ---
 
-### Task 4: Wire `renderParty()` to the dual-anchor layout and team-color bars
+### Task 4: Wire `renderParty()` to the dual-anchor layout and team-color bars [DONE — commit 6897e3c]
 
 **Files:**
 - Modify: `workspace-pixel-squad/src/scenes/BattleScene.ts:226-281` (`renderParty`), `:283-290` (`updateHpBar`)
@@ -422,9 +422,23 @@ git commit -m "feat(pixel-squad): dual-anchor renderParty — portrait slides in
 
 ---
 
-### Task 5: Full test suite, typecheck, and manual visual verification
+### Task 5: Full test suite, typecheck, and manual visual verification [Steps 1-2 DONE, Step 3 pending — needs human/browser]
 
 **Files:** none (verification only)
+
+**Deviation:** Full suite initially showed 6 failures in unrelated orphan files
+`GameStateSeedingSpec.lineRefAccuracy.test.ts` / `GameStateInitializationSpec.lineRefAccuracy.test.ts`
+(leftover from an earlier degenerate autonomous-loop run, not part of this plan). They
+self-check that 3 meta-spec docs cite the correct line number for
+`this.gameState = data.gameState` in `BattleScene.ts`. Task 3/4's 2 new import lines shifted
+that assignment from line 133 to 135, making the citations stale. Fixed by updating the 3
+docs (`insertion-point-clarification.md`, `improve-game-state-seeding-specification.md`,
+`refining-game-state-initialization.md`) from `:133` to `:135`. Full suite now passes
+(147 files / 1351 tests). `npm run build` (tsc + vite) passes clean.
+
+Step 3 (manual browser check) could not be run from this session — Claude-in-Chrome
+extension isn't connected. Dev server was left running at
+`http://localhost:5173/game_kyo/pixel-squad/` for the user to check manually.
 
 - [ ] **Step 1: Run the full unit test suite**
 
