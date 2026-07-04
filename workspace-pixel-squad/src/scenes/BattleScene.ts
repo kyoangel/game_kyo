@@ -33,6 +33,7 @@ import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
+import { Colors } from '../ui/theme';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
 
@@ -159,9 +160,7 @@ export class BattleScene extends Phaser.Scene {
 
     const W = 360, H = 640;
 
-    this.add.rectangle(W / 2, H / 2, W, H, 0x111827);
-    this.add.rectangle(90, H / 2 - 80, 160, 440, 0x1f2937).setAlpha(0.6);
-    this.add.rectangle(270, H / 2 - 80, 160, 440, 0x1f2937).setAlpha(0.6);
+    this.add.rectangle(W / 2, H / 2, W, H, Colors.BG_BATTLE);
     this.add.line(W / 2, 240, 0, -220, 0, 220, 0x374151, 0.6).setLineWidth(1);
 
     this.add.text(W / 2, 16, STAGES[this.stageIndex].name, {
