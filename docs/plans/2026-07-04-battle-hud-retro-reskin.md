@@ -422,7 +422,7 @@ git commit -m "feat(pixel-squad): dual-anchor renderParty — portrait slides in
 
 ---
 
-### Task 5: Full test suite, typecheck, and manual visual verification [Steps 1-2 DONE, Step 3 pending — needs human/browser]
+### Task 5: Full test suite, typecheck, and manual visual verification [DONE]
 
 **Files:** none (verification only)
 
@@ -436,21 +436,28 @@ docs (`insertion-point-clarification.md`, `improve-game-state-seeding-specificat
 `refining-game-state-initialization.md`) from `:133` to `:135`. Full suite now passes
 (147 files / 1351 tests). `npm run build` (tsc + vite) passes clean.
 
-Step 3 (manual browser check) could not be run from this session — Claude-in-Chrome
-extension isn't connected. Dev server was left running at
-`http://localhost:5173/game_kyo/pixel-squad/` for the user to check manually.
+Step 3 (manual browser check) was completed in a follow-up session via Claude-in-Chrome
+against the dev server at `http://localhost:5173/game_kyo/pixel-squad/`, using existing
+save 存檔1 (3-member party) and re-fighting the already-cleared 廢城入口 stage. Confirmed:
+pure black background with no lighter column panels; ally HP bars orange (`Colors.TEAM_ALLY`)
+and enemy HP bar purple (`Colors.TEAM_ENEMY`) regardless of remaining HP; character portraits
+sit visibly closer to the centerline than the name/archetype/HP text column; tapping a player
+portrait opens the 攻擊/技能/防禦 command menu; selecting 攻擊 draws the target-selection
+highlight box around the enemy at its new portrait position, and clicking it resolves the
+attack. No cramping observed at this squad size (3 vs 1); no calibration changes needed, so
+Step 4 was skipped.
 
-- [ ] **Step 1: Run the full unit test suite**
+- [x] **Step 1: Run the full unit test suite**
 
 Run: `cd workspace-pixel-squad && npm run test:unit`
 Expected: PASS — all suites green, including the pre-existing `BattleScene.aoaWiring.test.ts`, `BattleScene.bondWiring.test.ts`, `BattleScene.mercenaryRating.test.ts`, and `BattleScene.sceneGuard.test.ts` (none of these reference the hex values, offsets, or `renderParty` internals touched in this plan, so they should be unaffected — this run confirms that).
 
-- [ ] **Step 2: Run the typecheck/build**
+- [x] **Step 2: Run the typecheck/build**
 
 Run: `cd workspace-pixel-squad && npm run build`
 Expected: PASS — `tsc` reports no type errors, `vite build` completes.
 
-- [ ] **Step 3: Manually verify in the browser**
+- [x] **Step 3: Manually verify in the browser**
 
 Run: `cd workspace-pixel-squad && npm run dev`, open the printed local URL, start a battle (any stage from the world map).
 
@@ -463,7 +470,7 @@ Confirm against the spec (`docs/specs/pixel-squad/battle-hud-retro-reskin.md`):
 
 If the bar/portrait spacing looks cramped or crosses into the opposing column at any squad size (1 vs 5 is the tightest vertical case), adjust `BAR_WIDTH`/`BAR_GAP`/`PORTRAIT_INSET` in `workspace-pixel-squad/src/ui/characterRow.ts` and re-run Task 2's tests plus this manual check — this is expected calibration, not a bug (the spec explicitly flags these as starting values, not final pixel-perfect ones).
 
-- [ ] **Step 4: Commit any calibration adjustments (only if Step 3 required changes)**
+- [x] **Step 4: Commit any calibration adjustments (only if Step 3 required changes) — skipped, no calibration needed**
 
 ```bash
 git add workspace-pixel-squad/src/ui/characterRow.ts
