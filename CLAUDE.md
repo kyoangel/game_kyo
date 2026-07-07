@@ -35,3 +35,8 @@ The autonomous loop (`autonomous_loop.py`) reads/writes:
 - Backlog: `docs/specs/{workspace}/backlog.md`
 - Feature specs: `docs/specs/{workspace}/{slug}.md`
 - Resume state: `docs/specs/{workspace}/.resume.json`
+
+## Orchestration Rules (index only — do not inline content here)
+Dispatch rules: `~/.claude-personal/rules/AGENTS.md` (always loaded).
+On-demand playbooks: `~/.claude-personal/playbooks/` — model-dispatch,
+judgment-rubrics, task-prompt-templates, maintenance (read per AGENTS.md index).
