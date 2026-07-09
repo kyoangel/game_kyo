@@ -41,4 +41,5 @@ export const TextStyles = {
   GOLD:     { fontFamily: FONT_FAMILY, fontSize: '12px', color: '#f6e05e' },
   DAMAGE:   { fontFamily: FONT_FAMILY, fontSize: '14px', color: '#fc8181' },
   HEAL:     { fontFamily: FONT_FAMILY, fontSize: '14px', color: '#68d391' },
+  BATTLE_NAME: { fontFamily: FONT_FAMILY, fontSize: '10px', color: '#ffffff', fontStyle: 'bold' },
 } as const;
