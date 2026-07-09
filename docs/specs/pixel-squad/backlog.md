@@ -1,6 +1,7 @@
 # pixel-squad backlog
 
 - [x] Battle HUD 復古改版收尾：戰場背景改純黑 + `renderParty()` 接上 `computeRowAnchors` 雙錨點排版與隊伍色條（spec: `battle-hud-retro-reskin.md`，plan: `docs/plans/2026-07-04-battle-hud-retro-reskin.md` Task 3–5，含瀏覽器視覺驗證，已完成）
+- [ ] 戰鬥畫面吞食天地II形式復刻（2026-07-09 需求，spec/plan 已完成，待 Sonnet session 實作）：版面（名字+兵力堆疊、10 段血條、sprite 站條上、肖像窗、指令/訊息窗、地形帶）＋回合演出（前進一步/前衝/閃爍/數字滾動/逐字訊息）＋像素中文字體整合＋18 張自創肖像（spec: `battle-screen-tenchi2-homage.md`，plan: `docs/plans/2026-07-09-battle-screen-tenchi2-homage.md`；順帶修復下方美術/動畫問題的前兩個子項）
 - [ ] 戰鬥角色美術/動畫問題（2026-07-05 手動驗證時發現，待排期）：
   - 敵人 sprite 朝向錯誤，應該面向左邊（面向我方/中線）
   - 敵人 idle 動畫有明顯的忽大忽小縮放跳動，需檢查 `CharacterAnimator`/monster idle 動畫的 scale tween
