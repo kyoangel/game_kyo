@@ -194,4 +194,15 @@ describe('BattleScene tenchi2 presentation pipeline', () => {
     expect(body).toMatch(/stepForward\(/);
     expect(body).toMatch(/stepBack\(/);
   });
+
+  // Found via manual browser QA (2026-07-09): the command window and the
+  // typewriter message window are now the same physical window (COMMAND_WIN),
+  // so a leftover in-flight message from the previous execution phase bled
+  // through behind the command menu's text when the next command phase began.
+  it('showCommandMenu() and showSkillPicker() clear any leftover battle message before drawing menu entries', () => {
+    const menuBody = extractMethod(source, 'showCommandMenu');
+    const pickerBody = extractMethod(source, 'showSkillPicker');
+    expect(menuBody).toMatch(/clearBattleMessage\(\)/);
+    expect(pickerBody).toMatch(/clearBattleMessage\(\)/);
+  });
 });

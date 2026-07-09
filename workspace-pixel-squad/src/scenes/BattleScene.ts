@@ -424,6 +424,7 @@ export class BattleScene extends Phaser.Scene {
 
   private showCommandMenu(character: Character) {
     this.actionMenu.removeAll(true);
+    this.clearBattleMessage();
     this.waitingForInput = true;
 
     const isFirstAlive = character === this.playerParty.find(c => c.alive);
@@ -542,6 +543,7 @@ export class BattleScene extends Phaser.Scene {
 
   private showSkillPicker(character: Character) {
     this.actionMenu.removeAll(true);
+    this.clearBattleMessage();
     this.waitingForInput = true;
     this.skillPickerActive = true;
 
@@ -1318,10 +1320,19 @@ export class BattleScene extends Phaser.Scene {
   // command menu — see docs/specs/pixel-squad/battle-screen-tenchi2-homage.md
   // "底部視窗帶"). Click anywhere in the window to skip ahead: once while
   // still typing, reveals the full line; once more (or after 600ms) finishes.
-  private showBattleMessage(text: string, onDone: () => void) {
+  // Stops any in-flight typewriter and blanks the message text. Must run
+  // before the command menu draws into the same window (COMMAND_WIN), or a
+  // leftover message from the previous execution phase bleeds through behind
+  // the new menu entries (found via manual browser QA, 2026-07-09).
+  private clearBattleMessage() {
     this.messageTypeTimer?.remove();
+    this.messageTypeTimer = undefined;
     this.messageText.disableInteractive();
     this.messageText.setText('');
+  }
+
+  private showBattleMessage(text: string, onDone: () => void) {
+    this.clearBattleMessage();
 
     const startTime = this.time.now;
     let finished = false;
