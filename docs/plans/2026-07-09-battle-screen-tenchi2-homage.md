@@ -63,7 +63,7 @@ export function computeRowLayoutV2(isPlayer: boolean, canvasWidth: number): RowL
 export function fillSegments(hp: number, maxHp: number, segments: number): number;
 ```
 
-- [ ] **Step 1: 寫失敗測試**(追加到 `tests/unit/characterRow.test.ts`)
+- [x] **Step 1: 寫失敗測試**(追加到 `tests/unit/characterRow.test.ts`)
 
 ```ts
 import { computeRowLayoutV2, fillSegments, ROW_V2 } from '../../src/ui/characterRow';
@@ -109,12 +109,12 @@ describe('fillSegments', () => {
 });
 ```
 
-- [ ] **Step 2: 跑測試確認失敗**
+- [x] **Step 2: 跑測試確認失敗**
 
 Run: `cd workspace-pixel-squad && npx vitest run tests/unit/characterRow.test.ts`
 Expected: FAIL(`computeRowLayoutV2` is not exported)
 
-- [ ] **Step 3: 實作**(追加到 `src/ui/characterRow.ts`,上方 Interfaces 區塊的 `ROW_V2`/`RowLayoutV2` 原文照貼,再加:)
+- [x] **Step 3: 實作**(追加到 `src/ui/characterRow.ts`,上方 Interfaces 區塊的 `ROW_V2`/`RowLayoutV2` 原文照貼,再加:)
 
 ```ts
 export function computeRowLayoutV2(isPlayer: boolean, canvasWidth: number): RowLayoutV2 {
@@ -143,8 +143,8 @@ export function fillSegments(hp: number, maxHp: number, segments: number): numbe
 }
 ```
 
-- [ ] **Step 4: 跑測試確認通過**(同 Step 2 指令,Expected: PASS,既有 `computeRowAnchors` 測試也不得壞)
-- [ ] **Step 5: Commit** — `git add workspace-pixel-squad/src/ui/characterRow.ts workspace-pixel-squad/tests/unit/characterRow.test.ts && git commit -m "feat(pixel-squad): add tenchi2-style row layout pure functions"`
+- [x] **Step 4: 跑測試確認通過**(同 Step 2 指令,Expected: PASS,既有 `computeRowAnchors` 測試也不得壞)
+- [x] **Step 5: Commit** — `git add workspace-pixel-squad/src/ui/characterRow.ts workspace-pixel-squad/tests/unit/characterRow.test.ts && git commit -m "feat(pixel-squad): add tenchi2-style row layout pure functions"`
 
 ---
 
@@ -167,7 +167,7 @@ export function defendMessage(name: string): string;                 // `${name}
 export function healMessage(name: string, amount: number): string;   // `${name} 回復了 ${amount} 點兵力!`
 ```
 
-- [ ] **Step 1: 寫失敗測試**
+- [x] **Step 1: 寫失敗測試**
 
 ```ts
 import { attackMessage, skillMessage, damageMessage, missMessage, defeatMessage, defendMessage, healMessage } from '../../src/ui/battleMessages';
@@ -186,8 +186,8 @@ describe('battleMessages', () => {
 });
 ```
 
-- [ ] **Step 2: 跑測試確認失敗** — `npx vitest run tests/unit/battleMessages.test.ts`,Expected: FAIL(module not found)
-- [ ] **Step 3: 實作 `src/ui/battleMessages.ts`**
+- [x] **Step 2: 跑測試確認失敗** — `npx vitest run tests/unit/battleMessages.test.ts`,Expected: FAIL(module not found)
+- [x] **Step 3: 實作 `src/ui/battleMessages.ts`**
 
 ```ts
 export function attackMessage(name: string): string { return `${name} 的攻擊!`; }
@@ -202,8 +202,8 @@ export function defendMessage(name: string): string { return `${name} 擺出防�
 export function healMessage(name: string, amount: number): string { return `${name} 回復了 ${amount} 點兵力!`; }
 ```
 
-- [ ] **Step 4: 跑測試確認通過**
-- [ ] **Step 5: Commit** — `git commit -m "feat(pixel-squad): add battle message templates"`
+- [x] **Step 4: 跑測試確認通過**
+- [x] **Step 5: Commit** — `git commit -m "feat(pixel-squad): add battle message templates"`
 
 ---
 
@@ -232,7 +232,7 @@ export function terrainPattern(width: number, topY: number): PatternRect[];
 export function drawTerrainStrip(g: Phaser.GameObjects.Graphics, rects: PatternRect[]): void;
 ```
 
-- [ ] **Step 1: 寫失敗測試**(兩個測試檔)
+- [x] **Step 1: 寫失敗測試**(兩個測試檔)
 
 ```ts
 // tests/unit/battleWindow.test.ts
@@ -265,8 +265,8 @@ describe('terrainPattern', () => {
 });
 ```
 
-- [ ] **Step 2: 跑測試確認失敗** — `npx vitest run tests/unit/battleWindow.test.ts tests/unit/terrainStrip.test.ts`
-- [ ] **Step 3: 實作**
+- [x] **Step 2: 跑測試確認失敗** — `npx vitest run tests/unit/battleWindow.test.ts tests/unit/terrainStrip.test.ts`
+- [x] **Step 3: 實作**
 
 ```ts
 // src/ui/battleWindow.ts
@@ -324,8 +324,8 @@ export function drawTerrainStrip(g: Phaser.GameObjects.Graphics, rects: PatternR
 }
 ```
 
-- [ ] **Step 4: 跑測試確認通過**
-- [ ] **Step 5: Commit** — `git commit -m "feat(pixel-squad): add window frame and terrain strip renderers"`
+- [x] **Step 4: 跑測試確認通過**
+- [x] **Step 5: Commit** — `git commit -m "feat(pixel-squad): add window frame and terrain strip renderers"`
 
 ---
 
@@ -339,7 +339,7 @@ export function drawTerrainStrip(g: Phaser.GameObjects.Graphics, rects: PatternR
 **Interfaces:**
 - Produces:`theme.ts` 匯出 `export const FONT_FAMILY = '"Fusion Pixel 12px Proportional", monospace';`,全部 `TextStyles` 改用它。
 
-- [ ] **Step 1: 下載字體並確認授權**
+- [x] **Step 1: 下載字體並確認授權**
 
 ```bash
 cd workspace-pixel-squad
@@ -353,7 +353,7 @@ ls -la public/fonts/
 
 Expected: woff2 檔存在(數百 KB)。確認 repo 的 LICENSE 為 **OFL-1.1**(`gh api repos/TakWolf/fusion-pixel-font --jq '.license.spdx_id'` → `OFL-1.1`)。若網路被擋:記錄手動下載指令到回報,先用 fallback(`FONT_FAMILY` 仍定義,瀏覽器 fallback 到 monospace,不會壞)繼續後續 task。
 
-- [ ] **Step 2: 寫失敗測試** `tests/unit/theme.font.test.ts`
+- [x] **Step 2: 寫失敗測試** `tests/unit/theme.font.test.ts`
 
 ```ts
 import { FONT_FAMILY, TextStyles } from '../../src/ui/theme';
@@ -370,8 +370,8 @@ describe('pixel font integration', () => {
 });
 ```
 
-- [ ] **Step 3: 跑測試確認失敗** — `npx vitest run tests/unit/theme.font.test.ts`(FONT_FAMILY not exported)
-- [ ] **Step 4: 實作**
+- [x] **Step 3: 跑測試確認失敗** — `npx vitest run tests/unit/theme.font.test.ts`(FONT_FAMILY not exported)
+- [x] **Step 4: 實作**
   - `index.html` `<head>` 內加:
 
 ```html
@@ -401,8 +401,8 @@ if (document.fonts?.load) {
 ```
 
   - `ASSET-CREDITS.md` 加一條:`Fusion Pixel Font (TakWolf, https://github.com/TakWolf/fusion-pixel-font) — SIL OFL-1.1, used for all in-game text.`
-- [ ] **Step 5: 跑測試確認通過**;再跑 `npx vitest run` 全套確認無其他測試因 theme 改動而壞(有 regex 測試檢查 `fontFamily: 'monospace'` 的話同步更新其斷言)
-- [ ] **Step 6: Commit** — `git commit -m "feat(pixel-squad): integrate Fusion Pixel CJK font (OFL-1.1)"`
+- [x] **Step 5: 跑測試確認通過**;再跑 `npx vitest run` 全套確認無其他測試因 theme 改動而壞(有 regex 測試檢查 `fontFamily: 'monospace'` 的話同步更新其斷言)
+- [x] **Step 6: Commit** — `git commit -m "feat(pixel-squad): integrate Fusion Pixel CJK font (OFL-1.1)"`
 
 ---
 
@@ -416,9 +416,9 @@ if (document.fonts?.load) {
 - Consumes:Task 1 的 `computeRowLayoutV2`、`fillSegments`、`ROW_V2`。
 - Produces:BattleScene 內每個角色的 render 資料改存 `hpSegments: Phaser.GameObjects.Rectangle[]`(取代單一 fill bar)與 `hpText`;`updateHpDisplay(character)` 取代 `updateHpBar`(舊名可保留為轉呼叫)。sprite `originX` 概念不變(`CharacterAnimator` 依 `originX` 回位)。
 
-- [ ] **Step 1: 先讀後改** — 通讀 `renderParty()`、`updateHpBar()`、`onPlayerBodyTap` 佈線(:281-282)、`setCommandIcon`(:308-312),列出所有引用 `computeRowAnchors` 回傳值的地方。
-- [ ] **Step 2: 更新 regex 測試為新期望**(先紅):`BattleScene.retroHud.test.ts` 改斷言 `renderParty()` 內出現 `computeRowLayoutV2(`、`fillSegments(`、`ROW_V2`,且不再出現 `archetype` 文字建立(職業字樣移到肖像窗,Task 6)。跑 `npx vitest run tests/unit/BattleScene.retroHud.test.ts` 確認 FAIL。
-- [ ] **Step 3: 改 `renderParty()`**,每列改為:
+- [x] **Step 1: 先讀後改** — 通讀 `renderParty()`、`updateHpBar()`、`onPlayerBodyTap` 佈線(:281-282)、`setCommandIcon`(:308-312),列出所有引用 `computeRowAnchors` 回傳值的地方。
+- [x] **Step 2: 更新 regex 測試為新期望**(先紅):`BattleScene.retroHud.test.ts` 改斷言 `renderParty()` 內出現 `computeRowLayoutV2(`、`fillSegments(`、`ROW_V2`,且不再出現 `archetype` 文字建立(職業字樣移到肖像窗,Task 6)。跑 `npx vitest run tests/unit/BattleScene.retroHud.test.ts` 確認 FAIL。
+- [x] **Step 3: 改 `renderParty()`**,每列改為:
 
 ```ts
 const layout = computeRowLayoutV2(isPlayer, this.scale.width);
@@ -443,7 +443,7 @@ const hpSegments = layout.segmentXs.map((sx) =>
 ```
 
   狀態圖示 y 改 `cy - 46`(sprite 正上方,x 用 `layout.spriteX`);弱點圖示 `layout.spriteX ± 22, cy - 30`(外側斜上);指令小圖示改掛名字右側(`nameText` 右緣 + 10)。初始 fill:`hpSegments` 依 `fillSegments(c.hp, c.maxHp, ROW_V2.SEGMENTS)`,超過的段 `setFillStyle(0x2a2a2a)`。
-- [ ] **Step 4: 改 `updateHpDisplay(character)`**(取代 `updateHpBar` 內容,舊名轉呼叫新名以免其他 call site 壞):
+- [x] **Step 4: 改 `updateHpDisplay(character)`**(取代 `updateHpBar` 內容,舊名轉呼叫新名以免其他 call site 壞):
 
 ```ts
 private updateHpDisplay(c: BattleCharacter): void {
@@ -456,8 +456,8 @@ private updateHpDisplay(c: BattleCharacter): void {
 }
 ```
 
-- [ ] **Step 5: 跑全套測試** — `npx vitest run`。逐一修正因錨點/字樣改變而壞的 regex 測試(**保留其原始意圖**:例如 tap 選人測試改斷言 `layout.spriteX`,不是刪測試)。Expected: 全綠。
-- [ ] **Step 6: Commit** — `git commit -m "feat(pixel-squad): rebuild battle rows in tenchi2 layout (stacked labels, segmented bars, sprite-on-bar, enemy facing fix)"`
+- [x] **Step 5: 跑全套測試** — `npx vitest run`。逐一修正因錨點/字樣改變而壞的 regex 測試(**保留其原始意圖**:例如 tap 選人測試改斷言 `layout.spriteX`,不是刪測試)。Expected: 全綠。
+- [x] **Step 6: Commit** — `git commit -m "feat(pixel-squad): rebuild battle rows in tenchi2 layout (stacked labels, segmented bars, sprite-on-bar, enemy facing fix)"`
 
 ---
 
@@ -472,8 +472,8 @@ private updateHpDisplay(c: BattleCharacter): void {
 - Consumes:Task 3 的 `windowFrameRects/drawWindow/terrainPattern/drawTerrainStrip`。
 - Produces:場景方法 `showPortrait(c: BattleCharacter): void`、常數 `PORTRAIT_WIN = { x: 6, y: 468, w: 104, h: 104 }`、`COMMAND_WIN = { x: 118, y: 468, w: 236, h: 104 }`、`TERRAIN_TOP = 580`(供 Task 7 的訊息窗共用 `COMMAND_WIN`)。
 
-- [ ] **Step 1: 更新 regex 測試為新期望**(先紅):`create()` 內出現 `drawWindow(`、`drawTerrainStrip(`;`showCommandMenu` 內容器座標不再是 `(W/2, 590)` 而是 `COMMAND_WIN`。
-- [ ] **Step 2: `preload()` 加肖像載入(容錯)**
+- [x] **Step 1: 更新 regex 測試為新期望**(先紅):`create()` 內出現 `drawWindow(`、`drawTerrainStrip(`;`showCommandMenu` 內容器座標不再是 `(W/2, 590)` 而是 `COMMAND_WIN`。
+- [x] **Step 2: `preload()` 加肖像載入(容錯)**
 
 ```ts
 const portraitIds = [...PARTY_IDS, ...MONSTER_TYPES]; // 依 src/data/characters.ts 與 stages.ts 的實際匯出取得 18 個 id
@@ -485,7 +485,7 @@ this.load.on('loaderror', (file: Phaser.Loader.File) => {
 });
 ```
 
-- [ ] **Step 3: `create()` 繪製底部帶**
+- [x] **Step 3: `create()` 繪製底部帶**
 
 ```ts
 const g = this.add.graphics().setDepth(5);
@@ -494,9 +494,9 @@ drawWindow(g, windowFrameRects(COMMAND_WIN.x, COMMAND_WIN.y, COMMAND_WIN.w, COMM
 drawTerrainStrip(g, terrainPattern(this.scale.width, TERRAIN_TOP));
 ```
 
-- [ ] **Step 4: `showPortrait(c)`** — 窗內 96×96:有 `portrait_${id}` 貼圖且不在 `missingPortraits` → `add.image` 置中;否則暗色剪影(`add.rectangle(cx, cy, 80, 80, 0x1a1a1a)`)。下方一行小字 `${c.name}·${c.archetype}`(這裡接手 Task 5 移除的職業字樣)。指令階段在 `advanceCommandInput()` 對當前角色呼叫;執行階段在每個行動者開演出時呼叫(敵我皆換,Task 7 接手)。
-- [ ] **Step 5: 選單搬進指令窗** — `showCommandMenu()` 容器改 `(COMMAND_WIN.x, COMMAND_WIN.y)`;項目 2 欄排列:欄 x = 16 / 124,列 y = 22 / 48 / 74;每項左側 `▶` 游標 text(預設隱藏,pointerover/最後點擊顯示)。**項目與 handler 完全沿用既有邏輯**(自動/攻擊/技能/防禦/勸降)。`showSkillPicker` 同法移入同窗。`showAoaPrompt` 只換視覺(在 `COMMAND_WIN` 內畫,套 `drawWindow` 風格),觸發與 handler 不動。
-- [ ] **Step 6: 跑全套測試修 regex 斷言;Commit** — `git commit -m "feat(pixel-squad): bottom window band (portrait / command window / terrain strip)"`
+- [x] **Step 4: `showPortrait(c)`** — 窗內 96×96:有 `portrait_${id}` 貼圖且不在 `missingPortraits` → `add.image` 置中;否則暗色剪影(`add.rectangle(cx, cy, 80, 80, 0x1a1a1a)`)。下方一行小字 `${c.name}·${c.archetype}`(這裡接手 Task 5 移除的職業字樣)。指令階段在 `advanceCommandInput()` 對當前角色呼叫;執行階段在每個行動者開演出時呼叫(敵我皆換,Task 7 接手)。
+- [x] **Step 5: 選單搬進指令窗** — `showCommandMenu()` 容器改 `(COMMAND_WIN.x, COMMAND_WIN.y)`;項目 2 欄排列:欄 x = 16 / 124,列 y = 22 / 48 / 74;每項左側 `▶` 游標 text(預設隱藏,pointerover/最後點擊顯示)。**項目與 handler 完全沿用既有邏輯**(自動/攻擊/技能/防禦/勸降)。`showSkillPicker` 同法移入同窗。`showAoaPrompt` 只換視覺(在 `COMMAND_WIN` 內畫,套 `drawWindow` 風格),觸發與 handler 不動。
+- [x] **Step 6: 跑全套測試修 regex 斷言;Commit** — `git commit -m "feat(pixel-squad): bottom window band (portrait / command window / terrain strip)"`
 
 ---
 
@@ -522,7 +522,7 @@ private stepForward(c: BattleCharacter): void;  // sprite x tween +layout.stepDX
 private stepBack(c: BattleCharacter): void;     // tween 回 originX
 ```
 
-- [ ] **Step 1: `visibleChars` 失敗測試 → 實作 → 綠**
+- [x] **Step 1: `visibleChars` 失敗測試 → 實作 → 綠**
 
 ```ts
 // tests/unit/typewriter.test.ts
@@ -534,11 +534,11 @@ describe('visibleChars', () => {
 });
 ```
 
-- [ ] **Step 2: 場景方法實作**
+- [x] **Step 2: 場景方法實作**
   - `showBattleMessage`:在 `COMMAND_WIN` 內建 text(自動換行 `wordWrap: { width: COMMAND_WIN.w - 32 }`),用 `this.time.addEvent` 每 33ms 依 `visibleChars` 更新 `setText(text.slice(0, n))`;整窗 `setInteractive` 一次點擊 → 直接顯示全文,再點或 600ms 後 `onDone()`。一次只有一則(新訊息先清舊 timer)。
   - `rollHpNumber`:`this.tweens.addCounter({ from, to, duration: 400, onUpdate: ... })`,onUpdate 時 setText 四捨五入值並依比例更新 `hpSegments` 填色(用 `fillSegments(當前值, maxHp, 10)`);onComplete 呼叫 `updateHpDisplay(c)` 對齊最終態後 `onDone()`。
   - `stepForward/stepBack`:tween body.x 到 `originX ± stepDX` / 回 `originX`,150ms。**注意與 `CharacterAnimator.playWalk`(±24px)和 `returnToIdle` 的 originX 互動**:先讀 `CharacterAnimator.ts` 確認 originX 儲存位置,step 位移必須以「不污染 originX」的方式做(tween 目標值計算自 originX,結束一定回 originX),避免累積漂移。
-- [ ] **Step 3: 編排單次行動時間軸**(改 `executePlayerCommand`/敵方行動的對應方法與 `applyDamageAndAdvance`,先讀完現有 callback 鏈再插入):
+- [x] **Step 3: 編排單次行動時間軸**(改 `executePlayerCommand`/敵方行動的對應方法與 `applyDamageAndAdvance`,先讀完現有 callback 鏈再插入):
 
 ```
 showPortrait(actor) → stepForward(actor)
@@ -551,9 +551,9 @@ showPortrait(actor) → stepForward(actor)
 ```
 
   傷害數值**取自既有結算結果**,不重算。防禦/自動/勸降走各自既有分支,只包 `showBattleMessage`。指令階段:`advanceCommandInput()` 對當前角色 `stepForward`,選定指令後 `stepBack`。
-- [ ] **Step 4: idle 抖動修復(`CharacterAnimator.playIdleLoop` :25-42)** — 先重現:讀該方法,確認 monster(Image fallback)走 scaleY 呼吸 tween 分支;QA 記錄「忽大忽小跳動」的可能原因是 tween 目標用**絕對 scale 值**而 monster 原始 scale ≠ 1(256×256 縮到 44×56)。修法:呼吸幅度改**相對**目前 scale(`scaleY: body.scaleY * 1.03`,yoyo),且開始前若已有 idle tween 先 kill。**先確認再改**,若實因不同(例如 anims 與 tween 雙重套用)按實因修,並在 commit message 寫明根因。
-- [ ] **Step 5: 更新 regex 測試**:斷言執行階段出現 `showBattleMessage(`、`rollHpNumber(`、`stepForward(`;`playIdleLoop` 內出現相對 scale 計算。跑全套 `npx vitest run` 至全綠。
-- [ ] **Step 6: Commit** — `git commit -m "feat(pixel-squad): tenchi2-style battle presentation pipeline (typewriter, hp roll, step-forward) + fix monster idle jitter"`
+- [x] **Step 4: idle 抖動修復(`CharacterAnimator.playIdleLoop` :25-42)** — 先重現:讀該方法,確認 monster(Image fallback)走 scaleY 呼吸 tween 分支;QA 記錄「忽大忽小跳動」的可能原因是 tween 目標用**絕對 scale 值**而 monster 原始 scale ≠ 1(256×256 縮到 44×56)。修法:呼吸幅度改**相對**目前 scale(`scaleY: body.scaleY * 1.03`,yoyo),且開始前若已有 idle tween 先 kill。**先確認再改**,若實因不同(例如 anims 與 tween 雙重套用)按實因修,並在 commit message 寫明根因。
+- [x] **Step 5: 更新 regex 測試**:斷言執行階段出現 `showBattleMessage(`、`rollHpNumber(`、`stepForward(`;`playIdleLoop` 內出現相對 scale 計算。跑全套 `npx vitest run` 至全綠。
+- [x] **Step 6: Commit** — `git commit -m "feat(pixel-squad): tenchi2-style battle presentation pipeline (typewriter, hp roll, step-forward) + fix monster idle jitter"`
 
 ---
 
@@ -563,8 +563,8 @@ showPortrait(actor) → stepForward(actor)
 - Modify: `docs/specs/pixel-squad/battle-screen-tenchi2-homage.md`(如提示詞有微調,回寫)
 - Create: `public/sprites/portraits/*.png`(若本 session 有生圖工具;否則交付提示詞清單)
 
-- [ ] **Step 1:** 檢查本 session 是否有可用的圖像生成工具。**有** → 用 spec「美術規範」節的共用前綴 + `battle-hud-retro-reskin.md` 附錄的 18 條個別描述逐張生成,裁切為 96×96、檔名 `{id}.png`(id 對照 `src/data/characters.ts` 的 12 角色 id 與 6 個 monsterType)。**沒有** → 產出一份可直接複製的 18 條完整提示詞清單(前綴+個別描述拼好)到回報,請使用者用外部工具生成後放入 `public/sprites/portraits/`;fallback 剪影(Task 6)保證缺圖不壞。
-- [ ] **Step 2:** 提示詞紀律自檢:18 條中不得出現「天地を喰らう」「吞食天地」「Capcom」或任何三國人名。
+- [x] **Step 1:** 檢查本 session 是否有可用的圖像生成工具。**有** → 用 spec「美術規範」節的共用前綴 + `battle-hud-retro-reskin.md` 附錄的 18 條個別描述逐張生成,裁切為 96×96、檔名 `{id}.png`(id 對照 `src/data/characters.ts` 的 12 角色 id 與 6 個 monsterType)。**沒有** → 產出一份可直接複製的 18 條完整提示詞清單(前綴+個別描述拼好)到回報,請使用者用外部工具生成後放入 `public/sprites/portraits/`;fallback 剪影(Task 6)保證缺圖不壞。
+- [x] **Step 2:** 提示詞紀律自檢:18 條中不得出現「天地を喰らう」「吞食天地」「Capcom」或任何三國人名。
 - [ ] **Step 3:** 有產出圖檔才做:`ASSET-CREDITS.md` 依生圖工具條款加註;commit `feat(pixel-squad): add generated battle portraits`。
 
 ---
@@ -574,10 +574,10 @@ showPortrait(actor) → stepForward(actor)
 **Files:**
 - Modify: `docs/specs/pixel-squad/backlog.md`、本 plan 檔(勾選進度)
 
-- [ ] **Step 1: build 驗證** — `cd workspace-pixel-squad && npx tsc --noEmit && npx vitest run`。Expected: 0 error、全綠。
-- [ ] **Step 2: 瀏覽器截圖驗收** — `npm run dev` 開 dev server,進入一場戰鬥,對照 spec「版面配置」節逐項檢查:名字/數字堆疊、10 段血條、sprite 站條上且面向中線、前進一步、肖像窗、指令窗雙線框、逐字訊息、數字滾動、地形帶、像素字體生效、敵人 idle 不再抖動。截圖存 `test-results/tenchi2-visual/`。**若 sandbox 擋 npm**:改交付「人工驗收清單」(上列各項)給使用者。
-- [ ] **Step 3: backlog 更新** — `docs/specs/pixel-squad/backlog.md` 的「戰鬥角色美術/動畫問題」條目:朝向與 idle 抖動兩個子項標記完成(註明由本 plan 修復),美術統一子項保留;本功能條目(commit 時已加,見下)勾選。
-- [ ] **Step 4: 最終 commit + push** — `git add -A && git commit -m "docs(pixel-squad): tenchi2 battle screen — visual QA results and backlog update" && git push origin master`
+- [x] **Step 1: build 驗證** — `cd workspace-pixel-squad && npx tsc --noEmit && npx vitest run`。Expected: 0 error、全綠。
+- [x] **Step 2: 瀏覽器截圖驗收** — `npm run dev` 開 dev server,進入一場戰鬥,對照 spec「版面配置」節逐項檢查:名字/數字堆疊、10 段血條、sprite 站條上且面向中線、前進一步、肖像窗、指令窗雙線框、逐字訊息、數字滾動、地形帶、像素字體生效、敵人 idle 不再抖動。截圖存 `test-results/tenchi2-visual/`。**若 sandbox 擋 npm**:改交付「人工驗收清單」(上列各項)給使用者。
+- [x] **Step 3: backlog 更新** — `docs/specs/pixel-squad/backlog.md` 的「戰鬥角色美術/動畫問題」條目:朝向與 idle 抖動兩個子項標記完成(註明由本 plan 修復),美術統一子項保留;本功能條目(commit 時已加,見下)勾選。
+- [x] **Step 4: 最終 commit + push** — `git add -A && git commit -m "docs(pixel-squad): tenchi2 battle screen — visual QA results and backlog update" && git push origin master`
 
 ---
 
