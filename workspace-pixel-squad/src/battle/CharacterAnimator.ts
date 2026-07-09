@@ -30,9 +30,15 @@ export class CharacterAnimator {
         sprite.anims.play(PROTAGONIST_ANIM_KEYS.idle, true);
       }
     } else {
+      // Breathing scale must be relative to the body's current scale, not an
+      // absolute target — Image bodies created via setDisplaySize() (e.g.
+      // monster art scaled from a much larger source down to 44x56) sit far
+      // below scaleY=1, so tweening straight to an absolute 1.03 caused a
+      // jarring size pop every idle cycle (QA: "忽大忽小縮放跳動").
+      const baseScaleY = this.body.scaleY;
       this.scene.tweens.add({
         targets: this.body,
-        scaleY: IDLE_CONFIG.rect.breathingScaleY,
+        scaleY: baseScaleY * IDLE_CONFIG.rect.breathingScaleY,
         duration: IDLE_CONFIG.rect.breathingDuration,
         yoyo: IDLE_CONFIG.rect.yoyo,
         repeat: -1,

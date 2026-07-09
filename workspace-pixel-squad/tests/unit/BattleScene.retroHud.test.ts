@@ -140,3 +140,58 @@ describe('BattleScene bottom window band', () => {
     expect(pickerBody).toMatch(/renderMenuEntries\(/);
   });
 });
+
+describe('BattleScene tenchi2 presentation pipeline', () => {
+  let source: string;
+
+  beforeAll(() => {
+    source = readBattleSceneSource();
+  });
+
+  it('imports the typewriter pacing helper and battle message templates', () => {
+    expect(source).toMatch(/import\s*\{\s*visibleChars\s*\}\s*from\s*'\.\.\/ui\/typewriter'/);
+    expect(source).toMatch(/from\s*'\.\.\/ui\/battleMessages'/);
+    expect(source).toMatch(/attackMessage/);
+    expect(source).toMatch(/damageMessage/);
+  });
+
+  it('defines showBattleMessage() as a typewriter reveal driven by visibleChars()', () => {
+    const body = extractMethod(source, 'showBattleMessage');
+    expect(body).not.toBe('');
+    expect(body).toMatch(/visibleChars\(/);
+  });
+
+  it('defines rollHpNumber() as a tweened counter that updates the HP text and segments', () => {
+    const body = extractMethod(source, 'rollHpNumber');
+    expect(body).not.toBe('');
+    expect(body).toMatch(/tweens\.addCounter\(/);
+    expect(body).toMatch(/fillSegments\(/);
+  });
+
+  it('defines stepForward()/stepBack() driven by computeRowLayoutV2 stepDX, not a hardcoded pixel offset', () => {
+    const forward = extractMethod(source, 'stepForward');
+    const back = extractMethod(source, 'stepBack');
+    expect(forward).toMatch(/computeRowLayoutV2\(/);
+    expect(forward).toMatch(/stepDX/);
+    expect(back).toMatch(/computeRowLayoutV2\(/);
+  });
+
+  it('advanceCommandInput() steps the current commanding character forward', () => {
+    const body = extractMethod(source, 'advanceCommandInput');
+    expect(body).toMatch(/stepForward\(/);
+  });
+
+  it('confirmCommand() steps the just-committed character back before advancing', () => {
+    const body = extractMethod(source, 'confirmCommand');
+    expect(body).toMatch(/stepBack\(/);
+  });
+
+  it('applyDamageAndAdvance() drives the attack message, HP roll, and defeat message through the new pipeline', () => {
+    const body = extractMethod(source, 'applyDamageAndAdvance');
+    expect(body).toMatch(/showBattleMessage\(/);
+    expect(body).toMatch(/rollHpNumber\(/);
+    expect(body).toMatch(/defeatMessage\(/);
+    expect(body).toMatch(/stepForward\(/);
+    expect(body).toMatch(/stepBack\(/);
+  });
+});

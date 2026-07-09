@@ -37,6 +37,8 @@ import { Colors, TextStyles, FONT_FAMILY } from '../ui/theme';
 import { computeRowLayoutV2, fillSegments, ROW_V2 } from '../ui/characterRow';
 import { windowFrameRects, drawWindow } from '../ui/battleWindow';
 import { terrainPattern, drawTerrainStrip } from '../ui/terrainStrip';
+import { visibleChars } from '../ui/typewriter';
+import { attackMessage, skillMessage, damageMessage, defeatMessage, defendMessage, healMessage } from '../ui/battleMessages';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
 
@@ -64,6 +66,7 @@ export class BattleScene extends Phaser.Scene {
   private views = new Map<string, CharacterView>();
   private actionMenu!: Phaser.GameObjects.Container;
   private messageText!: Phaser.GameObjects.Text;
+  private messageTypeTimer?: Phaser.Time.TimerEvent;
   private phase: BattlePhase = 'command';
 
   // Portrait window state
@@ -415,6 +418,7 @@ export class BattleScene extends Phaser.Scene {
     }
     const current = this.playerParty[this.commandIndex];
     this.showPortrait(current);
+    this.stepForward(current);
     this.showCommandMenu(current);
   }
 
@@ -515,6 +519,7 @@ export class BattleScene extends Phaser.Scene {
     this.waitingForInput = false;
     this.pendingCommands.set(cmd.character.id, cmd);
     this.setCommandIcon(cmd.character, cmd.action);
+    this.stepBack(cmd.character);
     this.commandIndex++;
     this.advanceCommandInput();
   }
@@ -689,8 +694,7 @@ export class BattleScene extends Phaser.Scene {
   private executePlayerCommand(cmd: PendingCommand, queue: Character[], next: () => void) {
     if (cmd.action === 'defend') {
       cmd.character.defending = true;
-      this.showMessage(`${cmd.character.name} 防禦！傷害減半`);
-      this.time.delayedCall(900, () => { this.clearMessage(); next(); });
+      this.showBattleMessage(defendMessage(cmd.character.name), next);
       return;
     }
 
@@ -857,8 +861,7 @@ export class BattleScene extends Phaser.Scene {
 
     if (action.type === 'defend') {
       enemy.defending = true;
-      this.showMessage(`${enemy.name} 進入防禦姿態！`);
-      this.time.delayedCall(900, () => { this.clearMessage(); next(); });
+      this.showBattleMessage(defendMessage(enemy.name), next);
       return;
     }
 
@@ -1009,11 +1012,11 @@ export class BattleScene extends Phaser.Scene {
     const targetView = this.views.get(target.id);
     const facing = deriveFacing(attacker.isPlayer);
 
+    const hpBefore = target.stats.hp;
     target.stats.hp = Math.max(0, target.stats.hp - dmg);
     const died = target.stats.hp === 0;
     if (died && target.isPlayer) this.battleStats.playerKOCount++;
     if (died) target.alive = false;
-    this.updateHpBar(target);
 
     let statusLabel = '';
     if (appliesStatus && target.alive) {
@@ -1026,50 +1029,65 @@ export class BattleScene extends Phaser.Scene {
       statusLabel = ` ${STATUS_LABEL[appliesStatus]}`;
     }
 
-    const label = skillName ? `【${skillName}】` : '';
-    const critLabel = isCrit ? '暴擊! ' : '';
-    this.showMessage(`${critLabel}${attacker.name}${label} → ${target.name} -${dmg} HP${statusLabel}`);
+    this.stepForward(attacker);
+    const openingMessage = skillName ? skillMessage(attacker.name, skillName) : attackMessage(attacker.name);
 
-    if (attackerView) {
-      attackerView.animator.playWalk(facing, () => {
-        sfx.play(SFX_KEYS.attack);
-        attackerView.animator.playAttack(facing, () => {
-          sfx.play(SFX_KEYS.hit);
-          if (isCrit) sfx.play(SFX_KEYS.crit);
-          if (targetView) {
-            if (died) {
-              targetView.animator.playDie(deriveFacing(target.isPlayer), () => {});
-            } else {
+    const finishAction = () => {
+      this.stepBack(attacker);
+      const delay = died ? Math.max(300, DIE_CONFIG.sprite.totalDuration + 100) : 200;
+      this.time.delayedCall(delay, next);
+    };
+
+    const afterDamageMessage = () => {
+      if (!died) { finishAction(); return; }
+      if (targetView) targetView.animator.playDie(deriveFacing(target.isPlayer), () => {});
+      this.showBattleMessage(`${defeatMessage(target.name)}${statusLabel}`, finishAction);
+    };
+
+    const showDamageStep = () => {
+      this.rollHpNumber(target, hpBefore, target.stats.hp, () => {
+        const dmgMsg = `${damageMessage(target.name, dmg, { crit: isCrit })}${died ? '' : statusLabel}`;
+        this.showBattleMessage(dmgMsg, afterDamageMessage);
+      });
+    };
+
+    this.showBattleMessage(openingMessage, () => {
+      if (attackerView) {
+        attackerView.animator.playWalk(facing, () => {
+          sfx.play(SFX_KEYS.attack);
+          attackerView.animator.playAttack(facing, () => {
+            sfx.play(SFX_KEYS.hit);
+            if (isCrit) sfx.play(SFX_KEYS.crit);
+            if (targetView && !died) {
               targetView.animator.playHit(isCrit, () => targetView.animator.returnToIdle());
             }
-          }
-          attackerView.animator.returnToIdle();
+            attackerView.animator.returnToIdle();
+            showDamageStep();
+          });
         });
-      });
-    } else {
-      sfx.play(SFX_KEYS.attack);
-      sfx.play(SFX_KEYS.hit);
-      if (isCrit) sfx.play(SFX_KEYS.crit);
-    }
-
-    const delay = died ? Math.max(900, DIE_CONFIG.sprite.totalDuration + 200) : 900;
-    this.time.delayedCall(delay, () => {
-      this.clearMessage();
-      next();
+      } else {
+        sfx.play(SFX_KEYS.attack);
+        sfx.play(SFX_KEYS.hit);
+        if (isCrit) sfx.play(SFX_KEYS.crit);
+        showDamageStep();
+      }
     });
   }
 
   private applyHealAndAdvance(caster: Character, target: Character, skill: Skill, next: () => void) {
     getSfx(this).play(SFX_KEYS.heal);
     const amount = calcHeal(caster, skill);
+    const hpBefore = target.stats.hp;
     target.stats.hp = Math.min(target.stats.maxHp, target.stats.hp + amount);
-    this.updateHpBar(target);
 
     const casterView = this.views.get(caster.id);
     if (casterView) casterView.animator.playSkillCast('blue', () => {});
 
-    this.showMessage(`${caster.name}【${skill.name}】→ ${target.name} +${amount} HP`);
-    this.time.delayedCall(900, () => { this.clearMessage(); next(); });
+    this.showBattleMessage(skillMessage(caster.name, skill.name), () => {
+      this.rollHpNumber(target, hpBefore, target.stats.hp, () => {
+        this.showBattleMessage(healMessage(target.name, amount), next);
+      });
+    });
   }
 
   private applyBuffAndAdvance(caster: Character, target: Character, skill: Skill, next: () => void) {
@@ -1080,8 +1098,7 @@ export class BattleScene extends Phaser.Scene {
     const casterView = this.views.get(caster.id);
     if (casterView) casterView.animator.playSkillCast('green', () => {});
 
-    this.showMessage(`${caster.name}【${skill.name}】→ ${target.name} ${label}↑`);
-    this.time.delayedCall(900, () => { this.clearMessage(); next(); });
+    this.showBattleMessage(`${caster.name}【${skill.name}】→ ${target.name} ${label}↑`, next);
   }
 
   private checkBattleEnd(): boolean {
@@ -1235,6 +1252,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (!this.waitingForInput || this.commandIndex <= 0) return;
+    this.stepBack(this.playerParty[this.commandIndex]);
     let prev = this.commandIndex - 1;
     while (prev > 0 && !this.playerParty[prev]?.alive) prev--;
     const prevChar = this.playerParty[prev];
@@ -1292,6 +1310,100 @@ export class BattleScene extends Phaser.Scene {
     panelBg.setInteractive();
     panelBg.on('pointerdown', advance);
     blocker.on('pointerdown', advance);
+  }
+
+  // ─── Tenchi2 Presentation Pipeline ─────────────────────────────────────────
+
+  // Typewriter reveal in the command/message window (dual-purpose with the
+  // command menu — see docs/specs/pixel-squad/battle-screen-tenchi2-homage.md
+  // "底部視窗帶"). Click anywhere in the window to skip ahead: once while
+  // still typing, reveals the full line; once more (or after 600ms) finishes.
+  private showBattleMessage(text: string, onDone: () => void) {
+    this.messageTypeTimer?.remove();
+    this.messageText.disableInteractive();
+    this.messageText.setText('');
+
+    const startTime = this.time.now;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      this.messageTypeTimer?.remove();
+      this.messageTypeTimer = undefined;
+      this.messageText.disableInteractive();
+      onDone();
+    };
+
+    this.messageTypeTimer = this.time.addEvent({
+      delay: 33,
+      loop: true,
+      callback: () => {
+        const n = visibleChars(this.time.now - startTime, 30, text.length);
+        this.messageText.setText(text.slice(0, n));
+        if (n >= text.length) {
+          this.messageTypeTimer?.remove();
+          this.messageTypeTimer = undefined;
+          this.time.delayedCall(600, finish);
+        }
+      },
+    });
+
+    this.messageText.setInteractive({ useHandCursor: true });
+    this.messageText.once('pointerdown', () => {
+      const n = visibleChars(this.time.now - startTime, 30, text.length);
+      if (n < text.length) {
+        this.messageText.setText(text);
+        this.messageTypeTimer?.remove();
+        this.messageTypeTimer = undefined;
+        this.time.delayedCall(600, finish);
+      } else {
+        finish();
+      }
+    });
+  }
+
+  // Tweens the HP number and segment fill from `from` to `to` over 400ms,
+  // instead of snapping instantly — the tenchi2-style "counting down" feel.
+  private rollHpNumber(c: Character, from: number, to: number, onDone: () => void) {
+    const view = this.views.get(c.id);
+    if (!view) { onDone(); return; }
+    this.tweens.addCounter({
+      from,
+      to,
+      duration: 400,
+      onUpdate: (tw) => {
+        const val = Math.max(0, Math.round(tw.getValue() ?? to));
+        view.hpText.setText(String(val));
+        const filled = fillSegments(val, c.stats.maxHp, ROW_V2.SEGMENTS);
+        const teamColor = c.isPlayer ? Colors.TEAM_ALLY : Colors.TEAM_ENEMY;
+        view.hpSegments.forEach((seg, idx) => seg.setFillStyle(idx < filled ? teamColor : 0x2a2a2a));
+      },
+      onComplete: () => {
+        this.updateHpDisplay(c);
+        onDone();
+      },
+    });
+  }
+
+  // Steps a character's sprite toward the centerline while it's their turn
+  // (command phase) or while they're acting (execution phase). Always tweens
+  // to an absolute position derived from computeRowLayoutV2 rather than the
+  // body's current x, so it composes safely with CharacterAnimator's own
+  // originX-relative walk/return tweens instead of drifting.
+  private stepForward(c: Character) {
+    const view = this.views.get(c.id);
+    if (!view) return;
+    const layout = computeRowLayoutV2(c.isPlayer, this.scale.width);
+    this.tweens.killTweensOf(view.body);
+    this.tweens.add({ targets: view.body, x: layout.spriteX + layout.stepDX, duration: 150, ease: 'Linear' });
+  }
+
+  private stepBack(c: Character) {
+    const view = this.views.get(c.id);
+    if (!view) return;
+    const layout = computeRowLayoutV2(c.isPlayer, this.scale.width);
+    this.tweens.killTweensOf(view.body);
+    this.tweens.add({ targets: view.body, x: layout.spriteX, duration: 150, ease: 'Linear' });
   }
 
   // ─── Utilities ────────────────────────────────────────────────────────────
