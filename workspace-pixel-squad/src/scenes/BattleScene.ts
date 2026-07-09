@@ -33,10 +33,16 @@ import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
 import { getSfx } from '../audio/SfxManager';
 import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
-import { Colors, TextStyles } from '../ui/theme';
+import { Colors, TextStyles, FONT_FAMILY } from '../ui/theme';
 import { computeRowLayoutV2, fillSegments, ROW_V2 } from '../ui/characterRow';
+import { windowFrameRects, drawWindow } from '../ui/battleWindow';
+import { terrainPattern, drawTerrainStrip } from '../ui/terrainStrip';
 
 const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' };
+
+const PORTRAIT_WIN = { x: 6, y: 468, w: 104, h: 104 } as const;
+const COMMAND_WIN = { x: 118, y: 468, w: 236, h: 104 } as const;
+const TERRAIN_TOP = 580;
 
 interface CharacterView {
   body: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
@@ -59,6 +65,12 @@ export class BattleScene extends Phaser.Scene {
   private actionMenu!: Phaser.GameObjects.Container;
   private messageText!: Phaser.GameObjects.Text;
   private phase: BattlePhase = 'command';
+
+  // Portrait window state
+  private missingPortraits = new Set<string>();
+  private portraitImage?: Phaser.GameObjects.Image;
+  private portraitFallback?: Phaser.GameObjects.Rectangle;
+  private portraitCaption!: Phaser.GameObjects.Text;
 
   // Command phase state
   private pendingCommands = new Map<string, PendingCommand>();
@@ -114,6 +126,17 @@ export class BattleScene extends Phaser.Scene {
     for (const type of monsterTypes) {
       this.load.image(monsterIdleKey(type), monsterIdlePath(type));
     }
+    // Portrait window images — 12 player templates + 6 monster types (see
+    // docs/specs/pixel-squad/battle-screen-tenchi2-homage.md "美術規範").
+    // Missing files are expected until the portraits are generated; loaderror
+    // just marks the key so showPortrait() falls back to a silhouette.
+    const portraitIds = [...PLAYER_TEMPLATES.map(t => t.id), ...monsterTypes];
+    for (const id of portraitIds) {
+      this.load.image(`portrait_${id}`, `sprites/portraits/${id}.png`);
+    }
+    this.load.on('loaderror', (file: Phaser.Loader.File) => {
+      if (file.key.startsWith('portrait_')) this.missingPortraits.add(file.key);
+    });
   }
 
   init(data: BattleSceneData) {
@@ -162,14 +185,22 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '20px', color: '#4b5563', fontFamily: 'monospace', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.messageText = this.add.text(W / 2, 508, '', {
-      fontSize: '12px', color: '#fde047', fontFamily: 'monospace',
-    }).setOrigin(0.5, 0);
+    const bandGraphics = this.add.graphics();
+    drawWindow(bandGraphics, windowFrameRects(PORTRAIT_WIN.x, PORTRAIT_WIN.y, PORTRAIT_WIN.w, PORTRAIT_WIN.h));
+    drawWindow(bandGraphics, windowFrameRects(COMMAND_WIN.x, COMMAND_WIN.y, COMMAND_WIN.w, COMMAND_WIN.h));
+    drawTerrainStrip(bandGraphics, terrainPattern(W, TERRAIN_TOP));
 
-    this.actionMenu = this.add.container(W / 2, 590);
+    this.portraitCaption = this.add.text(
+      PORTRAIT_WIN.x + PORTRAIT_WIN.w / 2, PORTRAIT_WIN.y + PORTRAIT_WIN.h - 12, '',
+      { fontFamily: FONT_FAMILY, fontSize: '9px', color: '#ffffff' },
+    ).setOrigin(0.5);
 
-    this.add.line(W / 2, 482, -W / 2, 0, W / 2, 0, 0x374151).setLineWidth(1);
-    this.add.line(W / 2, 560, -W / 2, 0, W / 2, 0, 0x374151).setLineWidth(1);
+    this.messageText = this.add.text(
+      COMMAND_WIN.x + COMMAND_WIN.w / 2, COMMAND_WIN.y + COMMAND_WIN.h / 2, '',
+      { fontFamily: FONT_FAMILY, fontSize: '12px', color: '#ffffff', wordWrap: { width: COMMAND_WIN.w - 32 }, align: 'center' },
+    ).setOrigin(0.5);
+
+    this.actionMenu = this.add.container(COMMAND_WIN.x, COMMAND_WIN.y);
 
     const sheetKey = SPRITE_KEYS.protagonistSheet;
     const animDefs = [
@@ -299,6 +330,22 @@ export class BattleScene extends Phaser.Scene {
     view.weaknessIcon.setText(isWeaknessIconVisible(char, this.discoveredThisBattle) ? ELEMENT_ICONS[char.weakness!] : '');
   }
 
+  private showPortrait(char: Character) {
+    const key = `portrait_${char.isPlayer ? char.templateId : (char._monsterType ?? '')}`;
+    const cx = PORTRAIT_WIN.x + PORTRAIT_WIN.w / 2;
+    const cy = PORTRAIT_WIN.y + 40;
+    this.portraitImage?.destroy();
+    this.portraitImage = undefined;
+    this.portraitFallback?.destroy();
+    this.portraitFallback = undefined;
+    if (this.textures.exists(key) && !this.missingPortraits.has(key)) {
+      this.portraitImage = this.add.image(cx, cy, key).setDisplaySize(96, 96);
+    } else {
+      this.portraitFallback = this.add.rectangle(cx, cy, 80, 80, 0x1a1a1a);
+    }
+    this.portraitCaption.setText(`${char.name}・${char.archetype}`);
+  }
+
   private setCommandIcon(char: Character, action: PendingCommand['action']) {
     const icon = this.commandIcons.get(char.id);
     if (!icon) return;
@@ -366,7 +413,9 @@ export class BattleScene extends Phaser.Scene {
       this.startExecution();
       return;
     }
-    this.showCommandMenu(this.playerParty[this.commandIndex]);
+    const current = this.playerParty[this.commandIndex];
+    this.showPortrait(current);
+    this.showCommandMenu(current);
   }
 
   private showCommandMenu(character: Character) {
@@ -430,27 +479,35 @@ export class BattleScene extends Phaser.Scene {
 
     this.keyboardActions = entries;
     this.keyboardActionIndex = isFirstAlive ? 1 : 0;
+    this.renderMenuEntries(entries);
+  }
 
-    const btnW = 76;
-    const totalW = entries.length * btnW + (entries.length - 1) * 4;
-    const startX = -totalW / 2 + btnW / 2;
+  // Shared 2-column grid layout for the command window's dual-purpose menu
+  // (main command list and skill picker both render through here).
+  private renderMenuEntries(entries: Array<{ label: string; action: () => void }>) {
+    const colX = [16, 124];
+    const rowY = [22, 48, 74];
 
     entries.forEach(({ label, action }, i) => {
-      const bx = startX + i * (btnW + 4);
+      const bx = colX[i % 2];
+      const by = rowY[Math.floor(i / 2)];
       const focused = i === this.keyboardActionIndex;
-      const bg = this.add.rectangle(bx, 0, btnW, 36, focused ? 0x4b5563 : 0x374151)
+      const cursor = this.add.text(bx - 14, by, focused ? '▶' : '', {
+        fontFamily: FONT_FAMILY, fontSize: '12px', color: '#ffffff',
+      }).setOrigin(0, 0.5);
+      const txt = this.add.text(bx, by, label, {
+        fontFamily: FONT_FAMILY, fontSize: '12px', color: '#ffffff',
+      }).setOrigin(0, 0.5);
+      const hit = this.add.rectangle(bx + 40, by, 108, 22, 0x000000, 0)
         .setInteractive({ useHandCursor: true });
-      const txt = this.add.text(bx, 0, label, {
-        fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      bg.on('pointerdown', () => {
+      hit.on('pointerdown', () => {
         if (this.phase !== 'command' || !this.waitingForInput) return;
         getSfx(this).play(SFX_KEYS.buttonClick);
         action();
       });
-      bg.on('pointerover', () => bg.setFillStyle(0x4b5563));
-      bg.on('pointerout', () => bg.setFillStyle(focused ? 0x4b5563 : 0x374151));
-      this.actionMenu.add([bg, txt]);
+      hit.on('pointerover', () => cursor.setText('▶'));
+      hit.on('pointerout', () => cursor.setText(focused ? '▶' : ''));
+      this.actionMenu.add([cursor, txt, hit]);
     });
   }
 
@@ -495,28 +552,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.keyboardActions = entries;
     this.keyboardActionIndex = 0;
-
-    const btnW = 76;
-    const totalW = entries.length * btnW + (entries.length - 1) * 4;
-    const startX = -totalW / 2 + btnW / 2;
-
-    entries.forEach(({ label, action }, i) => {
-      const bx = startX + i * (btnW + 4);
-      const focused = i === this.keyboardActionIndex;
-      const bg = this.add.rectangle(bx, 0, btnW, 36, focused ? 0x4b5563 : 0x374151)
-        .setInteractive({ useHandCursor: true });
-      const txt = this.add.text(bx, 0, label, {
-        fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace',
-      }).setOrigin(0.5);
-      bg.on('pointerdown', () => {
-        if (this.phase !== 'command' || !this.waitingForInput) return;
-        getSfx(this).play(SFX_KEYS.buttonClick);
-        action();
-      });
-      bg.on('pointerover', () => bg.setFillStyle(0x4b5563));
-      bg.on('pointerout', () => bg.setFillStyle(focused ? 0x4b5563 : 0x374151));
-      this.actionMenu.add([bg, txt]);
-    });
+    this.renderMenuEntries(entries);
   }
 
   private beginSkillTargeting(character: Character, skill: Skill) {
@@ -896,16 +932,19 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20);
     this.time.delayedCall(1000, () => { if (banner.active) banner.destroy(); });
 
-    const confirmBtn = this.add.rectangle(-44, 0, 80, 36, 0x15803d)
+    const winCenterX = COMMAND_WIN.w / 2;
+    const winCenterY = COMMAND_WIN.h / 2;
+
+    const confirmBtn = this.add.rectangle(winCenterX - 44, winCenterY, 80, 36, 0x15803d)
       .setInteractive({ useHandCursor: true });
-    const confirmTxt = this.add.text(-44, 0, '確認', {
-      fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
+    const confirmTxt = this.add.text(winCenterX - 44, winCenterY, '確認', {
+      fontFamily: FONT_FAMILY, fontSize: '13px', color: '#ffffff',
     }).setOrigin(0.5);
 
-    const declineBtn = this.add.rectangle(44, 0, 80, 36, 0x7f1d1d)
+    const declineBtn = this.add.rectangle(winCenterX + 44, winCenterY, 80, 36, 0x7f1d1d)
       .setInteractive({ useHandCursor: true });
-    const declineTxt = this.add.text(44, 0, '放棄', {
-      fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace',
+    const declineTxt = this.add.text(winCenterX + 44, winCenterY, '放棄', {
+      fontFamily: FONT_FAMILY, fontSize: '13px', color: '#ffffff',
     }).setOrigin(0.5);
 
     this.actionMenu.add([confirmBtn, confirmTxt, declineBtn, declineTxt]);

@@ -90,3 +90,53 @@ describe('BattleScene tenchi2 battle HUD', () => {
     expect(body).toMatch(/updateHpDisplay\(/);
   });
 });
+
+describe('BattleScene bottom window band', () => {
+  let source: string;
+
+  beforeAll(() => {
+    source = readBattleSceneSource();
+  });
+
+  it('imports window frame and terrain strip renderers', () => {
+    expect(source).toMatch(/import\s*\{\s*windowFrameRects,\s*drawWindow\s*\}\s*from\s*'\.\.\/ui\/battleWindow'/);
+    expect(source).toMatch(/import\s*\{\s*terrainPattern,\s*drawTerrainStrip\s*\}\s*from\s*'\.\.\/ui\/terrainStrip'/);
+  });
+
+  it('create() draws the portrait window, command window, and terrain strip', () => {
+    const body = extractMethod(source, 'create');
+    expect(body).toMatch(/drawWindow\(\s*\w+,\s*windowFrameRects\(PORTRAIT_WIN\.x/);
+    expect(body).toMatch(/drawWindow\(\s*\w+,\s*windowFrameRects\(COMMAND_WIN\.x/);
+    expect(body).toMatch(/drawTerrainStrip\(/);
+  });
+
+  it('create() anchors actionMenu to COMMAND_WIN instead of the old centered (W/2, 590) container', () => {
+    const body = extractMethod(source, 'create');
+    expect(body).toMatch(/this\.actionMenu = this\.add\.container\(COMMAND_WIN\.x,\s*COMMAND_WIN\.y\)/);
+    expect(body).not.toMatch(/this\.add\.container\(W \/ 2, 590\)/);
+  });
+
+  it('preload() loads portrait images and tracks load failures for the silhouette fallback', () => {
+    const body = extractMethod(source, 'preload');
+    expect(body).toMatch(/portrait_/);
+    expect(body).toMatch(/loaderror/);
+  });
+
+  it('defines showPortrait() to render the current actor into the portrait window with a silhouette fallback', () => {
+    const body = extractMethod(source, 'showPortrait');
+    expect(body).not.toBe('');
+    expect(body).toMatch(/missingPortraits/);
+  });
+
+  it('advanceCommandInput() shows the portrait for the character currently receiving a command', () => {
+    const body = extractMethod(source, 'advanceCommandInput');
+    expect(body).toMatch(/showPortrait\(/);
+  });
+
+  it('showCommandMenu() and showSkillPicker() lay out entries in the command window grid via a shared helper', () => {
+    const menuBody = extractMethod(source, 'showCommandMenu');
+    const pickerBody = extractMethod(source, 'showSkillPicker');
+    expect(menuBody).toMatch(/renderMenuEntries\(/);
+    expect(pickerBody).toMatch(/renderMenuEntries\(/);
+  });
+});
