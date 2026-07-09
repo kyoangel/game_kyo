@@ -30,13 +30,15 @@ export const Colors = {
   } as Record<string, number>,
 } as const;
 
+export const FONT_FAMILY = '"Fusion Pixel 12px Proportional", monospace';
+
 export const TextStyles = {
-  TITLE_LG: { fontFamily: 'monospace', fontSize: '20px', color: '#e2e8f0' },
-  TITLE_MD: { fontFamily: 'monospace', fontSize: '16px', color: '#e2e8f0' },
-  BODY:     { fontFamily: 'monospace', fontSize: '12px', color: '#e2e8f0' },
-  LABEL:    { fontFamily: 'monospace', fontSize: '10px', color: '#718096' },
-  ACCENT:   { fontFamily: 'monospace', fontSize: '12px', color: '#68d391' },
-  GOLD:     { fontFamily: 'monospace', fontSize: '12px', color: '#f6e05e' },
-  DAMAGE:   { fontFamily: 'monospace', fontSize: '14px', color: '#fc8181' },
-  HEAL:     { fontFamily: 'monospace', fontSize: '14px', color: '#68d391' },
+  TITLE_LG: { fontFamily: FONT_FAMILY, fontSize: '20px', color: '#e2e8f0' },
+  TITLE_MD: { fontFamily: FONT_FAMILY, fontSize: '16px', color: '#e2e8f0' },
+  BODY:     { fontFamily: FONT_FAMILY, fontSize: '12px', color: '#e2e8f0' },
+  LABEL:    { fontFamily: FONT_FAMILY, fontSize: '10px', color: '#718096' },
+  ACCENT:   { fontFamily: FONT_FAMILY, fontSize: '12px', color: '#68d391' },
+  GOLD:     { fontFamily: FONT_FAMILY, fontSize: '12px', color: '#f6e05e' },
+  DAMAGE:   { fontFamily: FONT_FAMILY, fontSize: '14px', color: '#fc8181' },
+  HEAL:     { fontFamily: FONT_FAMILY, fontSize: '14px', color: '#68d391' },
 } as const;

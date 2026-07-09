@@ -23,4 +23,12 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [TitleScene, BaseScene, BattleScene, ResultScene, PrepScene, WorldMapScene, ShopScene, EquipmentScene, SkillTreeScene],
 };
 
-new Phaser.Game(config);
+const boot = () => new Phaser.Game(config);
+if (document.fonts?.load) {
+  Promise.race([
+    document.fonts.load('12px "Fusion Pixel 12px Proportional"'),
+    new Promise((resolve) => setTimeout(resolve, 1500)),
+  ]).then(boot);
+} else {
+  boot();
+}

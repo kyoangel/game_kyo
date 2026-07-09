@@ -4,7 +4,7 @@
  * with the exact hex/string values specified in the spec.
  */
 import { describe, it, expect } from 'vitest';
-import { Colors, TextStyles } from '../../src/ui/theme';
+import { Colors, TextStyles, FONT_FAMILY } from '../../src/ui/theme';
 
 describe('Colors palette', () => {
   it('BG_DARK is 0x0d1117', () => {
@@ -119,19 +119,19 @@ describe('Colors palette', () => {
 });
 
 describe('TextStyles presets', () => {
-  it('TITLE_LG uses 20px monospace and TEXT_PRIMARY color', () => {
-    expect(TextStyles.TITLE_LG.fontFamily).toBe('monospace');
+  it('TITLE_LG uses 20px pixel font and TEXT_PRIMARY color', () => {
+    expect(TextStyles.TITLE_LG.fontFamily).toBe(FONT_FAMILY);
     expect(TextStyles.TITLE_LG.fontSize).toBe('20px');
     expect(TextStyles.TITLE_LG.color).toBe('#e2e8f0');
   });
 
-  it('TITLE_MD uses 16px monospace', () => {
+  it('TITLE_MD uses 16px pixel font', () => {
     expect(TextStyles.TITLE_MD.fontSize).toBe('16px');
   });
 
-  it('BODY uses 12px monospace', () => {
+  it('BODY uses 12px pixel font', () => {
     expect(TextStyles.BODY.fontSize).toBe('12px');
-    expect(TextStyles.BODY.fontFamily).toBe('monospace');
+    expect(TextStyles.BODY.fontFamily).toBe(FONT_FAMILY);
   });
 
   it('LABEL uses 10px and TEXT_DIM color', () => {
