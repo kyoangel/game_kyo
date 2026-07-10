@@ -26,7 +26,7 @@ import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, partySpritKey, partySpritePath, monsterIdleKey, monsterIdlePath, MONSTER_FRAMES } from '../data/sprites';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, partySpritKey, partySpritePath, monsterIdleKey, monsterIdlePath, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
 import type { MonsterType } from '../data/sprites';
 import { CharacterAnimator } from '../battle/CharacterAnimator';
 import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
@@ -115,11 +115,20 @@ export class BattleScene extends Phaser.Scene {
   constructor() { super({ key: 'BattleScene' }); }
 
   preload() {
-    const asset = SPRITE_SHEET_ASSETS[SPRITE_KEYS.protagonistSheet];
-    this.load.spritesheet(SPRITE_KEYS.protagonistSheet, asset.path, {
-      frameWidth: asset.frameWidth,
-      frameHeight: asset.frameHeight,
-    });
+    // Protagonist LPC per-animation sheets (pilot for real-sprite party
+    // animation) — one spritesheet load per animation, each 64×64 frames.
+    for (const key of [
+      SPRITE_KEYS.protagonistWalkSheet,
+      SPRITE_KEYS.protagonistSlashSheet,
+      SPRITE_KEYS.protagonistHurtSheet,
+      SPRITE_KEYS.protagonistIdleSheet,
+    ] as const) {
+      const asset = SPRITE_SHEET_ASSETS[key];
+      this.load.spritesheet(key, asset.path, {
+        frameWidth: asset.frameWidth,
+        frameHeight: asset.frameHeight,
+      });
+    }
     // Party member sprites
     for (const id of PARTY_MEMBER_IDS) {
       this.load.image(partySpritKey(id), partySpritePath(id));
@@ -205,20 +214,23 @@ export class BattleScene extends Phaser.Scene {
 
     this.actionMenu = this.add.container(COMMAND_WIN.x, COMMAND_WIN.y);
 
-    const sheetKey = SPRITE_KEYS.protagonistSheet;
+    // Protagonist LPC per-animation sheets (pilot): each row is 64×64
+    // frames, 13 cols, direction rows in the fixed LPC order (up/left/down/
+    // right). hurt.png has no direction split, so death uses a plain
+    // {start:0,end:5} range against its own single-row sheet.
     const animDefs = [
-      { key: PROTAGONIST_ANIM_KEYS.walkRight,   start: 30, end: 38, frameRate: 12, repeat: -1 },
-      { key: PROTAGONIST_ANIM_KEYS.walkLeft,    start: 10, end: 18, frameRate: 12, repeat: -1 },
-      { key: PROTAGONIST_ANIM_KEYS.attackRight, start: 70, end: 75, frameRate: 17, repeat: 0  },
-      { key: PROTAGONIST_ANIM_KEYS.attackLeft,  start: 50, end: 55, frameRate: 17, repeat: 0  },
-      { key: PROTAGONIST_ANIM_KEYS.death,       start: 80, end: 85, frameRate: 13, repeat: 0  },
-      { key: PROTAGONIST_ANIM_KEYS.idle,        start: 90, end: 90, frameRate: 1,  repeat: -1 },
+      { key: PROTAGONIST_ANIM_KEYS.walkRight,   sheetKey: SPRITE_KEYS.protagonistWalkSheet,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 9), frameRate: 12, repeat: -1 },
+      { key: PROTAGONIST_ANIM_KEYS.walkLeft,    sheetKey: SPRITE_KEYS.protagonistWalkSheet,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.left, 9),  frameRate: 12, repeat: -1 },
+      { key: PROTAGONIST_ANIM_KEYS.attackRight, sheetKey: SPRITE_KEYS.protagonistSlashSheet, ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 6), frameRate: 17, repeat: 0  },
+      { key: PROTAGONIST_ANIM_KEYS.attackLeft,  sheetKey: SPRITE_KEYS.protagonistSlashSheet, ...lpcRowFrameRange(LPC_DIRECTION_ROW.left, 6),  frameRate: 17, repeat: 0  },
+      { key: PROTAGONIST_ANIM_KEYS.death,       sheetKey: SPRITE_KEYS.protagonistHurtSheet,  start: 0, end: 5,                                frameRate: 13, repeat: 0  },
+      { key: PROTAGONIST_ANIM_KEYS.idle,        sheetKey: SPRITE_KEYS.protagonistIdleSheet,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 2), frameRate: 3,  repeat: -1 },
     ];
     animDefs.forEach(def => {
       if (!this.anims.exists(def.key)) {
         this.anims.create({
           key: def.key,
-          frames: this.anims.generateFrameNumbers(sheetKey, { start: def.start, end: def.end }),
+          frames: this.anims.generateFrameNumbers(def.sheetKey, { start: def.start, end: def.end }),
           frameRate: def.frameRate,
           repeat: def.repeat,
         });
@@ -256,11 +268,19 @@ export class BattleScene extends Phaser.Scene {
       const cy = topY + ((bottomY - topY) * (i + 0.5)) / n;
       const layout = computeRowLayoutV2(isPlayer, this.scale.width);
 
-      const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistSheet);
+      // Protagonist sprite is only "ready" once every LPC per-animation
+      // texture it needs (walk/slash/hurt/idle) has finished loading.
+      const textureLoaded = this.textures.exists(SPRITE_KEYS.protagonistWalkSheet)
+        && this.textures.exists(SPRITE_KEYS.protagonistSlashSheet)
+        && this.textures.exists(SPRITE_KEYS.protagonistHurtSheet)
+        && this.textures.exists(SPRITE_KEYS.protagonistIdleSheet);
       const color = isPlayer ? 0x3b82f6 : 0xef4444;
       let body: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle;
       if (shouldUseProtagonistSprite(char, textureLoaded)) {
-        body = this.add.sprite(layout.spriteX, cy + ROW_V2.SPRITE_DY, SPRITE_KEYS.protagonistSheet, 90).setDisplaySize(44, 56);
+        body = this.add.sprite(
+          layout.spriteX, cy + ROW_V2.SPRITE_DY, SPRITE_KEYS.protagonistIdleSheet,
+          lpcRowFrameRange(LPC_DIRECTION_ROW.right, 2).start,
+        ).setDisplaySize(44, 56);
       } else if (shouldUsePartySprite(char, this)) {
         body = this.add.image(layout.spriteX, cy + ROW_V2.SPRITE_DY, partySpritKey(char.templateId)).setDisplaySize(44, 56);
       } else if (shouldUseMonsterSprite(char, this)) {

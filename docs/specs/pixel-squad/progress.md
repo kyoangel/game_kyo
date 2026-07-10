@@ -33,6 +33,7 @@
   - 「雙短刀」→ Weapons → Sword（挑短刃款式）
 - **重要落差（之後要處理，不是使用者的工作）**：LPC 產生器匯出的表格幀佈局（每個動作幾格、frame index）**不會**跟現在寫死在 `BattleScene.ts create()` 的 `animDefs` 對上。使用者只需要生圖存檔，**佈局重新對應、程式碼串接是之後的實作任務**，屆時要看實際拿到的圖表版面才能定案。
 - **不適用怪物**：LPC 只有人形素體（男/女/壯碩/孩童/孕婦），沒有惡魔、龍、蜥蜴人這類生物素體（只有像 `tail_lizard` 這種能加在人形上的配件），所以怪物不能用這個工具。
+- **Muscular 體型限制（2026-07-10 實際生圖時發現）**：只有 Male / Female / Teen / Child 這幾種 Body Type 底下的 Torso 才有 Armour 分類；Muscular 和 Pregnant 沒有 Armour（只有 Shirts/Waist/Cape/Backpack）。所以「坦克/重裝」類角色（Rex、Rook、Dex）改用 Male 體型 + Torso→Armour→Plate 才能穿上板甲；AAAA（廢土打擊手）則反過來利用這個限制，直接用 Muscular 體型光著上身、只戴 Arms→Gloves（鐵拳套）強調肌肉感，效果也不錯。
 
 ### B. 6 種怪物 → 不需要新美術，是純程式碼任務
 
@@ -43,10 +44,11 @@ CraftPix 素材已經有完整動畫幀，只是程式碼沒接上。待辦：
 
 ## 下一步待辦
 
-- [ ] 使用者用 LPC 產生器（或下面的 Claude in Chrome 自動化提示詞）產出至少 1-2 名隊友的表格，存到 `public/sprites/party-lpc-raw/`（已建立這個暫存資料夾，不會覆蓋掉現有可正常運作的 `public/sprites/party/*.png`）
-- [ ] 我確認實際幀佈局後，更新 `src/battle/SpriteSelection.ts` / `src/data/sprites.ts` / `BattleScene.ts` 的 `animDefs`，把該隊友從「靜態圖 tween 假動畫」路徑改成「真 sprite 動畫」路徑（這段需要走完整的 spec/plan + TDD 流程，不是隨手改）
+- [x] 使用者用 LPC 產生器（或下面的 Claude in Chrome 自動化提示詞）產出隊友的表格，存到 `public/sprites/party-lpc-raw/`（已建立這個暫存資料夾，不會覆蓋掉現有可正常運作的 `public/sprites/party/*.png`）——**2026-07-10 已完成全部 11 名非主角隊友**：rex, nyx, vega, ash, crow, mira, zora, rook, dex, echo, aaaa，每個角色都有對應的 `{id}.png` + `{id}-credits.txt`，全部存在 `party-lpc-raw/` 底下。主角已有自己的真動畫圖，不需要重做。
+- [x] 主角 pilot（2026-07-10 完成）：改用 LPC「ZIP: Split by animation」匯出的乾淨單動畫圖（`public/sprites/party-lpc/protagonist/{walk,slash,hurt,idle}.png`，各 64×64、13欄×4方向列，hurt 無方向、單列6幀）取代舊的 320×320 攤平10×10格 `character_rogue.png`。改了 `src/data/sprites.ts`（新增 `SPRITE_KEYS`/`SPRITE_SHEET_ASSETS`、`LPC_DIRECTION_ROW`、`lpcRowFrameRange()`）和 `BattleScene.ts`（`preload()`/`create()` 的 `animDefs`/`renderParty()`），`SpriteSelection.ts`/`CharacterAnimator.ts` 完全沒改。走完 TDD（先寫失敗測試）+ 152 test files/1404 tests 全綠 + `npm run build` 過 + 實機視覺確認（walk/attack 動畫都正常播放，idle 從單幀升級成真的2幀呼吸循環）+ 獨立 code-reviewer 過（Approve，兩個 warning 已修：舊 row 註解過期、`protagonistSheet`/`protagonistIdle` 補註記說明不再被載入但保留給 rollback）。
+- [ ] 其餘 11 名隊友套用同一套 pattern（重複：LPC「ZIP: Split by animation」→ 存到 `public/sprites/party-lpc/{id}/` → 在 `sprites.ts`/`BattleScene.ts` 加對應 `SPRITE_KEYS`/`animDefs`）——每個角色都要走一次 spec/plan + TDD，不建議一次全上，逐個角色來
 - [ ] 怪物真動畫的程式碼串接（獨立任務，隨時可以開始，不依賴隊友美術進度）
-- [ ] 12 名隊友的圖都生完後，`ASSET-CREDITS.md` 要依 LPC 頁面的「Detailed attribution instructions」補上正確 credit——LPC 是拼裝式素材庫，不同部位可能來自不同作者，用頁面的 `Credits (TXT/CSV)` 下載按鈕能直接產生對應這次選擇組合的完整清單，每個角色生完都應該連 Credits 一起下載存起來
+- [ ] 12 名隊友的圖都生完後，`ASSET-CREDITS.md` 要依 LPC 頁面的「Detailed attribution instructions」補上正確 credit——LPC 是拼裝式素材庫，不同部位可能來自不同作者，用頁面的 `Credits (TXT/CSV)` 下載按鈕能直接產生對應這次選擇組合的完整清單，每個角色生完都應該連 Credits 一起下載存起來（**已完成**：11 個 `{id}-credits.txt` 都已存好，等實際串接程式碼時再整理進 `ASSET-CREDITS.md`）
 
 ## 附錄：Claude in Chrome 自動化提示詞
 

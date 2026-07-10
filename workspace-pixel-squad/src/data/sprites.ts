@@ -5,6 +5,14 @@
 export const SPRITE_KEYS = {
   protagonistIdle: 'protagonist_idle',
   protagonistSheet: 'protagonist_sheet',
+  // Protagonist LPC per-animation sheets (pilot for real-sprite party
+  // animation): each is its own 64×64-frame PNG exported from the LPC
+  // generator's "ZIP: Split by animation", 13 cols × 4 rows (up/left/down/
+  // right), except hurt which has no direction split (13×1).
+  protagonistWalkSheet: 'protagonist_lpc_walk',
+  protagonistSlashSheet: 'protagonist_lpc_slash',
+  protagonistHurtSheet: 'protagonist_lpc_hurt',
+  protagonistIdleSheet: 'protagonist_lpc_idle',
 } as const;
 
 export const SPRITE_SHEET_ASSETS = {
@@ -13,7 +21,40 @@ export const SPRITE_SHEET_ASSETS = {
     frameWidth: 32,
     frameHeight: 32,
   },
+  [SPRITE_KEYS.protagonistWalkSheet]: {
+    path: 'sprites/party-lpc/protagonist/walk.png',
+    frameWidth: 64,
+    frameHeight: 64,
+  },
+  [SPRITE_KEYS.protagonistSlashSheet]: {
+    path: 'sprites/party-lpc/protagonist/slash.png',
+    frameWidth: 64,
+    frameHeight: 64,
+  },
+  [SPRITE_KEYS.protagonistHurtSheet]: {
+    path: 'sprites/party-lpc/protagonist/hurt.png',
+    frameWidth: 64,
+    frameHeight: 64,
+  },
+  [SPRITE_KEYS.protagonistIdleSheet]: {
+    path: 'sprites/party-lpc/protagonist/idle.png',
+    frameWidth: 64,
+    frameHeight: 64,
+  },
 } as const;
+
+// LPC's fixed per-animation row order (up/left/down/right), used with
+// lpcRowFrameRange() below to compute Phaser frame ranges for the
+// protagonist's per-animation sheets.
+export const LPC_DIRECTION_ROW = { up: 0, left: 1, down: 2, right: 3 } as const;
+
+// Computes the Phaser frame-number range for one row of an LPC per-animation
+// sheet (13 columns per row by default, matching the LPC generator's
+// standard "split by animation" export).
+export function lpcRowFrameRange(row: number, frameCount: number, cols = 13): { start: number; end: number } {
+  const start = row * cols;
+  return { start, end: start + frameCount - 1 };
+}
 
 // Monster sprite frames — individual PNGs per animation frame (OGA-BY 3.0, CraftPix.net)
 export type MonsterType = 'demon' | 'dragon' | 'jinn' | 'lizard' | 'medusa' | 'small_dragon';
@@ -69,6 +110,9 @@ export const MONSTER_FRAMES: Record<MonsterType, Record<MonsterAnimKey, string[]
   },
 };
 
+// protagonistIdle/protagonistSheet + character_rogue.png are no longer
+// loaded by BattleScene (superseded by the LPC per-animation sheets below),
+// kept only so existing references/tests to the old asset don't break.
 export const SPRITE_ASSETS: Record<string, string> = {
   [SPRITE_KEYS.protagonistIdle]: 'sprites/character_rogue.png',
   [SPRITE_KEYS.protagonistSheet]: 'sprites/character_rogue.png',
@@ -106,12 +150,15 @@ export function monsterAnimKey(type: MonsterType, anim: MonsterAnimKey): string 
   return `monster_${type}_${anim}`;
 }
 
-// Phaser animation keys for the protagonist LPC spritesheet
+// Phaser animation keys for the protagonist. Frame sources now live in
+// BattleScene.ts's animDefs, computed via lpcRowFrameRange/LPC_DIRECTION_ROW
+// against the 4 per-animation sheets above (walk 9f/dir, attack 6f/dir,
+// death 6f single-row, idle 2f/dir) — see that block for the source of truth.
 export const PROTAGONIST_ANIM_KEYS = {
-  walkRight:   'protagonist_walk_right',   // row 3, 9 frames
-  walkLeft:    'protagonist_walk_left',    // row 1, 9 frames
-  attackRight: 'protagonist_attack_right', // row 7, 6 frames
-  attackLeft:  'protagonist_attack_left',  // row 5, 6 frames
-  death:       'protagonist_death',        // row 8, 6 frames
-  idle:        'protagonist_idle_gesture', // row 9, single frame
+  walkRight:   'protagonist_walk_right',
+  walkLeft:    'protagonist_walk_left',
+  attackRight: 'protagonist_attack_right',
+  attackLeft:  'protagonist_attack_left',
+  death:       'protagonist_death',
+  idle:        'protagonist_idle_gesture',
 } as const;
