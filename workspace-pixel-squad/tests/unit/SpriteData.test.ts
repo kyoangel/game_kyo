@@ -1,18 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   SPRITE_KEYS,
-  SPRITE_ASSETS,
   SPRITE_SHEET_ASSETS,
   LPC_DIRECTION_ROW,
   lpcRowFrameRange,
 } from '../../src/data/sprites';
 
 describe('SPRITE_KEYS', () => {
-  it('defines a protagonistIdle key', () => {
-    expect(SPRITE_KEYS.protagonistIdle).toBe('protagonist_idle');
-  });
-
-  it('defines the 4 new protagonist LPC per-animation sheet keys', () => {
+  it('defines the 4 protagonist LPC per-animation sheet keys', () => {
     expect(SPRITE_KEYS.protagonistWalkSheet).toBe('protagonist_lpc_walk');
     expect(SPRITE_KEYS.protagonistSlashSheet).toBe('protagonist_lpc_slash');
     expect(SPRITE_KEYS.protagonistHurtSheet).toBe('protagonist_lpc_hurt');
@@ -20,18 +15,8 @@ describe('SPRITE_KEYS', () => {
   });
 });
 
-describe('SPRITE_ASSETS', () => {
-  it('maps the protagonist idle key to its PNG path', () => {
-    expect(SPRITE_ASSETS[SPRITE_KEYS.protagonistIdle]).toBe('sprites/character_rogue.png');
-  });
-
-  it('has no leading slash so it resolves relative to the public dir', () => {
-    expect(SPRITE_ASSETS[SPRITE_KEYS.protagonistIdle].startsWith('/')).toBe(false);
-  });
-});
-
 describe('SPRITE_SHEET_ASSETS — protagonist LPC per-animation sheets', () => {
-  it('registers all 4 new sheets at 64×64 frames under public/sprites/party-lpc/protagonist', () => {
+  it('registers all 4 sheets at 64×64 frames under public/sprites/party-lpc/protagonist', () => {
     const expected: Record<string, string> = {
       [SPRITE_KEYS.protagonistWalkSheet]: 'sprites/party-lpc/protagonist/walk.png',
       [SPRITE_KEYS.protagonistSlashSheet]: 'sprites/party-lpc/protagonist/slash.png',
@@ -44,12 +29,6 @@ describe('SPRITE_SHEET_ASSETS — protagonist LPC per-animation sheets', () => {
       expect(asset.frameWidth).toBe(64);
       expect(asset.frameHeight).toBe(64);
     }
-  });
-
-  it('leaves the existing 32×32 protagonistSheet entry untouched', () => {
-    const asset = SPRITE_SHEET_ASSETS[SPRITE_KEYS.protagonistSheet];
-    expect(asset.frameWidth).toBe(32);
-    expect(asset.frameHeight).toBe(32);
   });
 });
 

@@ -1,14 +1,8 @@
-// Character spritesheet: 320×320, 10 cols × 10 rows, 32×32 per frame (LPC layout)
-// Row 0: Walk Up, Row 1: Walk Left, Row 2: Walk Down, Row 3: Walk Right (9 frames each)
-// Row 4: Attack Up, Row 5: Attack Left, Row 6: Attack Down, Row 7: Attack Right (6 frames each)
-// Row 8: Death (6 frames), Row 9: Idle/Gesture
+// Protagonist LPC per-animation sheets (real-sprite battle animation): each
+// is its own 64×64-frame PNG exported from the LPC generator's "ZIP: Split
+// by animation", 13 cols × 4 rows (up/left/down/right), except hurt which
+// has no direction split (13×1).
 export const SPRITE_KEYS = {
-  protagonistIdle: 'protagonist_idle',
-  protagonistSheet: 'protagonist_sheet',
-  // Protagonist LPC per-animation sheets (pilot for real-sprite party
-  // animation): each is its own 64×64-frame PNG exported from the LPC
-  // generator's "ZIP: Split by animation", 13 cols × 4 rows (up/left/down/
-  // right), except hurt which has no direction split (13×1).
   protagonistWalkSheet: 'protagonist_lpc_walk',
   protagonistSlashSheet: 'protagonist_lpc_slash',
   protagonistHurtSheet: 'protagonist_lpc_hurt',
@@ -16,11 +10,6 @@ export const SPRITE_KEYS = {
 } as const;
 
 export const SPRITE_SHEET_ASSETS = {
-  [SPRITE_KEYS.protagonistSheet]: {
-    path: 'sprites/character_rogue.png',
-    frameWidth: 32,
-    frameHeight: 32,
-  },
   [SPRITE_KEYS.protagonistWalkSheet]: {
     path: 'sprites/party-lpc/protagonist/walk.png',
     frameWidth: 64,
@@ -108,14 +97,6 @@ export const MONSTER_FRAMES: Record<MonsterType, Record<MonsterAnimKey, string[]
     hurt:   frames('small_dragon', 'Hurt', 2),
     death:  frames('small_dragon', 'Death', 4),
   },
-};
-
-// protagonistIdle/protagonistSheet + character_rogue.png are no longer
-// loaded by BattleScene (superseded by the LPC per-animation sheets below),
-// kept only so existing references/tests to the old asset don't break.
-export const SPRITE_ASSETS: Record<string, string> = {
-  [SPRITE_KEYS.protagonistIdle]: 'sprites/character_rogue.png',
-  [SPRITE_KEYS.protagonistSheet]: 'sprites/character_rogue.png',
 };
 
 // Party member sprite keys (one per character id)
