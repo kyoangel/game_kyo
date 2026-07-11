@@ -45,6 +45,71 @@ export function lpcRowFrameRange(row: number, frameCount: number, cols = 13): { 
   return { start, end: start + frameCount - 1 };
 }
 
+// Phaser animation keys for a real-sprite character (protagonist or any
+// party member). Pure/deterministic per id so it can be recomputed anywhere
+// without a lookup table.
+export interface CharacterAnimKeySet {
+  walkRight: string;
+  walkLeft: string;
+  attackRight: string;
+  attackLeft: string;
+  death: string;
+  idle: string;
+}
+
+export function characterAnimKeys(id: string): CharacterAnimKeySet {
+  return {
+    walkRight: `${id}_walk_right`,
+    walkLeft: `${id}_walk_left`,
+    attackRight: `${id}_attack_right`,
+    attackLeft: `${id}_attack_left`,
+    death: `${id}_death`,
+    idle: `${id}_idle_gesture`,
+  };
+}
+
+// The 4 LPC "ZIP: Split by animation" sheets every real-sprite character
+// needs (walk/slash/hurt/idle), always 64×64 frames regardless of character.
+export const PARTY_LPC_ANIMS = ['walk', 'slash', 'hurt', 'idle'] as const;
+export type PartyLpcAnim = typeof PARTY_LPC_ANIMS[number];
+
+export function partyLpcSheetKey(id: string, anim: PartyLpcAnim): string {
+  return `party_${id}_lpc_${anim}`;
+}
+
+export function partyLpcSheetPath(id: string, anim: PartyLpcAnim): string {
+  return `sprites/party-lpc/${id}/${anim}.png`;
+}
+
+export interface CharacterAnimDef {
+  key: string;
+  sheetKey: string;
+  start: number;
+  end: number;
+  frameRate: number;
+  repeat: number;
+}
+
+// Builds the 6 Phaser animDefs (walkRight/Left, attackRight/Left, death,
+// idle) for a real-sprite character, given its anim keys and its 4 LPC
+// sheets. Frame counts/rates are the same for every character — walk 9
+// frames/direction, slash 6 frames/direction, hurt/death 6 frames flat (no
+// direction split), idle 2 frames/direction (breathing loop) — verified
+// against the LPC generator's "ZIP: Split by animation" export format.
+export function buildCharacterAnimDefs(
+  keys: CharacterAnimKeySet,
+  sheets: { walk: string; slash: string; hurt: string; idle: string },
+): CharacterAnimDef[] {
+  return [
+    { key: keys.walkRight,   sheetKey: sheets.walk,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 9), frameRate: 12, repeat: -1 },
+    { key: keys.walkLeft,    sheetKey: sheets.walk,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.left, 9),  frameRate: 12, repeat: -1 },
+    { key: keys.attackRight, sheetKey: sheets.slash, ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 6), frameRate: 17, repeat: 0  },
+    { key: keys.attackLeft,  sheetKey: sheets.slash, ...lpcRowFrameRange(LPC_DIRECTION_ROW.left, 6),  frameRate: 17, repeat: 0  },
+    { key: keys.death,       sheetKey: sheets.hurt,  start: 0, end: 5,                                frameRate: 13, repeat: 0  },
+    { key: keys.idle,        sheetKey: sheets.idle,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 2), frameRate: 3,  repeat: -1 },
+  ];
+}
+
 // Monster sprite frames — individual PNGs per animation frame (OGA-BY 3.0, CraftPix.net)
 export type MonsterType = 'demon' | 'dragon' | 'jinn' | 'lizard' | 'medusa' | 'small_dragon';
 
@@ -131,15 +196,6 @@ export function monsterAnimKey(type: MonsterType, anim: MonsterAnimKey): string 
   return `monster_${type}_${anim}`;
 }
 
-// Phaser animation keys for the protagonist. Frame sources now live in
-// BattleScene.ts's animDefs, computed via lpcRowFrameRange/LPC_DIRECTION_ROW
-// against the 4 per-animation sheets above (walk 9f/dir, attack 6f/dir,
-// death 6f single-row, idle 2f/dir) — see that block for the source of truth.
-export const PROTAGONIST_ANIM_KEYS = {
-  walkRight:   'protagonist_walk_right',
-  walkLeft:    'protagonist_walk_left',
-  attackRight: 'protagonist_attack_right',
-  attackLeft:  'protagonist_attack_left',
-  death:       'protagonist_death',
-  idle:        'protagonist_idle_gesture',
-} as const;
+// Phaser animation keys for the protagonist — same shape/generation as any
+// party member's (see characterAnimKeys above), just for id 'protagonist'.
+export const PROTAGONIST_ANIM_KEYS: CharacterAnimKeySet = characterAnimKeys('protagonist');

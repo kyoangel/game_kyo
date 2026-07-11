@@ -25,8 +25,8 @@ import { STAGES } from '../data/stages';
 import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
-import { shouldUseProtagonistSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, partySpritKey, partySpritePath, monsterIdleKey, monsterIdlePath, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
+import { shouldUseProtagonistSprite, shouldUsePartyRealSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterIdleKey, monsterIdlePath, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
 import type { MonsterType } from '../data/sprites';
 import { CharacterAnimator } from '../battle/CharacterAnimator';
 import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
@@ -129,9 +129,21 @@ export class BattleScene extends Phaser.Scene {
         frameHeight: asset.frameHeight,
       });
     }
-    // Party member sprites
+    // Party member sprites (single static image — legacy tween-animation fallback)
     for (const id of PARTY_MEMBER_IDS) {
       this.load.image(partySpritKey(id), partySpritePath(id));
+    }
+    // Party member LPC per-animation sheets (real-sprite animation, same
+    // format as the protagonist's above). Characters not yet regenerated
+    // simply 404 — textures.exists() reports false and renderParty() falls
+    // back to the static image loaded above.
+    for (const id of PARTY_MEMBER_IDS) {
+      for (const anim of PARTY_LPC_ANIMS) {
+        this.load.spritesheet(partyLpcSheetKey(id, anim), partyLpcSheetPath(id, anim), {
+          frameWidth: 64,
+          frameHeight: 64,
+        });
+      }
     }
     // Monster idle frames (one per type)
     const monsterTypes = Object.keys(MONSTER_FRAMES) as MonsterType[];
@@ -214,19 +226,29 @@ export class BattleScene extends Phaser.Scene {
 
     this.actionMenu = this.add.container(COMMAND_WIN.x, COMMAND_WIN.y);
 
-    // Protagonist LPC per-animation sheets (pilot): each row is 64×64
-    // frames, 13 cols, direction rows in the fixed LPC order (up/left/down/
-    // right). hurt.png has no direction split, so death uses a plain
-    // {start:0,end:5} range against its own single-row sheet.
-    const animDefs = [
-      { key: PROTAGONIST_ANIM_KEYS.walkRight,   sheetKey: SPRITE_KEYS.protagonistWalkSheet,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 9), frameRate: 12, repeat: -1 },
-      { key: PROTAGONIST_ANIM_KEYS.walkLeft,    sheetKey: SPRITE_KEYS.protagonistWalkSheet,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.left, 9),  frameRate: 12, repeat: -1 },
-      { key: PROTAGONIST_ANIM_KEYS.attackRight, sheetKey: SPRITE_KEYS.protagonistSlashSheet, ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 6), frameRate: 17, repeat: 0  },
-      { key: PROTAGONIST_ANIM_KEYS.attackLeft,  sheetKey: SPRITE_KEYS.protagonistSlashSheet, ...lpcRowFrameRange(LPC_DIRECTION_ROW.left, 6),  frameRate: 17, repeat: 0  },
-      { key: PROTAGONIST_ANIM_KEYS.death,       sheetKey: SPRITE_KEYS.protagonistHurtSheet,  start: 0, end: 5,                                frameRate: 13, repeat: 0  },
-      { key: PROTAGONIST_ANIM_KEYS.idle,        sheetKey: SPRITE_KEYS.protagonistIdleSheet,  ...lpcRowFrameRange(LPC_DIRECTION_ROW.right, 2), frameRate: 3,  repeat: -1 },
+    // Real-sprite LPC animDefs for the protagonist and every party member —
+    // same 6-entry shape (walkRight/Left, attackRight/Left, death, idle)
+    // built by buildCharacterAnimDefs against each character's 4 per-
+    // animation sheets (walk/slash/hurt/idle, 64×64, 13 cols × 4 direction
+    // rows; hurt has no direction split). Party members without regenerated
+    // assets yet still get anim keys registered against a missing texture —
+    // harmless, since CharacterAnimator only plays them when isSprite is
+    // true, which shouldUsePartyRealSprite gates on the textures existing.
+    const allAnimDefs = [
+      ...buildCharacterAnimDefs(PROTAGONIST_ANIM_KEYS, {
+        walk: SPRITE_KEYS.protagonistWalkSheet,
+        slash: SPRITE_KEYS.protagonistSlashSheet,
+        hurt: SPRITE_KEYS.protagonistHurtSheet,
+        idle: SPRITE_KEYS.protagonistIdleSheet,
+      }),
+      ...PARTY_MEMBER_IDS.flatMap(id => buildCharacterAnimDefs(characterAnimKeys(id), {
+        walk: partyLpcSheetKey(id, 'walk'),
+        slash: partyLpcSheetKey(id, 'slash'),
+        hurt: partyLpcSheetKey(id, 'hurt'),
+        idle: partyLpcSheetKey(id, 'idle'),
+      })),
     ];
-    animDefs.forEach(def => {
+    allAnimDefs.forEach(def => {
       if (!this.anims.exists(def.key)) {
         this.anims.create({
           key: def.key,
@@ -281,6 +303,11 @@ export class BattleScene extends Phaser.Scene {
           layout.spriteX, cy + ROW_V2.SPRITE_DY, SPRITE_KEYS.protagonistIdleSheet,
           lpcRowFrameRange(LPC_DIRECTION_ROW.right, 2).start,
         ).setDisplaySize(44, 56);
+      } else if (shouldUsePartyRealSprite(char, this)) {
+        body = this.add.sprite(
+          layout.spriteX, cy + ROW_V2.SPRITE_DY, partyLpcSheetKey(char.templateId, 'idle'),
+          lpcRowFrameRange(LPC_DIRECTION_ROW.right, 2).start,
+        ).setDisplaySize(44, 56);
       } else if (shouldUsePartySprite(char, this)) {
         body = this.add.image(layout.spriteX, cy + ROW_V2.SPRITE_DY, partySpritKey(char.templateId)).setDisplaySize(44, 56);
       } else if (shouldUseMonsterSprite(char, this)) {
@@ -292,7 +319,8 @@ export class BattleScene extends Phaser.Scene {
       } else {
         body = this.add.rectangle(layout.spriteX, cy + ROW_V2.SPRITE_DY, 44, 56, color).setAlpha(0.9);
       }
-      const useSprite = shouldUseProtagonistSprite(char, textureLoaded);
+      const useSprite = shouldUseProtagonistSprite(char, textureLoaded) || shouldUsePartyRealSprite(char, this);
+      const animKeys = char.isProtagonist ? PROTAGONIST_ANIM_KEYS : characterAnimKeys(char.templateId);
       const teamColor = isPlayer ? Colors.TEAM_ALLY : Colors.TEAM_ENEMY;
       const filled = fillSegments(char.stats.hp, char.stats.maxHp, ROW_V2.SEGMENTS);
       const hpSegments = layout.segmentXs.map((sx, segIdx) =>
@@ -309,7 +337,7 @@ export class BattleScene extends Phaser.Scene {
       const weaknessIcon = this.add.text(layout.spriteX + (isPlayer ? 22 : -22), cy - 26, '', {
         fontSize: '10px', fontFamily: 'monospace',
       }).setOrigin(0.5);
-      const animator = new CharacterAnimator(this, body, useSprite);
+      const animator = new CharacterAnimator(this, body, useSprite, animKeys);
       animator.playIdleLoop();
       this.views.set(char.id, { body, animator, hpSegments, nameText, hpText, statusText, weaknessIcon });
       this.updateStatusIcons(char);

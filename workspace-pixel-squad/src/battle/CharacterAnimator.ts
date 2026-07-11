@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PROTAGONIST_ANIM_KEYS } from '../data/sprites';
+import type { CharacterAnimKeySet } from '../data/sprites';
 import {
   WALK_CONFIG,
   ATTACK_CONFIG,
@@ -18,6 +18,7 @@ export class CharacterAnimator {
     private scene: Phaser.Scene,
     private body: Phaser.GameObjects.Sprite | Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
     private isSprite: boolean,
+    private animKeys: CharacterAnimKeySet,
   ) {
     this.originX = body.x;
   }
@@ -26,8 +27,8 @@ export class CharacterAnimator {
     this.scene.tweens.killTweensOf(this.body);
     if (this.isSprite) {
       const sprite = this.body as Phaser.GameObjects.Sprite;
-      if (this.scene.anims.exists(PROTAGONIST_ANIM_KEYS.idle)) {
-        sprite.anims.play(PROTAGONIST_ANIM_KEYS.idle, true);
+      if (this.scene.anims.exists(this.animKeys.idle)) {
+        sprite.anims.play(this.animKeys.idle, true);
       }
     } else {
       // Breathing scale must be relative to the body's current scale, not an
@@ -54,7 +55,7 @@ export class CharacterAnimator {
 
     if (this.isSprite) {
       const sprite = this.body as Phaser.GameObjects.Sprite;
-      const walkKey = facing === 'right' ? PROTAGONIST_ANIM_KEYS.walkRight : PROTAGONIST_ANIM_KEYS.walkLeft;
+      const walkKey = facing === 'right' ? this.animKeys.walkRight : this.animKeys.walkLeft;
       if (this.scene.anims.exists(walkKey)) {
         sprite.anims.play(walkKey, true);
       }
@@ -72,7 +73,7 @@ export class CharacterAnimator {
   playAttack(facing: 'left' | 'right', onComplete: () => void): void {
     if (this.isSprite) {
       const sprite = this.body as Phaser.GameObjects.Sprite;
-      const attackKey = facing === 'right' ? PROTAGONIST_ANIM_KEYS.attackRight : PROTAGONIST_ANIM_KEYS.attackLeft;
+      const attackKey = facing === 'right' ? this.animKeys.attackRight : this.animKeys.attackLeft;
       if (this.scene.anims.exists(attackKey)) {
         sprite.once('animationcomplete', () => onComplete());
         sprite.anims.play(attackKey, true);
@@ -156,8 +157,8 @@ export class CharacterAnimator {
     this.scene.tweens.killTweensOf(this.body);
     if (this.isSprite) {
       const sprite = this.body as Phaser.GameObjects.Sprite;
-      if (this.scene.anims.exists(PROTAGONIST_ANIM_KEYS.death)) {
-        sprite.anims.play(PROTAGONIST_ANIM_KEYS.death, true);
+      if (this.scene.anims.exists(this.animKeys.death)) {
+        sprite.anims.play(this.animKeys.death, true);
         this.scene.time.delayedCall(DIE_CONFIG.sprite.totalDuration, () => {
           if (sprite.active) sprite.setAlpha(DIE_CONFIG.sprite.settleAlpha);
           onComplete();

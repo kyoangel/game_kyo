@@ -27,7 +27,11 @@ describe('BattleScene preload() — protagonist LPC per-animation sheets', () =>
   });
 });
 
-describe('BattleScene create() — protagonist animDefs use per-animation sheets and LPC row math', () => {
+describe('BattleScene create() — protagonist animDefs built via the shared buildCharacterAnimDefs helper', () => {
+  // Detailed frame-range/frame-count correctness for buildCharacterAnimDefs
+  // itself is covered precisely in tests/unit/SpriteData.test.ts (direct unit
+  // tests on the pure function) — this file only checks that create() wires
+  // it up correctly for the protagonist, not the frame math again.
   let source: string;
 
   beforeAll(() => {
@@ -39,48 +43,25 @@ describe('BattleScene create() — protagonist animDefs use per-animation sheets
     expect(body).not.toMatch(/const\s+sheetKey\s*=\s*SPRITE_KEYS\.protagonistSheet/);
   });
 
-  it('references lpcRowFrameRange and LPC_DIRECTION_ROW instead of hardcoded numeric ranges', () => {
+  it('calls buildCharacterAnimDefs with PROTAGONIST_ANIM_KEYS and the 4 protagonist sheet keys', () => {
     const body = extractMethod(source, 'create');
-    expect(body).toMatch(/lpcRowFrameRange\(/);
-    expect(body).toMatch(/LPC_DIRECTION_ROW\.(left|right|up|down)/);
+    expect(body).toMatch(/buildCharacterAnimDefs\(\s*PROTAGONIST_ANIM_KEYS/);
+    expect(body).toMatch(/SPRITE_KEYS\.protagonistWalkSheet/);
+    expect(body).toMatch(/SPRITE_KEYS\.protagonistSlashSheet/);
+    expect(body).toMatch(/SPRITE_KEYS\.protagonistHurtSheet/);
+    expect(body).toMatch(/SPRITE_KEYS\.protagonistIdleSheet/);
   });
 
-  it('each animDef entry carries its own sheetKey field', () => {
+  it('also calls buildCharacterAnimDefs once per PARTY_MEMBER_IDS entry (party real-sprite animDefs)', () => {
     const body = extractMethod(source, 'create');
-    // walk/slash/hurt/idle keys should each appear paired with a sheetKey on the same object
-    expect(body).toMatch(/PROTAGONIST_ANIM_KEYS\.walkRight[\s\S]{0,120}?sheetKey:\s*SPRITE_KEYS\.protagonistWalkSheet/);
-    expect(body).toMatch(/PROTAGONIST_ANIM_KEYS\.attackLeft[\s\S]{0,120}?sheetKey:\s*SPRITE_KEYS\.protagonistSlashSheet/);
-    expect(body).toMatch(/PROTAGONIST_ANIM_KEYS\.death[\s\S]{0,120}?sheetKey:\s*SPRITE_KEYS\.protagonistHurtSheet/);
-    expect(body).toMatch(/PROTAGONIST_ANIM_KEYS\.idle[\s\S]{0,120}?sheetKey:\s*SPRITE_KEYS\.protagonistIdleSheet/);
+    expect(body).toMatch(/PARTY_MEMBER_IDS/);
+    expect(body).toMatch(/characterAnimKeys\(/);
+    expect(body).toMatch(/partyLpcSheetKey\(/);
   });
 
   it('anims.create uses generateFrameNumbers against each def\'s own sheetKey, not a shared const', () => {
     const body = extractMethod(source, 'create');
     expect(body).toMatch(/generateFrameNumbers\(\s*def\.sheetKey/);
-  });
-
-  it('idle animation now spans 2 frames (upgraded breathing loop), not 1 held frame', () => {
-    const body = extractMethod(source, 'create');
-    const idleDefMatch = body.match(/\{\s*key:\s*PROTAGONIST_ANIM_KEYS\.idle[\s\S]{0,200}?\}/);
-    expect(idleDefMatch).not.toBeNull();
-    const idleDef = idleDefMatch![0];
-    expect(idleDef).toMatch(/lpcRowFrameRange\(\s*LPC_DIRECTION_ROW\.\w+\s*,\s*2\s*\)/);
-  });
-
-  it('walk/attack animDefs use the correct direction row and frame count each (catches a left/right swap or wrong frame count)', () => {
-    const body = extractMethod(source, 'create');
-    const cases: Array<[string, string, number]> = [
-      ['walkRight', 'right', 9],
-      ['walkLeft', 'left', 9],
-      ['attackRight', 'right', 6],
-      ['attackLeft', 'left', 6],
-    ];
-    for (const [animKey, direction, frameCount] of cases) {
-      const re = new RegExp(
-        `PROTAGONIST_ANIM_KEYS\\.${animKey}[\\s\\S]{0,160}?lpcRowFrameRange\\(\\s*LPC_DIRECTION_ROW\\.${direction}\\s*,\\s*${frameCount}\\s*\\)`,
-      );
-      expect(body).toMatch(re);
-    }
   });
 });
 

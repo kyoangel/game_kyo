@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { shouldUseProtagonistSprite } from '../../src/battle/SpriteSelection';
+import { shouldUseProtagonistSprite, shouldUsePartyRealSprite } from '../../src/battle/SpriteSelection';
 import type { Character } from '../../src/types';
+
+function makeScene(loadedKeys: string[]) {
+  return { textures: { exists: (k: string) => loadedKeys.includes(k) } };
+}
 
 function makeCharacter(overrides: Partial<Character>): Character {
   return {
@@ -47,5 +51,39 @@ describe('shouldUseProtagonistSprite', () => {
   it('returns false for a recruited former enemy who is not the protagonist', () => {
     const recruited = makeCharacter({ isProtagonist: false, isPlayer: true, recruited: true });
     expect(shouldUseProtagonistSprite(recruited, true)).toBe(false);
+  });
+});
+
+describe('shouldUsePartyRealSprite', () => {
+  const rexKeys = ['party_rex_lpc_walk', 'party_rex_lpc_slash', 'party_rex_lpc_hurt', 'party_rex_lpc_idle'];
+
+  it('returns true for a party member player character when all 4 LPC textures are loaded', () => {
+    const rex = makeCharacter({ templateId: 'rex', name: 'Rex', isProtagonist: false, isPlayer: true });
+    expect(shouldUsePartyRealSprite(rex, makeScene(rexKeys))).toBe(true);
+  });
+
+  it('returns false when only some of the 4 LPC textures are loaded (partial/failed download)', () => {
+    const rex = makeCharacter({ templateId: 'rex', name: 'Rex', isProtagonist: false, isPlayer: true });
+    expect(shouldUsePartyRealSprite(rex, makeScene(['party_rex_lpc_walk']))).toBe(false);
+  });
+
+  it('returns false when none of the LPC textures are loaded (character not yet regenerated)', () => {
+    const nyx = makeCharacter({ templateId: 'nyx', name: 'Nyx', isProtagonist: false, isPlayer: true });
+    expect(shouldUsePartyRealSprite(nyx, makeScene(rexKeys))).toBe(false);
+  });
+
+  it('returns false for the protagonist even if matching textures happened to exist', () => {
+    const protagonist = makeCharacter({ isProtagonist: true, isPlayer: true });
+    expect(shouldUsePartyRealSprite(protagonist, makeScene(rexKeys))).toBe(false);
+  });
+
+  it('returns false for an enemy, even one that shares a templateId with a party member', () => {
+    const enemyRex = makeCharacter({ templateId: 'rex', isProtagonist: false, isPlayer: false });
+    expect(shouldUsePartyRealSprite(enemyRex, makeScene(rexKeys))).toBe(false);
+  });
+
+  it('returns false for a templateId that is not in PARTY_MEMBER_IDS', () => {
+    const unknown = makeCharacter({ templateId: 'not_a_party_member', isProtagonist: false, isPlayer: true });
+    expect(shouldUsePartyRealSprite(unknown, makeScene(rexKeys))).toBe(false);
   });
 });

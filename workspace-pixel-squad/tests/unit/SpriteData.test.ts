@@ -4,6 +4,12 @@ import {
   SPRITE_SHEET_ASSETS,
   LPC_DIRECTION_ROW,
   lpcRowFrameRange,
+  PROTAGONIST_ANIM_KEYS,
+  characterAnimKeys,
+  PARTY_LPC_ANIMS,
+  partyLpcSheetKey,
+  partyLpcSheetPath,
+  buildCharacterAnimDefs,
 } from '../../src/data/sprites';
 
 describe('SPRITE_KEYS', () => {
@@ -57,5 +63,74 @@ describe('lpcRowFrameRange', () => {
 
   it('defaults to 13 columns per row (LPC standard), overridable via 3rd arg', () => {
     expect(lpcRowFrameRange(1, 3, 10)).toEqual({ start: 10, end: 12 });
+  });
+});
+
+describe('characterAnimKeys', () => {
+  it('generates the 6 Phaser animation keys for a given character id', () => {
+    expect(characterAnimKeys('rex')).toEqual({
+      walkRight: 'rex_walk_right',
+      walkLeft: 'rex_walk_left',
+      attackRight: 'rex_attack_right',
+      attackLeft: 'rex_attack_left',
+      death: 'rex_death',
+      idle: 'rex_idle_gesture',
+    });
+  });
+
+  it('produces distinct keys for different character ids (no collisions)', () => {
+    expect(characterAnimKeys('rex').walkRight).not.toBe(characterAnimKeys('nyx').walkRight);
+  });
+
+  it('PROTAGONIST_ANIM_KEYS is exactly characterAnimKeys("protagonist") — byte-identical to the pre-refactor hardcoded values', () => {
+    expect(PROTAGONIST_ANIM_KEYS).toEqual(characterAnimKeys('protagonist'));
+    expect(PROTAGONIST_ANIM_KEYS.walkRight).toBe('protagonist_walk_right');
+    expect(PROTAGONIST_ANIM_KEYS.idle).toBe('protagonist_idle_gesture');
+  });
+});
+
+describe('PARTY_LPC_ANIMS', () => {
+  it('lists the 4 LPC per-animation sheet names', () => {
+    expect(PARTY_LPC_ANIMS).toEqual(['walk', 'slash', 'hurt', 'idle']);
+  });
+});
+
+describe('partyLpcSheetKey / partyLpcSheetPath', () => {
+  it('generates a unique Phaser texture key per character+animation', () => {
+    expect(partyLpcSheetKey('rex', 'walk')).toBe('party_rex_lpc_walk');
+    expect(partyLpcSheetKey('nyx', 'slash')).toBe('party_nyx_lpc_slash');
+  });
+
+  it('generates the expected public/ asset path per character+animation', () => {
+    expect(partyLpcSheetPath('rex', 'walk')).toBe('sprites/party-lpc/rex/walk.png');
+    expect(partyLpcSheetPath('nyx', 'hurt')).toBe('sprites/party-lpc/nyx/hurt.png');
+  });
+
+  it('has no leading slash so paths resolve relative to the public dir', () => {
+    expect(partyLpcSheetPath('rex', 'idle').startsWith('/')).toBe(false);
+  });
+});
+
+describe('buildCharacterAnimDefs', () => {
+  it('returns 6 animDefs (walkRight/Left, attackRight/Left, death, idle) wired to the given sheets', () => {
+    const keys = characterAnimKeys('rex');
+    const sheets = { walk: 'w', slash: 's', hurt: 'h', idle: 'i' };
+    const defs = buildCharacterAnimDefs(keys, sheets);
+    expect(defs).toHaveLength(6);
+
+    const byKey = Object.fromEntries(defs.map(d => [d.key, d]));
+    expect(byKey[keys.walkRight]).toMatchObject({ sheetKey: 'w', start: 39, end: 47, frameRate: 12, repeat: -1 });
+    expect(byKey[keys.walkLeft]).toMatchObject({ sheetKey: 'w', start: 13, end: 21, frameRate: 12, repeat: -1 });
+    expect(byKey[keys.attackRight]).toMatchObject({ sheetKey: 's', start: 39, end: 44, frameRate: 17, repeat: 0 });
+    expect(byKey[keys.attackLeft]).toMatchObject({ sheetKey: 's', start: 13, end: 18, frameRate: 17, repeat: 0 });
+    expect(byKey[keys.death]).toMatchObject({ sheetKey: 'h', start: 0, end: 5, frameRate: 13, repeat: 0 });
+    expect(byKey[keys.idle]).toMatchObject({ sheetKey: 'i', start: 39, end: 40, frameRate: 3, repeat: -1 });
+  });
+
+  it('produces different animDefs for different characters (own keys, same frame math)', () => {
+    const rexDefs = buildCharacterAnimDefs(characterAnimKeys('rex'), { walk: 'w', slash: 's', hurt: 'h', idle: 'i' });
+    const nyxDefs = buildCharacterAnimDefs(characterAnimKeys('nyx'), { walk: 'w', slash: 's', hurt: 'h', idle: 'i' });
+    expect(rexDefs.map(d => d.key)).not.toEqual(nyxDefs.map(d => d.key));
+    expect(rexDefs.map(d => ({ start: d.start, end: d.end }))).toEqual(nyxDefs.map(d => ({ start: d.start, end: d.end })));
   });
 });

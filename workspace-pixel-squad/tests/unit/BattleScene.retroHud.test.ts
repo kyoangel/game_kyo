@@ -38,13 +38,14 @@ describe('BattleScene tenchi2 battle HUD', () => {
 
   it('renderParty() creates the body/sprite at layout.spriteX, not a raw column x', () => {
     const body = extractMethod(source, 'renderParty');
-    // Matches specifically the 4 `body = this.add.X(...)` branches (protagonist
-    // sprite / party image / monster image / rectangle fallback) — deliberately
-    // narrower than a generic `this.add.(sprite|image|rectangle)(` match, which
-    // would also catch the unrelated hpSegments rectangles (correctly at
-    // segment x positions, not spriteX) and fail for the wrong reason.
+    // Matches specifically the 5 `body = this.add.X(...)` branches (protagonist
+    // sprite / party real sprite / party static image / monster image /
+    // rectangle fallback) — deliberately narrower than a generic
+    // `this.add.(sprite|image|rectangle)(` match, which would also catch the
+    // unrelated hpSegments rectangles (correctly at segment x positions, not
+    // spriteX) and fail for the wrong reason.
     const bodyAssignments = body.match(/body = this\.add\.(sprite|image|rectangle)\(([^,]+),/g) ?? [];
-    expect(bodyAssignments.length).toBe(4);
+    expect(bodyAssignments.length).toBe(5);
     bodyAssignments.forEach(call => {
       expect(call).toMatch(/layout\.spriteX/);
     });
