@@ -26,8 +26,8 @@ import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite, shouldUsePartyRealSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterIdleKey, monsterIdlePath, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
-import type { MonsterType } from '../data/sprites';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterFrameKey, MONSTER_ANIM_FPS, monsterAnimKey, monsterCharacterAnimKeys, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
+import type { MonsterType, MonsterAnimKey } from '../data/sprites';
 import { CharacterAnimator } from '../battle/CharacterAnimator';
 import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
 import { getSfx } from '../audio/SfxManager';
@@ -145,10 +145,18 @@ export class BattleScene extends Phaser.Scene {
         });
       }
     }
-    // Monster idle frames (one per type)
+    // Monster per-frame images — every individual PNG for every animation
+    // (idle/walk/attack/hurt/death) of every monster type, matching the
+    // party's real-sprite animation upgrade (monsters ship as individual
+    // frame PNGs rather than one spritesheet).
     const monsterTypes = Object.keys(MONSTER_FRAMES) as MonsterType[];
+    const monsterAnims = Object.keys(MONSTER_ANIM_FPS) as MonsterAnimKey[];
     for (const type of monsterTypes) {
-      this.load.image(monsterIdleKey(type), monsterIdlePath(type));
+      for (const anim of monsterAnims) {
+        MONSTER_FRAMES[type][anim].forEach((path, i) => {
+          this.load.image(monsterFrameKey(type, anim, i), path);
+        });
+      }
     }
     // Portrait window images — 12 player templates + 6 monster types (see
     // docs/specs/pixel-squad/battle-screen-tenchi2-homage.md "美術規範").
@@ -259,6 +267,26 @@ export class BattleScene extends Phaser.Scene {
       }
     });
 
+    // Monster real-sprite animations — one Phaser animation per type × anim,
+    // built from the individual per-frame textures loaded in preload() (no
+    // spritesheet frame-number ranges here, since each frame is its own
+    // full texture). idle/walk loop; attack/hurt/death play once.
+    const monsterTypesForAnim = Object.keys(MONSTER_FRAMES) as MonsterType[];
+    const monsterAnimsForAnim = Object.keys(MONSTER_ANIM_FPS) as MonsterAnimKey[];
+    for (const type of monsterTypesForAnim) {
+      for (const anim of monsterAnimsForAnim) {
+        const key = monsterAnimKey(type, anim);
+        if (!this.anims.exists(key)) {
+          this.anims.create({
+            key,
+            frames: MONSTER_FRAMES[type][anim].map((_, i) => ({ key: monsterFrameKey(type, anim, i) })),
+            frameRate: MONSTER_ANIM_FPS[anim],
+            repeat: anim === 'idle' || anim === 'walk' ? -1 : 0,
+          });
+        }
+      }
+    }
+
     this.renderParty(this.playerParty, true);
     this.renderParty(this.enemyParty, false);
 
@@ -314,13 +342,15 @@ export class BattleScene extends Phaser.Scene {
         // Monster art faces right by default; enemies sit on the right side of
         // the screen and must face left toward the centerline (fixes the
         // "enemy sprite facing wrong direction" QA bug).
-        body = this.add.image(layout.spriteX, cy + ROW_V2.SPRITE_DY, monsterIdleKey(char._monsterType as MonsterType))
+        body = this.add.sprite(layout.spriteX, cy + ROW_V2.SPRITE_DY, monsterFrameKey(char._monsterType as MonsterType, 'idle', 0))
           .setDisplaySize(44, 56).setFlipX(true);
       } else {
         body = this.add.rectangle(layout.spriteX, cy + ROW_V2.SPRITE_DY, 44, 56, color).setAlpha(0.9);
       }
-      const useSprite = shouldUseProtagonistSprite(char, textureLoaded) || shouldUsePartyRealSprite(char, this);
-      const animKeys = char.isProtagonist ? PROTAGONIST_ANIM_KEYS : characterAnimKeys(char.templateId);
+      const useSprite = shouldUseProtagonistSprite(char, textureLoaded) || shouldUsePartyRealSprite(char, this) || shouldUseMonsterSprite(char, this);
+      const animKeys = !char.isPlayer && char._monsterType
+        ? monsterCharacterAnimKeys(char._monsterType as MonsterType)
+        : char.isProtagonist ? PROTAGONIST_ANIM_KEYS : characterAnimKeys(char.templateId);
       const teamColor = isPlayer ? Colors.TEAM_ALLY : Colors.TEAM_ENEMY;
       const filled = fillSegments(char.stats.hp, char.stats.maxHp, ROW_V2.SEGMENTS);
       const hpSegments = layout.segmentXs.map((sx, segIdx) =>

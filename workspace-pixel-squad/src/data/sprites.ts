@@ -176,14 +176,6 @@ export function partySpritePath(id: string): string {
   return `sprites/party/${id}.png`;
 }
 
-export function monsterIdleKey(type: MonsterType): string {
-  return `monster_idle_${type}`;
-}
-
-export function monsterIdlePath(type: MonsterType): string {
-  return MONSTER_FRAMES[type].idle[0];
-}
-
 export const MONSTER_ANIM_FPS: Record<MonsterAnimKey, number> = {
   idle:   8,
   walk:   8,
@@ -194,6 +186,32 @@ export const MONSTER_ANIM_FPS: Record<MonsterAnimKey, number> = {
 
 export function monsterAnimKey(type: MonsterType, anim: MonsterAnimKey): string {
   return `monster_${type}_${anim}`;
+}
+
+// Individual per-frame texture key/path — monster animations are shipped as
+// individual PNGs (see frames() above), not a single spritesheet, so each
+// frame needs its own Phaser texture key.
+export function monsterFrameKey(type: MonsterType, anim: MonsterAnimKey, index: number): string {
+  return `monster_${type}_${anim}_frame${index}`;
+}
+
+export function monsterFramePath(type: MonsterType, anim: MonsterAnimKey, index: number): string {
+  return MONSTER_FRAMES[type][anim][index];
+}
+
+// CharacterAnimKeySet for a monster, reusing CharacterAnimator unchanged:
+// monster art is a single fixed orientation (no left/right frame variants —
+// enemies always sit on the right side facing left via setFlipX(true)), so
+// walkRight/walkLeft and attackRight/attackLeft collapse to the same key.
+export function monsterCharacterAnimKeys(type: MonsterType): CharacterAnimKeySet {
+  return {
+    walkRight: monsterAnimKey(type, 'walk'),
+    walkLeft: monsterAnimKey(type, 'walk'),
+    attackRight: monsterAnimKey(type, 'attack'),
+    attackLeft: monsterAnimKey(type, 'attack'),
+    death: monsterAnimKey(type, 'death'),
+    idle: monsterAnimKey(type, 'idle'),
+  };
 }
 
 // Phaser animation keys for the protagonist — same shape/generation as any

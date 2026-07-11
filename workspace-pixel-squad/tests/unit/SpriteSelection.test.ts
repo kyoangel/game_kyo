@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { shouldUseProtagonistSprite, shouldUsePartyRealSprite } from '../../src/battle/SpriteSelection';
+import { shouldUseProtagonistSprite, shouldUsePartyRealSprite, shouldUseMonsterSprite } from '../../src/battle/SpriteSelection';
+import { monsterFrameKey, MONSTER_ANIM_FPS } from '../../src/data/sprites';
+import type { MonsterAnimKey } from '../../src/data/sprites';
 import type { Character } from '../../src/types';
 
 function makeScene(loadedKeys: string[]) {
@@ -85,5 +87,36 @@ describe('shouldUsePartyRealSprite', () => {
   it('returns false for a templateId that is not in PARTY_MEMBER_IDS', () => {
     const unknown = makeCharacter({ templateId: 'not_a_party_member', isProtagonist: false, isPlayer: true });
     expect(shouldUsePartyRealSprite(unknown, makeScene(rexKeys))).toBe(false);
+  });
+});
+
+describe('shouldUseMonsterSprite', () => {
+  const monsterAnims = Object.keys(MONSTER_ANIM_FPS) as MonsterAnimKey[];
+  const demonKeys = monsterAnims.map(anim => monsterFrameKey('demon', anim, 0));
+
+  it('returns true for a monster enemy when the first frame of every animation is loaded', () => {
+    const demon = makeCharacter({ isPlayer: false, _monsterType: 'demon' });
+    expect(shouldUseMonsterSprite(demon, makeScene(demonKeys))).toBe(true);
+  });
+
+  it('returns false when one animation is missing its first frame (partial/failed download)', () => {
+    const demon = makeCharacter({ isPlayer: false, _monsterType: 'demon' });
+    const missingDeath = demonKeys.filter(k => k !== monsterFrameKey('demon', 'death', 0));
+    expect(shouldUseMonsterSprite(demon, makeScene(missingDeath))).toBe(false);
+  });
+
+  it('returns false for a player character even if matching monster textures happen to exist', () => {
+    const player = makeCharacter({ isPlayer: true, _monsterType: 'demon' });
+    expect(shouldUseMonsterSprite(player, makeScene(demonKeys))).toBe(false);
+  });
+
+  it('returns false for an enemy with no _monsterType set', () => {
+    const noType = makeCharacter({ isPlayer: false });
+    expect(shouldUseMonsterSprite(noType, makeScene(demonKeys))).toBe(false);
+  });
+
+  it('returns false when no textures are loaded', () => {
+    const demon = makeCharacter({ isPlayer: false, _monsterType: 'demon' });
+    expect(shouldUseMonsterSprite(demon, makeScene([]))).toBe(false);
   });
 });

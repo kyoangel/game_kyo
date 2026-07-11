@@ -1,6 +1,6 @@
 import type { Character } from '../types';
-import type { MonsterType } from '../data/sprites';
-import { partySpritKey, monsterIdleKey, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partyLpcSheetKey } from '../data/sprites';
+import type { MonsterType, MonsterAnimKey } from '../data/sprites';
+import { partySpritKey, monsterFrameKey, MONSTER_ANIM_FPS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partyLpcSheetKey } from '../data/sprites';
 
 export function shouldUseProtagonistSprite(char: Character, textureLoaded: boolean): boolean {
   return char.isProtagonist && char.isPlayer && textureLoaded;
@@ -21,5 +21,8 @@ export function shouldUsePartySprite(char: Character, scene: { textures: { exist
 
 export function shouldUseMonsterSprite(char: Character, scene: { textures: { exists: (k: string) => boolean } }): boolean {
   if (char.isPlayer || !char._monsterType) return false;
-  return scene.textures.exists(monsterIdleKey(char._monsterType as MonsterType));
+  const type = char._monsterType as MonsterType;
+  return (Object.keys(MONSTER_ANIM_FPS) as MonsterAnimKey[]).every(anim =>
+    scene.textures.exists(monsterFrameKey(type, anim, 0)),
+  );
 }

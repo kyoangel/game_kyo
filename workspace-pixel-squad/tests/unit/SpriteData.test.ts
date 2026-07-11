@@ -10,6 +10,11 @@ import {
   partyLpcSheetKey,
   partyLpcSheetPath,
   buildCharacterAnimDefs,
+  monsterFrameKey,
+  monsterFramePath,
+  monsterCharacterAnimKeys,
+  monsterAnimKey,
+  MONSTER_FRAMES,
 } from '../../src/data/sprites';
 
 describe('SPRITE_KEYS', () => {
@@ -132,5 +137,58 @@ describe('buildCharacterAnimDefs', () => {
     const nyxDefs = buildCharacterAnimDefs(characterAnimKeys('nyx'), { walk: 'w', slash: 's', hurt: 'h', idle: 'i' });
     expect(rexDefs.map(d => d.key)).not.toEqual(nyxDefs.map(d => d.key));
     expect(rexDefs.map(d => ({ start: d.start, end: d.end }))).toEqual(nyxDefs.map(d => ({ start: d.start, end: d.end })));
+  });
+});
+
+describe('monsterFrameKey', () => {
+  it('generates a Phaser texture key per type+anim+frame index', () => {
+    expect(monsterFrameKey('demon', 'idle', 0)).toBe('monster_demon_idle_frame0');
+    expect(monsterFrameKey('demon', 'idle', 2)).toBe('monster_demon_idle_frame2');
+  });
+
+  it('generates distinct keys for different monster types', () => {
+    expect(monsterFrameKey('demon', 'walk', 0)).not.toBe(monsterFrameKey('dragon', 'walk', 0));
+  });
+
+  it('generates distinct keys for different anims on the same type', () => {
+    expect(monsterFrameKey('jinn', 'attack', 0)).not.toBe(monsterFrameKey('jinn', 'death', 0));
+  });
+
+  it('generates distinct keys for different frame indices', () => {
+    expect(monsterFrameKey('lizard', 'walk', 0)).not.toBe(monsterFrameKey('lizard', 'walk', 1));
+  });
+});
+
+describe('monsterFramePath', () => {
+  it('resolves the correct asset path from MONSTER_FRAMES for a given type+anim+index', () => {
+    expect(monsterFramePath('demon', 'idle', 0)).toBe(MONSTER_FRAMES.demon.idle[0]);
+    expect(monsterFramePath('dragon', 'attack', 1)).toBe(MONSTER_FRAMES.dragon.attack[1]);
+  });
+
+  it('matches the frames() naming convention (folder + prefix + 1-based frame number)', () => {
+    expect(monsterFramePath('medusa', 'death', 0)).toBe('sprites/monsters/medusa/Death1.png');
+  });
+});
+
+describe('monsterCharacterAnimKeys', () => {
+  it('returns a CharacterAnimKeySet where walkRight equals walkLeft and attackRight equals attackLeft (no left/right frame variants)', () => {
+    const keys = monsterCharacterAnimKeys('demon');
+    expect(keys.walkRight).toBe(keys.walkLeft);
+    expect(keys.attackRight).toBe(keys.attackLeft);
+  });
+
+  it('wires each key to the corresponding monsterAnimKey', () => {
+    expect(monsterCharacterAnimKeys('jinn')).toEqual({
+      walkRight: monsterAnimKey('jinn', 'walk'),
+      walkLeft: monsterAnimKey('jinn', 'walk'),
+      attackRight: monsterAnimKey('jinn', 'attack'),
+      attackLeft: monsterAnimKey('jinn', 'attack'),
+      death: monsterAnimKey('jinn', 'death'),
+      idle: monsterAnimKey('jinn', 'idle'),
+    });
+  });
+
+  it('produces distinct anim keys for different monster types', () => {
+    expect(monsterCharacterAnimKeys('demon').idle).not.toBe(monsterCharacterAnimKeys('dragon').idle);
   });
 });
