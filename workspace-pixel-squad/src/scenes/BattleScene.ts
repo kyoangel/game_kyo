@@ -44,6 +44,12 @@ const STAT_LABEL: Record<string, string> = { atk: 'ATK', def: 'DEF', spd: 'SPD' 
 
 const PORTRAIT_WIN = { x: 6, y: 468, w: 104, h: 104 } as const;
 const COMMAND_WIN = { x: 118, y: 468, w: 236, h: 104 } as const;
+// PORTRAIT_WIN's inner border sits 5px in on every side (see
+// windowFrameRects), and portraitCaption occupies a ~14px strip at the
+// bottom — 96 (the old image size) overflowed both the window's own top
+// edge and the caption line. 76 is the largest square that fits above the
+// caption within the inner border.
+const PORTRAIT_IMAGE_SIZE = 76;
 const TERRAIN_TOP = 580;
 
 interface CharacterView {
@@ -414,15 +420,15 @@ export class BattleScene extends Phaser.Scene {
   private showPortrait(char: Character) {
     const key = `portrait_${char.isPlayer ? char.templateId : (char._monsterType ?? '')}`;
     const cx = PORTRAIT_WIN.x + PORTRAIT_WIN.w / 2;
-    const cy = PORTRAIT_WIN.y + 40;
+    const cy = PORTRAIT_WIN.y + 6 + PORTRAIT_IMAGE_SIZE / 2;
     this.portraitImage?.destroy();
     this.portraitImage = undefined;
     this.portraitFallback?.destroy();
     this.portraitFallback = undefined;
     if (this.textures.exists(key) && !this.missingPortraits.has(key)) {
-      this.portraitImage = this.add.image(cx, cy, key).setDisplaySize(96, 96);
+      this.portraitImage = this.add.image(cx, cy, key).setDisplaySize(PORTRAIT_IMAGE_SIZE, PORTRAIT_IMAGE_SIZE);
     } else {
-      this.portraitFallback = this.add.rectangle(cx, cy, 80, 80, 0x1a1a1a);
+      this.portraitFallback = this.add.rectangle(cx, cy, PORTRAIT_IMAGE_SIZE, PORTRAIT_IMAGE_SIZE, 0x1a1a1a);
     }
     this.portraitCaption.setText(`${char.name}・${char.archetype}`);
   }
@@ -1238,16 +1244,22 @@ export class BattleScene extends Phaser.Scene {
 
   private showStopButton() {
     // actionMenu is anchored at COMMAND_WIN's top-left corner, not its
-    // center (see showAoaPrompt's winCenterX/winCenterY for the same
-    // convention) — placing this at local (0,0) put the button at the
-    // window's corner instead of centered inside it.
-    const winCenterX = COMMAND_WIN.w / 2;
-    const winCenterY = COMMAND_WIN.h / 2;
+    // center, so a naive (0, 0) placement lands at the window's corner.
+    // Centering it at COMMAND_WIN.w/2, h/2 (an earlier fix) is also wrong:
+    // that's exactly where `messageText` renders the attack/damage
+    // description during the same auto round, so a full-size centered
+    // button just hid the combat log for the whole round. This button
+    // needs to stay visible throughout an auto round without covering
+    // that text, so it's a compact badge tucked in the top-right corner
+    // instead, clear of messageText's vertical center.
+    const btnW = 64, btnH = 20, marginX = 8, marginY = 6;
+    const btnX = COMMAND_WIN.w - marginX - btnW / 2;
+    const btnY = marginY + btnH / 2;
     this.stopButton = this.add.container(0, 0);
-    const bg = this.add.rectangle(winCenterX, winCenterY, 120, 36, 0x7f1d1d)
+    const bg = this.add.rectangle(btnX, btnY, btnW, btnH, 0x7f1d1d)
       .setInteractive({ useHandCursor: true });
-    const txt = this.add.text(winCenterX, winCenterY, '■ 停止', {
-      fontSize: '14px', color: '#fca5a5', fontFamily: 'monospace',
+    const txt = this.add.text(btnX, btnY, '■ 停止', {
+      fontSize: '11px', color: '#fca5a5', fontFamily: 'monospace',
     }).setOrigin(0.5);
     bg.on('pointerdown', () => { this.stopRequested = true; });
     bg.on('pointerover', () => bg.setFillStyle(0x991b1b));
