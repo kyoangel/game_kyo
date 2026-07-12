@@ -12,10 +12,10 @@ import { getMusic } from '../audio/MusicManager';
 import { SFX_KEYS, MUSIC_KEYS } from '../data/audio';
 import { getDoomsdayColor, formatDoomsdayLabel } from '../ui/doomsdayDisplay';
 import { getDoomsdayDaysRemaining } from '../battle/DoomsdayClock';
+import { computeMaxScroll, clampScroll } from '../ui/scrollList';
 
 export class BaseScene extends Phaser.Scene {
   private gameState!: GameState;
-  private rowObjects: Phaser.GameObjects.GameObject[] = [];
   private expPoolText!: Phaser.GameObjects.Text;
   private expPoolBar!: Phaser.GameObjects.Rectangle;
 
@@ -26,11 +26,24 @@ export class BaseScene extends Phaser.Scene {
 
   private supplyPanel?: Phaser.GameObjects.Container;
 
+  // Squad/bench/supply list can overflow the viewport with a full 5-person
+  // squad + bench + supply rows (bug: hub buttons became overlapped/
+  // unreachable with no way to scroll down to them). Lives in its own
+  // scrollable, masked container between the header and the hub buttons.
+  private squadContainer?: Phaser.GameObjects.Container;
+  private squadMask?: Phaser.Display.Masks.GeometryMask;
+  private scrollY = 0;
+  private maxScroll = 0;
+  private isDragging = false;
+  private dragStartY = 0;
+  private dragStartScroll = 0;
+  private readonly listViewTop = 104;
+  private readonly listViewBottom = 576; // just above the hub button row at y=600
+
   constructor() { super({ key: 'BaseScene' }); }
 
   create(gameState: GameState) {
     this.gameState = gameState;
-    this.rowObjects = [];
     getMusic(this).playTrack(MUSIC_KEYS.theme);
 
     const W = 360, H = 640;
@@ -79,6 +92,8 @@ export class BaseScene extends Phaser.Scene {
     const W = 360;
     this.add.line(W / 2, 84, -W / 2, 0, W / 2, 0, 0x374151).setLineWidth(1);
     this.add.text(20, 90, '出戰中 (最多5人)', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
+    this.setupSquadScrollMask();
+    this.setupSquadScrollInput();
     this.renderSquadSection(104);
 
     computeBaseHubButtons().forEach(def => {
@@ -90,38 +105,80 @@ export class BaseScene extends Phaser.Scene {
     });
   }
 
+  private setupSquadScrollMask() {
+    const maskShape = this.make.graphics({}, false);
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(0, this.listViewTop, 360, this.listViewBottom - this.listViewTop);
+    this.squadMask = maskShape.createGeometryMask();
+  }
+
+  private applyListScroll() {
+    if (this.squadContainer) this.squadContainer.y = -this.scrollY;
+  }
+
+  private setupSquadScrollInput() {
+    const isBlocked = () => !!this.allocationPanel || !!this.supplyPanel;
+
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (isBlocked()) return;
+      this.isDragging = true;
+      this.dragStartY = pointer.y;
+      this.dragStartScroll = this.scrollY;
+    });
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!this.isDragging) return;
+      const delta = pointer.y - this.dragStartY;
+      this.scrollY = clampScroll(this.dragStartScroll - delta, this.maxScroll);
+      this.applyListScroll();
+    });
+
+    this.input.on('pointerup', () => { this.isDragging = false; });
+
+    this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _objects: unknown, _dx: number, dy: number) => {
+      if (isBlocked()) return;
+      this.scrollY = clampScroll(this.scrollY + dy, this.maxScroll);
+      this.applyListScroll();
+    });
+  }
+
   private renderSquadSection(startY: number) {
-    this.rowObjects.forEach(o => (o as Phaser.GameObjects.GameObject & { destroy(): void }).destroy());
-    this.rowObjects = [];
+    this.squadContainer?.destroy();
+    this.squadContainer = this.add.container(0, 0);
+    if (this.squadMask) this.squadContainer.setMask(this.squadMask);
 
     let y = startY;
 
     this.gameState.squad.forEach((char) => {
-      y = this.renderCharCard(char, y, true);
+      y = this.renderCharCard(char, y, true, this.squadContainer!);
     });
 
     const bench = this.gameState.pool.filter(p => !this.gameState.squad.some(s => s.id === p.id));
     if (bench.length > 0) {
       const sep = this.add.text(20, y + 4, '角色庫', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
-      this.rowObjects.push(sep);
+      this.squadContainer.add(sep);
       y += 22;
       bench.forEach((char) => {
-        y = this.renderCharCard(char, y, false);
+        y = this.renderCharCard(char, y, false, this.squadContainer!);
       });
     }
 
     if (!this.gameState.stageProgress.inChapterRun) {
-      this.renderInventorySection(y);
+      y = this.renderInventorySection(y);
     }
+
+    this.maxScroll = computeMaxScroll(y - startY, this.listViewBottom - this.listViewTop);
+    this.scrollY = 0; // reshuffled content each rebuild — start back at the top
+    this.applyListScroll();
   }
 
-  private renderInventorySection(startY: number) {
+  private renderInventorySection(startY: number): number {
     const inventory = this.gameState.inventory ?? [];
-    if (inventory.length === 0) return;
+    if (inventory.length === 0) return startY;
 
     let y = startY + 4;
     const sep = this.add.text(20, y, '補給品', { fontSize: '12px', color: '#9ca3af', fontFamily: 'monospace' });
-    this.rowObjects.push(sep);
+    this.squadContainer!.add(sep);
     y += 22;
 
     inventory.forEach((entry) => {
@@ -129,12 +186,12 @@ export class BaseScene extends Phaser.Scene {
       const name = item?.name ?? entry.itemId;
       const rowBg = this.add.rectangle(180, y + 16, 340, 32, 0x1f2937).setStrokeStyle(1, 0x4b5563);
       const label = this.add.text(24, y + 16, `${name}  x${entry.quantity}`, { fontSize: '12px', color: '#e5e7eb', fontFamily: 'monospace' }).setOrigin(0, 0.5);
-      this.rowObjects.push(rowBg, label);
+      this.squadContainer!.add([rowBg, label]);
 
       const canUse = item ? this.gameState.squad.some(m => canUseSupply(m)) : false;
       const useBtn = this.add.rectangle(320, y + 16, 50, 28, canUse ? 0x16a34a : 0x374151);
       const useTxt = this.add.text(320, y + 16, '使用', { fontSize: '11px', color: canUse ? '#fff' : '#6b7280', fontFamily: 'monospace' }).setOrigin(0.5);
-      this.rowObjects.push(useBtn, useTxt);
+      this.squadContainer!.add([useBtn, useTxt]);
       if (canUse && item) {
         useBtn.setInteractive({ useHandCursor: true });
         useBtn.on('pointerdown', () => this.showSupplyTargetPanel(item));
@@ -144,6 +201,8 @@ export class BaseScene extends Phaser.Scene {
 
       y += 36;
     });
+
+    return y;
   }
 
   private showSupplyTargetPanel(item: { id: string; healAmount?: number }) {
@@ -198,20 +257,20 @@ export class BaseScene extends Phaser.Scene {
     this.renderSquadSection(104);
   }
 
-  private renderCharCard(char: Character, y: number, inSquad: boolean): number {
+  private renderCharCard(char: Character, y: number, inSquad: boolean, container: Phaser.GameObjects.Container): number {
     const canUp = canLevelUp(char, this.gameState.expPool, DEFAULT_LEVEL_UP_CONFIG);
 
     const rowBg = this.add.rectangle(180, y + 42, 340, 76, inSquad ? 0x1f2937 : 0x161e2e).setStrokeStyle(1, inSquad ? 0x4b5563 : 0x1f2937);
     const nameText = this.add.text(24, y + 14, `${char.name}  Lv.${char.level}  ${char.archetype}`, { fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace' });
     const statsText = this.add.text(24, y + 34, `HP:${char.stats.hp}  ATK:${char.stats.atk}  DEF:${char.stats.def}  SPD:${char.stats.spd}`, { fontSize: '11px', color: '#9ca3af', fontFamily: 'monospace' });
-    this.rowObjects.push(rowBg, nameText, statsText);
+    container.add([rowBg, nameText, statsText]);
 
     const gearParts: string[] = [];
     if (char.equipment?.weapon) gearParts.push(`⚔${char.equipment.weapon.name}`);
     if (char.equipment?.armor) gearParts.push(`🛡${char.equipment.armor.name}`);
     if (gearParts.length > 0) {
       const gearText = this.add.text(24, y + 52, gearParts.join(' '), { fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' });
-      this.rowObjects.push(gearText);
+      container.add(gearText);
     }
 
     if (canUp) {
@@ -220,7 +279,7 @@ export class BaseScene extends Phaser.Scene {
       lvBtn.on('pointerdown', () => this.handleLevelUp(char));
       lvBtn.on('pointerover', () => lvBtn.setAlpha(0.8));
       lvBtn.on('pointerout', () => lvBtn.setAlpha(1));
-      this.rowObjects.push(lvBtn, lvTxt);
+      container.add([lvBtn, lvTxt]);
     }
 
     if (!this.gameState.stageProgress.inChapterRun) {
@@ -233,7 +292,7 @@ export class BaseScene extends Phaser.Scene {
         toggleBtn.on('pointerdown', () => this.toggleSquad(char, inSquad));
         toggleBtn.on('pointerover', () => toggleBtn.setAlpha(0.8));
         toggleBtn.on('pointerout', () => toggleBtn.setAlpha(1));
-        this.rowObjects.push(toggleBtn, toggleTxt);
+        container.add([toggleBtn, toggleTxt]);
       }
     }
 
@@ -265,9 +324,13 @@ export class BaseScene extends Phaser.Scene {
     this.add.line(W / 2, 100, -W / 2, 0, W / 2, 0, 0x374151).setLineWidth(1);
     this.add.text(20, 106, '出戰中 (鎖定)', { fontSize: '12px', color: '#6b7280', fontFamily: 'monospace' });
 
+    // Locked squad in a chapter run is capped at 5 with no bench/inventory
+    // rows, so it always fits the viewport — a plain container is enough,
+    // no scroll/mask wiring needed here (unlike renderSquadSection above).
+    const listContainer = this.add.container(0, 0);
     let y = 118;
     run.lockedSquad.forEach(char => {
-      y = this.renderCharCard(char, y, true);
+      y = this.renderCharCard(char, y, true, listContainer);
     });
 
     const continueBtn = this.add.rectangle(240, 600, 130, 40, 0x16a34a).setInteractive({ useHandCursor: true });
