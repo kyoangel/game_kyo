@@ -78,13 +78,20 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
     expect(branch).toMatch(/monsterFrameKey\(/);
   });
 
-  it('preserves setDisplaySize(44, 56) and setFlipX(true) on the monster sprite', () => {
+  it('preserves setDisplaySize(44, 56) and flips based on isPlayer, not unconditionally', () => {
     const body = extractMethod(source, 'renderParty');
     const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,800}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
     expect(branch).toMatch(/setDisplaySize\(44,\s*56\)/);
-    expect(branch).toMatch(/setFlipX\(true\)/);
+    // Bug: a recruited monster fights on the player's (left) side, where
+    // monster art's native right-facing orientation is already correct —
+    // unconditionally flipping (the old behavior) made it face the wrong
+    // way. Enemy-side monsters still need the flip (fixes the original
+    // "enemy facing wrong direction" QA bug), so this must be conditional
+    // on isPlayer, not a bare setFlipX(true).
+    expect(branch).toMatch(/setFlipX\(!isPlayer\)/);
+    expect(branch).not.toMatch(/setFlipX\(true\)/);
   });
 
   it('useSprite is true for the monster real-sprite path in addition to the protagonist/party paths', () => {
@@ -95,9 +102,18 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
     expect(expr).toMatch(/shouldUseMonsterSprite\(/);
   });
 
-  it('computes animKeys via monsterCharacterAnimKeys for non-player monster characters', () => {
+  it('computes animKeys via monsterCharacterAnimKeys for any character with _monsterType, not just non-player enemies', () => {
     const body = extractMethod(source, 'renderParty');
     expect(body).toMatch(/monsterCharacterAnimKeys\(/);
+    // Bug: a recruited monster is isPlayer:true but still has _monsterType
+    // set (see CharacterFactory.enemyToPlayerCharacter) — the old
+    // `!char.isPlayer && char._monsterType` condition excluded it, so it
+    // fell through to characterAnimKeys(char.templateId), generating
+    // animation keys that don't exist for a monster templateId.
+    const animKeysMatch = body.match(/const\s+animKeys\s*=\s*([\s\S]{0,300}?);/);
+    expect(animKeysMatch).not.toBeNull();
+    expect(animKeysMatch![1]).not.toMatch(/!char\.isPlayer\s*&&\s*char\._monsterType/);
+    expect(animKeysMatch![1]).toMatch(/char\._monsterType/);
   });
 
   it('no longer references the removed monsterIdleKey helper', () => {

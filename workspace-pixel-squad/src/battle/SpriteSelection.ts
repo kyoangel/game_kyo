@@ -20,7 +20,13 @@ export function shouldUsePartySprite(char: Character, scene: { textures: { exist
 }
 
 export function shouldUseMonsterSprite(char: Character, scene: { textures: { exists: (k: string) => boolean } }): boolean {
-  if (char.isPlayer || !char._monsterType) return false;
+  // No isPlayer guard: a recruited generic (non-named) enemy is converted to
+  // a player character via enemyToPlayerCharacter(), which preserves
+  // _monsterType — it should keep using its real monster sprite in the
+  // party row instead of falling through to the flat-color rectangle
+  // fallback. Regular party members never have _monsterType set, so this
+  // can't accidentally match them.
+  if (!char._monsterType) return false;
   const type = char._monsterType as MonsterType;
   return (Object.keys(MONSTER_ANIM_FPS) as MonsterAnimKey[]).every(anim =>
     scene.textures.exists(monsterFrameKey(type, anim, 0)),

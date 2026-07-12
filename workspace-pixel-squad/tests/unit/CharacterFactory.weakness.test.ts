@@ -62,3 +62,27 @@ describe('enemyToPlayerCharacter does not carry over weakness (recruit interacti
     expect((player as any).weakness).toBeUndefined();
   });
 });
+
+describe('enemyToPlayerCharacter preserves _monsterType (recruit sprite bug)', () => {
+  it('keeps _monsterType on the returned player Character, unlike weakness', () => {
+    // Bug: a recruited generic (non-named) enemy has no matching entry in
+    // PLAYER_TEMPLATES, so VictoryProcessor falls back to this conversion.
+    // Without _monsterType surviving the conversion, none of
+    // shouldUsePartyRealSprite/shouldUsePartySprite/shouldUseMonsterSprite
+    // match the resulting character, and it renders as a flat-color
+    // rectangle ("blue block") in the party row instead of its monster
+    // sprite. Unlike weakness (intentionally dropped — elemental targeting
+    // doesn't apply to player characters), _monsterType must survive since
+    // it's the only thing that identifies which sprite to render.
+    const template: EnemyTemplate = {
+      id: 'raider_a',
+      name: '掠奪者',
+      baseStats: { hp: 80, atk: 20, def: 8, spd: 12 },
+      skillIds: [],
+      monsterType: 'demon',
+    };
+    const enemy = createEnemy(template);
+    const player = enemyToPlayerCharacter(enemy, 80);
+    expect(player._monsterType).toBe('demon');
+  });
+});

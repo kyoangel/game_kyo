@@ -109,5 +109,10 @@ export function enemyToPlayerCharacter(enemy: Character, maxHp: number): Charact
     skillPoints: 0,
     unlockedSkillNodeIds: [],
     deathStatus: 'alive',
+    // Unlike weakness (intentionally dropped above), _monsterType must
+    // survive — it's the only thing shouldUseMonsterSprite() can key off
+    // for a recruited enemy with no matching PLAYER_TEMPLATES entry, so
+    // it keeps rendering its real sprite instead of a flat-color rectangle.
+    _monsterType: enemy._monsterType,
   };
 }

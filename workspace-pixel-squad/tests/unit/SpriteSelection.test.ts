@@ -105,8 +105,17 @@ describe('shouldUseMonsterSprite', () => {
     expect(shouldUseMonsterSprite(demon, makeScene(missingDeath))).toBe(false);
   });
 
-  it('returns false for a player character even if matching monster textures happen to exist', () => {
-    const player = makeCharacter({ isPlayer: true, _monsterType: 'demon' });
+  it('returns true for a recruited enemy (isPlayer: true, still carries its original _monsterType)', () => {
+    // A generic (non-named) recruited enemy is converted to a player
+    // character via enemyToPlayerCharacter(), which preserves _monsterType
+    // so it keeps its real monster sprite in the party row instead of
+    // falling through to the flat-color rectangle fallback.
+    const recruited = makeCharacter({ isPlayer: true, _monsterType: 'demon' });
+    expect(shouldUseMonsterSprite(recruited, makeScene(demonKeys))).toBe(true);
+  });
+
+  it('returns false for a normal player character with no _monsterType', () => {
+    const player = makeCharacter({ isPlayer: true });
     expect(shouldUseMonsterSprite(player, makeScene(demonKeys))).toBe(false);
   });
 

@@ -347,14 +347,19 @@ export class BattleScene extends Phaser.Scene {
       } else if (shouldUseMonsterSprite(char, this)) {
         // Monster art faces right by default; enemies sit on the right side of
         // the screen and must face left toward the centerline (fixes the
-        // "enemy sprite facing wrong direction" QA bug).
+        // "enemy sprite facing wrong direction" QA bug). A recruited monster
+        // (isPlayer: true, _monsterType still set — see
+        // CharacterFactory.enemyToPlayerCharacter) fights on the player's
+        // left side instead, where the art's native right-facing
+        // orientation is already correct, so the flip must follow isPlayer
+        // rather than always flipping.
         body = this.add.sprite(layout.spriteX, cy + ROW_V2.SPRITE_DY, monsterFrameKey(char._monsterType as MonsterType, 'idle', 0))
-          .setDisplaySize(44, 56).setFlipX(true);
+          .setDisplaySize(44, 56).setFlipX(!isPlayer);
       } else {
         body = this.add.rectangle(layout.spriteX, cy + ROW_V2.SPRITE_DY, 44, 56, color).setAlpha(0.9);
       }
       const useSprite = shouldUseProtagonistSprite(char, textureLoaded) || shouldUsePartyRealSprite(char, this) || shouldUseMonsterSprite(char, this);
-      const animKeys = !char.isPlayer && char._monsterType
+      const animKeys = char._monsterType
         ? monsterCharacterAnimKeys(char._monsterType as MonsterType)
         : char.isProtagonist ? PROTAGONIST_ANIM_KEYS : characterAnimKeys(char.templateId);
       const teamColor = isPlayer ? Colors.TEAM_ALLY : Colors.TEAM_ENEMY;

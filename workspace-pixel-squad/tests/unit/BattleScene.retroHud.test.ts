@@ -51,9 +51,9 @@ describe('BattleScene tenchi2 battle HUD', () => {
     });
   });
 
-  it('renderParty() flips monster images to face the centerline (fixes enemy-facing-wrong QA bug)', () => {
+  it('renderParty() flips monster images based on isPlayer, so both enemy-side (fixes enemy-facing-wrong QA bug) and recruited player-side monsters face the centerline', () => {
     const body = extractMethod(source, 'renderParty');
-    expect(body).toMatch(/setFlipX\(true\)/);
+    expect(body).toMatch(/setFlipX\(!isPlayer\)/);
   });
 
   it('renderParty() positions stacked name/number at layout.nameX, not labelX', () => {

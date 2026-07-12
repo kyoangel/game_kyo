@@ -179,10 +179,18 @@ export class CharacterAnimator {
 
   returnToIdle(): void {
     this.scene.tweens.killTweensOf(this.body);
+    // scaleX: 1 only makes sense for legacy rectangle/Image bodies, which
+    // sit at scale 1 by default. Sprite bodies are scaled far below 1 via
+    // setDisplaySize() (e.g. 44/256 ≈ 0.17) and never change scale after
+    // creation — forcing scaleX to 1 here stretched them toward native
+    // pixel width every time an attack or hit finished, and playIdleLoop()
+    // never resets it, so the sprite stayed stretched for the rest of the
+    // battle (same class of bug already fixed once for playIdleLoop's
+    // breathing tween — see the "monster idle scale-jitter fix" above).
     this.scene.tweens.add({
       targets: this.body,
       x: this.originX,
-      scaleX: 1,
+      ...(this.isSprite ? {} : { scaleX: 1 }),
       duration: WALK_CONFIG.returnDuration,
       ease: 'Linear',
       onComplete: () => {
