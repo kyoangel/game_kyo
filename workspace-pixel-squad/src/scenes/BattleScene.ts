@@ -1237,10 +1237,16 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showStopButton() {
+    // actionMenu is anchored at COMMAND_WIN's top-left corner, not its
+    // center (see showAoaPrompt's winCenterX/winCenterY for the same
+    // convention) — placing this at local (0,0) put the button at the
+    // window's corner instead of centered inside it.
+    const winCenterX = COMMAND_WIN.w / 2;
+    const winCenterY = COMMAND_WIN.h / 2;
     this.stopButton = this.add.container(0, 0);
-    const bg = this.add.rectangle(0, 0, 120, 36, 0x7f1d1d)
+    const bg = this.add.rectangle(winCenterX, winCenterY, 120, 36, 0x7f1d1d)
       .setInteractive({ useHandCursor: true });
-    const txt = this.add.text(0, 0, '■ 停止', {
+    const txt = this.add.text(winCenterX, winCenterY, '■ 停止', {
       fontSize: '14px', color: '#fca5a5', fontFamily: 'monospace',
     }).setOrigin(0.5);
     bg.on('pointerdown', () => { this.stopRequested = true; });
