@@ -26,7 +26,7 @@ import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite, shouldUsePartyRealSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterFrameKey, MONSTER_ANIM_FPS, monsterAnimKey, monsterCharacterAnimKeys, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterFrameKey, MONSTER_ANIM_FPS, monsterAnimKey, monsterCharacterAnimKeys, monsterDisplaySize, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
 import type { MonsterType, MonsterAnimKey } from '../data/sprites';
 import { CharacterAnimator } from '../battle/CharacterAnimator';
 import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
@@ -353,8 +353,17 @@ export class BattleScene extends Phaser.Scene {
         // left side instead, where the art's native right-facing
         // orientation is already correct, so the flip must follow isPlayer
         // rather than always flipping.
-        body = this.add.sprite(layout.spriteX, cy + ROW_V2.SPRITE_DY, monsterFrameKey(char._monsterType as MonsterType, 'idle', 0))
-          .setDisplaySize(44, 56).setFlipX(!isPlayer);
+        //
+        // Display size is per-type (monsterDisplaySize) rather than a flat
+        // 44x56 — demon/dragon/lizard ship on a 256x256 canvas vs jinn/
+        // medusa/small_dragon's 128x128, so the same fixed box rendered
+        // them at roughly half the apparent height. Origin is bottom-
+        // anchored at the original 44x56 box's bottom edge (the HP bar
+        // stays exactly where it was), so a taller display size only grows
+        // the sprite upward — feet stay pinned to the bar regardless of type.
+        const { w: monsterW, h: monsterH } = monsterDisplaySize(char._monsterType as MonsterType);
+        body = this.add.sprite(layout.spriteX, cy + ROW_V2.SPRITE_DY + 28, monsterFrameKey(char._monsterType as MonsterType, 'idle', 0))
+          .setOrigin(0.5, 1).setDisplaySize(monsterW, monsterH).setFlipX(!isPlayer);
       } else {
         body = this.add.rectangle(layout.spriteX, cy + ROW_V2.SPRITE_DY, 44, 56, color).setAlpha(0.9);
       }

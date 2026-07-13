@@ -15,6 +15,7 @@ import {
   monsterCharacterAnimKeys,
   monsterAnimKey,
   MONSTER_FRAMES,
+  monsterDisplaySize,
 } from '../../src/data/sprites';
 
 describe('SPRITE_KEYS', () => {
@@ -190,5 +191,27 @@ describe('monsterCharacterAnimKeys', () => {
 
   it('produces distinct anim keys for different monster types', () => {
     expect(monsterCharacterAnimKeys('demon').idle).not.toBe(monsterCharacterAnimKeys('dragon').idle);
+  });
+});
+
+describe('monsterDisplaySize', () => {
+  // Bug: every monster type rendered through the same fixed
+  // setDisplaySize(44, 56), but source canvases aren't uniform (256x256 for
+  // demon/dragon/lizard vs 128x128 for jinn/medusa/small_dragon) — the same
+  // display box renders the 256-canvas types' content at roughly half the
+  // on-screen height of the 128-canvas types (confirmed via pixel analysis:
+  // demon ~21px tall vs jinn ~34px tall at the old fixed size). Doubling the
+  // display box for the 256-canvas types restores a consistent apparent
+  // size without touching the ones that already looked right.
+  it('doubles the display box for 256x256-canvas types (demon, dragon, lizard)', () => {
+    expect(monsterDisplaySize('demon')).toEqual({ w: 88, h: 112 });
+    expect(monsterDisplaySize('dragon')).toEqual({ w: 88, h: 112 });
+    expect(monsterDisplaySize('lizard')).toEqual({ w: 88, h: 112 });
+  });
+
+  it('keeps the original 44x56 box for 128x128-canvas types (jinn, medusa, small_dragon)', () => {
+    expect(monsterDisplaySize('jinn')).toEqual({ w: 44, h: 56 });
+    expect(monsterDisplaySize('medusa')).toEqual({ w: 44, h: 56 });
+    expect(monsterDisplaySize('small_dragon')).toEqual({ w: 44, h: 56 });
   });
 });

@@ -199,6 +199,21 @@ export function monsterFramePath(type: MonsterType, anim: MonsterAnimKey, index:
   return MONSTER_FRAMES[type][anim][index];
 }
 
+// Source canvases aren't uniform across monster types — demon/dragon/lizard
+// ship at 256x256, jinn/medusa/small_dragon at 128x128 (see frames() call
+// sites above) — but every type used to render through the same fixed
+// setDisplaySize(44, 56) in BattleScene.renderParty(), so the 256-canvas
+// types' content rendered at roughly half the on-screen height of the
+// 128-canvas types even though both were nominally "44x56". Doubling the
+// display box for the 256-canvas types restores a consistent apparent size
+// without touching the ones that already looked right (confirmed against
+// live gameplay screenshots: jinn "剛好" (just right) vs demon "有點小").
+const MONSTER_CANVAS_256: ReadonlySet<MonsterType> = new Set(['demon', 'dragon', 'lizard']);
+
+export function monsterDisplaySize(type: MonsterType): { w: number; h: number } {
+  return MONSTER_CANVAS_256.has(type) ? { w: 88, h: 112 } : { w: 44, h: 56 };
+}
+
 // CharacterAnimKeySet for a monster, reusing CharacterAnimator unchanged:
 // monster art is a single fixed orientation (no left/right frame variants —
 // enemies always sit on the right side facing left via setFlipX(true)), so

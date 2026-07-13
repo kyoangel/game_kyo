@@ -70,7 +70,7 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
 
   it('uses this.add.sprite (not this.add.image) for the monster branch, keyed by monsterFrameKey', () => {
     const body = extractMethod(source, 'renderParty');
-    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,800}?)\}\s*(?:else|const useSprite)/);
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
     expect(branch).toMatch(/this\.add\.sprite\(/);
@@ -78,12 +78,38 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
     expect(branch).toMatch(/monsterFrameKey\(/);
   });
 
-  it('preserves setDisplaySize(44, 56) and flips based on isPlayer, not unconditionally', () => {
+  it('sizes the sprite per type via monsterDisplaySize(), not a hardcoded 44x56', () => {
+    // Bug: demon/dragon/lizard ship on a 256x256 canvas vs jinn/medusa/
+    // small_dragon's 128x128, so the same fixed setDisplaySize(44, 56)
+    // rendered the 256-canvas types at roughly half the on-screen height.
     const body = extractMethod(source, 'renderParty');
-    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,800}?)\}\s*(?:else|const useSprite)/);
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
-    expect(branch).toMatch(/setDisplaySize\(44,\s*56\)/);
+    expect(branch).toMatch(/monsterDisplaySize\(/);
+    expect(branch).not.toMatch(/setDisplaySize\(44,\s*56\)/);
+  });
+
+  it('bottom-anchors the sprite (setOrigin(0.5, 1)) so a taller display size grows upward, keeping feet pinned to the HP bar', () => {
+    // User requirement: HP bar position must stay fixed, and the distance
+    // from the sprite's feet to the bar must stay fixed too — only the
+    // character should get bigger. Phaser sprites default to center origin
+    // (0.5, 0.5), so growing displayHeight while keeping the same center y
+    // would push the feet *down* past the bar as much as the head rises.
+    // Bottom-anchoring at the original 56px-tall box's bottom edge means
+    // extra height only extends upward.
+    const body = extractMethod(source, 'renderParty');
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
+    expect(monsterBranchMatch).not.toBeNull();
+    const branch = monsterBranchMatch![1];
+    expect(branch).toMatch(/setOrigin\(0\.5,\s*1\)/);
+  });
+
+  it('flips based on isPlayer, not unconditionally', () => {
+    const body = extractMethod(source, 'renderParty');
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
+    expect(monsterBranchMatch).not.toBeNull();
+    const branch = monsterBranchMatch![1];
     // Bug: a recruited monster fights on the player's (left) side, where
     // monster art's native right-facing orientation is already correct —
     // unconditionally flipping (the old behavior) made it face the wrong
