@@ -461,6 +461,7 @@ export class BattleScene extends Phaser.Scene {
 
   private startCommandPhase() {
     this.battleStats.roundsUsed++;
+    this.setBattleSpeed(1);
     resetRoundFlags([...this.playerParty, ...this.enemyParty]);
     resetSupportRoundFlags(this.playerParty);
     resetAoaRoundState(this.aoaState);
@@ -1231,9 +1232,25 @@ export class BattleScene extends Phaser.Scene {
   private enterAutoMode() {
     this.waitingForInput = false;
     this.phase = 'auto';
+    this.setBattleSpeed(2);
     this.actionMenu.removeAll(true);
     this.showStopButton();
     this.runAutoRound();
+  }
+
+  // Scales this scene's action pacing. this.time/this.tweens are per-scene
+  // instances, so scaling them can't leak into other scenes — but Phaser
+  // animation playback speed lives on each Sprite's own `.anims.timeScale`,
+  // not a scene-scoped property (the scene-wide equivalent,
+  // this.anims.globalTimeScale, is actually game-wide and would leave every
+  // *other* scene permanently sped up once battle ended), so each view's
+  // sprite body needs it set individually instead.
+  private setBattleSpeed(scale: number) {
+    this.time.timeScale = scale;
+    this.tweens.timeScale = scale;
+    this.views.forEach(v => {
+      if (v.body instanceof Phaser.GameObjects.Sprite) v.body.anims.timeScale = scale;
+    });
   }
 
   private runAutoRound() {
