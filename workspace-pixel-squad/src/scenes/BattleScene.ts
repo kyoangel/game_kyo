@@ -26,7 +26,7 @@ import { PLAYER_TEMPLATES } from '../data/characters';
 import { canAttemptRecruit, recruitChance, attemptRecruit, isNamedCharacter } from '../battle/RecruitSystem';
 import { rollCrit } from '../battle/ArchetypeEffects';
 import { shouldUseProtagonistSprite, shouldUsePartyRealSprite, shouldUsePartySprite, shouldUseMonsterSprite } from '../battle/SpriteSelection';
-import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterFrameKey, MONSTER_ANIM_FPS, monsterAnimKey, monsterCharacterAnimKeys, monsterDisplaySize, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
+import { SPRITE_KEYS, SPRITE_SHEET_ASSETS, PROTAGONIST_ANIM_KEYS, PARTY_MEMBER_IDS, PARTY_LPC_ANIMS, partySpritKey, partySpritePath, partyLpcSheetKey, partyLpcSheetPath, characterAnimKeys, buildCharacterAnimDefs, monsterFrameKey, MONSTER_ANIM_FPS, monsterAnimKey, monsterCharacterAnimKeys, monsterDisplaySize, monsterFeetInset, MONSTER_FRAMES, LPC_DIRECTION_ROW, lpcRowFrameRange } from '../data/sprites';
 import type { MonsterType, MonsterAnimKey } from '../data/sprites';
 import { CharacterAnimator } from '../battle/CharacterAnimator';
 import { deriveFacing, DIE_CONFIG } from '../battle/AnimationState';
@@ -361,8 +361,18 @@ export class BattleScene extends Phaser.Scene {
         // anchored at the original 44x56 box's bottom edge (the HP bar
         // stays exactly where it was), so a taller display size only grows
         // the sprite upward — feet stay pinned to the bar regardless of type.
-        const { w: monsterW, h: monsterH } = monsterDisplaySize(char._monsterType as MonsterType);
-        body = this.add.sprite(layout.spriteX, cy + ROW_V2.SPRITE_DY + 28, monsterFrameKey(char._monsterType as MonsterType, 'idle', 0))
+        //
+        // Bottom-anchoring the canvas edge still isn't the same as
+        // anchoring the character's actual feet: every type's source art
+        // has real transparent padding below the feet within its canvas
+        // (see monsterFeetInset), which left a visible gap between the
+        // character and the bar — monsterFeetInset pushes the sprite down
+        // by that (display-height-scaled) padding so the real feet land
+        // exactly on the bar, matching how party/protagonist sprites do.
+        const monsterType = char._monsterType as MonsterType;
+        const { w: monsterW, h: monsterH } = monsterDisplaySize(monsterType);
+        const monsterFeetY = cy + ROW_V2.SPRITE_DY + 28 + monsterFeetInset(monsterType, monsterH);
+        body = this.add.sprite(layout.spriteX, monsterFeetY, monsterFrameKey(monsterType, 'idle', 0))
           .setOrigin(0.5, 1).setDisplaySize(monsterW, monsterH).setFlipX(!isPlayer);
       } else {
         body = this.add.rectangle(layout.spriteX, cy + ROW_V2.SPRITE_DY, 44, 56, color).setAlpha(0.9);
@@ -432,7 +442,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showPortrait(char: Character) {
-    const key = `portrait_${char.isPlayer ? char.templateId : (char._monsterType ?? '')}`;
+    // A recruited generic enemy (isPlayer: true, no PLAYER_TEMPLATES
+    // entry) keeps its original _monsterType, but its templateId is the
+    // enemy's own id (e.g. 'mutant_a') — only per-monster-type portraits
+    // exist (portrait_demon.png etc.), not per-specific-enemy-instance
+    // ones, so _monsterType must win whenever it's set, regardless of
+    // isPlayer.
+    const key = `portrait_${char._monsterType ?? char.templateId}`;
     const cx = PORTRAIT_WIN.x + PORTRAIT_WIN.w / 2;
     const cy = PORTRAIT_WIN.y + 6 + PORTRAIT_IMAGE_SIZE / 2;
     this.portraitImage?.destroy();

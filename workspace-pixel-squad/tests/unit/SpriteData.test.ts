@@ -16,6 +16,7 @@ import {
   monsterAnimKey,
   MONSTER_FRAMES,
   monsterDisplaySize,
+  monsterFeetInset,
 } from '../../src/data/sprites';
 
 describe('SPRITE_KEYS', () => {
@@ -213,5 +214,28 @@ describe('monsterDisplaySize', () => {
     expect(monsterDisplaySize('jinn')).toEqual({ w: 44, h: 56 });
     expect(monsterDisplaySize('medusa')).toEqual({ w: 44, h: 56 });
     expect(monsterDisplaySize('small_dragon')).toEqual({ w: 44, h: 56 });
+  });
+});
+
+describe('monsterFeetInset', () => {
+  // Bug: bottom-anchoring the sprite's *canvas* edge to the HP bar (the
+  // monsterDisplaySize fix above) isn't the same as anchoring the
+  // *character's feet* — every type's Idle1.png has real transparent
+  // padding below the feet within the canvas (measured via content bbox:
+  // demon 69px of 256, dragon 64/256, jinn 16/128, lizard 99/256,
+  // medusa 30/128, small_dragon 46/128), so the canvas-bottom-anchored
+  // sprite left a visible gap between the character and the bar — worse
+  // for the types whose display box got doubled. This returns how many
+  // pixels to push the sprite *down* (scaled to whatever display height is
+  // actually used) so the real feet land on the bar instead of the canvas edge.
+  it('scales the measured bottom padding to the given display height', () => {
+    expect(monsterFeetInset('demon', 112)).toBeCloseTo(30.1875, 3);
+    expect(monsterFeetInset('demon', 56)).toBeCloseTo(15.0938, 3);
+    expect(monsterFeetInset('jinn', 56)).toBeCloseTo(7.0, 3);
+    expect(monsterFeetInset('lizard', 112)).toBeCloseTo(43.3125, 3);
+  });
+
+  it('is proportional to displayHeight (doubling height doubles the inset)', () => {
+    expect(monsterFeetInset('medusa', 112)).toBeCloseTo(monsterFeetInset('medusa', 56) * 2, 6);
   });
 });

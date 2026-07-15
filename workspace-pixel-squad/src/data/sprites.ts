@@ -214,6 +214,28 @@ export function monsterDisplaySize(type: MonsterType): { w: number; h: number } 
   return MONSTER_CANVAS_256.has(type) ? { w: 88, h: 112 } : { w: 44, h: 56 };
 }
 
+// Bottom-anchoring a monster sprite's *canvas* edge to the HP bar isn't the
+// same as anchoring the *character's feet* to it — every type's Idle1.png
+// has real transparent padding below the feet within its canvas (measured
+// via content bounding box), so a canvas-bottom-anchored sprite leaves a
+// visible gap between the character and the bar. [paddingPx, canvasPx]
+// per type; monsterFeetInset() scales that ratio to whatever display
+// height is actually used, giving the number of pixels to push the
+// sprite's position down so the real feet land on the bar.
+const MONSTER_FEET_PADDING: Record<MonsterType, readonly [number, number]> = {
+  demon: [69, 256],
+  dragon: [64, 256],
+  jinn: [16, 128],
+  lizard: [99, 256],
+  medusa: [30, 128],
+  small_dragon: [46, 128],
+};
+
+export function monsterFeetInset(type: MonsterType, displayHeight: number): number {
+  const [pad, canvas] = MONSTER_FEET_PADDING[type];
+  return (pad / canvas) * displayHeight;
+}
+
 // CharacterAnimKeySet for a monster, reusing CharacterAnimator unchanged:
 // monster art is a single fixed orientation (no left/right frame variants —
 // enemies always sit on the right side facing left via setFlipX(true)), so

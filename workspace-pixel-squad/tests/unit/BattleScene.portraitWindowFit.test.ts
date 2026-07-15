@@ -49,4 +49,21 @@ describe('BattleScene portrait — image size fits inside PORTRAIT_WIN above the
     // calculation and portraitCaption's fixed y actually leave available.
     expect(imageSize).toBeLessThanOrEqual(winH - 10 - 14);
   });
+
+  it('keys the portrait off _monsterType whenever it is set, not just for non-player enemies', () => {
+    // Bug: a recruited generic enemy (isPlayer: true, no PLAYER_TEMPLATES
+    // entry — see CharacterFactory.enemyToPlayerCharacter) keeps its
+    // original _monsterType but its templateId is the enemy's own id
+    // (e.g. 'mutant_a'), which has no matching portrait file — only
+    // per-monster-*type* portraits exist (portrait_demon.png etc.), not
+    // per-specific-enemy-instance ones. The old
+    // `char.isPlayer ? char.templateId : (char._monsterType ?? '')`
+    // ternary always picked templateId for isPlayer characters, so a
+    // recruited monster's portrait never resolved and fell back to the
+    // silhouette. _monsterType must take priority whenever it's set,
+    // regardless of isPlayer.
+    const body = extractMethod(source, 'showPortrait');
+    expect(body).toMatch(/char\._monsterType\s*\?\?\s*char\.templateId/);
+    expect(body).not.toMatch(/char\.isPlayer\s*\?\s*char\.templateId\s*:/);
+  });
 });

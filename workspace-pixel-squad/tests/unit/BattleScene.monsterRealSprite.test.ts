@@ -70,7 +70,7 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
 
   it('uses this.add.sprite (not this.add.image) for the monster branch, keyed by monsterFrameKey', () => {
     const body = extractMethod(source, 'renderParty');
-    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,2200}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
     expect(branch).toMatch(/this\.add\.sprite\(/);
@@ -83,7 +83,7 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
     // small_dragon's 128x128, so the same fixed setDisplaySize(44, 56)
     // rendered the 256-canvas types at roughly half the on-screen height.
     const body = extractMethod(source, 'renderParty');
-    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,2200}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
     expect(branch).toMatch(/monsterDisplaySize\(/);
@@ -99,15 +99,28 @@ describe('BattleScene renderParty() — monster real-sprite branch', () => {
     // Bottom-anchoring at the original 56px-tall box's bottom edge means
     // extra height only extends upward.
     const body = extractMethod(source, 'renderParty');
-    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,2200}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
     expect(branch).toMatch(/setOrigin\(0\.5,\s*1\)/);
   });
 
+  it('offsets the sprite by monsterFeetInset() so the character\'s real feet land on the bar, not just the canvas edge', () => {
+    // Bug: bottom-anchoring the canvas edge to the bar isn't the same as
+    // anchoring the character's feet — every monster type's source art has
+    // real transparent padding below the feet within its canvas, so the
+    // canvas-bottom-anchored sprite (the fix above) still left a visible
+    // gap between the character and the bar.
+    const body = extractMethod(source, 'renderParty');
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,2200}?)\}\s*(?:else|const useSprite)/);
+    expect(monsterBranchMatch).not.toBeNull();
+    const branch = monsterBranchMatch![1];
+    expect(branch).toMatch(/monsterFeetInset\(/);
+  });
+
   it('flips based on isPlayer, not unconditionally', () => {
     const body = extractMethod(source, 'renderParty');
-    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,1700}?)\}\s*(?:else|const useSprite)/);
+    const monsterBranchMatch = body.match(/shouldUseMonsterSprite\(char, this\)\)\s*\{([\s\S]{0,2200}?)\}\s*(?:else|const useSprite)/);
     expect(monsterBranchMatch).not.toBeNull();
     const branch = monsterBranchMatch![1];
     // Bug: a recruited monster fights on the player's (left) side, where
