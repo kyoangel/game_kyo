@@ -1248,7 +1248,7 @@ export class BattleScene extends Phaser.Scene {
   private enterAutoMode() {
     this.waitingForInput = false;
     this.phase = 'auto';
-    this.setBattleSpeed(2);
+    this.setBattleSpeed(4);
     this.actionMenu.removeAll(true);
     this.showStopButton();
     this.runAutoRound();
