@@ -261,6 +261,23 @@ function loadLifetimeElim(): number {
   return parseInt(localStorage.getItem(LIFETIME_ELIM_KEY) ?? "0", 10);
 }
 
+// Present only inside the Capacitor-wrapped iOS app (see index.html), never on web.
+interface GameCenterPlugin {
+  reportScore(opts: { score: number }): Promise<unknown>;
+}
+function reportBestScoreToGameCenter(score: number): void {
+  const gc = (window as unknown as { Capacitor?: { Plugins?: { GameCenter?: GameCenterPlugin } } })
+    .Capacitor?.Plugins?.GameCenter;
+  gc?.reportScore({ score }).catch(() => {});
+}
+
+function updateBestScore(score: number): void {
+  if (score <= bestScore) return;
+  bestScore = score;
+  localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
+  reportBestScoreToGameCenter(bestScore);
+}
+
 let state: GameState = createInitialState(GRID_SIZE);
 let rng: Rng = Math.random;
 let bestScore = loadBestScore();
@@ -810,10 +827,7 @@ function handleKeydown(event: KeyboardEvent): void {
 
   state = { grid: postSlideGrid, score: state.score + actualScore };
 
-  if (state.score > bestScore) {
-    bestScore = state.score;
-    localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
-  }
+  updateBestScore(state.score);
 
   updateHudScore();
 
@@ -1043,10 +1057,7 @@ function setState(newState: GameState): void {
     trophyToastEl.classList.remove("animate");
   }
 
-  if (state.score > bestScore) {
-    bestScore = state.score;
-    localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
-  }
+  updateBestScore(state.score);
 
   if (newState.score === 0) {
     const newCount = loadPlayCount() + 1;

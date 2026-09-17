@@ -73,7 +73,8 @@
     #hud-palette-toggle,
     #hud-mute,
     #hud-powerup-info,
-    #hud-trophy {
+    #hud-trophy,
+    #hud-gamecenter {
       width: 44px;
       height: 44px;
       border-radius: 50%;
@@ -366,6 +367,46 @@
     #powerup-modal-donate a:hover {
       background: #ea6c10;
     }
+    #powerup-modal-tipjar {
+      margin-top: 16px;
+      text-align: center;
+    }
+    #powerup-modal-tipjar hr {
+      border: none;
+      border-top: 1px solid #374151;
+      margin: 0 0 12px;
+    }
+    #powerup-modal-tipjar p {
+      font-size: 12px;
+      color: #9ca3af;
+      margin: 0 0 8px;
+    }
+    #tipjar-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .tipjar-btn {
+      background: #f97316;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .tipjar-btn:hover {
+      background: #ea6c10;
+    }
+    .tipjar-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #tipjar-status {
+      margin-top: 8px !important;
+    }
     #trophy-modal {
       position: fixed;
       inset: 0;
@@ -507,6 +548,7 @@
         <div id="hud-powerups"></div>
         <button id="hud-powerup-info" aria-label="道具說明">❓</button>
         <button id="hud-trophy" aria-label="生涯獎盃">🏆</button>
+        <button id="hud-gamecenter" aria-label="Game Center 排行榜" style="display:none">🎮</button>
         <button id="hud-palette-toggle" aria-label="切換配色">🎨</button>
         <button id="hud-mute" aria-label="靜音">🔊</button>
       </div>
@@ -551,6 +593,16 @@
           <p>❤️ 喜歡這個遊戲嗎？</p>
           <a href="https://p.ecpay.com.tw/17369E9" target="_blank" rel="noopener noreferrer">☕ 贊助開發者</a>
         </div>
+        <div id="powerup-modal-tipjar" hidden>
+          <hr>
+          <p>❤️ 喜歡這個遊戲嗎？透過 App Store 支持開發者</p>
+          <div id="tipjar-buttons">
+            <button class="tipjar-btn" data-product-id="com.kyoangel.mathmerge10.tip.small">☕ 小額贊助</button>
+            <button class="tipjar-btn" data-product-id="com.kyoangel.mathmerge10.tip.medium">🍰 中額贊助</button>
+            <button class="tipjar-btn" data-product-id="com.kyoangel.mathmerge10.tip.large">🎁 大力贊助</button>
+          </div>
+          <p id="tipjar-status" class="hidden"></p>
+        </div>
       </div>
     </div>
     <div id="trophy-modal" hidden>
@@ -563,6 +615,63 @@
     </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
+  <script>
+    // Native Capacitor shell injects window.Capacitor automatically; the web
+    // build never has it. Hide the external donation link only inside the
+    // App Store build (Guideline 3.1.1 — avoid an external payment link in
+    // a reviewed app) and show the StoreKit tip jar instead; the web version
+    // keeps the external link and never sees the tip jar.
+    if (window.Capacitor) {
+      var donateEl = document.getElementById("powerup-modal-donate");
+      if (donateEl) donateEl.style.display = "none";
+
+      var gcBtn = document.getElementById("hud-gamecenter");
+      if (gcBtn) {
+        gcBtn.style.display = "";
+        gcBtn.addEventListener("click", function () {
+          var gc = window.Capacitor.Plugins && window.Capacitor.Plugins.GameCenter;
+          if (gc) gc.showLeaderboard().catch(function () {});
+        });
+      }
+
+      var tipJar = window.Capacitor.Plugins && window.Capacitor.Plugins.TipJar;
+      var tipJarEl = document.getElementById("powerup-modal-tipjar");
+      var tipJarStatus = document.getElementById("tipjar-status");
+      if (tipJar && tipJarEl) {
+        tipJarEl.hidden = false;
+        var tipButtons = tipJarEl.querySelectorAll(".tipjar-btn");
+        tipJar.getProducts().then(function (result) {
+          (result.products || []).forEach(function (product) {
+            tipButtons.forEach(function (btn) {
+              if (btn.dataset.productId === product.id) {
+                btn.textContent = btn.textContent.replace(/\s*\(.*\)$/, "") + " (" + product.price + ")";
+              }
+            });
+          });
+        }).catch(function () {});
+
+        tipButtons.forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            tipButtons.forEach(function (b) { b.disabled = true; });
+            tipJarStatus.className = "hidden";
+            tipJar.purchase({ productId: btn.dataset.productId }).then(function (result) {
+              if (result.success) {
+                tipJarStatus.textContent = "🙏 感謝你的支持！";
+              } else if (result.reason !== "cancelled") {
+                tipJarStatus.textContent = "購買未完成，請稍後再試";
+              }
+              tipJarStatus.className = "";
+            }).catch(function () {
+              tipJarStatus.textContent = "購買失敗，請稍後再試";
+              tipJarStatus.className = "";
+            }).finally(function () {
+              tipButtons.forEach(function (b) { b.disabled = false; });
+            });
+          });
+        });
+      }
+    }
+  </script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
