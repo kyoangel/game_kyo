@@ -1,5 +1,22 @@
+import type { CellPosition } from "./gridDiff";
+
 export type Cell = number | null;
 export type GameGrid = Cell[][];
+
+/**
+ * Special cell value for a stone. It is a plain number so Cell stays
+ * `number | null`, but it is negative so it can never be a tile value (1-9)
+ * or a 0-tile, and `canPair` refuses to pair it with anything.
+ */
+export const STONE = -1;
+
+/**
+ * Whether two adjacent cell values eliminate each other (sum to 10).
+ * A stone never pairs with anything. 0 + (1..9) is never 10, so 0 never pairs either.
+ */
+export function canPair(a: number, b: number): boolean {
+  return a !== STONE && b !== STONE && a + b === 10;
+}
 
 export interface EliminatedPair {
   a: { row: number; col: number };
@@ -57,7 +74,7 @@ export function slideRowLeft(row: Cell[]): SlideResult {
     const current = values[i];
     const next = values[i + 1];
 
-    if (next !== undefined && current + next === 10) {
+    if (next !== undefined && canPair(current, next)) {
       scoreGained += 10;
       const meetACol = merged.length;
       eliminatedIndices.push([valuePositions[i], valuePositions[i + 1], meetACol, meetACol + 1]);
