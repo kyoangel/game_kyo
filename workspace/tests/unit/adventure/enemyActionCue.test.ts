@@ -90,4 +90,11 @@ describe("stuckSpells", () => {
     expect(stuckSpells(makeState(stones, { mana: 0 }))).toEqual([]);
     expect(stuckSpells(makeState(stones, { mana: 5, status: "defeat" }))).toEqual([]);
   });
+  it("is empty for every non-ongoing status even when the board is stuck with mana", () => {
+    expect(stuckSpells(makeState(stones, { mana: 5, status: "victory" }))).toEqual([]);
+    expect(stuckSpells(makeState(stones, { mana: 5, status: "defeat" }))).toEqual([]);
+  });
+  it("is empty while the board can still move, even with plenty of mana", () => {
+    expect(stuckSpells(makeState(gridWith([[1, 1], [2, 3]]), { mana: 9 }))).toEqual([]);
+  });
 });

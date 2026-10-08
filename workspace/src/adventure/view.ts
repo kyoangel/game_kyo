@@ -46,7 +46,6 @@ import {
   progressPips,
   resultView,
   stageLabel,
-  stuckHint,
   swipeDirection,
 } from "./viewModel";
 
@@ -107,6 +106,7 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
   const cueEl = el<HTMLDivElement>("adv-cue");
   const stuckEl = el<HTMLDivElement>("adv-stuck");
   const cueCellsEl = el<HTMLDivElement>("adv-cue-cells");
+  cueEl.addEventListener("animationend", clearCue);
   const toastEl = el<HTMLDivElement>("adv-toast");
   const offersEl = el<HTMLDivElement>("adv-offers");
   const offersTitleEl = el<HTMLHeadingElement>("adv-offers-title");
@@ -241,8 +241,10 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
       button.dataset.active = String(activeSpell === spell);
     });
     const stuck = battle && inBattle ? stuckSpells(battle, hooks()) : [];
-    stuckEl.hidden = stuck.length === 0;
-    stuckEl.textContent = stuck.length > 0 ? STUCK_BANNER_TEXT : "";
+    // hold the banner until the turn's animation ends; syncPhase() re-evaluates then
+    const showStuck = stuck.length > 0 && !isBusy();
+    stuckEl.hidden = !showStuck;
+    stuckEl.textContent = showStuck ? STUCK_BANNER_TEXT : "";
     spellsEl.querySelectorAll<HTMLButtonElement>(".adv-spell").forEach((button) => {
       button.classList.toggle("suggested", stuck.includes(button.dataset.spell as SpellId));
     });
@@ -250,8 +252,7 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
   }
 
   function setLog(lines: string[]): void {
-    const hint = run?.battle ? stuckHint(run.battle, hooks()) : null;
-    logEl.textContent = [...lines.slice(-3), ...(hint ? [hint] : [])].join("　");
+    logEl.textContent = lines.slice(-3).join("　"); // the stuck state has its own banner
   }
 
   // ── feedback: popups, sound, toasts ────────────────────────────────────────
@@ -267,6 +268,12 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
     flashEl.classList.remove("animate");
     void flashEl.offsetWidth;
     flashEl.classList.add("animate");
+  }
+
+  function clearCue(): void {
+    cueEl.classList.remove("animate");
+    cueEl.textContent = "";
+    cueCellsEl.innerHTML = "";
   }
 
   /** Banner plus a brief outline on the cells the enemy's action touched. */
@@ -497,6 +504,7 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
     offersEl.hidden = !picking;
     if (finished && resultEl.hidden) renderResult();
     resultEl.hidden = !finished;
+    if (run.phase === "battle" && run.battle) updateSpellBar(run.battle);
   }
 
   function showScreen(): void {
@@ -505,6 +513,7 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
     offersEl.hidden = true;
     resultEl.hidden = true;
     activeSpell = null;
+    clearCue();
     board.reset();
     hiddenCells = new Set();
     pendingSpawn = [];
