@@ -1,5 +1,7 @@
 # Math Merge 10 Adventure Mode — Plan 1 of 3: Foundation
 
+**Status:** Complete (2026-10-08)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Land the shared foundation that adventure mode (spec `docs/specs/math-merge-10/adventure-mode.md` §9.2) needs, without changing endless mode (修練) in any way: (1) a reusable `src/boardRenderer.ts` extracted from `src/game.ts`, (2) pure powerup effect functions in `src/powerups.ts`, (3) backwards-compatible `src/grid.ts` extensions: `STONE`, frozen-cell mask for `slide`, complement-bias spawn strategy, and a stone-break helper.
@@ -1396,7 +1398,7 @@ export const COMPLEMENT_BIAS: SpawnStrategy;  // { emptyThreshold: 4, probabilit
 export function spawnRandomTile(grid: GameGrid, rng?: Rng, strategy?: SpawnStrategy): GameGrid;
 ```
 
-- [ ] **Step 4.1: Write the failing test**
+- [x] **Step 4.1: Write the failing test**
 
 Create `workspace/tests/unit/gridSpawnStrategy.test.ts`:
 ```ts
@@ -1527,14 +1529,14 @@ describe("spawnRandomTile with complement bias", () => {
 });
 ```
 
-- [ ] **Step 4.2: Run it and see it fail**
+- [x] **Step 4.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/gridSpawnStrategy.test.ts
 ```
 Expected: FAIL (`COMPLEMENT_BIAS` is undefined, and the strategy argument is ignored).
 
-- [ ] **Step 4.3: Implement**
+- [x] **Step 4.3: Implement**
 
 In `workspace/src/grid.ts`, replace the whole existing `spawnRandomTile` function (from `export function spawnRandomTile(grid: GameGrid, rng: Rng = Math.random): GameGrid {` through its closing brace) with:
 ```ts
@@ -1629,14 +1631,14 @@ export function spawnRandomTile(
 
 `createInitialState` and `applyMove` call `spawnRandomTile(grid, rng)` and are unchanged.
 
-- [ ] **Step 4.4: Run and see it pass**
+- [x] **Step 4.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/gridSpawnStrategy.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `12 passed`; full unit `Tests  231 passed (231)`; `tsc` clean.
 
-- [ ] **Step 4.5: Commit**
+- [x] **Step 4.5: Commit**
 
 ```bash
 git add workspace/src/grid.ts workspace/tests/unit/gridSpawnStrategy.test.ts
@@ -1650,6 +1652,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+**Execution notes (batch 2):** commit 0cecc93. Unit 231 passed (19 files), tsc clean. Red step not run separately (test file pre-validated). No deviations.
 
 ---
 
@@ -1672,7 +1676,7 @@ export interface StoneBreakResult { grid: GameGrid; broken: CellPosition[] }  //
 export function breakAdjacentStones(grid: GameGrid, eliminatedCells: CellPosition[]): StoneBreakResult;
 ```
 
-- [ ] **Step 5.1: Write the failing test**
+- [x] **Step 5.1: Write the failing test**
 
 Create `workspace/tests/unit/gridStoneBreak.test.ts`:
 ```ts
@@ -1802,14 +1806,14 @@ describe("eliminationSites", () => {
 });
 ```
 
-- [ ] **Step 5.2: Run it and see it fail**
+- [x] **Step 5.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/gridStoneBreak.test.ts
 ```
 Expected: FAIL (`breakAdjacentStones is not a function`, `eliminationSites is not a function`).
 
-- [ ] **Step 5.3: Implement**
+- [x] **Step 5.3: Implement**
 
 Append to the end of `workspace/src/grid.ts`:
 ```ts
@@ -1871,14 +1875,14 @@ export function breakAdjacentStones(
 }
 ```
 
-- [ ] **Step 5.4: Run and see it pass**
+- [x] **Step 5.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/gridStoneBreak.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `9 passed`; full unit `Tests  240 passed (240)`; `tsc` clean.
 
-- [ ] **Step 5.5: Commit**
+- [x] **Step 5.5: Commit**
 
 ```bash
 git add workspace/src/grid.ts workspace/tests/unit/gridStoneBreak.test.ts
@@ -1889,6 +1893,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+**Execution notes (batch 2):** commit f2e7cb9. Unit 240 passed (20 files), tsc clean. No deviations.
 
 ---
 
@@ -1921,7 +1927,7 @@ export function addOneEffect(grid: GameGrid, row: number, col: number): AddOneRe
 export function bombEffect(grid: GameGrid, row: number, col: number): PowerupResult;
 ```
 
-- [ ] **Step 6.1: Write the failing test**
+- [x] **Step 6.1: Write the failing test**
 
 Create `workspace/tests/unit/powerupEffects.test.ts`:
 ```ts
@@ -2135,14 +2141,14 @@ describe("shuffleEffect", () => {
 });
 ```
 
-- [ ] **Step 6.2: Run it and see it fail**
+- [x] **Step 6.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/powerupEffects.test.ts
 ```
 Expected: FAIL (`hammerEffect is not a function`, and the same for the other three).
 
-- [ ] **Step 6.3: Implement the pure functions**
+- [x] **Step 6.3: Implement the pure functions**
 
 At the very top of `workspace/src/powerups.ts` (above `export type PowerupId`), add:
 ```ts
@@ -2253,14 +2259,14 @@ export function bombEffect(grid: GameGrid, row: number, col: number): PowerupRes
 }
 ```
 
-- [ ] **Step 6.4: Run the new tests and see them pass**
+- [x] **Step 6.4: Run the new tests and see them pass**
 
 ```bash
 npx vitest run tests/unit/powerupEffects.test.ts tests/unit/powerups.test.ts
 ```
 Expected: `powerupEffects.test.ts (20 tests)` and `powerups.test.ts (6 tests)` pass.
 
-- [ ] **Step 6.5: Make `game.ts` call the pure functions**
+- [x] **Step 6.5: Make `game.ts` call the pure functions**
 
 In `workspace/src/game.ts`:
 
@@ -2324,7 +2330,7 @@ function applyBomb(row: number, col: number): void {
 ```
 The touch/click handlers that call `applyHammer`/`applyAddOne`/`applyBomb`/`applyShuffle` are unchanged.
 
-- [ ] **Step 6.6: Verify endless mode powerups still behave**
+- [x] **Step 6.6: Verify endless mode powerups still behave**
 
 ```bash
 npx tsc --noEmit
@@ -2333,7 +2339,7 @@ npx playwright test tests/e2e/ux-v2.spec.ts
 ```
 Expected: `tsc` clean; unit `Tests  260 passed (260)`; `ux-v2.spec.ts` passes entirely (it contains the hammer/powerup scenarios, e.g. "F5: hammer powerup removes a tile when activated and clicked on canvas").
 
-- [ ] **Step 6.7: Commit**
+- [x] **Step 6.7: Commit**
 
 ```bash
 git add workspace/src/powerups.ts workspace/src/game.ts workspace/tests/unit/powerupEffects.test.ts
@@ -2348,13 +2354,15 @@ EOF
 )"
 ```
 
+**Execution notes (batch 2):** commit 4e82c30. Unit 260 passed (21 files), ux-v2.spec.ts 24 passed, tsc clean. No deviations.
+
 ---
 
 ### Task 7: Full verification
 
 **Files:** none modified.
 
-- [ ] **Step 7.1: Types, unit, e2e, build**
+- [x] **Step 7.1: Types, unit, e2e, build**
 
 Run from `/Users/kyo.lai82/Projects/Personal/game-factory/workspace`:
 ```bash
@@ -2365,7 +2373,7 @@ npm run build
 ```
 Expected: `tsc` clean; unit `Test Files  21 passed (21)` and `Tests  260 passed (260)`; e2e `54 passed`; build prints `built in ...` with no errors.
 
-- [ ] **Step 7.2: Confirm the endless-mode surface did not move**
+- [x] **Step 7.2: Confirm the endless-mode surface did not move**
 
 ```bash
 git -C /Users/kyo.lai82/Projects/Personal/game-factory diff --stat 8d38bee -- workspace/index.html workspace/src/trophies.ts workspace/src/audio.ts workspace/src/palettes.ts
@@ -2373,12 +2381,14 @@ git -C /Users/kyo.lai82/Projects/Personal/game-factory diff --name-only 8d38bee 
 ```
 Expected: the first command prints nothing (those files untouched). The second lists only the new test files (`boardRenderer.test.ts`, `gridStone.test.ts`, `gridFrozen.test.ts`, `gridSpawnStrategy.test.ts`, `gridStoneBreak.test.ts`, `powerupEffects.test.ts`) and no pre-existing test file (committed changes only; run after Task 6's commit).
 
-- [ ] **Step 7.3: Optional manual smoke (web)**
+- [ ] **Step 7.3 (skipped, needs a human): Optional manual smoke (web)**
 
 ```bash
 npm run dev
 ```
 Open `http://localhost:5173/game_kyo/merge10/`, slide a few moves (spawn pop-in and slide animation play), make a pair (highlight, fade, recompact), then use a hammer powerup via the HUD. Behavior must look identical to before. Stop the dev server afterwards. No commit needed for this task.
+
+**Execution notes (batch 2):** no commit. tsc clean, unit 260/260 (21 files), e2e 54 passed, build ok, Step 7.2 outputs as expected. Step 7.3 (manual smoke) skipped: needs a human.
 
 ---
 
