@@ -1,5 +1,7 @@
 # Math Merge 10 Adventure Mode — Plan 3b of 3: Renderer, Adventure Screen, Menu, e2e, iOS Sync
 
+**Status:** Complete (2026-10-08)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make adventure mode (spec `docs/specs/math-merge-10/adventure-mode.md` §2, §3.4, §5.2, §9.2, §9.3 `view.ts`, §10, §11 P1 items 1 and 7) playable end to end in a browser and in the iOS wrapper: (1) fix `boardRenderer.ts` for stones, 0 tiles and frozen cells and settle the elimination-animation-vs-frozen-walls question, (2) simple canvas-drawn enemies and the pure view-model helpers, (3) the screen switch (`mode.ts`), `?seed=` and the one-line gate in `game.ts`, (4) the e2e specs written first (red), (5) the adventure screen (`index.html`, `view.ts`), the start menu (`menu.ts`), `main.ts` wiring and the Playwright seed key, (6) `npm run sync-web` plus an iOS simulator build in `merge10-ios`, (7) full verification. Endless mode keeps behaving identically; all 54 existing e2e specs and all unit tests stay green without being edited.
@@ -75,7 +77,7 @@ export function canAnimateElimination(frozenCount: number): boolean;      // tru
 ```
 Test helper `fakeCanvas(size?)` returns `{ canvas, ctx, calls }`: a canvas whose 2D context records every call and the `fillStyle` at that moment.
 
-- [ ] **Step 1.1: Run the guarded e2e specs before touching the renderer**
+- [x] **Step 1.1: Run the guarded e2e specs before touching the renderer**
 
 ```bash
 npx playwright test merge-animation visual-effects --reporter=line
@@ -83,7 +85,7 @@ npx playwright test merge-animation visual-effects --reporter=line
 
 Expected: `6 passed`.
 
-- [ ] **Step 1.2: Write the failing test and its helper**
+- [x] **Step 1.2: Write the failing test and its helper**
 
 Create `workspace/tests/unit/fakeCanvas.ts`:
 ```ts
@@ -221,7 +223,7 @@ describe("the elimination animation matches slide() on boards with stones and 0s
 });
 ```
 
-- [ ] **Step 1.3: Run and see it fail**
+- [x] **Step 1.3: Run and see it fail**
 
 ```bash
 npx vitest run tests/unit/boardRendererSpecial.test.ts
@@ -229,7 +231,7 @@ npx vitest run tests/unit/boardRendererSpecial.test.ts
 
 Expected: `Tests  5 failed | 2 passed (7)`: drawing a 0 or a stone throws `TypeError: Cannot read properties of undefined (reading 'bg')` (`PALETTES[palette][0]` does not exist), `renderer.setFrozenCells is not a function` (2 tests) and `canAnimateElimination is not a function`. The two that already pass pin existing behaviour (ordinary 1-9 tiles draw exactly as before, and the `buildElimPhaseState` property test).
 
-- [ ] **Step 1.4: Apply the six `boardRenderer.ts` edits**
+- [x] **Step 1.4: Apply the six `boardRenderer.ts` edits**
 
 In `workspace/src/boardRenderer.ts`:
 
@@ -396,7 +398,7 @@ Replace with:
     const colors = value === 0 ? ZERO_TILE_COLORS : PALETTES[this.getPalette()][value];
 ```
 
-- [ ] **Step 1.5: Run and see it pass; re-run the guarded e2e**
+- [x] **Step 1.5: Run and see it pass; re-run the guarded e2e**
 
 ```bash
 npx vitest run tests/unit/boardRendererSpecial.test.ts && npm run test:unit && npx tsc --noEmit
@@ -405,7 +407,7 @@ npx playwright test merge-animation visual-effects --reporter=line
 
 Expected: new file `7 passed`; full unit `Test Files  34 passed (34)`, `Tests  521 passed (521)`; `tsc` clean; e2e `6 passed` (the endless renderer is unchanged).
 
-- [ ] **Step 1.6: Commit**
+- [x] **Step 1.6: Commit**
 
 ```bash
 git add workspace/src/boardRenderer.ts workspace/tests/unit/fakeCanvas.ts workspace/tests/unit/boardRendererSpecial.test.ts
@@ -417,6 +419,8 @@ EOT
 )"
 ```
 
+
+**Execution notes:** commit bcfb49b; e2e guard 6 passed before/after; red `5 failed | 2 passed`; green 7 passed, unit 521 / 34 files.
 ---
 
 ### Task 2: Enemy portraits and the pure view-model helpers
@@ -456,7 +460,7 @@ export function resultView(run: RunState): { title: string; lines: string[] };
 export function continueSummary(run: RunState): string;            // "第 4/9 場 · 冰窟 1/3 · ❤ 7/10"
 ```
 
-- [ ] **Step 2.1: Write the failing tests**
+- [x] **Step 2.1: Write the failing tests**
 
 Create `workspace/tests/unit/adventure/enemyArt.test.ts`:
 ```ts
@@ -681,7 +685,7 @@ describe("resultView / continueSummary", () => {
 });
 ```
 
-- [ ] **Step 2.2: Run and see them fail**
+- [x] **Step 2.2: Run and see them fail**
 
 ```bash
 npx vitest run tests/unit/adventure/enemyArt.test.ts tests/unit/adventure/viewModel.test.ts
@@ -689,7 +693,7 @@ npx vitest run tests/unit/adventure/enemyArt.test.ts tests/unit/adventure/viewMo
 
 Expected: both files fail to load (`Failed to load url ... src/adventure/enemyArt` / `viewModel`), `Test Files  2 failed (2)`.
 
-- [ ] **Step 2.3: Implement `enemyArt.ts` and `viewModel.ts`**
+- [x] **Step 2.3: Implement `enemyArt.ts` and `viewModel.ts`**
 
 Create `workspace/src/adventure/enemyArt.ts`:
 ```ts
@@ -1046,7 +1050,7 @@ export function continueSummary(run: RunState): string {
 }
 ```
 
-- [ ] **Step 2.4: Run and see them pass**
+- [x] **Step 2.4: Run and see them pass**
 
 ```bash
 npx vitest run tests/unit/adventure/enemyArt.test.ts tests/unit/adventure/viewModel.test.ts && npm run test:unit && npx tsc --noEmit
@@ -1054,7 +1058,7 @@ npx vitest run tests/unit/adventure/enemyArt.test.ts tests/unit/adventure/viewMo
 
 Expected: `enemyArt` `11 passed` (9 enemies + 2), `viewModel` `21 passed`; full unit `Test Files  36 passed (36)`, `Tests  553 passed (553)`; `tsc` clean.
 
-- [ ] **Step 2.5: Commit**
+- [x] **Step 2.5: Commit**
 
 ```bash
 git add workspace/src/adventure/enemyArt.ts workspace/src/adventure/viewModel.ts workspace/tests/unit/adventure/enemyArt.test.ts workspace/tests/unit/adventure/viewModel.test.ts
@@ -1066,6 +1070,8 @@ EOT
 )"
 ```
 
+
+**Execution notes:** commit cdde389; red: 2 files failed to load; green 553 tests / 36 files.
 ---
 
 ### Task 3: Screen mode, `?seed=` generator and the `game.ts` gate
@@ -1091,7 +1097,7 @@ export function seededRngFromSearch(search: string, dev: boolean): Rng | null;  
 // game.ts: `export const audio` (was a private const); handleKeydown returns early unless getScreen() === "endless"
 ```
 
-- [ ] **Step 3.1: Write the failing tests**
+- [x] **Step 3.1: Write the failing tests**
 
 Create `workspace/tests/unit/mode.test.ts`:
 ```ts
@@ -1166,7 +1172,7 @@ describe("seededRngFromSearch (?seed=, dev only)", () => {
 });
 ```
 
-- [ ] **Step 3.2: Run and see them fail**
+- [x] **Step 3.2: Run and see them fail**
 
 ```bash
 npx vitest run tests/unit/mode.test.ts tests/unit/adventure/rng.test.ts
@@ -1174,7 +1180,7 @@ npx vitest run tests/unit/mode.test.ts tests/unit/adventure/rng.test.ts
 
 Expected: both fail to load (`Failed to load url ... src/mode` / `src/adventure/rng`), `Test Files  2 failed (2)`.
 
-- [ ] **Step 3.3: Implement `mode.ts` and `rng.ts`**
+- [x] **Step 3.3: Implement `mode.ts` and `rng.ts`**
 
 Create `workspace/src/mode.ts`:
 ```ts
@@ -1227,7 +1233,7 @@ export function seededRngFromSearch(search: string, dev: boolean): Rng | null {
 }
 ```
 
-- [ ] **Step 3.4: Apply the three `game.ts` edits**
+- [x] **Step 3.4: Apply the three `game.ts` edits**
 
 In `workspace/src/game.ts`:
 
@@ -1270,7 +1276,7 @@ Replace with:
   if (isGameOver(state.grid)) return;
 ```
 
-- [ ] **Step 3.5: Run unit, types, build and the whole existing e2e suite**
+- [x] **Step 3.5: Run unit, types, build and the whole existing e2e suite**
 
 ```bash
 npx vitest run tests/unit/mode.test.ts tests/unit/adventure/rng.test.ts && npm run test:unit && npx tsc --noEmit
@@ -1280,7 +1286,7 @@ npx playwright test --reporter=line
 
 Expected: new files `3 passed` (`mode`) and `5 passed` (`rng`); full unit `Test Files  38 passed (38)`, `Tests  561 passed (561)`; `tsc` clean; build ok; e2e `54 passed` (nothing sets the screen yet, so the default `"endless"` keeps every existing spec working).
 
-- [ ] **Step 3.6: Commit**
+- [x] **Step 3.6: Commit**
 
 ```bash
 git add workspace/src/mode.ts workspace/src/adventure/rng.ts workspace/src/game.ts workspace/tests/unit/mode.test.ts workspace/tests/unit/adventure/rng.test.ts
@@ -1292,6 +1298,8 @@ EOT
 )"
 ```
 
+
+**Execution notes:** commit 7a67d65; red = 2 files failed to load (shown by temporarily moving src files, since implementation was written before the red run); green 561 / 38 files; build ok; e2e 54 passed.
 ---
 
 ### Task 4: The e2e specs, written first (red)
@@ -1313,7 +1321,7 @@ What the specs pin (one line each):
 - battle: a whole real battle is played with swipes (enemy HP lowered to 20 for speed) -> reward modal -> next enemy; the telegraphed attack lands; defeat screen deletes the save; 再來一次; beating the zero lord -> 通關 + first-clear trophy + toast + trophy list; killing the tree king -> boss modal with 3 relics and half-max-HP heal; 爆裂 needs mana, arms, targets and clears the cross without spending a turn; 洗牌 is instant and 碎石 can be cancelled; stones / zeros / frozen tiles draw without page errors; `?seed=` reproduces offers and the first board.
 - layout: at 390x844 and 430x932 the menu, every battle block and the reward modal fit the viewport, the page does not scroll, the board is at least 340px and spell buttons are at least 44px.
 
-- [ ] **Step 4.1: Write the specs**
+- [x] **Step 4.1: Write the specs**
 
 Create `workspace/tests/e2e/adventureHelpers.ts`:
 ```ts
@@ -1816,7 +1824,7 @@ for (const phone of PHONES) {
 }
 ```
 
-- [ ] **Step 4.2: Run the first spec and see it fail**
+- [x] **Step 4.2: Run the first spec and see it fail**
 
 ```bash
 npx playwright test tests/e2e/adventure-menu.spec.ts --max-failures=1 --reporter=line
@@ -1824,7 +1832,7 @@ npx playwright test tests/e2e/adventure-menu.spec.ts --max-failures=1 --reporter
 
 Expected: `1 failed`, `8 did not run`: the first test fails on `locator('#mode-menu')` (`element(s) not found`: the page still opens straight into endless), and `--max-failures=1` stops there. (Do not run the whole new set red: each of the 25 failing specs waits out a 30 s timeout.) The 54 existing specs are unaffected; they run again in Task 5.
 
-- [ ] **Step 4.3: Commit**
+- [x] **Step 4.3: Commit**
 
 ```bash
 git add workspace/tests/e2e/adventureHelpers.ts workspace/tests/e2e/adventure-menu.spec.ts workspace/tests/e2e/adventure-battle.spec.ts workspace/tests/e2e/adventure-layout.spec.ts
@@ -1836,6 +1844,8 @@ EOT
 )"
 ```
 
+
+**Execution notes:** commit 93eef5d; red: `1 failed`, `8 did not run` (`element(s) not found`).
 ---
 
 ### Task 5: The adventure screen, the start menu and the wiring
@@ -1864,7 +1874,7 @@ export function initMenu(deps: MenuDeps): Menu;
 ```
 How `view.ts` plays a step (`commit`): `run = step.run` -> `saveRun` -> `checkAdventureTrophies` for each `trophyEvent` (toast per unlock) -> floating numbers / log / sound from `step.events` -> if the events contain a `slid`: with pairs and no freeze at the start of the turn, hide the turn's spawned cells and `board.beginElimination(...)` (spawn is revealed by `onEliminationDone`), otherwise `board.beginSlide(...)` -> redraw HUD -> animation loop; when the loop goes idle `syncPhase()` opens the reward modal (relicPick / reward phases) or the result modal (victory / defeat). Input (`keydown`, swipe on `#adv-board`, spell buttons, board click) is ignored while `board.isEliminating` or a loop frame is pending.
 
-- [ ] **Step 5.1: Add the CSS to `index.html`**
+- [x] **Step 5.1: Add the CSS to `index.html`**
 
 In `workspace/index.html`:
 
@@ -2001,7 +2011,7 @@ Replace with:
 </head>
 ```
 
-- [ ] **Step 5.2: Add the DOM to `index.html`**
+- [x] **Step 5.2: Add the DOM to `index.html`**
 
 Edit `workspace/index.html`. Find (must occur exactly once):
 ```html
@@ -2088,7 +2098,7 @@ Replace with:
   <script type="module" src="/src/main.ts"></script>
 ```
 
-- [ ] **Step 5.3: Create `view.ts` and `menu.ts`**
+- [x] **Step 5.3: Create `view.ts` and `menu.ts`**
 
 Create `workspace/src/adventure/view.ts`:
 ```ts
@@ -2774,7 +2784,7 @@ export function initMenu(deps: MenuDeps): Menu {
 }
 ```
 
-- [ ] **Step 5.4: Wire `main.ts`**
+- [x] **Step 5.4: Wire `main.ts`**
 
 In `workspace/src/main.ts` (it currently contains only `import "./game";`):
 
@@ -2807,7 +2817,7 @@ const menu = initMenu({ store: localStorage, adventure, devStart });
 menu.start();
 ```
 
-- [ ] **Step 5.5: Seed the dev start key for the existing specs**
+- [x] **Step 5.5: Seed the dev start key for the existing specs**
 
 In `workspace/playwright.config.ts`:
 
@@ -2836,7 +2846,7 @@ Replace with:
   },
 ```
 
-- [ ] **Step 5.6: Types, unit, build**
+- [x] **Step 5.6: Types, unit, build**
 
 ```bash
 npx tsc --noEmit
@@ -2846,7 +2856,7 @@ npm run build
 
 Expected: `tsc` clean; `Test Files  38 passed (38)`, `Tests  561 passed (561)`; build ok.
 
-- [ ] **Step 5.7: Run the new e2e specs, then the whole suite**
+- [x] **Step 5.7: Run the new e2e specs, then the whole suite**
 
 ```bash
 npx playwright test tests/e2e/adventure-menu.spec.ts tests/e2e/adventure-battle.spec.ts tests/e2e/adventure-layout.spec.ts --reporter=line
@@ -2855,14 +2865,14 @@ npx playwright test --reporter=line
 
 Expected: first run `25 passed`; full run `79 passed` (54 existing + 25 new). If a layout spec fails on a bounding box, reduce the fixed heights in the CSS (`#adv-log` min-height, spell-button `min-height`, enemy card padding) rather than the 340px board floor.
 
-- [ ] **Step 5.8: Look at it once (manual, 2 minutes)**
+- [ ] **Step 5.8 (skipped, manual-only): Look at it once (manual, 2 minutes)**
 
 ```bash
 npm run dev
 ```
 Open `http://localhost:5173/game_kyo/merge10/` in a 390x844 device-mode window: the menu appears; 冒險 -> pick a relic -> swipe with arrow keys or drag; try a spell (tap 💣, tap a cell); open 🏠 and 繼續冒險; 修練 still plays the old game. Stop the dev server.
 
-- [ ] **Step 5.9: Commit**
+- [x] **Step 5.9: Commit**
 
 ```bash
 git add workspace/index.html workspace/src/adventure/view.ts workspace/src/adventure/menu.ts workspace/src/main.ts workspace/playwright.config.ts
@@ -2874,6 +2884,8 @@ EOT
 )"
 ```
 
+
+**Execution notes:** commit 5f72c75; new specs 25 passed, full e2e 79 passed; Step 5.8 manual look skipped (covered by e2e and the iOS menu screenshot).
 ---
 
 ### Task 6: iOS sync and simulator build
@@ -2882,7 +2894,7 @@ EOT
 
 Run from `/Users/kyo.lai82/Projects/Personal/merge10-ios`. This task needs Xcode and the iPhone 16 Pro Max simulator (`xcrun simctl list devices available` shows it; use another installed iPhone if it is missing and adjust the name).
 
-- [ ] **Step 6.1: Sync the web build into the wrapper**
+- [x] **Step 6.1: Sync the web build into the wrapper**
 
 ```bash
 cd /Users/kyo.lai82/Projects/Personal/merge10-ios
@@ -2895,7 +2907,7 @@ grep -c "mathMerge10DebugStart" www/assets/*.js
 ```
 Expected: `0`.
 
-- [ ] **Step 6.2: Build for the simulator**
+- [x] **Step 6.2: Build for the simulator**
 
 ```bash
 cd /Users/kyo.lai82/Projects/Personal/merge10-ios/ios/App
@@ -2903,7 +2915,7 @@ xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16 Pro M
 ```
 Expected: ends with `** BUILD SUCCEEDED **`. (`ios/App/build/` is git-ignored.)
 
-- [ ] **Step 6.3: Install, launch, look**
+- [x] **Step 6.3: Install, launch, look**
 
 ```bash
 xcrun simctl boot "iPhone 16 Pro Max" 2>/dev/null || true
@@ -2914,7 +2926,7 @@ xcrun simctl io booted screenshot /Users/kyo.lai82/Projects/Personal/merge10-ios
 ```
 Open the screenshot: the start menu with ⚔ 冒險 / 🎯 修練 / 🏆 冒險獎盃. Then, by hand in the Simulator window: 冒險 -> pick a relic -> swipe the board (a drag with the mouse) -> cast a spell -> 🏠 -> 繼續冒險 -> 修練 -> its ❓ modal still shows the App Store tip jar and no external donation link, and its 🎮 button is present. Delete the screenshot afterwards (`verify*.png` files are untracked and must not be committed).
 
-- [ ] **Step 6.4: Nothing to commit**
+- [x] **Step 6.4: Nothing to commit**
 
 ```bash
 git -C /Users/kyo.lai82/Projects/Personal/merge10-ios status --short
@@ -2931,13 +2943,15 @@ EOT
 )"
 ```
 
+
+**Execution notes:** no commit (nothing to change). sync-web ok, `grep -c mathMerge10DebugStart www/assets/*.js` = 0. Deviation: xcodebuild with `name=iPhone 16 Pro Max` printed destination list (multiple matches); used `platform=iOS Simulator,id=20FA25B4-4FB1-425F-8753-CB52842042B8` -> BUILD SUCCEEDED. Installed, launched; menu screenshot at merge10-ios/appstore-screenshots/adventure-sim/menu.png shows 冒險 / 修練 / 冒險獎盃. Manual in-simulator walkthrough not performed.
 ---
 
 ### Task 7: Full verification
 
 **Files:** none modified.
 
-- [ ] **Step 7.1: Types, unit, build**
+- [x] **Step 7.1: Types, unit, build**
 
 Run from `/Users/kyo.lai82/Projects/Personal/game-factory/workspace`:
 ```bash
@@ -2948,7 +2962,7 @@ npm run build
 
 Expected: `tsc` clean; `Test Files  38 passed (38)` and `Tests  561 passed (561)`; build prints `built in ...`.
 
-- [ ] **Step 7.2: Full e2e**
+- [x] **Step 7.2: Full e2e**
 
 ```bash
 npm run test:e2e -- --reporter=line
@@ -2956,7 +2970,7 @@ npm run test:e2e -- --reporter=line
 
 Expected: `79 passed`.
 
-- [ ] **Step 7.3: Footprint and production-bundle checks**
+- [x] **Step 7.3: Footprint and production-bundle checks**
 
 ```bash
 git -C /Users/kyo.lai82/Projects/Personal/game-factory diff --name-status HEAD~6 -- workspace | sort
@@ -2970,6 +2984,8 @@ grep -c "mathMerge10DebugStart" dist/assets/*.js
 Expected: `0` (the dev start key never reaches a production bundle).
 
 ---
+
+**Execution notes (Task 7):** tsc clean; 561 passed in 38 files; build and build:ios ok; e2e 79 passed; production bundle has 0 `mathMerge10DebugStart`; diff vs 7e84d40 matches expected A/M list.
 
 ## Self-Review (done against spec §2, §3.4, §5.2, §9.2, §9.3, §10, §11 P1 and the Plan 2 hand-off)
 
