@@ -291,7 +291,56 @@ export function isGameOver(grid: GameGrid, frozen?: FrozenMask): boolean {
 
 export type Rng = () => number;
 
-export function spawnRandomTile(grid: GameGrid, rng: Rng = Math.random): GameGrid {
+/**
+ * Optional "complement bias" for `spawnRandomTile` (adventure-mode anti-stall layer).
+ *
+ * When the number of empty cells is below `emptyThreshold`, the spawn uses the
+ * bias with chance `probability`; otherwise with chance `baseProbability`
+ * (default 0). If both could apply the higher chance wins. A biased spawn
+ * picks an empty cell that touches a numeric tile (1-9; stones and 0 do not
+ * count) and spawns `10 - neighbour` there, so the new tile can pair with it.
+ */
+export interface SpawnStrategy {
+  emptyThreshold: number;
+  probability: number;
+  baseProbability?: number;
+}
+
+/** Spec 4.1: fewer than 4 empty cells -> 50% complement spawn. */
+export const COMPLEMENT_BIAS: SpawnStrategy = { emptyThreshold: 4, probability: 0.5 };
+
+function biasChance(strategy: SpawnStrategy, emptyCount: number): number {
+  const base = strategy.baseProbability ?? 0;
+  return emptyCount < strategy.emptyThreshold ? Math.max(strategy.probability, base) : base;
+}
+
+interface PlannedSpawn {
+  row: number;
+  col: number;
+  value: number;
+}
+
+// Order is part of the contract (tests use scripted rngs): empties in row-major
+// order, neighbours in up, down, left, right order.
+function complementSpawnOptions(grid: GameGrid, emptyCells: Array<[number, number]>): PlannedSpawn[] {
+  const offsets: Array<[number, number]> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const options: PlannedSpawn[] = [];
+  emptyCells.forEach(([row, col]) => {
+    offsets.forEach(([dr, dc]) => {
+      const neighbour: Cell | undefined = grid[row + dr]?.[col + dc];
+      if (typeof neighbour === "number" && neighbour >= 1 && neighbour <= 9) {
+        options.push({ row, col, value: 10 - neighbour });
+      }
+    });
+  });
+  return options;
+}
+
+export function spawnRandomTile(
+  grid: GameGrid,
+  rng: Rng = Math.random,
+  strategy?: SpawnStrategy,
+): GameGrid {
   const emptyCells: Array<[number, number]> = [];
   grid.forEach((row, rowIndex) => {
     row.forEach((cell, colIndex) => {
@@ -305,9 +354,24 @@ export function spawnRandomTile(grid: GameGrid, rng: Rng = Math.random): GameGri
     return grid;
   }
 
-  const [targetRow, targetCol] = emptyCells[Math.floor(rng() * emptyCells.length)];
-  const value = Math.floor(rng() * 9) + 1;
+  // rng call order: [bias roll (only if chance > 0)] [bias pick (only if rolled)], else cell pick, value.
+  let planned: PlannedSpawn | null = null;
+  if (strategy) {
+    const chance = biasChance(strategy, emptyCells.length);
+    if (chance > 0 && rng() < chance) {
+      const options = complementSpawnOptions(grid, emptyCells);
+      if (options.length > 0) {
+        planned = options[Math.floor(rng() * options.length)];
+      }
+    }
+  }
 
+  if (planned === null) {
+    const [emptyRow, emptyCol] = emptyCells[Math.floor(rng() * emptyCells.length)];
+    planned = { row: emptyRow, col: emptyCol, value: Math.floor(rng() * 9) + 1 };
+  }
+
+  const { row: targetRow, col: targetCol, value } = planned;
   return grid.map((row, rowIndex) =>
     row.map((cell, colIndex) =>
       rowIndex === targetRow && colIndex === targetCol ? value : cell
