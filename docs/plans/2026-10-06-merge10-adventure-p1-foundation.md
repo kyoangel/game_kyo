@@ -93,7 +93,7 @@ export class BoardRenderer {
 
 Usage contract for a mode: create one `BoardRenderer`; on a slide with eliminations call `beginElimination(...)` (input must then be ignored while `isEliminating`), deferring the spawn until `advance`'s callback fires; on a slide without eliminations call `beginSlide(...)`; call `advance(performance.now(), cb)` then `draw(grid)` every animation frame while `advance` returns true; call `reset()` when the board is replaced wholesale. The renderer holds no game rules and never touches the DOM other than the canvas. Known limitation (handled in plan #3): `draw` indexes `PALETTES[palette][value]`, so it only supports tile values 1-9 until a cell-drawing hook for `0`/`STONE`/frozen cells is added.
 
-- [ ] **Step 1.1: Record the green baseline (before touching anything)**
+- [x] **Step 1.1: Record the green baseline (before touching anything)**
 
 Run from `/Users/kyo.lai82/Projects/Personal/game-factory/workspace`:
 ```bash
@@ -103,7 +103,7 @@ npx tsc --noEmit
 ```
 Expected: unit `Tests  195 passed (195)`; e2e `6 passed`; `tsc` prints nothing. If anything is red, STOP and report; do not start the refactor on a red baseline.
 
-- [ ] **Step 1.2: Write the characterization test (fails first because the module does not exist)**
+- [x] **Step 1.2: Write the characterization test (fails first because the module does not exist)**
 
 Create `workspace/tests/unit/boardRenderer.test.ts`:
 ```ts
@@ -184,14 +184,14 @@ describe("buildElimPhaseState", () => {
 });
 ```
 
-- [ ] **Step 1.3: Run it and see it fail**
+- [x] **Step 1.3: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/boardRenderer.test.ts
 ```
 Expected: FAIL with `Failed to resolve import "../../src/boardRenderer"` (module not found).
 
-- [ ] **Step 1.4: Create `workspace/src/boardRenderer.ts`**
+- [x] **Step 1.4: Create `workspace/src/boardRenderer.ts`**
 
 The drawing and timing code below is a verbatim move of the code in `game.ts` (`lerp`, `HF_MS`, `c2StartMs`, `totalElimMs`, `buildElimPhaseState`, `drawPhantomTile`, `drawBaseTile`, the tile/phantom drawing in `render`, and the animation bookkeeping in `tick`), with module state turned into private class fields.
 
@@ -662,14 +662,14 @@ export class BoardRenderer {
 }
 ```
 
-- [ ] **Step 1.5: Run the characterization test and see it pass**
+- [x] **Step 1.5: Run the characterization test and see it pass**
 
 ```bash
 npx vitest run tests/unit/boardRenderer.test.ts
 ```
 Expected: `Tests  5 passed (5)`.
 
-- [ ] **Step 1.6: Rewire `workspace/src/game.ts` to use the renderer**
+- [x] **Step 1.6: Rewire `workspace/src/game.ts` to use the renderer**
 
 Apply edits E1 to E10 in the order listed (bottom of the file to the top) so that the original line numbers stay valid. "Replace original lines A-B" means: delete those lines and put the given text in their place; "Delete" means remove those lines only. Confirm each range by reading it before replacing. After the edits, add the import described in E11.
 
@@ -763,7 +763,7 @@ What E10 removed, for orientation: the `GameGrid` and `PALETTES` imports (only t
 
 What stays in `game.ts` on purpose: `spawnPending` and `finalizeDeferredSlide` (game rules and side effects: spawn, game-over audio, trophies), the `window.__lastAnimationHints` writes, the game-over overlay update inside `render()`, and `startAnimationLoop`/`animationFrameId`.
 
-- [ ] **Step 1.7: Verify structure and behavior after the refactor**
+- [x] **Step 1.7: Verify structure and behavior after the refactor**
 
 ```bash
 npx tsc --noEmit
@@ -774,7 +774,7 @@ grep -n "spawnCells\|moveCells\|recompactCells\|eliminationPhase\|drawBaseTile\|
 ```
 Expected: `tsc` prints nothing; unit `Tests  200 passed (200)`; e2e `6 passed`; build succeeds; the final `grep` prints nothing (no animation state or drawing helpers left in `game.ts`). If the e2e specs fail, compare behavior against Step 1.1, fix the renderer, do not weaken tests.
 
-- [ ] **Step 1.8: Commit**
+- [x] **Step 1.8: Commit**
 
 Run from `/Users/kyo.lai82/Projects/Personal/game-factory`:
 ```bash
@@ -789,6 +789,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+**Execution notes (batch 1):** commit c9e0832. Unit 200 passed, animation e2e 6 passed, tsc clean, build ok, grep for animation state in game.ts empty. No deviations.
 
 ---
 
@@ -809,7 +811,7 @@ export function canPair(a: number, b: number): boolean; // false if either is ST
 ```
 Pairing analysis (done while writing this plan): `slideRowLeft` pairs consecutive values with `current + next === 10`. `0` can never pair with 1-9 (max sum 9). `STONE = -1` could only reach 10 with an 11, which never exists, but `canPair` makes the exclusion explicit so it cannot regress. `Cell = number | null` is used as-is by all existing callers (`null` = empty, filtered by `cell !== null`), and `STONE` is non-null so stones are compacted and moved like tiles.
 
-- [ ] **Step 2.1: Write the failing test**
+- [x] **Step 2.1: Write the failing test**
 
 Create `workspace/tests/unit/gridStone.test.ts`:
 ```ts
@@ -873,14 +875,14 @@ describe("STONE", () => {
 });
 ```
 
-- [ ] **Step 2.2: Run it and see it fail**
+- [x] **Step 2.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/gridStone.test.ts
 ```
 Expected: FAIL (`canPair is not a function`, and `STONE` is `undefined`).
 
-- [ ] **Step 2.3: Implement**
+- [x] **Step 2.3: Implement**
 
 In `workspace/src/grid.ts`, replace lines 1-2:
 ```ts
@@ -919,14 +921,14 @@ with
     if (next !== undefined && canPair(current, next)) {
 ```
 
-- [ ] **Step 2.4: Run and see it pass**
+- [x] **Step 2.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/gridStone.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `7 passed`; full unit `Tests  207 passed (207)`; `tsc` clean (all pre-existing grid tests still pass, proving no behavior change).
 
-- [ ] **Step 2.5: Commit**
+- [x] **Step 2.5: Commit**
 
 ```bash
 git add workspace/src/grid.ts workspace/tests/unit/gridStone.test.ts
@@ -939,6 +941,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+**Execution notes (batch 1):** commit ffe9a12. Unit 207 passed, tsc clean. No deviations.
 
 ---
 
@@ -970,7 +974,7 @@ export function canMove(grid: GameGrid, frozen?: FrozenMask): boolean;
 export function isGameOver(grid: GameGrid, frozen?: FrozenMask): boolean;
 ```
 
-- [ ] **Step 3.1: Write the failing test**
+- [x] **Step 3.1: Write the failing test**
 
 Create `workspace/tests/unit/gridFrozen.test.ts`:
 ```ts
@@ -1133,14 +1137,14 @@ describe("canMove / isGameOver with a frozen mask", () => {
 });
 ```
 
-- [ ] **Step 3.2: Run it and see it fail**
+- [x] **Step 3.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/gridFrozen.test.ts
 ```
 Expected: FAIL (the mask argument is ignored, so most cases fail their assertions).
 
-- [ ] **Step 3.3: Implement**
+- [x] **Step 3.3: Implement**
 
 In `workspace/src/grid.ts`:
 
@@ -1341,14 +1345,14 @@ export function isGameOver(grid: GameGrid, frozen?: FrozenMask): boolean {
 
 `slideRowLeft` is untouched by this step, and when `frozen` is `undefined` `applySlideRowLeftToGrid` still calls it, so the no-mask path is the old logic.
 
-- [ ] **Step 3.4: Run and see it pass**
+- [x] **Step 3.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/gridFrozen.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `12 passed`; full unit `Tests  219 passed (219)`; `tsc` clean.
 
-- [ ] **Step 3.5: Commit**
+- [x] **Step 3.5: Commit**
 
 ```bash
 git add workspace/src/grid.ts workspace/tests/unit/gridFrozen.test.ts
@@ -1362,6 +1366,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+**Execution notes (batch 1):** commit 9c5d85a. Unit 219 passed, tsc clean, full e2e 54 passed, build ok. No deviations.
 
 ---
 
