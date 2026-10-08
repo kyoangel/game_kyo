@@ -22,7 +22,14 @@ import {
   type SpawnStrategy,
 } from "../grid";
 import { changedCells, type CellPosition } from "../gridDiff";
-import type { PowerupId } from "../powerups";
+import {
+  addOneEffect,
+  bombEffect,
+  hammerEffect,
+  shuffleEffect,
+  type PowerupId,
+  type PowerupResult,
+} from "../powerups";
 import { getEnemy, type EnemyDef, type Intent } from "./enemies";
 import {
   freezeMask,
@@ -551,4 +558,74 @@ export function applyTurn(
   if (shouldOverload(d.state, d.hooks)) runOverload(d, rng, false); // the enemy phase already ran this turn
   settle(d);
   return done(d);
+}
+
+export type SpellFailure = "battleOver" | "notEnoughMana" | "invalidTarget";
+
+export interface SpellResult extends TurnResult {
+  /** False = nothing happened (state is the very same object, no events, no mana spent). */
+  applied: boolean;
+  reason?: SpellFailure;
+}
+
+/**
+ * Cast a spell (spec 4.2). Not a turn: the enemy does not act and nothing
+ * spawns. `target` is the clicked cell; shuffle ignores it. Effects come from
+ * the shared pure functions in powerups.ts (hammer/bomb clear stones too,
+ * addOne refuses stones, shuffle skips frozen tiles). A 9 hit by addOne counts
+ * as one cleared pair (10 damage, +1 mana, no chain bonus). Stones removed by a
+ * spell fire `stoneBroken` (cause "spell") and the `onStoneBroken` hook.
+ *
+ * After the cast the layer-3 check runs: if the board is stuck and the
+ * remaining mana cannot pay for any spell, the overload resolves immediately
+ * (and counts the enemy down once), so the player can never soft-lock.
+ *
+ * rng: only shuffle uses it (as in shuffleEffect), plus whatever an overload needs.
+ */
+export function castSpell(
+  state: BattleState,
+  spell: SpellId,
+  target: CellPosition | null,
+  rng: Rng,
+  hooks: BattleHooksInput = {},
+): SpellResult {
+  const d = makeDraft(state, hooks);
+  const reject = (reason: SpellFailure): SpellResult => ({ ...done(d), applied: false, reason });
+  if (state.status !== "ongoing") return reject("battleOver");
+
+  const cost = spellCost(state, spell, d.hooks);
+  if (state.mana < cost) return reject("notEnoughMana");
+
+  const size = state.grid.length;
+  let effect: PowerupResult;
+  let pairCleared = false;
+  if (spell === "shuffle") {
+    effect = shuffleEffect(state.grid, rng, freezeMask(size, state.freezes));
+  } else {
+    const onBoard =
+      target !== null && target.row >= 0 && target.row < size && target.col >= 0 && target.col < size;
+    if (!onBoard) return reject("invalidTarget");
+    if (spell === "hammer") {
+      effect = hammerEffect(state.grid, target.row, target.col);
+    } else if (spell === "addOne") {
+      const result = addOneEffect(state.grid, target.row, target.col);
+      pairCleared = result.pairCleared;
+      effect = result;
+    } else {
+      effect = bombEffect(state.grid, target.row, target.col);
+    }
+    if (!effect.applied) return reject("invalidTarget");
+  }
+
+  const brokenStones = effect.cleared.filter(({ row, col }) => state.grid[row][col] === STONE);
+  patch(d, { grid: effect.grid });
+  d.events.push({ type: "spellCast", spell, cost, target: spell === "shuffle" ? null : target });
+  changeMana(d, -cost);
+  dropDeadFreezes(d);
+  reportBrokenStones(d, brokenStones, "spell");
+  if (pairCleared) resolvePairs(d, 1, "addOne");
+
+  if (!settle(d) && shouldOverload(d.state, d.hooks)) runOverload(d, rng, true);
+  settle(d);
+  return { ...done(d), applied: true };
 }
