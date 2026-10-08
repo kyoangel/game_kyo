@@ -30,6 +30,7 @@ import {
 } from "./powerups";
 import { checkTrophies, loadModalData, getTrophyDef } from "./trophies";
 import { BoardRenderer } from "./boardRenderer";
+import { getScreen } from "./mode";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -64,7 +65,7 @@ const trophyModalOverlayEl = document.getElementById("trophy-modal-overlay") as 
 const trophyModalCloseEl = document.getElementById("trophy-modal-close") as HTMLButtonElement;
 const trophyModalListEl = document.getElementById("trophy-modal-list") as HTMLUListElement;
 const trophyToastEl = document.getElementById("trophy-toast") as HTMLDivElement;
-const audio = new AudioEngine();
+export const audio = new AudioEngine();
 
 function updateMuteButton(): void {
   hudMuteEl.textContent = audio.isMuted ? "🔇" : "🔊";
@@ -422,6 +423,7 @@ function startAnimationLoop(): void {
 function handleKeydown(event: KeyboardEvent): void {
   const direction = KEY_TO_DIRECTION[event.key];
   if (!direction) return;
+  if (getScreen() !== "endless") return; // the menu or the adventure screen is showing
 
   if (isGameOver(state.grid)) return;
   if (board.isEliminating) return;
