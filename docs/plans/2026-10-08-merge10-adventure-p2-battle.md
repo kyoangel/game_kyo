@@ -1,5 +1,7 @@
 # Math Merge 10 Adventure Mode — Plan 2 of 3: Battle Rules
 
+**Status:** Complete (2026-10-08)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Land the pure battle-rules layer of adventure mode (spec `docs/specs/math-merge-10/adventure-mode.md` §3-§5, §9.3, §10) in `workspace/src/adventure/`: (1) `enemies.ts` with the 9 enemies' data, (2) `intents.ts` with the 5 intents plus 歸零 and the frozen-tile bookkeeping, (3) `battle.ts` with the battle state, `createBattle`, `applyTurn`, `castSpell`, the three anti-stall layers' battle-side logic (complement-bias spawning, spells, 魔力暴走), win/lose detection and a typed relic hook interface (default no-op). No DOM, no Canvas, no `index.html`, no `game.ts` change; endless mode is untouched.
@@ -80,7 +82,7 @@ export function getEnemy(id: string): EnemyDef | undefined;
 ```
 `amount` means: attack = hero damage, rockfall = stones, freeze = tiles, shield = points, scramble = tiles changed, zero = tiles zeroed. `countdown` is the number of turns the intent is telegraphed.
 
-- [ ] **Step 1.1: Write the failing test**
+- [x] **Step 1.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/enemies.test.ts`:
 ```ts
@@ -177,14 +179,14 @@ describe("getEnemy", () => {
 });
 ```
 
-- [ ] **Step 1.2: Run it and see it fail**
+- [x] **Step 1.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/enemies.test.ts
 ```
 Expected: FAIL (`Failed to resolve import "../../../src/adventure/enemies"`).
 
-- [ ] **Step 1.3: Implement**
+- [x] **Step 1.3: Implement**
 
 Create `workspace/src/adventure/enemies.ts`:
 ```ts
@@ -274,14 +276,14 @@ export function getEnemy(id: string): EnemyDef | undefined {
 }
 ```
 
-- [ ] **Step 1.4: Run and see it pass**
+- [x] **Step 1.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/enemies.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `10 passed`; full unit `Tests  270 passed (270)`; `tsc` clean.
 
-- [ ] **Step 1.5: Commit**
+- [x] **Step 1.5: Commit**
 
 ```bash
 git add workspace/src/adventure/enemies.ts workspace/tests/unit/adventure/enemies.test.ts
@@ -292,6 +294,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 1):** 4b3a913; red: import failure; green 10 / 270 total; no deviations.
 
 ---
 
@@ -330,7 +334,7 @@ export function resolveIntent(board, intent: Intent, rng): IntentResolution;
 ```
 rng contract (tests rely on it): `pickDistinct` is a partial Fisher-Yates, one call per pick (`j = i + floor(rng() * (n - i))`); candidate lists are row-major. Scramble uses, per tile, one call to pick the tile (`floor(rng() * remaining)`) and one for the sign (`>= 0.5` = +1). Attack and shield use no rng.
 
-- [ ] **Step 2.1: Write the failing test**
+- [x] **Step 2.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/intents.test.ts`:
 ```ts
@@ -613,14 +617,14 @@ describe("resolveIntent dispatcher", () => {
 });
 ```
 
-- [ ] **Step 2.2: Run it and see it fail**
+- [x] **Step 2.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/intents.test.ts
 ```
 Expected: FAIL (`Failed to resolve import "../../../src/adventure/intents"`).
 
-- [ ] **Step 2.3: Implement**
+- [x] **Step 2.3: Implement**
 
 Create `workspace/src/adventure/intents.ts`:
 ```ts
@@ -852,14 +856,14 @@ export function resolveIntent(board: IntentBoard, intent: Intent, rng: Rng): Int
 }
 ```
 
-- [ ] **Step 2.4: Run and see it pass**
+- [x] **Step 2.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/intents.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `28 passed`; full unit `Tests  298 passed (298)`; `tsc` clean.
 
-- [ ] **Step 2.5: Commit**
+- [x] **Step 2.5: Commit**
 
 ```bash
 git add workspace/src/adventure/intents.ts workspace/tests/unit/adventure/intents.test.ts
@@ -870,6 +874,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 2):** 521e4e7; red: import failure; green 28 / 298 total; no deviations.
 
 ---
 
@@ -929,7 +935,7 @@ export function applyTurn(state: BattleState, direction: Direction, rng: Rng, ho
 ```
 Turn order inside `applyTurn` and rng order: slide; damage + mana (`onPairCleared`); settle; stone break (`onStoneBroken`); settle; enemy phase (freezes tick, countdown -1, intent fires -> rng for the intent); settle; spawn (rng); [overload check, Task 4]; settle. An invalid swipe (nothing changes) returns the same state object and no events.
 
-- [ ] **Step 3.1: Write the shared test helpers and the failing test**
+- [x] **Step 3.1: Write the shared test helpers and the failing test**
 
 Create `workspace/tests/unit/adventure/battleHelpers.ts`:
 ```ts
@@ -1389,14 +1395,14 @@ describe("applyTurn: spawn strategy", () => {
 });
 ```
 
-- [ ] **Step 3.2: Run it and see it fail**
+- [x] **Step 3.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/battleTurn.test.ts
 ```
 Expected: FAIL (`Failed to resolve import "../../../src/adventure/battle"`).
 
-- [ ] **Step 3.3: Implement**
+- [x] **Step 3.3: Implement**
 
 Create `workspace/src/adventure/battle.ts`:
 ```ts
@@ -1901,14 +1907,14 @@ export function applyTurn(
 }
 ```
 
-- [ ] **Step 3.4: Run and see it pass**
+- [x] **Step 3.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/battleTurn.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `37 passed`; full unit `Tests  335 passed (335)`; `tsc` clean.
 
-- [ ] **Step 3.5: Commit**
+- [x] **Step 3.5: Commit**
 
 ```bash
 git add workspace/src/adventure/battle.ts workspace/tests/unit/adventure/battleHelpers.ts workspace/tests/unit/adventure/battleTurn.test.ts
@@ -1919,6 +1925,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 3):** fb566c3; red: import failure; green 37 / 335 total; no deviations.
 
 ---
 
@@ -1940,7 +1948,7 @@ export function shouldOverload(state: BattleState, hooks?: BattleHooksInput): bo
 ```
 `runOverload` stays internal. `applyTurn` now (a) runs the overload after the spawn when `shouldOverload`, without a second intent tick, and (b) on an invalid swipe, if `shouldOverload(state)` holds, counts the swipe as a turn, runs the overload with an enemy tick (safety net, D7).
 
-- [ ] **Step 4.1: Write the failing test**
+- [x] **Step 4.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/battleOverload.test.ts`:
 ```ts
@@ -2098,14 +2106,14 @@ describe("overload as a safety net on an invalid swipe", () => {
 });
 ```
 
-- [ ] **Step 4.2: Run it and see it fail**
+- [x] **Step 4.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/battleOverload.test.ts
 ```
 Expected: FAIL: `14 failed | 2 passed` (`shouldOverload is not a function`, and the turn-level overload cases fail their assertions).
 
-- [ ] **Step 4.3: Implement (five edits to `workspace/src/adventure/battle.ts`)**
+- [x] **Step 4.3: Implement (five edits to `workspace/src/adventure/battle.ts`)**
 
 **E1** (imports from `../grid`). Find:
 ```ts
@@ -2213,14 +2221,14 @@ Replace with:
   settle(d);
 ```
 
-- [ ] **Step 4.4: Run and see it pass**
+- [x] **Step 4.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure && npm run test:unit && npx tsc --noEmit
 ```
 Expected: `battleOverload.test.ts` `16 passed`; `battleTurn.test.ts` still `37 passed`; full unit `Tests  351 passed (351)`; `tsc` clean.
 
-- [ ] **Step 4.5: Commit**
+- [x] **Step 4.5: Commit**
 
 ```bash
 git add workspace/src/adventure/battle.ts workspace/tests/unit/adventure/battleOverload.test.ts
@@ -2231,6 +2239,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 4):** e9c7549; red: 14 failed | 2 passed; green 16 / 351 total; no deviations.
 
 ---
 
@@ -2256,7 +2266,7 @@ export function castSpell(
 ```
 `applied: false` returns the same state object, no events, no mana spent. `target` is ignored by shuffle. Hammer/addOne/bomb need an on-board target; hammer and addOne also need an occupied cell (addOne additionally refuses stones); bomb accepts an empty centre.
 
-- [ ] **Step 5.1: Write the failing test**
+- [x] **Step 5.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/battleSpells.test.ts`:
 ```ts
@@ -2523,14 +2533,14 @@ describe("castSpell: overload right after a cast (no soft-lock)", () => {
 });
 ```
 
-- [ ] **Step 5.2: Run it and see it fail**
+- [x] **Step 5.2: Run it and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/battleSpells.test.ts
 ```
 Expected: FAIL: `23 failed | 4 passed` (`castSpell is not a function`; the four cost-table tests already pass because `SPELLS`/`spellCost` exist from Task 3).
 
-- [ ] **Step 5.3: Implement**
+- [x] **Step 5.3: Implement**
 
 **E1** (replace the powerups import in `workspace/src/adventure/battle.ts`). Find:
 ```ts
@@ -2621,14 +2631,14 @@ export function castSpell(
 }
 ```
 
-- [ ] **Step 5.4: Run and see it pass**
+- [x] **Step 5.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure && npm run test:unit && npx tsc --noEmit
 ```
 Expected: `battleSpells.test.ts` `27 passed`; other adventure files unchanged; full unit `Tests  378 passed (378)`; `tsc` clean.
 
-- [ ] **Step 5.5: Commit**
+- [x] **Step 5.5: Commit**
 
 ```bash
 git add workspace/src/adventure/battle.ts workspace/tests/unit/adventure/battleSpells.test.ts
@@ -2639,6 +2649,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 5):** fe7e317; red: 23 failed | 4 passed; green 27 / 378 total; no deviations (E2 appended verbatim).
 
 ---
 
@@ -2653,7 +2665,7 @@ Test-only task: it exercises all earlier code, so it passes immediately (there i
 
 Invariants checked after every action, for all 9 enemies x 3 fixed seeds x up to 1500 actions: cell values in `{null, STONE, 0..9}`; every freeze sits on a non-stone tile with 1-3 turns and is unique; HP/mana/shield/countdown bounds; status consistent with HP; and the anti-stall guarantee that an ongoing battle always has a legal slide (frozen tiles as walls) or enough mana for the cheapest spell. The bot swipes in a seeded random order, hammers the first tile when stuck, and relies on the swipe safety net otherwise.
 
-- [ ] **Step 6.1: Write the test**
+- [x] **Step 6.1: Write the test**
 
 Create `workspace/tests/unit/adventure/battleSimulation.test.ts`:
 ```ts
@@ -2760,14 +2772,14 @@ describe("seeded random play keeps every invariant (fixed seeds)", () => {
 });
 ```
 
-- [ ] **Step 6.2: Run it**
+- [x] **Step 6.2: Run it**
 
 ```bash
 npx vitest run tests/unit/adventure/battleSimulation.test.ts && npm run test:unit && npx tsc --noEmit
 ```
 Expected: new file `11 passed`; full unit `Tests  389 passed (389)`; `tsc` clean.
 
-- [ ] **Step 6.3: Commit**
+- [x] **Step 6.3: Commit**
 
 ```bash
 git add workspace/tests/unit/adventure/battleSimulation.test.ts
@@ -2779,13 +2791,15 @@ EOT
 )"
 ```
 
+**Execution notes (Task 6):** b9e27f0; green 11 / 389 total on first run; no deviations.
+
 ---
 
 ### Task 7: Full verification
 
 **Files:** none modified.
 
-- [ ] **Step 7.1: Types, unit, build**
+- [x] **Step 7.1: Types, unit, build**
 
 Run from `/Users/kyo.lai82/Projects/Personal/game-factory/workspace`:
 ```bash
@@ -2795,7 +2809,7 @@ npm run build
 ```
 Expected: `tsc` clean; unit `Test Files  27 passed (27)` and `Tests  389 passed (389)`; build prints `built in ...` with no errors. (E2E is not required: no UI, `game.ts` or `index.html` change. Nothing imports `src/adventure/` yet, so the bundle is unchanged.)
 
-- [ ] **Step 7.2: Confirm only new files were added**
+- [x] **Step 7.2: Confirm only new files were added**
 
 ```bash
 git -C /Users/kyo.lai82/Projects/Personal/game-factory diff --name-status d6762fa -- workspace
@@ -2806,6 +2820,8 @@ Expected: only `A` lines: `src/adventure/{battle,enemies,intents}.ts`, `tests/un
 grep -rn "adventure" /Users/kyo.lai82/Projects/Personal/game-factory/workspace/src --include=*.ts -l | grep -v "src/adventure/"
 ```
 Expected: prints nothing.
+
+**Execution notes (Task 7):** tsc clean; 27 files / 389 passed; build ok; only A lines vs d6762fa; e2e 54 passed. Note: the "adventure" grep matches only pre-existing comments in grid.ts and powerups.ts (no imports from src/adventure).
 
 ---
 
