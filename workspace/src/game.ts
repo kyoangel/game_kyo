@@ -561,6 +561,10 @@ canvas.addEventListener(
   { passive: true },
 );
 
+canvas.addEventListener("touchcancel", () => {
+  touchStart = null;
+});
+
 canvas.addEventListener(
   "touchend",
   (e) => {

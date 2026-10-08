@@ -525,11 +525,15 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
     },
     { passive: true },
   );
+  boardCanvas.addEventListener("touchcancel", () => {
+    touchStart = null;
+  });
   boardCanvas.addEventListener("click", onBoardClick);
   spellsEl.querySelectorAll<HTMLButtonElement>(".adv-spell").forEach((button) => {
     button.addEventListener("click", () => onSpellClick(button.dataset.spell as SpellId));
   });
   el<HTMLButtonElement>("adv-home").addEventListener("click", () => deps.goHome());
+  el<HTMLButtonElement>("adv-offers-home").addEventListener("click", () => deps.goHome());
   muteEl.addEventListener("click", () => {
     audio.toggleMute();
     muteEl.textContent = audio.isMuted ? "🔇" : "🔊";

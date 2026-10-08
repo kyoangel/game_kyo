@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Game Factory</title>
   <link rel="manifest" href="%BASE_URL%manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -23,6 +23,7 @@
       min-height: 100dvh;
       background: #111;
       box-sizing: border-box;
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     }
     canvas {
       background: #222;
@@ -505,7 +506,7 @@
     .tm-single.locked .tm-single-body strong { color: #4b5563; }
     #ios-hint {
       position: fixed;
-      top: 12px;
+      top: calc(env(safe-area-inset-top, 0px) + 12px);
       left: 50%;
       transform: translateX(-50%);
       background: #1e3a5f;
@@ -525,7 +526,7 @@
     body[data-screen="adventure"] #game-wrapper { display: none; }
     body[data-screen="adventure"] { align-items: flex-start; }
     #endless-home {
-      position: fixed; top: 6px; left: 6px; z-index: 40;
+      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 6px); left: calc(env(safe-area-inset-left, 0px) + 6px); z-index: 40;
       width: 36px; height: 36px; border-radius: 50%;
       background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
       color: #fff; font-size: 16px; cursor: pointer; opacity: 0.85;
@@ -592,6 +593,12 @@
     #adv-hero-pop { right: 8px; top: -6px; color: #fca5a5; }
     #adv-board-wrap { position: relative; display: flex; justify-content: center; }
     #adv-board { touch-action: none; }
+    button { touch-action: manipulation; }
+    @media (max-height: 700px) {
+      #adv-enemy { width: 64px; height: 64px; }
+      #adv-log { min-height: 18px; }
+      #adv-screen { gap: 4px; }
+    }
     #adv-board[data-targeting="true"] { outline: 3px solid #f59e0b; }
     #adv-board-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: rgba(239,68,68,0.5); }
     #adv-board-flash.animate { animation: adv-flash 500ms ease-out; }
@@ -614,7 +621,7 @@
     #adv-relic-info { font-size: 12px; color: #d1d5db; min-height: 16px; }
     #adv-log { font-size: 12px; color: #9ca3af; min-height: 32px; line-height: 1.35; }
     #adv-toast {
-      position: fixed; top: 54px; left: 50%; transform: translateX(-50%); z-index: 60;
+      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 54px); left: 50%; transform: translateX(-50%); z-index: 60;
       background: #fde047; color: #422006; font-weight: bold; font-size: 13px;
       border-radius: 8px; padding: 8px 14px; pointer-events: none; opacity: 0; white-space: nowrap;
     }
@@ -791,6 +798,7 @@
     <div class="adv-modal-card">
       <h3 id="adv-offers-title"></h3>
       <div id="adv-offers-list"></div>
+      <button id="adv-offers-home" class="mm-link" type="button">回首頁</button>
     </div>
   </div>
   <div id="adv-result" class="adv-modal" hidden>
