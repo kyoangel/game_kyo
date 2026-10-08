@@ -161,6 +161,7 @@ export function chooseOffer(run: RunState, index: number, rng: Rng): RunStep {
   if (run.phase !== "relicPick" && run.phase !== "reward") return noop(run, "wrongPhase");
   const option = run.offers[index];
   if (!option) return noop(run, "badChoice");
+  if (run.phase === "reward" && run.battleIndex >= TOTAL_BATTLES - 1) return noop(run, "wrongPhase"); // no battle after the last
   const chosen = applyOffer(run, option);
   const next: RunState = run.phase === "reward" ? { ...chosen, battleIndex: run.battleIndex + 1 } : chosen;
   const started = beginBattle(next, rng);

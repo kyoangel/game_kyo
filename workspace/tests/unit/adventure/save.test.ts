@@ -22,7 +22,7 @@ const POOL = [...STARTER_RELIC_IDS];
 function busyRun(): RunState {
   return runInBattle(
     gridWith([[3, STONE, 0, 7], [null, 5, null, null], [9, null, null, null]]),
-    { mana: 3, enemyShield: 5, freezes: [{ row: 1, col: 1, turns: 2 }], relicData: { forestHeartUsed: 1 }, turn: 12 },
+    { upgrades: { hammer: true, addOne: false, bomb: false, shuffle: false }, mana: 3, enemyShield: 5, freezes: [{ row: 1, col: 1, turns: 2 }], relicData: { forestHeartUsed: 1 }, turn: 12 },
     { relics: ["chainRing", "forestHeart"], upgrades: { hammer: true, addOne: false, bomb: false, shuffle: false }, stats: { stonesBroken: 2, maxChain: 2 } },
     1,
   );

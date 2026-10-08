@@ -362,8 +362,8 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
 
   function commit(step: RunStep, frozenBefore = 0): void {
     run = step.run;
+    processTrophies(step.trophyEvents); // trophies first: a crash between the two must not lose them
     saveRun(store, run);
-    processTrophies(step.trophyEvents);
     feedback(step.events);
     animateSlide(step.events, frozenBefore);
     updateHud();

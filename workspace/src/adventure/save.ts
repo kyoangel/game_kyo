@@ -9,7 +9,7 @@ import { STONE } from "../grid";
 import { SPELL_IDS, type BattleState, type SpellId, type SpellUpgrades } from "./battle";
 import { getEnemy } from "./enemies";
 import { FREEZE_TURNS } from "./intents";
-import { BATTLE_ORDER, TOTAL_BATTLES, type RewardOption, type RunPhase, type RunState } from "./run";
+import { BATTLE_ORDER, HEAL_OPTION_AMOUNT, TOTAL_BATTLES, type RewardOption, type RunPhase, type RunState } from "./run";
 import { getRelic } from "./relics";
 import type { KeyValueStore } from "./storage";
 
@@ -106,6 +106,10 @@ function parseBattle(value: unknown): BattleState | null {
   ) {
     return null;
   }
+  // status and hp must agree (the engine zeroes enemyHp on a win and heroHp on a loss)
+  if (status === "ongoing" && (enemyHp === 0 || heroHp === 0)) return null;
+  if (status === "victory" && enemyHp !== 0) return null;
+  if (status === "defeat" && heroHp !== 0) return null;
   return {
     grid, freezes, heroHp, heroMaxHp, mana, enemyId: enemy.id, enemyHp, enemyMaxHp, enemyShield,
     intentIndex, countdown, upgrades, turn, overloads, relicData, status,
@@ -121,13 +125,26 @@ function parseOffers(value: unknown): RewardOption[] | null {
       offers.push({ kind: "relic", relicId: entry.relicId });
     } else if (entry.kind === "upgrade" && SPELL_IDS.includes(entry.spell as SpellId)) {
       offers.push({ kind: "upgrade", spell: entry.spell as SpellId });
-    } else if (entry.kind === "heal" && isInt(entry.amount, 1, MAX_HP)) {
+    } else if (entry.kind === "heal" && entry.amount === HEAL_OPTION_AMOUNT) {
       offers.push({ kind: "heal", amount: entry.amount });
     } else {
       return null;
     }
   }
   return offers;
+}
+
+/** Offers must be ones the run could really have rolled (rollOffers): fresh relics from the pool, un-upgraded spells. */
+function offersMatchRun(offers: RewardOption[], relics: readonly string[], pool: readonly string[], upgrades: SpellUpgrades): boolean {
+  const seen = new Set<string>();
+  for (const offer of offers) {
+    const key = offer.kind === "relic" ? `r:${offer.relicId}` : offer.kind === "upgrade" ? `u:${offer.spell}` : "h";
+    if (seen.has(key)) return false;
+    seen.add(key);
+    if (offer.kind === "relic" && (relics.includes(offer.relicId) || !pool.includes(offer.relicId))) return false;
+    if (offer.kind === "upgrade" && upgrades[offer.spell]) return false;
+  }
+  return true;
 }
 
 const PHASES: readonly RunPhase[] = ["relicPick", "battle", "reward", "victory", "defeat"];
@@ -159,15 +176,20 @@ export function validateRun(value: unknown): RunState | null {
   }
   const picking = phase === "relicPick" || phase === "reward";
   if (picking !== (offers.length > 0)) return null; // choices exist exactly while a choice is pending
+  if (!offersMatchRun(offers, relics as string[], pool as string[], upgrades)) return null;
   if (phase === "relicPick") {
+    if (offers.some((offer) => offer.kind !== "relic")) return null;
     if (battle !== null || value.battleIndex !== 0 || relics.length !== 0) return null;
   } else {
     if (!battle) return null;
     if (battle.enemyId !== BATTLE_ORDER[value.battleIndex]) return null;
     const expected = phase === "battle" ? "ongoing" : phase === "defeat" ? "defeat" : "victory";
     if (battle.status !== expected) return null;
+    if (battle.heroMaxHp !== value.heroMaxHp) return null;
+    if (SPELL_IDS.some((spell) => battle.upgrades[spell] !== upgrades[spell])) return null;
     if (phase === "battle" && battle.heroHp !== value.heroHp) return null;
   }
+  if (phase === "reward" && value.battleIndex === TOTAL_BATTLES - 1) return null; // the last boss ends the run
   if (phase === "victory" && value.battleIndex !== TOTAL_BATTLES - 1) return null;
 
   return {
@@ -231,6 +253,9 @@ export function loadRun(store: KeyValueStore): RunState | null {
   }
   if (raw === null) return null;
   const run = parseRun(raw);
-  if (!run) clearRun(store);
+  if (!run || run.phase === "victory" || run.phase === "defeat") {
+    clearRun(store); // invalid, or a finished run that is not worth resuming
+    return null;
+  }
   return run;
 }
