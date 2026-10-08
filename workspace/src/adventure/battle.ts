@@ -12,6 +12,7 @@ import {
   COMPLEMENT_BIAS,
   STONE,
   breakAdjacentStones,
+  canMove,
   slide,
   spawnRandomTile,
   type Direction,
@@ -25,6 +26,7 @@ import type { PowerupId } from "../powerups";
 import { getEnemy, type EnemyDef, type Intent } from "./enemies";
 import {
   freezeMask,
+  pickDistinct,
   pruneFreezes,
   resolveIntent,
   tickFreezes,
@@ -410,6 +412,54 @@ function spawnTile(d: Draft, rng: Rng): void {
   );
 }
 
+// ── overload, layer 3 of anti-stall (spec 4.3) ──────────────────────────────
+
+/**
+ * Layer-3 condition: the battle is on, no slide is legal (frozen tiles counted
+ * as walls) AND mana cannot pay for the cheapest spell.
+ */
+export function shouldOverload(state: BattleState, hooks: BattleHooksInput = {}): boolean {
+  return (
+    state.status === "ongoing" &&
+    !canMove(state.grid, freezeMask(state.grid.length, state.freezes)) &&
+    state.mana < minSpellCost(state, hooks)
+  );
+}
+
+/**
+ * 魔力暴走: the hero loses 2 HP (unless a hook cancels it), floor(occupied / 2)
+ * random occupied cells are cleared (freezes ignored), and the `onOverload`
+ * hook effect is applied. `tickEnemy` is true when the overload is not already
+ * part of a turn that ran the enemy phase (spell cast, safety-net swipe), so the
+ * intent countdown still drops by exactly 1. A board left empty gets one spawn.
+ *
+ * rng order: cleared-cell picks, [enemy phase], [spawn on an empty board].
+ */
+function runOverload(d: Draft, rng: Rng, tickEnemy: boolean): void {
+  const response = d.hooks.onOverload(d.state);
+  const occupied: CellPosition[] = [];
+  d.state.grid.forEach((row, r) =>
+    row.forEach((cell, c) => {
+      if (cell !== null) occupied.push({ row: r, col: c });
+    }),
+  );
+  const cleared = pickDistinct(occupied, Math.floor(occupied.length / 2), rng);
+  const hpLost = response && response.cancelHpLoss ? 0 : OVERLOAD_HP_LOSS;
+
+  patch(d, { grid: clearCells(d.state.grid, cleared), overloads: d.state.overloads + 1 });
+  d.events.push({ type: "overload", hpLost, cleared });
+  dropDeadFreezes(d);
+  changeHeroHp(d, -hpLost, "overload");
+  applyHookEffect(d, response);
+  if (settle(d)) return;
+
+  if (tickEnemy) {
+    runEnemyPhase(d, rng);
+    if (settle(d)) return;
+  }
+  if (d.state.grid.every((row) => row.every((cell) => cell === null))) spawnTile(d, rng);
+}
+
 // ── public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -465,6 +515,11 @@ export function applyTurn(
 
   const outcome = slide(state.grid, direction, freezeMask(state.grid.length, state.freezes));
   if (!outcome.moved) {
+    // Safety net: if the board is stuck for good (layer-3 condition), the swipe attempt resolves the overload.
+    if (shouldOverload(state, d.hooks)) {
+      patch(d, { turn: state.turn + 1 });
+      runOverload(d, rng, true);
+    }
     return done(d);
   }
 
@@ -493,7 +548,7 @@ export function applyTurn(
   if (settle(d)) return done(d);
 
   spawnTile(d, rng);
-  // [overload check goes here]
+  if (shouldOverload(d.state, d.hooks)) runOverload(d, rng, false); // the enemy phase already ran this turn
   settle(d);
   return done(d);
 }
