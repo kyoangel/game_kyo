@@ -7,12 +7,14 @@ import { canMove, type Direction } from "../grid";
 import {
   SPELLS,
   hasPlayableSpell,
+  playableSpells,
   shouldOverload,
   type BattleEvent,
   type BattleHooksInput,
   type BattleState,
   type SpellId,
 } from "./battle";
+import type { CellPosition } from "../gridDiff";
 import { ENEMIES, getEnemy, type Intent, type Zone } from "./enemies";
 import { freezeMask } from "./intents";
 import { getRelic } from "./relics";
@@ -138,6 +140,60 @@ export function describeEvent(event: BattleEvent): string | null {
   }
 }
 
+export interface EnemyActionCue {
+  icon: string;
+  text: string;
+  /** Board cells the action touched (empty for shield / attack). */
+  cells: CellPosition[];
+}
+
+const CUE_ICONS: Record<string, string> = {
+  rockfall: "🪨",
+  freeze: "❄",
+  scramble: "🌀",
+  zero: "⭕",
+  shield: "🛡",
+  attack: "⚔",
+};
+
+/** The banner for the last enemy action (intent or overload) in a batch of events, or null. */
+export function enemyActionCue(events: BattleEvent[]): EnemyActionCue | null {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i];
+    let icon: string;
+    let cells: CellPosition[];
+    if (event.type === "overload") {
+      icon = "💥";
+      cells = event.cleared;
+    } else if (event.type === "intentFired") {
+      const effect = event.effect;
+      icon = CUE_ICONS[effect.kind];
+      switch (effect.kind) {
+        case "rockfall":
+          cells = effect.placed;
+          break;
+        case "freeze":
+          cells = effect.frozen;
+          break;
+        case "scramble":
+          cells = effect.changed.map(({ row, col }) => ({ row, col }));
+          break;
+        case "zero":
+          cells = effect.zeroed;
+          break;
+        default:
+          cells = [];
+      }
+    } else {
+      continue;
+    }
+    const line = describeEvent(event);
+    if (!line) continue;
+    return { icon, text: `${icon} ${line}`, cells };
+  }
+  return null;
+}
+
 export function logLines(events: BattleEvent[]): string[] {
   return events.flatMap((event) => {
     const line = describeEvent(event);
@@ -215,4 +271,14 @@ export function resultView(run: RunState): { title: string; lines: string[] } {
 /** One-line summary for the "繼續冒險" button on the menu. */
 export function continueSummary(run: RunState): string {
   return `第 ${run.battleIndex + 1}/${TOTAL_BATTLES} 場 · ${stageLabel(run.battleIndex)} · ❤ ${run.heroHp}/${run.heroMaxHp}`;
+}
+
+export const STUCK_BANNER_TEXT = "🧱 盤面卡住了！施放法術解圍";
+
+/** Spells to highlight while the board is stuck but a spell can still help (overload would NOT fire). */
+export function stuckSpells(state: BattleState, hooks: BattleHooksInput = {}): SpellId[] {
+  if (state.status !== "ongoing") return [];
+  if (canMove(state.grid, freezeMask(state.grid.length, state.freezes))) return [];
+  if (shouldOverload(state, hooks)) return [];
+  return playableSpells(state, hooks);
 }

@@ -444,6 +444,11 @@ function spawnTile(d: Draft, rng: Rng): void {
  * (Affordable-but-useless spells must not keep the layer-3 net from firing.)
  */
 export function hasPlayableSpell(state: BattleState, hooks: BattleHooksInput = {}): boolean {
+  return playableSpells(state, hooks).length > 0;
+}
+
+/** Every spell that is affordable and has a legal effect right now (see `hasPlayableSpell`). */
+export function playableSpells(state: BattleState, hooks: BattleHooksInput = {}): SpellId[] {
   const mask = freezeMask(state.grid.length, state.freezes);
   let occupied = 0;
   let numeric = 0;
@@ -456,7 +461,7 @@ export function hasPlayableSpell(state: BattleState, hooks: BattleHooksInput = {
       if (!mask[r][c]) shufflable.add(cell);
     }),
   );
-  return SPELL_IDS.some((spell) => {
+  return SPELL_IDS.filter((spell) => {
     if (spellCost(state, spell, hooks) > state.mana) return false;
     if (spell === "addOne") return numeric > 0;
     if (spell === "shuffle") return shufflable.size >= 2;

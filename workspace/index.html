@@ -600,6 +600,29 @@
       #adv-screen { gap: 4px; }
     }
     #adv-board[data-targeting="true"] { outline: 3px solid #f59e0b; }
+    #adv-cue {
+      position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
+      max-width: 92%; padding: 8px 16px; border-radius: 12px; pointer-events: none; opacity: 0; visibility: hidden;
+      background: rgba(17,24,39,0.92); color: #fde047; border: 2px solid #fde047;
+      font-size: 20px; font-weight: bold; line-height: 1.25; text-align: center; white-space: nowrap;
+    }
+    #adv-cue.animate { visibility: visible; animation: adv-cue 1500ms ease-out; }
+    @keyframes adv-cue { 0% { opacity: 0; } 10% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+    #adv-stuck {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 5;
+      max-width: 92%; padding: 8px 16px; border-radius: 12px; pointer-events: none;
+      background: rgba(127,29,29,0.95); color: #fff; border: 2px solid #fca5a5;
+      font-size: 18px; font-weight: bold; text-align: center; white-space: nowrap;
+    }
+    #adv-stuck[hidden] { display: none; }
+    .adv-spell.suggested { border-color: #fde047; animation: adv-suggest 900ms ease-in-out infinite; }
+    @keyframes adv-suggest { 0%, 100% { box-shadow: 0 0 0 0 rgba(253,224,71,0.0); } 50% { box-shadow: 0 0 12px 3px rgba(253,224,71,0.9); } }
+    #adv-cue-cells { position: absolute; pointer-events: none; }
+    .adv-cue-cell {
+      position: absolute; box-sizing: border-box; border: 3px solid #fde047; border-radius: 8px;
+      box-shadow: 0 0 10px #fde047; animation: adv-cue-cell 600ms ease-out 2 forwards;
+    }
+    @keyframes adv-cue-cell { 0% { opacity: 1; transform: scale(1.12); } 100% { opacity: 0; transform: scale(1); } }
     #adv-board-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: rgba(239,68,68,0.5); }
     #adv-board-flash.animate { animation: adv-flash 500ms ease-out; }
     @keyframes adv-flash { 0% { opacity: 0.7; } 100% { opacity: 0; } }
@@ -776,6 +799,9 @@
     <div id="adv-board-wrap">
       <canvas id="adv-board" width="360" height="360"></canvas>
       <div id="adv-board-flash"></div>
+      <div id="adv-cue-cells"></div>
+      <div id="adv-cue" role="status"></div>
+      <div id="adv-stuck" hidden></div>
     </div>
     <div id="adv-hero">
       <span id="adv-hp"></span>

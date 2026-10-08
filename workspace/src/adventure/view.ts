@@ -37,7 +37,10 @@ import {
   damageTotal,
   heroDamageTotal,
   intentView,
+  enemyActionCue,
   logLines,
+  STUCK_BANNER_TEXT,
+  stuckSpells,
   offerTitle,
   offerView,
   progressPips,
@@ -101,6 +104,9 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
   const relicsEl = el<HTMLDivElement>("adv-relics");
   const relicInfoEl = el<HTMLDivElement>("adv-relic-info");
   const logEl = el<HTMLDivElement>("adv-log");
+  const cueEl = el<HTMLDivElement>("adv-cue");
+  const stuckEl = el<HTMLDivElement>("adv-stuck");
+  const cueCellsEl = el<HTMLDivElement>("adv-cue-cells");
   const toastEl = el<HTMLDivElement>("adv-toast");
   const offersEl = el<HTMLDivElement>("adv-offers");
   const offersTitleEl = el<HTMLHeadingElement>("adv-offers-title");
@@ -234,6 +240,12 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
       button.disabled = !inBattle || battle.mana < cost;
       button.dataset.active = String(activeSpell === spell);
     });
+    const stuck = battle && inBattle ? stuckSpells(battle, hooks()) : [];
+    stuckEl.hidden = stuck.length === 0;
+    stuckEl.textContent = stuck.length > 0 ? STUCK_BANNER_TEXT : "";
+    spellsEl.querySelectorAll<HTMLButtonElement>(".adv-spell").forEach((button) => {
+      button.classList.toggle("suggested", stuck.includes(button.dataset.spell as SpellId));
+    });
     boardCanvas.dataset.targeting = String(activeSpell !== null);
   }
 
@@ -255,6 +267,31 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
     flashEl.classList.remove("animate");
     void flashEl.offsetWidth;
     flashEl.classList.add("animate");
+  }
+
+  /** Banner plus a brief outline on the cells the enemy's action touched. */
+  function showCue(events: BattleEvent[]): void {
+    const cue = enemyActionCue(events);
+    if (!cue) return;
+    cueEl.textContent = cue.text;
+    cueEl.classList.remove("animate");
+    void cueEl.offsetWidth;
+    cueEl.classList.add("animate");
+    cueCellsEl.innerHTML = "";
+    cueCellsEl.style.left = `${boardCanvas.offsetLeft}px`;
+    cueCellsEl.style.top = `${boardCanvas.offsetTop}px`;
+    cueCellsEl.style.width = `${boardCanvas.offsetWidth}px`;
+    cueCellsEl.style.height = `${boardCanvas.offsetHeight}px`;
+    const pct = 100 / GRID_SIZE;
+    cue.cells.forEach(({ row, col }) => {
+      const cell = document.createElement("div");
+      cell.className = "adv-cue-cell";
+      cell.style.left = `${col * pct}%`;
+      cell.style.top = `${row * pct}%`;
+      cell.style.width = `${pct}%`;
+      cell.style.height = `${pct}%`;
+      cueCellsEl.appendChild(cell);
+    });
   }
 
   function playSounds(events: BattleEvent[]): void {
@@ -280,6 +317,7 @@ export function createAdventureView(deps: AdventureViewDeps): AdventureView {
       flashBoard();
     }
     playSounds(events);
+    showCue(events);
     setLog(logLines(events));
   }
 
