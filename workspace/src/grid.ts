@@ -91,6 +91,101 @@ export function slideRowLeft(row: Cell[]): SlideResult {
   return { row: finalRow, moved, scoreGained, eliminatedIndices };
 }
 
+/**
+ * Frozen-cell mask, same shape as the grid: `mask[row][col] === true` means the
+ * cell is frozen. A frozen cell that holds a tile is a wall for slides: it does
+ * not move and tiles do not move through it. A mask entry on an empty (null)
+ * cell is ignored. Frozen cells can still be eliminated, see `slideRowLeftFrozen`.
+ */
+export type FrozenMask = boolean[][];
+
+/**
+ * Slide one row left with frozen cells acting as walls.
+ *
+ * - Each run of non-wall cells between walls compacts and merges independently,
+ *   exactly like `slideRowLeft`.
+ * - A wall (frozen tile) can be eliminated by a tile that ends up adjacent to it:
+ *   the first tile of the run on its right (it slides up against the wall), or
+ *   the last tile of the run on its left when that run is completely full
+ *   (already touching the wall). The wall is processed left to right, so a wall
+ *   consumed by the run on its left cannot also pair with the run on its right.
+ * - Two frozen cells next to each other never eliminate each other (neither moves).
+ */
+export function slideRowLeftFrozen(row: Cell[], frozenRow: boolean[]): SlideResult {
+  const size = row.length;
+  const isWall = (index: number): boolean => frozenRow[index] === true && row[index] !== null;
+  const out: Cell[] = [...row];
+  const consumed = new Set<number>();
+  const eliminatedIndices: Array<[number, number, number, number]> = [];
+  let scoreGained = 0;
+
+  let index = 0;
+  while (index < size) {
+    if (isWall(index)) {
+      index += 1;
+      continue;
+    }
+
+    const start = index;
+    while (index < size && !isWall(index)) index += 1;
+    const end = index;
+    const segmentLength = end - start;
+
+    const entries: Array<{ value: number; from: number }> = [];
+    for (let i = start; i < end; i++) {
+      const cell = row[i];
+      if (cell !== null) entries.push({ value: cell, from: i });
+    }
+
+    const headIndex = start - 1;
+    const headValue =
+      headIndex >= 0 && !consumed.has(headIndex) ? (row[headIndex] as number) : null;
+
+    let next = 0;
+    if (headValue !== null && entries.length > 0 && canPair(headValue, entries[0].value)) {
+      scoreGained += 10;
+      eliminatedIndices.push([headIndex, entries[0].from, headIndex, start]);
+      consumed.add(headIndex);
+      out[headIndex] = null;
+      next = 1;
+    }
+
+    const merged: Array<{ value: number; from: number }> = [];
+    while (next < entries.length) {
+      const current = entries[next];
+      const following = entries[next + 1];
+      if (following !== undefined && canPair(current.value, following.value)) {
+        scoreGained += 10;
+        const meetA = start + merged.length;
+        eliminatedIndices.push([current.from, following.from, meetA, meetA + 1]);
+        next += 2;
+      } else {
+        merged.push(current);
+        next += 1;
+      }
+    }
+
+    if (end < size && merged.length > 0 && merged.length === segmentLength) {
+      const last = merged[merged.length - 1];
+      const wallValue = row[end] as number;
+      if (canPair(last.value, wallValue)) {
+        scoreGained += 10;
+        eliminatedIndices.push([last.from, end, end - 1, end]);
+        consumed.add(end);
+        out[end] = null;
+        merged.pop();
+      }
+    }
+
+    for (let i = 0; i < segmentLength; i++) {
+      out[start + i] = merged[i] !== undefined ? merged[i].value : null;
+    }
+  }
+
+  const moved = row.some((cell, i) => cell !== out[i]);
+  return { row: out, moved, scoreGained, eliminatedIndices };
+}
+
 export type Direction = "up" | "down" | "left" | "right";
 
 export interface SlideOutcome {
@@ -100,13 +195,15 @@ export interface SlideOutcome {
   eliminatedPairs: EliminatedPair[];
 }
 
-function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
+function applySlideRowLeftToGrid(grid: GameGrid, frozen?: FrozenMask): SlideOutcome {
   let moved = false;
   let scoreGained = 0;
   const eliminatedPairs: EliminatedPair[] = [];
 
   const resultGrid = grid.map((row, rowIndex) => {
-    const result = slideRowLeft(row);
+    const result = frozen
+      ? slideRowLeftFrozen(row, frozen[rowIndex] ?? [])
+      : slideRowLeft(row);
     if (result.moved) moved = true;
     scoreGained += result.scoreGained;
     result.eliminatedIndices.forEach(([colA, colB, meetACol, meetBCol]) => {
@@ -123,26 +220,29 @@ function applySlideRowLeftToGrid(grid: GameGrid): SlideOutcome {
   return { grid: resultGrid, moved, scoreGained, eliminatedPairs };
 }
 
-function reverseRows(grid: GameGrid): GameGrid {
+function reverseRows<T>(grid: T[][]): T[][] {
   return grid.map((row) => [...row].reverse());
 }
 
-function transpose(grid: GameGrid): GameGrid {
+function transpose<T>(grid: T[][]): T[][] {
   const size = grid.length;
   return Array.from({ length: size }, (_, col) =>
     Array.from({ length: size }, (_, row) => grid[row][col])
   );
 }
 
-export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
+export function slide(grid: GameGrid, direction: Direction, frozen?: FrozenMask): SlideOutcome {
   const size = grid.length;
 
   switch (direction) {
     case "left": {
-      return applySlideRowLeftToGrid(grid);
+      return applySlideRowLeftToGrid(grid, frozen);
     }
     case "right": {
-      const outcome = applySlideRowLeftToGrid(reverseRows(grid));
+      const outcome = applySlideRowLeftToGrid(
+        reverseRows(grid),
+        frozen && reverseRows(frozen),
+      );
       const pairs = outcome.eliminatedPairs.map(({ a, b, meetA, meetB }) => ({
         a: { row: a.row, col: size - 1 - a.col },
         b: { row: b.row, col: size - 1 - b.col },
@@ -152,7 +252,10 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
       return { ...outcome, grid: reverseRows(outcome.grid), eliminatedPairs: pairs };
     }
     case "up": {
-      const outcome = applySlideRowLeftToGrid(transpose(grid));
+      const outcome = applySlideRowLeftToGrid(
+        transpose(grid),
+        frozen && transpose(frozen),
+      );
       const pairs = outcome.eliminatedPairs.map(({ a, b, meetA, meetB }) => ({
         a: { row: a.col, col: a.row },
         b: { row: b.col, col: b.row },
@@ -162,7 +265,10 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
       return { ...outcome, grid: transpose(outcome.grid), eliminatedPairs: pairs };
     }
     case "down": {
-      const outcome = applySlideRowLeftToGrid(reverseRows(transpose(grid)));
+      const outcome = applySlideRowLeftToGrid(
+        reverseRows(transpose(grid)),
+        frozen && reverseRows(transpose(frozen)),
+      );
       const pairs = outcome.eliminatedPairs.map(({ a, b, meetA, meetB }) => ({
         a: { row: size - 1 - a.col, col: a.row },
         b: { row: size - 1 - b.col, col: b.row },
@@ -174,13 +280,13 @@ export function slide(grid: GameGrid, direction: Direction): SlideOutcome {
   }
 }
 
-export function canMove(grid: GameGrid): boolean {
+export function canMove(grid: GameGrid, frozen?: FrozenMask): boolean {
   const directions: Direction[] = ["up", "down", "left", "right"];
-  return directions.some((direction) => slide(grid, direction).moved);
+  return directions.some((direction) => slide(grid, direction, frozen).moved);
 }
 
-export function isGameOver(grid: GameGrid): boolean {
-  return !canMove(grid);
+export function isGameOver(grid: GameGrid, frozen?: FrozenMask): boolean {
+  return !canMove(grid, frozen);
 }
 
 export type Rng = () => number;
