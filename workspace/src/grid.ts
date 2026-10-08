@@ -399,3 +399,59 @@ export function applyMove(state: GameState, direction: Direction, rng: Rng = Mat
   const grid = spawnRandomTile(outcome.grid, rng);
   return { grid, score: state.score + outcome.scoreGained };
 }
+
+/** Cells where this turn's pairs vanished: every `meetA` and `meetB`, de-duplicated, in pair order. */
+export function eliminationSites(pairs: EliminatedPair[]): CellPosition[] {
+  const seen = new Set<string>();
+  const sites: CellPosition[] = [];
+  pairs.forEach(({ meetA, meetB }) => {
+    [meetA, meetB].forEach(({ row, col }) => {
+      const key = `${row},${col}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        sites.push({ row, col });
+      }
+    });
+  });
+  return sites;
+}
+
+export interface StoneBreakResult {
+  grid: GameGrid;
+  /** Stones that were removed, in row-major order. */
+  broken: CellPosition[];
+}
+
+/**
+ * Break every stone that is orthogonally adjacent (up/down/left/right, not
+ * diagonal) to at least one of `eliminatedCells`. Pure: the input grid is not
+ * mutated. Cells outside the grid are ignored. Callers pass the eliminated
+ * cells in the same frame as `grid` (adventure mode: the post-slide grid and
+ * `eliminationSites(outcome.eliminatedPairs)`).
+ */
+export function breakAdjacentStones(
+  grid: GameGrid,
+  eliminatedCells: CellPosition[],
+): StoneBreakResult {
+  const offsets: Array<[number, number]> = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const breakKeys = new Set<string>();
+  eliminatedCells.forEach(({ row, col }) => {
+    offsets.forEach(([dr, dc]) => {
+      const r = row + dr;
+      const c = col + dc;
+      if (grid[r]?.[c] === STONE) breakKeys.add(`${r},${c}`);
+    });
+  });
+
+  const broken: CellPosition[] = [];
+  const next = grid.map((row, rowIndex) =>
+    row.map((cell, colIndex) => {
+      if (cell === STONE && breakKeys.has(`${rowIndex},${colIndex}`)) {
+        broken.push({ row: rowIndex, col: colIndex });
+        return null;
+      }
+      return cell;
+    }),
+  );
+  return { grid: next, broken };
+}
