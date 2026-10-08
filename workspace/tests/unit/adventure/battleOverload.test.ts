@@ -131,7 +131,7 @@ describe("overload as a safety net on an invalid swipe", () => {
     expect(next.turn).toBe(1);
     expect(next.overloads).toBe(1);
     expect(next.countdown).toBe(3); // the enemy phase runs for this overload
-    expect(next.freezes).toEqual([{ row: 0, col: 0, turns: 2 }]);
+    expect(next.freezes).toEqual([]); // the overload now clears at least one cell, so the lone frozen tile goes
     expect(events.some((e) => e.type === "overload")).toBe(true);
   });
 

@@ -72,7 +72,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
 };
 
 export type SpellUpgrades = Record<SpellId, boolean>;
-export const NO_UPGRADES: SpellUpgrades = { hammer: false, addOne: false, bomb: false, shuffle: false };
+export const NO_UPGRADES: SpellUpgrades = Object.freeze({ hammer: false, addOne: false, bomb: false, shuffle: false });
 
 // ── state ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +97,11 @@ export interface BattleState {
   turn: number;
   /** Overloads so far this battle (adventure trophy: 3 in one battle and win). */
   overloads: number;
+  /**
+   * Per-battle scratch numbers for relics (e.g. "already triggered" flags),
+   * written through `HookEffect.relicData`. Reset by `createBattle`.
+   */
+  relicData: Record<string, number>;
   status: BattleStatus;
 }
 
@@ -144,6 +149,8 @@ export interface HookEffect {
   /** Signed: positive heals (capped at max HP), negative hurts. */
   heroHp?: number;
   enemyDamage?: number;
+  /** Keys to set in `state.relicData` (shallow merge; later writes win). */
+  relicData?: Record<string, number>;
 }
 
 export interface OverloadResponse extends HookEffect {
@@ -187,8 +194,13 @@ export const DEFAULT_HOOKS: BattleHooks = {
 
 export type BattleHooksInput = Partial<BattleHooks>;
 
+/** Fill every missing hook with its default; an explicit `undefined` (or a non-function) is ignored, never called. */
 function resolveHooks(input: BattleHooksInput): BattleHooks {
-  return { ...DEFAULT_HOOKS, ...input };
+  const merged: Record<string, unknown> = { ...DEFAULT_HOOKS };
+  Object.entries(input).forEach(([key, hook]) => {
+    if (typeof hook === "function" && key in DEFAULT_HOOKS) merged[key] = hook;
+  });
+  return merged as unknown as BattleHooks;
 }
 
 // ── draft helpers (internal; mutate only the local draft, never the caller's state) ──
@@ -236,8 +248,10 @@ function dealDamage(d: Draft, amount: number, source: DamageSource): void {
 function changeMana(d: Draft, delta: number): void {
   if (delta === 0) return;
   const mana = Math.max(0, d.state.mana + delta);
+  const actual = mana - d.state.mana; // report what really changed (mana never goes below 0)
+  if (actual === 0) return;
   patch(d, { mana });
-  d.events.push({ type: "manaChanged", delta, mana });
+  d.events.push({ type: "manaChanged", delta: actual, mana });
 }
 
 function changeHeroHp(d: Draft, delta: number, cause: HeroHpCause): void {
@@ -250,6 +264,7 @@ function changeHeroHp(d: Draft, delta: number, cause: HeroHpCause): void {
 
 function applyHookEffect(d: Draft, effect: HookEffect | void): void {
   if (!effect) return;
+  if (effect.relicData) patch(d, { relicData: { ...(d.state.relicData ?? {}), ...effect.relicData } });
   if (effect.mana) changeMana(d, effect.mana);
   if (effect.heroHp) changeHeroHp(d, effect.heroHp, "relic");
   if (effect.enemyDamage) dealDamage(d, effect.enemyDamage, "relic");
@@ -422,14 +437,42 @@ function spawnTile(d: Draft, rng: Rng): void {
 // ── overload, layer 3 of anti-stall (spec 4.3) ──────────────────────────────
 
 /**
+ * True when at least one spell is both affordable (upgrades and the
+ * `spellCost` hook included) and has a legal effect on this board: hammer and
+ * bomb need an occupied cell, addOne needs a numeric cell (not a stone), and
+ * shuffle needs two unfrozen occupied cells holding different contents.
+ * (Affordable-but-useless spells must not keep the layer-3 net from firing.)
+ */
+export function hasPlayableSpell(state: BattleState, hooks: BattleHooksInput = {}): boolean {
+  const mask = freezeMask(state.grid.length, state.freezes);
+  let occupied = 0;
+  let numeric = 0;
+  const shufflable = new Set<number>();
+  state.grid.forEach((row, r) =>
+    row.forEach((cell, c) => {
+      if (cell === null) return;
+      occupied += 1;
+      if (cell !== STONE) numeric += 1;
+      if (!mask[r][c]) shufflable.add(cell);
+    }),
+  );
+  return SPELL_IDS.some((spell) => {
+    if (spellCost(state, spell, hooks) > state.mana) return false;
+    if (spell === "addOne") return numeric > 0;
+    if (spell === "shuffle") return shufflable.size >= 2;
+    return occupied > 0;
+  });
+}
+
+/**
  * Layer-3 condition: the battle is on, no slide is legal (frozen tiles counted
- * as walls) AND mana cannot pay for the cheapest spell.
+ * as walls) AND no affordable spell can do anything (see `hasPlayableSpell`).
  */
 export function shouldOverload(state: BattleState, hooks: BattleHooksInput = {}): boolean {
   return (
     state.status === "ongoing" &&
     !canMove(state.grid, freezeMask(state.grid.length, state.freezes)) &&
-    state.mana < minSpellCost(state, hooks)
+    !hasPlayableSpell(state, hooks)
   );
 }
 
@@ -450,8 +493,10 @@ function runOverload(d: Draft, rng: Rng, tickEnemy: boolean): void {
       if (cell !== null) occupied.push({ row: r, col: c });
     }),
   );
-  const cleared = pickDistinct(occupied, Math.floor(occupied.length / 2), rng);
-  const hpLost = response && response.cancelHpLoss ? 0 : OVERLOAD_HP_LOSS;
+  // floor(occupied / 2), but at least one cell so a lone tile cannot keep the board stuck.
+  const clearCount = occupied.length === 0 ? 0 : Math.max(1, Math.floor(occupied.length / 2));
+  const cleared = pickDistinct(occupied, clearCount, rng);
+  const hpLost = response && response.cancelHpLoss ? 0 : Math.min(OVERLOAD_HP_LOSS, d.state.heroHp);
 
   patch(d, { grid: clearCells(d.state.grid, cleared), overloads: d.state.overloads + 1 });
   d.events.push({ type: "overload", hpLost, cleared });
@@ -490,9 +535,10 @@ export function createBattle(setup: BattleSetup, rng: Rng, hooks: BattleHooksInp
     enemyShield: 0,
     intentIndex: 0,
     countdown: enemy.cycle[0].countdown,
-    upgrades: setup.upgrades ?? NO_UPGRADES,
+    upgrades: { ...(setup.upgrades ?? NO_UPGRADES) },
     turn: 0,
     overloads: 0,
+    relicData: {},
     status: "ongoing",
   };
   const d = makeDraft(state, hooks);
@@ -625,6 +671,8 @@ export function castSpell(
   reportBrokenStones(d, brokenStones, "spell");
   if (pairCleared) resolvePairs(d, 1, "addOne");
 
+  // A spell that wipes the board must not be punished by an overload: refill with one tile.
+  if (!settle(d) && d.state.grid.every((row) => row.every((cell) => cell === null))) spawnTile(d, rng);
   if (!settle(d) && shouldOverload(d.state, d.hooks)) runOverload(d, rng, true);
   settle(d);
   return { ...done(d), applied: true };
