@@ -1,5 +1,7 @@
 # Math Merge 10 Adventure Mode — Plan 3a of 3: Run Flow, Relics, Save/Load, Unlocks (pure logic)
 
+**Status:** Complete (2026-10-08)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Land everything pure that adventure mode still needs after plan #2 (spec `docs/specs/math-merge-10/adventure-mode.md` §6, §6.1, §7, §8, §9.3, §10, §11 P1 items 4-6): (0) the Plan 2 code-review fixes in `battle.ts`, (1) `relics.ts` with the 12 relics and the hook composer, (2) `unlocks.ts` with the six adventure trophies and the trophy-to-relic unlocks, (3) `run.ts` with the 9-battle run flow, rewards and HP carry-over, (4) `save.ts` with versioned, validated save/load under `mathMerge10AdventureRun`, (5) a seeded whole-run simulation. No DOM, no Canvas, no `index.html`, no `game.ts` change; endless mode is untouched. Plan 3b (`2026-10-08-merge10-adventure-p3b-ui.md`) builds the renderer fixes, the adventure screen, the start menu, e2e and the iOS sync on top of these names.
@@ -79,7 +81,7 @@ export function hasPlayableSpell(state: BattleState, hooks?: BattleHooksInput): 
 // castSpell: a spell that empties the board spawns one tile (no overload penalty).
 ```
 
-- [ ] **Step 0.1: Write the failing test**
+- [x] **Step 0.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/battleReview.test.ts`:
 ```ts
@@ -245,7 +247,7 @@ describe("review follow-up: a spell that empties the board is not punished", () 
 });
 ```
 
-- [ ] **Step 0.2: Run and see it fail**
+- [x] **Step 0.2: Run and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/battleReview.test.ts
@@ -253,7 +255,7 @@ npx vitest run tests/unit/adventure/battleReview.test.ts
 
 Expected: `Tests  14 failed | 1 passed (15)` (`hasPlayableSpell` is not exported yet, `relicData` does not exist, the overload still clears `floor(1/2) = 0` cells, and so on; the one test that already holds is "respects the spellCost hook: a relic that raises every cost makes the net fire").
 
-- [ ] **Step 0.3: Apply the ten `battle.ts` edits**
+- [x] **Step 0.3: Apply the ten `battle.ts` edits**
 
 In `workspace/src/adventure/battle.ts`, apply these in order.
 
@@ -467,7 +469,7 @@ Replace with:
   if (!settle(d) && shouldOverload(d.state, d.hooks)) runOverload(d, rng, true);
 ```
 
-- [ ] **Step 0.4: Run the new test and the whole suite**
+- [x] **Step 0.4: Run the new test and the whole suite**
 
 ```bash
 npx vitest run tests/unit/adventure/battleReview.test.ts
@@ -476,7 +478,7 @@ npx vitest run
 
 Expected: the new file `Tests  15 passed (15)`; the full run shows exactly one failure, `battleOverload.test.ts > overload as a safety net on an invalid swipe > a stuck board with too little mana resolves the overload when the player swipes` (`expected [] to deeply equal [ { row: 0, col: 0, turns: 2 } ]`). That is the intended behaviour change (E2): the overload now clears the lone frozen tile.
 
-- [ ] **Step 0.5: Update that one Plan 2 assertion**
+- [x] **Step 0.5: Update that one Plan 2 assertion**
 
 In `workspace/tests/unit/adventure/battleOverload.test.ts`:
 
@@ -491,7 +493,7 @@ Replace with:
     expect(events.some((e) => e.type === "overload")).toBe(true);
 ```
 
-- [ ] **Step 0.6: Types and the full unit suite**
+- [x] **Step 0.6: Types and the full unit suite**
 
 ```bash
 npx tsc --noEmit
@@ -500,7 +502,7 @@ npm run test:unit
 
 Expected: `tsc` clean; `Test Files  28 passed (28)`, `Tests  404 passed (404)`.
 
-- [ ] **Step 0.7: Commit**
+- [x] **Step 0.7: Commit**
 
 ```bash
 git add workspace/src/adventure/battle.ts workspace/tests/unit/adventure/battleReview.test.ts workspace/tests/unit/adventure/battleOverload.test.ts
@@ -511,6 +513,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 0):** 2ee9637; red: 14 failed | 1 passed (15); green 15 / 404 total (28 files); the one expected battleOverload failure appeared before Step 0.5; no deviations.
 
 ---
 
@@ -534,7 +538,7 @@ export function getRelic(id: string): RelicDef | undefined;
 export function mergeRelicHooks(relicIds: readonly string[]): BattleHooks;   // rules in decision E5
 ```
 
-- [ ] **Step 1.1: Write the failing test**
+- [x] **Step 1.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/relics.test.ts`:
 ```ts
@@ -747,7 +751,7 @@ describe("the 6 trophy relics inside real battles", () => {
 });
 ```
 
-- [ ] **Step 1.2: Run and see it fail**
+- [x] **Step 1.2: Run and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/relics.test.ts
@@ -755,7 +759,7 @@ npx vitest run tests/unit/adventure/relics.test.ts
 
 Expected: the file fails to load (`Failed to load url ../../../src/adventure/relics ... Does the file exist?`), `Test Files  1 failed`.
 
-- [ ] **Step 1.3: Implement `relics.ts`**
+- [x] **Step 1.3: Implement `relics.ts`**
 
 Create `workspace/src/adventure/relics.ts`:
 ```ts
@@ -916,7 +920,7 @@ export function mergeRelicHooks(relicIds: readonly string[]): BattleHooks {
 }
 ```
 
-- [ ] **Step 1.4: Run and see it pass**
+- [x] **Step 1.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/relics.test.ts && npm run test:unit && npx tsc --noEmit
@@ -924,7 +928,7 @@ npx vitest run tests/unit/adventure/relics.test.ts && npm run test:unit && npx t
 
 Expected: new file `22 passed`; full unit `Test Files  29 passed (29)`, `Tests  426 passed (426)`; `tsc` clean.
 
-- [ ] **Step 1.5: Commit**
+- [x] **Step 1.5: Commit**
 
 ```bash
 git add workspace/src/adventure/relics.ts workspace/tests/unit/adventure/relics.test.ts
@@ -935,6 +939,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 1):** ee63915; red: import failure; green 22 / 426 total (29 files); no deviations.
 
 ---
 
@@ -968,7 +974,7 @@ export function unlockedRelicIds(store: KeyValueStore): string[];        // 6 st
 ```
 Test helper `memoryStore(initial?, failWrites?)` (in `storeHelper.ts`) returns a `KeyValueStore` plus its `.data` record.
 
-- [ ] **Step 2.1: Write the failing test and its helper**
+- [x] **Step 2.1: Write the failing test and its helper**
 
 Create `workspace/tests/unit/adventure/storeHelper.ts`:
 ```ts
@@ -1082,7 +1088,7 @@ describe("loadAdventureTrophies / unlockedRelicIds", () => {
 });
 ```
 
-- [ ] **Step 2.2: Run and see it fail**
+- [x] **Step 2.2: Run and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/unlocks.test.ts
@@ -1090,7 +1096,7 @@ npx vitest run tests/unit/adventure/unlocks.test.ts
 
 Expected: import failure for `src/adventure/unlocks`, `Test Files  1 failed`.
 
-- [ ] **Step 2.3: Implement `storage.ts` and `unlocks.ts`**
+- [x] **Step 2.3: Implement `storage.ts` and `unlocks.ts`**
 
 Create `workspace/src/adventure/storage.ts`:
 ```ts
@@ -1204,7 +1210,7 @@ export function unlockedRelicIds(store: KeyValueStore): string[] {
 }
 ```
 
-- [ ] **Step 2.4: Run and see it pass**
+- [x] **Step 2.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/unlocks.test.ts && npm run test:unit && npx tsc --noEmit
@@ -1212,7 +1218,7 @@ npx vitest run tests/unit/adventure/unlocks.test.ts && npm run test:unit && npx 
 
 Expected: new file `9 passed`; full unit `Test Files  30 passed (30)`, `Tests  435 passed (435)`; `tsc` clean.
 
-- [ ] **Step 2.5: Commit**
+- [x] **Step 2.5: Commit**
 
 ```bash
 git add workspace/src/adventure/storage.ts workspace/src/adventure/unlocks.ts workspace/tests/unit/adventure/storeHelper.ts workspace/tests/unit/adventure/unlocks.test.ts
@@ -1223,6 +1229,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 2):** 40a6191; red: import failure; green 9 / 435 total (30 files); no deviations.
 
 ---
 
@@ -1264,7 +1272,7 @@ export function runCast(run: RunState, spell: SpellId, target: CellPosition | nu
 ```
 Test helper `runInBattle(grid, battleChanges?, runChanges?, battleIndex?)` (in `runHelpers.ts`) builds a battle-phase `RunState` around a hand-made board.
 
-- [ ] **Step 3.1: Write the failing test and its helper**
+- [x] **Step 3.1: Write the failing test and its helper**
 
 Create `workspace/tests/unit/adventure/runHelpers.ts`:
 ```ts
@@ -1560,7 +1568,7 @@ describe("runCast", () => {
 });
 ```
 
-- [ ] **Step 3.2: Run and see it fail**
+- [x] **Step 3.2: Run and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/run.test.ts
@@ -1568,7 +1576,7 @@ npx vitest run tests/unit/adventure/run.test.ts
 
 Expected: import failure for `src/adventure/run`, `Test Files  1 failed`.
 
-- [ ] **Step 3.3: Implement `run.ts`**
+- [x] **Step 3.3: Implement `run.ts`**
 
 Create `workspace/src/adventure/run.ts`:
 ```ts
@@ -1808,7 +1816,7 @@ export function runCast(run: RunState, spell: SpellId, target: CellPosition | nu
 }
 ```
 
-- [ ] **Step 3.4: Run and see it pass**
+- [x] **Step 3.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/run.test.ts && npm run test:unit && npx tsc --noEmit
@@ -1816,7 +1824,7 @@ npx vitest run tests/unit/adventure/run.test.ts && npm run test:unit && npx tsc 
 
 Expected: new file `27 passed`; full unit `Test Files  31 passed (31)`, `Tests  462 passed (462)`; `tsc` clean.
 
-- [ ] **Step 3.5: Commit**
+- [x] **Step 3.5: Commit**
 
 ```bash
 git add workspace/src/adventure/run.ts workspace/tests/unit/adventure/runHelpers.ts workspace/tests/unit/adventure/run.test.ts
@@ -1827,6 +1835,8 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 EOT
 )"
 ```
+
+**Execution notes (Task 3):** 1057bbf; red: import failure; green 27 / 462 total (31 files); no deviations.
 
 ---
 
@@ -1852,7 +1862,7 @@ export function loadRun(store: KeyValueStore): RunState | null;       // invalid
 export function clearRun(store: KeyValueStore): void;
 ```
 
-- [ ] **Step 4.1: Write the failing test**
+- [x] **Step 4.1: Write the failing test**
 
 Create `workspace/tests/unit/adventure/save.test.ts`:
 ```ts
@@ -2031,7 +2041,7 @@ describe("validateRun rejects impossible data (never throws)", () => {
 });
 ```
 
-- [ ] **Step 4.2: Run and see it fail**
+- [x] **Step 4.2: Run and see it fail**
 
 ```bash
 npx vitest run tests/unit/adventure/save.test.ts
@@ -2039,7 +2049,7 @@ npx vitest run tests/unit/adventure/save.test.ts
 
 Expected: import failure for `src/adventure/save`, `Test Files  1 failed`.
 
-- [ ] **Step 4.3: Implement `save.ts`**
+- [x] **Step 4.3: Implement `save.ts`**
 
 Create `workspace/src/adventure/save.ts`:
 ```ts
@@ -2281,7 +2291,7 @@ export function loadRun(store: KeyValueStore): RunState | null {
 }
 ```
 
-- [ ] **Step 4.4: Run and see it pass**
+- [x] **Step 4.4: Run and see it pass**
 
 ```bash
 npx vitest run tests/unit/adventure/save.test.ts && npm run test:unit && npx tsc --noEmit
@@ -2289,7 +2299,7 @@ npx vitest run tests/unit/adventure/save.test.ts && npm run test:unit && npx tsc
 
 Expected: new file `49 passed`; full unit `Test Files  32 passed (32)`, `Tests  511 passed (511)`; `tsc` clean.
 
-- [ ] **Step 4.5: Commit**
+- [x] **Step 4.5: Commit**
 
 ```bash
 git add workspace/src/adventure/save.ts workspace/tests/unit/adventure/save.test.ts
@@ -2301,6 +2311,8 @@ EOT
 )"
 ```
 
+**Execution notes (Task 4):** 161797c; red: import failure; green 49 / 511 total (32 files); no deviations.
+
 ---
 
 ### Task 5: Seeded whole-run simulation
@@ -2310,7 +2322,7 @@ EOT
 
 **Interfaces:** consumes everything above; produces no new exports. A greedy bot plays whole runs (best-pairs swipe, hammer on the first tile when stuck, a swipe to trigger the overload net when poor, offer 0 for every reward) against `memoryStore`.
 
-- [ ] **Step 5.1: Write the test (it passes at once: it exercises code from Tasks 0-4)**
+- [x] **Step 5.1: Write the test (it passes at once: it exercises code from Tasks 0-4)**
 
 Create `workspace/tests/unit/adventure/runSimulation.test.ts`:
 ```ts
@@ -2419,7 +2431,7 @@ describe("seeded whole-run simulation", () => {
 });
 ```
 
-- [ ] **Step 5.2: Run it**
+- [x] **Step 5.2: Run it**
 
 ```bash
 npx vitest run tests/unit/adventure/runSimulation.test.ts && npm run test:unit && npx tsc --noEmit
@@ -2429,7 +2441,7 @@ Expected: `3 passed`; full unit `Test Files  33 passed (33)`, `Tests  514 passed
 
 If a future change makes a run loop forever, the test fails at the 20 000-step cap instead of hanging.
 
-- [ ] **Step 5.3: Commit**
+- [x] **Step 5.3: Commit**
 
 ```bash
 git add workspace/tests/unit/adventure/runSimulation.test.ts
@@ -2441,13 +2453,15 @@ EOT
 )"
 ```
 
+**Execution notes (Task 5):** 3e071b6; passes at once by design; green 3 / 514 total (33 files); no deviations.
+
 ---
 
 ### Task 6: Full verification of plan 3a
 
 **Files:** none modified.
 
-- [ ] **Step 6.1: Types, unit, build**
+- [x] **Step 6.1: Types, unit, build**
 
 Run from `/Users/kyo.lai82/Projects/Personal/game-factory/workspace`:
 ```bash
@@ -2458,7 +2472,7 @@ npm run build
 
 Expected: `tsc` clean; `Test Files  33 passed (33)` and `Tests  514 passed (514)`; build prints `built in ...` with no errors. (E2E is not required: no UI, `game.ts` or `index.html` change. Nothing outside `src/adventure/` imports the new modules, so the bundle is unchanged.)
 
-- [ ] **Step 6.2: Confirm the footprint**
+- [x] **Step 6.2: Confirm the footprint**
 
 ```bash
 git -C /Users/kyo.lai82/Projects/Personal/game-factory diff --name-status 0288303 -- workspace
@@ -2469,6 +2483,8 @@ Expected: `M workspace/src/adventure/battle.ts`, `M workspace/tests/unit/adventu
 grep -rln "adventure" /Users/kyo.lai82/Projects/Personal/game-factory/workspace/src --include=*.ts | grep -v "src/adventure/"
 ```
 Expected: prints nothing.
+
+**Execution notes (Task 6):** no commit; tsc clean, 514 passed (33 files), build ok, e2e 54 passed; footprint matches Step 6.2 (the only grep hits outside src/adventure/ are pre-existing comments in grid.ts and powerups.ts); no deviations. Commits used trailer Claude Opus 5.5 per the caller's instruction.
 
 ---
 
