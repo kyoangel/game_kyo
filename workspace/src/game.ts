@@ -5,12 +5,10 @@ import {
   isGameOver,
   type Direction,
   type GameState,
-  type GameGrid,
   type EliminatedPair,
   type Rng,
 } from "./grid";
 import {
-  PALETTES,
   PALETTE_ORDER,
   nextPalette,
   isPaletteId,
@@ -27,6 +25,7 @@ import {
   computeEliminationAward,
 } from "./powerups";
 import { checkTrophies, loadModalData, getTrophyDef } from "./trophies";
+import { BoardRenderer } from "./boardRenderer";
 
 const GRID_SIZE = 4;
 const BEST_SCORE_KEY = "mathMerge10BestScore";
@@ -34,17 +33,11 @@ const PALETTE_KEY = "mathMerge10Palette";
 const POWERUP_KEY = "mathMerge10Powerups";
 const PLAY_COUNT_KEY = "mathMerge10PlayCount";
 const LIFETIME_ELIM_KEY = "mathMerge10LifetimeElim";
-const ELIM_HIGHLIGHT_MS = 400;
-const ELIM_FADE_MS = 200;
-const MOVE_DURATION_MS = 150;
-const SPAWN_DELAY_MS = 350;
-const SPAWN_DURATION_MS = 400;
 const HUD_HEIGHT = 64;
 const CANVAS_PADDING = 16;
 const CANVAS_MAX = 500;
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 const gameOverEl = document.getElementById("game-over") as HTMLDivElement;
 const gameOverScoreEl = document.getElementById("game-over-score") as HTMLParagraphElement;
 const gameOverBestEl = document.getElementById("game-over-best") as HTMLParagraphElement;
@@ -284,160 +277,14 @@ let bestScore = loadBestScore();
 let currentPalette: PaletteId = loadPalette();
 let powerups: PowerupState = loadPowerups();
 
-const spawnCells = new Map<string, number>();
-const moveCells = new Map<string, { startTime: number; direction: Direction }>();
-
-interface PhantomTile {
-  origRow: number;
-  origCol: number;
-  firstCompactRow: number;
-  firstCompactCol: number;
-  value: number;
-}
-
-interface PhantomGroup {
-  tiles: PhantomTile[];
-  length: 2;
-  direction: Direction;
-  groupIndex: number;
-}
-
-interface SurvivorCell {
-  origRow: number;
-  origCol: number;
-  firstCompactRow: number;
-  firstCompactCol: number;
-  finalRow: number;
-  finalCol: number;
-}
-
-interface ElimPhaseState {
-  groups: PhantomGroup[];
-  startTime: number;
-  survivorCells: SurvivorCell[];
-}
-
-interface RecompactCell {
-  origRow: number;
-  origCol: number;
-  firstCompactRow: number;
-  firstCompactCol: number;
-}
-
-let eliminationPhase: ElimPhaseState | null = null;
 let spawnPending = false;
-const recompactCells = new Map<string, RecompactCell>();
+const board = new BoardRenderer({
+  canvas,
+  gridSize: GRID_SIZE,
+  getPalette: () => currentPalette,
+});
 
 let animationFrameId: number | null = null;
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-const HF_MS = ELIM_HIGHLIGHT_MS + ELIM_FADE_MS;
-
-function c2StartMs(totalGroups: number): number {
-  return MOVE_DURATION_MS + totalGroups * HF_MS;
-}
-
-function totalElimMs(totalGroups: number): number {
-  return c2StartMs(totalGroups) + MOVE_DURATION_MS;
-}
-
-function buildElimPhaseState(
-  eliminatedPairs: EliminatedPair[],
-  prevGrid: GameGrid,
-  direction: Direction,
-  startTime: number,
-): ElimPhaseState {
-  const size = prevGrid.length;
-  const isVertical = direction === "up" || direction === "down";
-  const isReverse = direction === "right" || direction === "down";
-
-  const eliminatedSet = new Set(
-    eliminatedPairs.flatMap(({ a, b }) => [`${a.row},${a.col}`, `${b.row},${b.col}`]),
-  );
-
-  const groups: PhantomGroup[] = eliminatedPairs.map(({ a, b, meetA, meetB }, groupIndex) => ({
-    tiles: [
-      { origRow: a.row, origCol: a.col, firstCompactRow: meetA.row, firstCompactCol: meetA.col, value: prevGrid[a.row][a.col] as number },
-      { origRow: b.row, origCol: b.col, firstCompactRow: meetB.row, firstCompactCol: meetB.col, value: prevGrid[b.row][b.col] as number },
-    ],
-    length: 2 as const,
-    direction,
-    groupIndex,
-  }));
-
-  const survivorCells: SurvivorCell[] = [];
-
-  for (let lineIdx = 0; lineIdx < size; lineIdx++) {
-    const positions: number[] = isReverse
-      ? Array.from({ length: size }, (_, i) => size - 1 - i)
-      : Array.from({ length: size }, (_, i) => i);
-
-    let fcIdx = 0;
-    let finalIdx = 0;
-
-    for (const pos of positions) {
-      const origRow = isVertical ? pos : lineIdx;
-      const origCol = isVertical ? lineIdx : pos;
-
-      if (prevGrid[origRow][origCol] === null) continue;
-
-      const isElim = eliminatedSet.has(`${origRow},${origCol}`);
-
-      if (!isElim) {
-        let fcRow: number, fcCol: number, finalRow: number, finalCol: number;
-        if (isVertical) {
-          fcRow = isReverse ? size - 1 - fcIdx : fcIdx;
-          fcCol = lineIdx;
-          finalRow = isReverse ? size - 1 - finalIdx : finalIdx;
-          finalCol = lineIdx;
-        } else {
-          fcRow = lineIdx;
-          fcCol = isReverse ? size - 1 - fcIdx : fcIdx;
-          finalRow = lineIdx;
-          finalCol = isReverse ? size - 1 - finalIdx : finalIdx;
-        }
-        survivorCells.push({ origRow, origCol, firstCompactRow: fcRow, firstCompactCol: fcCol, finalRow, finalCol });
-        finalIdx++;
-      }
-      fcIdx++;
-    }
-  }
-
-  return { groups, startTime, survivorCells };
-}
-
-function drawPhantomTile(
-  value: number,
-  x: number,
-  y: number,
-  cellSize: number,
-  alpha: number,
-  scale: number,
-): void {
-  const cx = x + cellSize / 2;
-  const cy = y + cellSize / 2;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
-  ctx.translate(-cx, -cy);
-  ctx.fillStyle = "#fde047";
-  ctx.strokeStyle = "#f59e0b";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(x + 4, y + 4, cellSize - 8, cellSize - 8, 8);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#422006";
-  ctx.font = "32px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(value), x + cellSize / 2, y + cellSize / 2);
-  ctx.restore();
-}
 
 function finalizeDeferredSlide(): void {
   if (!spawnPending) return;
@@ -456,190 +303,13 @@ function finalizeDeferredSlide(): void {
   const spawnedList = changedCells(postSlideGrid, newGrid).filter(
     ({ row, col }) => newGrid[row][col] !== null && postSlideGrid[row][col] === null,
   );
-  spawnCells.clear();
-  spawnedList.forEach(({ row, col }) => {
-    spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
-  });
-}
-
-function drawBaseTile(
-  value: number,
-  x: number,
-  y: number,
-  cellSize: number,
-  padding: number,
-  flashAlpha: number,
-): void {
-  const colors = PALETTES[currentPalette][value];
-
-  ctx.fillStyle = colors.bg;
-  ctx.beginPath();
-  ctx.roundRect(x + padding, y + padding, cellSize - padding * 2, cellSize - padding * 2, 8);
-  ctx.fill();
-
-  if (flashAlpha > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
-    ctx.beginPath();
-    ctx.roundRect(x + padding, y + padding, cellSize - padding * 2, cellSize - padding * 2, 8);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = colors.text;
-  ctx.font = "32px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(value), x + cellSize / 2, y + cellSize / 2);
+  board.beginSpawn(spawnedList);
 }
 
 function render(): void {
-  const cellSize = canvas.width / GRID_SIZE;
-  const padding = 4;
-  const now = performance.now();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  board.draw(state.grid);
 
-  // Grid lines
-  for (let r = 0; r < GRID_SIZE; r++) {
-    for (let c = 0; c < GRID_SIZE; c++) {
-      ctx.strokeStyle = "#444";
-      ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
-    }
-  }
-
-  // Draw tiles from state.grid with per-type animations
-  state.grid.forEach((row, rowIndex) => {
-    row.forEach((cell, colIndex) => {
-      if (cell === null) return;
-
-      const key = `${rowIndex},${colIndex}`;
-      const x = colIndex * cellSize;
-      const y = rowIndex * cellSize;
-
-      if (spawnCells.has(key)) {
-        const startTime = spawnCells.get(key)!;
-        const elapsed = now - startTime;
-        if (elapsed < 0) return; // not started yet — tile stays invisible
-
-        const t = Math.min(1, elapsed / SPAWN_DURATION_MS);
-        let dy: number;
-        let scale: number;
-        let opacity: number;
-        let glowAlpha: number;
-
-        if (t <= 0.5) {
-          const p = t / 0.5;
-          dy = lerp(-64, 6, p);
-          scale = lerp(0.4, 1.1, p);
-          opacity = p;
-          glowAlpha = p;
-        } else if (t <= 0.75) {
-          const p = (t - 0.5) / 0.25;
-          dy = lerp(6, -3, p);
-          scale = lerp(1.1, 0.97, p);
-          opacity = 1;
-          glowAlpha = lerp(1, 0, p);
-        } else {
-          const p = (t - 0.75) / 0.25;
-          dy = lerp(-3, 0, p);
-          scale = lerp(0.97, 1.0, p);
-          opacity = 1;
-          glowAlpha = 0;
-        }
-
-        const cx = x + cellSize / 2;
-        const cy = y + dy + cellSize / 2;
-        ctx.save();
-        ctx.globalAlpha = opacity;
-        ctx.translate(cx, cy);
-        ctx.scale(scale, scale);
-        ctx.translate(-cx, -cy);
-        if (glowAlpha > 0) {
-          ctx.shadowColor = "#4ade80";
-          ctx.shadowBlur = 20 * glowAlpha;
-        }
-        drawBaseTile(cell, x, y + dy, cellSize, padding, 0);
-        ctx.restore();
-      } else if (eliminationPhase !== null && recompactCells.has(key)) {
-        const rc = recompactCells.get(key)!;
-        const elapsed = now - eliminationPhase.startTime;
-        const c2Start = c2StartMs(eliminationPhase.groups.length);
-        let drawX: number, drawY: number;
-        if (elapsed <= MOVE_DURATION_MS) {
-          const t = Math.min(1, elapsed / MOVE_DURATION_MS);
-          const p = 1 - Math.pow(1 - t, 2);
-          drawX = lerp(rc.origCol * cellSize, rc.firstCompactCol * cellSize, p);
-          drawY = lerp(rc.origRow * cellSize, rc.firstCompactRow * cellSize, p);
-        } else if (elapsed < c2Start) {
-          drawX = rc.firstCompactCol * cellSize;
-          drawY = rc.firstCompactRow * cellSize;
-        } else {
-          const t = Math.min(1, (elapsed - c2Start) / MOVE_DURATION_MS);
-          const p = 1 - Math.pow(1 - t, 2);
-          drawX = lerp(rc.firstCompactCol * cellSize, colIndex * cellSize, p);
-          drawY = lerp(rc.firstCompactRow * cellSize, rowIndex * cellSize, p);
-        }
-        drawBaseTile(cell, drawX, drawY, cellSize, padding, 0);
-      } else if (moveCells.has(key)) {
-        const { startTime, direction } = moveCells.get(key)!;
-        const t = Math.min(1, (now - startTime) / MOVE_DURATION_MS);
-        const p = 1 - Math.pow(1 - t, 2); // ease-out
-        const scale = lerp(0.65, 1.0, p);
-        const offset = lerp(16, 0, p);
-
-        let dx = 0;
-        let dy = 0;
-        if (direction === "left") dx = offset;
-        else if (direction === "right") dx = -offset;
-        else if (direction === "up") dy = offset;
-        else dy = -offset;
-
-        const cx = x + dx + cellSize / 2;
-        const cy = y + dy + cellSize / 2;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.scale(scale, scale);
-        ctx.translate(-cx, -cy);
-        drawBaseTile(cell, x + dx, y + dy, cellSize, padding, 0);
-        ctx.restore();
-      } else {
-        drawBaseTile(cell, x, y, cellSize, padding, 0);
-      }
-    });
-  });
-
-  // Draw elimination phase: phantom tiles C1→H→F, survivors already handled in tile loop via recompactCells
-  if (eliminationPhase !== null) {
-    const elapsed = now - eliminationPhase.startTime;
-
-    for (const group of eliminationPhase.groups) {
-      const hStart = MOVE_DURATION_MS + group.groupIndex * HF_MS;
-      const fStart = hStart + ELIM_HIGHLIGHT_MS;
-      const fEnd = fStart + ELIM_FADE_MS;
-
-      for (const tile of group.tiles) {
-        const fcX = tile.firstCompactCol * cellSize;
-        const fcY = tile.firstCompactRow * cellSize;
-        const origX = tile.origCol * cellSize;
-        const origY = tile.origRow * cellSize;
-
-        if (elapsed <= MOVE_DURATION_MS) {
-          const t = elapsed / MOVE_DURATION_MS;
-          const p = 1 - Math.pow(1 - t, 2);
-          drawPhantomTile(tile.value, lerp(origX, fcX, p), lerp(origY, fcY, p), cellSize, 1, 1.0);
-        } else if (elapsed < hStart) {
-          drawBaseTile(tile.value, fcX, fcY, cellSize, padding, 0);
-        } else if (elapsed < fEnd) {
-          if (elapsed < fStart) {
-            drawPhantomTile(tile.value, fcX, fcY, cellSize, 1, 1.05);
-          } else {
-            const fadeT = Math.min(1, (elapsed - fStart) / ELIM_FADE_MS);
-            drawPhantomTile(tile.value, fcX, fcY, cellSize, Math.max(0, 1 - fadeT), lerp(1.05, 0.4, fadeT));
-          }
-        }
-      }
-    }
-  }
-
-  if (eliminationPhase === null) {
+  if (!board.isEliminating) {
     const gameOver = isGameOver(state.grid);
     gameOverEl.hidden = !gameOver;
     if (gameOver) {
@@ -759,39 +429,7 @@ function renderTrophyModal(): void {
 }
 
 function tick(): void {
-  const now = performance.now();
-  let stillAnimating = false;
-
-  if (eliminationPhase !== null) {
-    const elapsed = now - eliminationPhase.startTime;
-    const total = totalElimMs(eliminationPhase.groups.length);
-    if (elapsed < total) {
-      stillAnimating = true;
-    } else {
-      eliminationPhase = null;
-      recompactCells.clear();
-      finalizeDeferredSlide();
-      stillAnimating = true; // spawn animation follows
-    }
-  }
-
-  spawnCells.forEach((startTime, key) => {
-    if (startTime > now) {
-      stillAnimating = true;
-    } else if (now - startTime >= SPAWN_DURATION_MS) {
-      spawnCells.delete(key);
-    } else {
-      stillAnimating = true;
-    }
-  });
-
-  moveCells.forEach((data, key) => {
-    if (now - data.startTime >= MOVE_DURATION_MS) {
-      moveCells.delete(key);
-    } else {
-      stillAnimating = true;
-    }
-  });
+  const stillAnimating = board.advance(performance.now(), finalizeDeferredSlide);
 
   render();
 
@@ -813,7 +451,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (!direction) return;
 
   if (isGameOver(state.grid)) return;
-  if (eliminationPhase !== null) return;
+  if (board.isEliminating) return;
 
   const outcome = slide(state.grid, direction);
   if (!outcome.moved) return;
@@ -855,21 +493,8 @@ function handleKeydown(event: KeyboardEvent): void {
       renderHudPowerups();
     }
 
-    const now = performance.now();
-    eliminationPhase = buildElimPhaseState(eliminatedPairs, prevGrid, direction, now);
+    board.beginElimination(eliminatedPairs, prevGrid, direction);
     spawnPending = true;
-
-    recompactCells.clear();
-    for (const sc of eliminationPhase.survivorCells) {
-      recompactCells.set(`${sc.finalRow},${sc.finalCol}`, {
-        origRow: sc.origRow,
-        origCol: sc.origCol,
-        firstCompactRow: sc.firstCompactRow,
-        firstCompactCol: sc.firstCompactCol,
-      });
-    }
-    spawnCells.clear();
-    moveCells.clear();
 
     (window as unknown as {
       __lastAnimationHints: {
@@ -900,14 +525,7 @@ function handleKeydown(event: KeyboardEvent): void {
       return !spawnedKeys.has(key) && newGrid[row][col] !== null;
     });
 
-    spawnCells.clear();
-    moveCells.clear();
-    spawnedList.forEach(({ row, col }) => {
-      spawnCells.set(`${row},${col}`, performance.now() + SPAWN_DELAY_MS);
-    });
-    movedList.forEach(({ row, col }) => {
-      moveCells.set(`${row},${col}`, { startTime: performance.now(), direction });
-    });
+    board.beginSlide(spawnedList, movedList, direction);
 
     if (isGameOver(newGrid)) {
       setTimeout(() => audio.play("gameOver"), 400);
@@ -1045,11 +663,8 @@ window.addEventListener("resize", resizeCanvas);
 
 function setState(newState: GameState): void {
   state = newState;
-  eliminationPhase = null;
+  board.reset();
   spawnPending = false;
-  recompactCells.clear();
-  spawnCells.clear();
-  moveCells.clear();
   trophyToastQueue.length = 0;
   if (trophyToastTimer !== null) {
     clearTimeout(trophyToastTimer);
