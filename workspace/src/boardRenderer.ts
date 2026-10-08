@@ -1,4 +1,4 @@
-import type { Direction, EliminatedPair, GameGrid } from "./grid";
+import { STONE, type Direction, type EliminatedPair, type GameGrid } from "./grid";
 import type { CellPosition } from "./gridDiff";
 import { PALETTES, type PaletteId } from "./palettes";
 
@@ -9,6 +9,26 @@ export const SPAWN_DELAY_MS = 350;
 export const SPAWN_DURATION_MS = 400;
 
 const HF_MS = ELIM_HIGHLIGHT_MS + ELIM_FADE_MS;
+
+/** Colours of a 0 tile (adventure mode): dark and dull, so it reads as dead. Palettes only cover 1-9. */
+export const ZERO_TILE_COLORS = { bg: "#111827", text: "#6b7280" };
+
+/** A frozen cell to overlay with ice (adventure mode); `turns` is shown on it. */
+export interface FrozenCell {
+  row: number;
+  col: number;
+  turns: number;
+}
+
+/**
+ * The two-phase elimination animation models plain rows and columns only. A
+ * frozen tile is a wall (the line is cut in segments, the wall tile can be one
+ * end of a pair), which `buildElimPhaseState` does not know, so while anything
+ * is frozen the adventure view uses the simple slide animation instead.
+ */
+export function canAnimateElimination(frozenCount: number): boolean {
+  return frozenCount === 0;
+}
 
 export interface PhantomTile {
   origRow: number;
@@ -147,6 +167,7 @@ export class BoardRenderer {
   private readonly moveCells = new Map<string, { startTime: number; direction: Direction }>();
   private readonly recompactCells = new Map<string, RecompactCell>();
   private eliminationPhase: ElimPhaseState | null = null;
+  private frozenCells: FrozenCell[] = [];
 
   constructor(options: BoardRendererOptions) {
     this.canvas = options.canvas;
@@ -158,6 +179,11 @@ export class BoardRenderer {
   /** True while the elimination animation is playing (input should be ignored). */
   get isEliminating(): boolean {
     return this.eliminationPhase !== null;
+  }
+
+  /** Cells to draw under an ice overlay (adventure mode). Endless mode never sets any. */
+  setFrozenCells(cells: readonly FrozenCell[]): void {
+    this.frozenCells = [...cells];
   }
 
   /** Drops every running animation (used when the board is replaced wholesale). */
@@ -399,6 +425,61 @@ export class BoardRenderer {
         }
       }
     }
+
+    this.drawFrozenOverlays(grid, cellSize);
+  }
+
+  /** Ice tint, border and the remaining turns on every frozen cell that still holds a tile. */
+  private drawFrozenOverlays(grid: GameGrid, cellSize: number): void {
+    const { ctx } = this;
+    const padding = 4;
+    this.frozenCells.forEach(({ row, col, turns }) => {
+      if (grid[row]?.[col] == null) return;
+      const x = col * cellSize;
+      const y = row * cellSize;
+      ctx.save();
+      ctx.fillStyle = "rgba(125,211,252,0.5)";
+      ctx.strokeStyle = "#e0f2fe";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x + padding, y + padding, cellSize - padding * 2, cellSize - padding * 2, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#0c4a6e";
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(`❄${turns}`, x + cellSize - padding - 4, y + cellSize - padding - 2);
+      ctx.restore();
+    });
+  }
+
+  /** A stone: grey rounded block with a lighter facet and two cracks. No number. */
+  private drawStoneTile(x: number, y: number, cellSize: number, padding: number): void {
+    const { ctx } = this;
+    const left = x + padding;
+    const top = y + padding;
+    const size = cellSize - padding * 2;
+    ctx.fillStyle = "#78716c";
+    ctx.beginPath();
+    ctx.roundRect(left, top, size, size, 8);
+    ctx.fill();
+    ctx.fillStyle = "#a8a29e";
+    ctx.beginPath();
+    ctx.moveTo(left + size * 0.12, top + size * 0.12);
+    ctx.lineTo(left + size * 0.55, top + size * 0.12);
+    ctx.lineTo(left + size * 0.12, top + size * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#44403c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(left + size * 0.55, top + size * 0.2);
+    ctx.lineTo(left + size * 0.45, top + size * 0.5);
+    ctx.lineTo(left + size * 0.7, top + size * 0.7);
+    ctx.moveTo(left + size * 0.2, top + size * 0.8);
+    ctx.lineTo(left + size * 0.4, top + size * 0.65);
+    ctx.stroke();
   }
 
   private drawPhantomTile(
@@ -441,7 +522,11 @@ export class BoardRenderer {
     flashAlpha: number,
   ): void {
     const { ctx } = this;
-    const colors = PALETTES[this.getPalette()][value];
+    if (value === STONE) {
+      this.drawStoneTile(x, y, cellSize, padding);
+      return;
+    }
+    const colors = value === 0 ? ZERO_TILE_COLORS : PALETTES[this.getPalette()][value];
 
     ctx.fillStyle = colors.bg;
     ctx.beginPath();
