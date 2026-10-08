@@ -23,6 +23,10 @@ import {
   emptyPowerups,
   computePlayCountAward,
   computeEliminationAward,
+  hammerEffect,
+  shuffleEffect,
+  addOneEffect,
+  bombEffect,
 } from "./powerups";
 import { checkTrophies, loadModalData, getTrophyDef } from "./trophies";
 import { BoardRenderer } from "./boardRenderer";
@@ -174,11 +178,9 @@ function renderHudPowerups(): void {
 }
 
 function applyHammer(row: number, col: number): void {
-  if (state.grid[row][col] === null) return;
-  const newGrid = state.grid.map((r, ri) =>
-    r.map((c, ci) => (ri === row && ci === col ? null : c)),
-  );
-  setState({ ...state, grid: newGrid });
+  const result = hammerEffect(state.grid, row, col);
+  if (!result.applied) return;
+  setState({ ...state, grid: result.grid });
   powerups.hammer--;
   savePowerups();
   audio.play("hammer");
@@ -186,21 +188,8 @@ function applyHammer(row: number, col: number): void {
 }
 
 function applyShuffle(): void {
-  const tiles: Array<{ row: number; col: number; value: number }> = [];
-  state.grid.forEach((r, ri) =>
-    r.forEach((c, ci) => {
-      if (c !== null) tiles.push({ row: ri, col: ci, value: c });
-    }),
-  );
-  for (let i = tiles.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [tiles[i].value, tiles[j].value] = [tiles[j].value, tiles[i].value];
-  }
-  const newGrid = state.grid.map((r) => r.map(() => null as number | null));
-  tiles.forEach(({ row, col, value }) => {
-    newGrid[row][col] = value;
-  });
-  setState({ ...state, grid: newGrid });
+  const result = shuffleEffect(state.grid, rng);
+  setState({ ...state, grid: result.grid });
   powerups.shuffle--;
   savePowerups();
   audio.play("shuffle");
@@ -208,19 +197,13 @@ function applyShuffle(): void {
 }
 
 function applyAddOne(row: number, col: number): void {
-  const value = state.grid[row][col];
-  if (value === null) return;
-  if (value === 9) {
-    const newGrid = state.grid.map((r, ri) =>
-      r.map((c, ci) => (ri === row && ci === col ? null : c)),
-    );
-    setState({ ...state, grid: newGrid, score: state.score + 10 });
-  } else {
-    const newGrid = state.grid.map((r, ri) =>
-      r.map((c, ci) => (ri === row && ci === col ? value + 1 : c)),
-    );
-    setState({ ...state, grid: newGrid });
-  }
+  const result = addOneEffect(state.grid, row, col);
+  if (!result.applied) return;
+  setState({
+    ...state,
+    grid: result.grid,
+    score: result.pairCleared ? state.score + 10 : state.score,
+  });
   powerups.addOne--;
   savePowerups();
   audio.play("addOne");
@@ -228,18 +211,8 @@ function applyAddOne(row: number, col: number): void {
 }
 
 function applyBomb(row: number, col: number): void {
-  const newGrid = state.grid.map((r, ri) =>
-    r.map((c, ci) => {
-      const isCenter = ri === row && ci === col;
-      const isAdjacent =
-        (ri === row - 1 && ci === col) ||
-        (ri === row + 1 && ci === col) ||
-        (ri === row && ci === col - 1) ||
-        (ri === row && ci === col + 1);
-      return isCenter || isAdjacent ? null : c;
-    }),
-  );
-  setState({ ...state, grid: newGrid });
+  const result = bombEffect(state.grid, row, col);
+  setState({ ...state, grid: result.grid });
   powerups.bomb--;
   savePowerups();
   audio.play("bomb");
