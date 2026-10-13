@@ -6,8 +6,6 @@ import { chooseOffer, createRun, type RunState } from "../../src/adventure/run";
 import { mulberry32 } from "../../src/adventure/rng";
 import { NO_DEBUG_START, pickOffer, setRun, startAdventure, waitIdle } from "./adventureHelpers";
 
-const SHOTS = "/private/tmp/claude-1032810210/-Users-kyo-lai82-Projects-Personal-merge10-ios/6a56a82e-5baa-4828-bcdd-2f7dc1fe927f/scratchpad/ui-shots";
-
 test.use({ ...NO_DEBUG_START, viewport: { width: 390, height: 844 } });
 
 function runWith(enemyId: string, battleIndex: number): RunState {
@@ -31,8 +29,6 @@ test("a rockfall shows a banner and highlights the new stones", async ({ page })
   await expect(page.locator("#adv-cue")).toBeVisible();
   await expect(page.locator("#adv-cue")).toContainText("落石");
   await expect(page.locator("#adv-cue-cells .adv-cue-cell").first()).toBeVisible();
-  await page.waitForTimeout(300); // let the fade-in reach full opacity
-  await page.screenshot({ path: `${SHOTS}/cue-rockfall-v2.png` });
   await waitIdle(page);
 });
 
@@ -55,7 +51,6 @@ test("a stuck board with mana shows a persistent banner and suggests spells unti
   const grid: GameGrid = Array.from({ length: 4 }, () => [STONE, STONE, STONE, STONE]);
   await setRun(page, { ...run, battle: { ...run.battle!, grid, mana: 5, countdown: 4 } });
   await expect(page.locator("#adv-stuck")).toBeVisible();
-  await page.screenshot({ path: `${SHOTS}/stuck-v2.png` });
   await expect(page.locator(".adv-spell.suggested").first()).toBeVisible();
   await page.waitForTimeout(2000);
   await expect(page.locator("#adv-stuck")).toBeVisible(); // does not fade
