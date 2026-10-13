@@ -2,10 +2,8 @@
 
 ## Character Sprites
 
-**Animated Rogue Spritesheet** (`public/sprites/character_rogue.png`)
-- Author: Calciumtrice
-- License: [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/)
-- Source: https://opengameart.org/content/animated-rogue
+**LPC party sprites** (`public/sprites/party-lpc/`)
+- Per-character author/license credits: see `credits.txt` in each character folder
 
 ## Monster Sprites
 
