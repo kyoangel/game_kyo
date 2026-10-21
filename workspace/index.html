@@ -408,6 +408,69 @@
     #tipjar-status {
       margin-top: 8px !important;
     }
+    #parental-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #parental-gate[hidden] {
+      display: none;
+    }
+    #parental-gate-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+    }
+    #parental-gate-card {
+      position: relative;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 20px 24px;
+      max-width: 320px;
+      width: 90%;
+      color: #e5e7eb;
+      font-family: sans-serif;
+      text-align: center;
+      z-index: 1;
+    }
+    #parental-gate-question {
+      font-size: 16px;
+      margin: 0 0 12px;
+    }
+    #parental-gate-input {
+      width: 80px;
+      font-size: 18px;
+      text-align: center;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #111827;
+      color: #e5e7eb;
+    }
+    #parental-gate-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 14px;
+    }
+    #parental-gate-buttons button {
+      font-size: 14px;
+      font-weight: bold;
+      padding: 6px 16px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      background: #374151;
+      color: #e5e7eb;
+    }
+    #parental-gate-ok {
+      background: #f97316 !important;
+      color: #fff !important;
+    }
     #trophy-modal {
       position: fixed;
       inset: 0;
@@ -760,6 +823,17 @@
         </div>
       </div>
     </div>
+    <div id="parental-gate" role="dialog" aria-modal="true" aria-labelledby="parental-gate-question" hidden>
+      <div id="parental-gate-overlay"></div>
+      <div id="parental-gate-card">
+        <p id="parental-gate-question"></p>
+        <input id="parental-gate-input" type="text" inputmode="numeric" autocomplete="off" aria-label="家長驗證答案">
+        <div id="parental-gate-buttons">
+          <button type="button" id="parental-gate-ok">確認</button>
+          <button type="button" id="parental-gate-cancel">取消</button>
+        </div>
+      </div>
+    </div>
     <div id="trophy-modal" hidden>
       <div id="trophy-modal-overlay"></div>
       <div id="trophy-modal-card">
@@ -889,21 +963,34 @@
 
         tipButtons.forEach(function (btn) {
           btn.addEventListener("click", function () {
-            tipButtons.forEach(function (b) { b.disabled = true; });
+            // Parental gate (src/parentalGate.ts): children must not start a purchase.
             tipJarStatus.className = "hidden";
-            tipJar.purchase({ productId: btn.dataset.productId }).then(function (result) {
-              if (result.success) {
-                tipJarStatus.textContent = "🙏 感謝你的支持！";
-              } else if (result.reason !== "cancelled") {
-                tipJarStatus.textContent = "購買未完成，請稍後再試";
+            var wait = window.askParentalGate(function (passed) {
+              if (passed === null) return;
+              if (!passed) {
+                tipJarStatus.textContent = "答案不正確，已取消";
+                tipJarStatus.className = "";
+                return;
               }
-              tipJarStatus.className = "";
-            }).catch(function () {
-              tipJarStatus.textContent = "購買失敗，請稍後再試";
-              tipJarStatus.className = "";
-            }).finally(function () {
-              tipButtons.forEach(function (b) { b.disabled = false; });
+              tipButtons.forEach(function (b) { b.disabled = true; });
+              tipJar.purchase({ productId: btn.dataset.productId }).then(function (result) {
+                if (result.success) {
+                  tipJarStatus.textContent = "🙏 感謝你的支持！";
+                } else if (result.reason !== "cancelled") {
+                  tipJarStatus.textContent = "購買未完成，請稍後再試";
+                }
+                tipJarStatus.className = "";
+              }).catch(function () {
+                tipJarStatus.textContent = "購買失敗，請稍後再試";
+                tipJarStatus.className = "";
+              }).finally(function () {
+                tipButtons.forEach(function (b) { b.disabled = false; });
+              });
             });
+            if (wait > 0) {
+              tipJarStatus.textContent = "請稍後再試（剩 " + wait + " 秒）";
+              tipJarStatus.className = "";
+            }
           });
         });
       }

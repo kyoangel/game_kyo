@@ -2,6 +2,9 @@ import { audio } from "./game";
 import { initMenu } from "./adventure/menu";
 import { seededRngFromSearch } from "./adventure/rng";
 import { createAdventureView } from "./adventure/view";
+import { installParentalGate } from "./parentalGate";
+
+installParentalGate();
 
 const dev = import.meta.env.DEV;
 
