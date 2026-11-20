@@ -1,0 +1,5 @@
+[
+  { "href": "./merge10/", "icon": "🔢", "title": { "en": "Math Merge 10" }, "description": { "en": "Slide tiles so numbers add up to 10.", "zh-TW": "滑動格子，讓數字相加為 10 來消除" } },
+  { "href": "./merge10x/", "icon": "✖️", "title": { "en": "Math Merge 10X" }, "description": { "en": "Clear 2, 3 or 4 tiles that sum to 10 on a 4×4 or 5×5 board.", "zh-TW": "2·3·4 個格子加總 = 10 即消除，可選 4×4 或 5×5 盤面" } },
+  { "href": "./pixel-squad/", "icon": "⚔️", "title": { "en": "Pixel Squad" }, "description": { "en": "Turn-based wasteland RPG: build a squad and take on enemy stages.", "zh-TW": "末日廢土回合制 RPG，組建小隊挑戰敵方關卡" } }
+]
