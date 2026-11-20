@@ -1,127 +1,41 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
+<!doctype html>
+<html lang="en" data-lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Game Kyo</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      min-height: 100vh;
-      background: #111;
-      color: #e5e7eb;
-      font-family: system-ui, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px 16px 64px;
-    }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      margin-bottom: 8px;
-      color: #f9fafb;
-    }
-
-    .subtitle {
-      font-size: 0.95rem;
-      color: #6b7280;
-      margin-bottom: 48px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 20px;
-      width: 100%;
-      max-width: 720px;
-    }
-
-    a.card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 28px 16px 24px;
-      background: #1a1a2e;
-      border: 1px solid #2d2d44;
-      border-radius: 14px;
-      text-decoration: none;
-      color: inherit;
-      transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
-    }
-
-    a.card:hover {
-      border-color: #6366f1;
-      transform: translateY(-3px);
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
-    }
-
-    .card-icon {
-      font-size: 2.8rem;
-      line-height: 1;
-    }
-
-    .card-name {
-      font-size: 1.05rem;
-      font-weight: 600;
-      color: #f3f4f6;
-      text-align: center;
-    }
-
-    .card-desc {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      text-align: center;
-      line-height: 1.5;
-    }
-
-    .badge {
-      font-size: 0.65rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #312e81;
-      color: #a5b4fc;
-      text-transform: uppercase;
-    }
-
-    footer {
-      margin-top: 64px;
-      font-size: 0.75rem;
-      color: #374151;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Kyo</title>
+<meta name="description" content="Free mini games — play instantly in your browser">
+<link rel="canonical" href="https://kyoangel.github.io/game_kyo/">
+<link rel="stylesheet" href="./static/site.css">
+<script>(function(){var l;try{l=localStorage.getItem('gk:lang')}catch(e){}if(l!=='en'&&l!=='zh-TW'){l=/^zh/i.test(navigator.language)?'zh-TW':'en'}document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;})();</script>
 </head>
 <body>
-  <h1>🎮 Game Kyo</h1>
-  <p class="subtitle">選一個遊戲開始</p>
-
-  <div class="grid">
-    <a class="card" href="/game_kyo/merge10/">
-      <div class="card-icon">🔢</div>
-      <div class="card-name">Math Merge 10</div>
-      <div class="card-desc">滑動格子，讓數字相加為 10 來消除</div>
-      <span class="badge">puzzle</span>
-    </a>
-    <a class="card" href="/game_kyo/merge10x/">
-      <div class="card-icon">✖️</div>
-      <div class="card-name">Math Merge 10X</div>
-      <div class="card-desc">2·3·4 個格子加總 = 10 即消除，可選 4×4 或 5×5 盤面</div>
-      <span class="badge">puzzle</span>
-    </a>
-    <a class="card" href="/game_kyo/pixel-squad/">
-      <div class="card-icon">⚔️</div>
-      <div class="card-name">Pixel Squad</div>
-      <div class="card-desc">末日廢土回合制 RPG，組建小隊挑戰敵方關卡</div>
-      <span class="badge">rpg</span>
-    </a>
-  </div>
-
-  <footer>kyoangel.github.io/game_kyo</footer>
+<div class="lang-switch"><button data-set-lang="en">EN</button><button data-set-lang="zh-TW">繁中</button></div>
+<header><h1>Game Kyo</h1><p class="tagline"><span lang="en" data-l="en">Free mini games — play instantly in your browser</span><span lang="zh-TW" data-l="zh-TW">免費小遊戲，打開瀏覽器就能玩</span></p></header>
+<nav class="filters"><button data-filter="*"><span lang="en" data-l="en">All</span><span lang="zh-TW" data-l="zh-TW">全部</span></button><button data-filter="arcade">arcade</button><button data-filter="reflex">reflex</button></nav>
+<main class="grid">
+<a class="card" href="./dodge-drop/" data-slug="dodge-drop" data-tags="arcade reflex">
+<img src="./dodge-drop/game/cover.svg" alt="" loading="lazy" width="320" height="180">
+<h2><span lang="en" data-l="en">Dodge Drop</span><span lang="zh-TW" data-l="zh-TW">閃避落塊</span></h2>
+<p><span lang="en" data-l="en">Blocks rain from the sky. Slide left and right to survive as long as you can.</span><span lang="zh-TW" data-l="zh-TW">方塊從天而降，左右閃避，撐得越久越好。</span></p>
+<p class="best" hidden><span lang="en" data-l="en">Best</span><span lang="zh-TW" data-l="zh-TW">最高分</span>: <b></b></p>
+</a>
+<a class="card legacy" href="./merge10/" data-tags="">
+<div class="icon">🔢</div>
+<h2><span lang="en" data-l="en">Math Merge 10</span><span lang="zh-TW" data-l="zh-TW">Math Merge 10</span></h2>
+<p><span lang="en" data-l="en">Slide tiles so numbers add up to 10.</span><span lang="zh-TW" data-l="zh-TW">滑動格子，讓數字相加為 10 來消除</span></p>
+</a>
+<a class="card legacy" href="./merge10x/" data-tags="">
+<div class="icon">✖️</div>
+<h2><span lang="en" data-l="en">Math Merge 10X</span><span lang="zh-TW" data-l="zh-TW">Math Merge 10X</span></h2>
+<p><span lang="en" data-l="en">Clear 2, 3 or 4 tiles that sum to 10 on a 4×4 or 5×5 board.</span><span lang="zh-TW" data-l="zh-TW">2·3·4 個格子加總 = 10 即消除，可選 4×4 或 5×5 盤面</span></p>
+</a>
+<a class="card legacy" href="./pixel-squad/" data-tags="">
+<div class="icon">⚔️</div>
+<h2><span lang="en" data-l="en">Pixel Squad</span><span lang="zh-TW" data-l="zh-TW">Pixel Squad</span></h2>
+<p><span lang="en" data-l="en">Turn-based wasteland RPG: build a squad and take on enemy stages.</span><span lang="zh-TW" data-l="zh-TW">末日廢土回合制 RPG，組建小隊挑戰敵方關卡</span></p>
+</a>
+</main>
+<script>document.querySelectorAll('[data-set-lang]').forEach(function(b){b.addEventListener('click',function(){var l=b.getAttribute('data-set-lang');document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;try{localStorage.setItem('gk:lang',l)}catch(e){}});});document.querySelectorAll('[data-filter]').forEach(function(b){b.addEventListener('click',function(){var t=b.getAttribute('data-filter');document.querySelectorAll('.card').forEach(function(c){var tags=(c.getAttribute('data-tags')||'').split(' ');c.hidden=t!=='*'&&tags.indexOf(t)<0;});});});document.querySelectorAll('[data-slug]').forEach(function(c){var v=null;try{v=localStorage.getItem('gk:'+c.getAttribute('data-slug')+':best')}catch(e){}if(v){var el=c.querySelector('.best');el.hidden=false;el.querySelector('b').textContent=v;}});</script>
 </body>
 </html>

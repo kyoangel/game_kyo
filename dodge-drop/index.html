@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dodge Drop · Game Kyo</title>
+<meta name="description" content="Blocks rain from the sky. Slide left and right to survive as long as you can.">
+<link rel="canonical" href="https://kyoangel.github.io/game_kyo/dodge-drop/">
+<link rel="stylesheet" href="../static/site.css">
+<script>(function(){var l;try{l=localStorage.getItem('gk:lang')}catch(e){}if(l!=='en'&&l!=='zh-TW'){l=/^zh/i.test(navigator.language)?'zh-TW':'en'}document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;})();</script>
+</head>
+<body>
+<div class="lang-switch"><button data-set-lang="en">EN</button><button data-set-lang="zh-TW">繁中</button></div>
+<header class="game-header"><a class="back" href="../"><span lang="en" data-l="en">← All games</span><span lang="zh-TW" data-l="zh-TW">← 所有遊戲</span></a><h1><span lang="en" data-l="en">Dodge Drop</span><span lang="zh-TW" data-l="zh-TW">閃避落塊</span></h1></header>
+<div class="frame portrait"><iframe src="./game/index.html" title="Dodge Drop" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
+<section class="about"><p><span lang="en" data-l="en">Blocks rain from the sky. Slide left and right to survive as long as you can.</span><span lang="zh-TW" data-l="zh-TW">方塊從天而降，左右閃避，撐得越久越好。</span></p><h2><span lang="en" data-l="en">How to play</span><span lang="zh-TW" data-l="zh-TW">玩法</span></h2><p><span lang="en" data-l="en">Drag or tap to move. Arrow keys work too. Every block you dodge scores a point; one hit ends the round.</span><span lang="zh-TW" data-l="zh-TW">拖曳或點擊移動，也可以用方向鍵。每閃過一個方塊得 1 分，被打中就結束。</span></p></section>
+<script>document.querySelectorAll('[data-set-lang]').forEach(function(b){b.addEventListener('click',function(){var l=b.getAttribute('data-set-lang');document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;try{localStorage.setItem('gk:lang',l)}catch(e){}});});</script>
+</body>
+</html>
