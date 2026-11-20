@@ -1,12 +1,12 @@
 {
   "slug": "dodge-drop",
   "version": "0.1.0",
-  "title": { "en": "Dodge Drop", "zh-TW": "Dodge Drop" },
-  "description": { "en": "Tap the circles before they disappear.", "zh-TW": "在圓圈消失前點擊它們。" },
-  "instructions": { "en": "Tap or click each circle. Miss three and the round ends.", "zh-TW": "點擊每個圓圈，漏掉三個就結束。" },
-  "tags": ["arcade"],
+  "title": { "en": "Dodge Drop", "zh-TW": "閃避落塊" },
+  "description": { "en": "Blocks rain from the sky. Slide left and right to survive as long as you can.", "zh-TW": "方塊從天而降，左右閃避，撐得越久越好。" },
+  "instructions": { "en": "Drag or tap to move. Arrow keys work too. Every block you dodge scores a point; one hit ends the round.", "zh-TW": "拖曳或點擊移動，也可以用方向鍵。每閃過一個方塊得 1 分，被打中就結束。" },
+  "tags": ["arcade", "reflex"],
   "orientation": "portrait",
-  "controls": ["mouse", "touch"],
+  "controls": ["mouse", "touch", "keyboard"],
   "cover": "cover.svg",
   "targets": ["site", "crazygames", "gamedistribution"],
   "releases": {}

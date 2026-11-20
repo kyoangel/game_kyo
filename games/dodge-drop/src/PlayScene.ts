@@ -1,58 +1,76 @@
 import Phaser from 'phaser';
 import { getKit } from '@gf/game-kit';
+import { fallSpeed, PLAYER_SPEED, spawnInterval } from './difficulty.ts';
 
-const MAX_MISSES = 3;
-const RADIUS = 48;
+const PLAYER_W = 90;
+const PLAYER_H = 28;
 
-/** Template mechanic: tap circles before they vanish. Replace with your game. Scene key MUST be 'Play'. */
 export class PlayScene extends Phaser.Scene {
-  private score = 0;
-  private misses = 0;
-  private target?: Phaser.GameObjects.Arc;
-  private timer?: Phaser.Time.TimerEvent;
+  private player!: Phaser.GameObjects.Rectangle;
+  private blocks: Phaser.GameObjects.Rectangle[] = [];
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private hud!: Phaser.GameObjects.Text;
+  private elapsed = 0;
+  private spawnIn = 0;
+  private dodged = 0;
+  private over = false;
 
   constructor() {
     super('Play');
   }
 
   create(): void {
-    this.score = 0;
-    this.misses = 0;
-    this.hud = this.add.text(24, 24, '', { fontSize: '32px', color: '#ffffff' });
-    this.updateHud();
-    this.spawn();
-  }
-
-  private spawn(): void {
-    this.target?.destroy();
-    this.timer?.remove();
     const { width, height } = this.scale;
-    const x = Phaser.Math.Between(RADIUS, width - RADIUS);
-    const y = Phaser.Math.Between(RADIUS + 100, height - RADIUS);
-    const target = this.add.circle(x, y, RADIUS, 0xfacc15).setInteractive({ useHandCursor: true });
-    target.once('pointerdown', () => {
-      this.score += 1;
-      this.updateHud();
-      this.spawn();
+    this.blocks = [];
+    this.elapsed = 0;
+    this.spawnIn = 0;
+    this.dodged = 0;
+    this.over = false;
+    this.player = this.add.rectangle(width / 2, height - 80, PLAYER_W, PLAYER_H, 0x4ade80);
+    this.hud = this.add.text(24, 24, '', { fontSize: '32px', color: '#ffffff' });
+    this.cursors = this.input.keyboard?.createCursorKeys();
+    const follow = (p: Phaser.Input.Pointer) => this.movePlayerTo(p.x);
+    this.input.on('pointerdown', follow);
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (p.isDown) follow(p);
     });
-    this.target = target;
-    this.timer = this.time.delayedCall(Math.max(450, 1200 - this.score * 25), () => this.miss());
   }
 
-  private miss(): void {
-    this.misses += 1;
-    this.updateHud();
-    if (this.misses >= MAX_MISSES) {
-      this.target?.destroy();
-      void getKit(this).gameOver(this.score);
-      return;
+  update(_time: number, deltaMs: number): void {
+    if (this.over) return;
+    const dt = deltaMs / 1000;
+    const { width, height } = this.scale;
+    this.elapsed += dt;
+
+    if (this.cursors?.left.isDown) this.movePlayerTo(this.player.x - PLAYER_SPEED * dt);
+    if (this.cursors?.right.isDown) this.movePlayerTo(this.player.x + PLAYER_SPEED * dt);
+
+    this.spawnIn -= dt;
+    if (this.spawnIn <= 0) {
+      const w = Phaser.Math.Between(60, 160);
+      this.blocks.push(this.add.rectangle(Phaser.Math.Between(w / 2, width - w / 2), -30, w, 40, 0xf87171));
+      this.spawnIn = spawnInterval(this.elapsed);
     }
-    this.spawn();
+
+    const speed = fallSpeed(this.elapsed);
+    const playerBounds = this.player.getBounds();
+    for (const block of [...this.blocks]) {
+      block.y += speed * dt;
+      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, block.getBounds())) {
+        this.over = true;
+        void getKit(this).gameOver(this.dodged);
+        return;
+      }
+      if (block.y - block.height / 2 > height) {
+        block.destroy();
+        this.blocks.splice(this.blocks.indexOf(block), 1);
+        this.dodged += 1;
+      }
+    }
+    this.hud.setText(`${getKit(this).t('gk.score')}: ${this.dodged}`);
   }
 
-  private updateHud(): void {
-    const lives = '●'.repeat(MAX_MISSES - this.misses);
-    this.hud.setText(`${getKit(this).t('gk.score')}: ${this.score}   ${lives}`);
+  private movePlayerTo(x: number): void {
+    this.player.x = Phaser.Math.Clamp(x, PLAYER_W / 2, this.scale.width - PLAYER_W / 2);
   }
 }
