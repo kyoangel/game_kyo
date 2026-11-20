@@ -1,0 +1,13 @@
+{
+  "name": "@gf/game-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@gf/platform": "*",
+    "phaser": "^3.88.0"
+  }
+}
