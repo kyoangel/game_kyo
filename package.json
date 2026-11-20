@@ -1,0 +1,22 @@
+{
+  "name": "game-factory",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "games/*"],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "new-game": "node scripts/new-game.ts",
+    "build:local": "node scripts/build-games.ts local",
+    "build:site": "node scripts/build-site.ts",
+    "test:smoke": "npm run build:local && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^24.0.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.8.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}

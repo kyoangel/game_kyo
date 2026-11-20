@@ -64,7 +64,7 @@ game-factory/
 
 ```ts
 type PlatformId = 'local' | 'site' | 'crazygames' | 'gamedistribution';
-type AdResult = 'rewarded' | 'skipped' | 'unavailable';
+type AdResult = 'shown' | 'rewarded' | 'skipped' | 'unavailable'; // 'shown' = interstitial played
 
 interface Platform {
   readonly id: PlatformId;
@@ -106,11 +106,11 @@ Build 選擇：Vite alias `@platform/active` → `packages/platform/src/adapters
 | API / 功能 | 職責 |
 |---|---|
 | `defineGame({ scenes, ... })` | 建立 Phaser.Game（Scale.FIT，手機/桌機皆可）、初始化 platform、回報載入進度 |
-| 標準場景流程 | Boot → Preload（自動回報 loadingProgress）→ 遊戲的 PlayScene → 共用 GameOver（重玩 / 看廣告續命） |
+| 標準場景流程 | Preload（自動回報 loadingProgress）→ Title → 遊戲的 PlayScene → 共用 GameOver（重玩）；看廣告續命由遊戲自行以 `kit.showRewarded()` 實作 |
 | `kit.start()` | 呼叫 `gameplayStart` |
 | `kit.gameOver(score)` | 呼叫 `gameplayStop`、記錄本機最高分、進入 GameOver |
 | `kit.breakpoint()` | 標記插頁廣告時機（呼叫 `showInterstitial`，期間暫停） |
-| 暫停/音效 | 分頁隱藏與廣告期間自動暫停並靜音 |
+| 暫停/音效 | 廣告期間暫停 game loop 並靜音；分頁隱藏沿用 Phaser 內建的自動暫停 |
 | `t('key')` | i18n；EN 必備，繁中支援 |
 | 輸入 | 點擊/觸控/鍵盤統一 |
 
@@ -136,7 +136,7 @@ games/<slug>/
 ## 4. 自己的網站（`site/`）
 
 - build 時掃描 `games/*/game.json` 自動產生大廳，新增遊戲不需改網站。
-- **每款遊戲獨立網址** `/<slug>/`（非 hash 路由），頁面含標題、說明、玩法文字，以利 SEO。
+- **每款遊戲獨立網址** `/<slug>/`（非 hash 路由）：外框頁含標題、說明、玩法文字（SEO），遊戲本體在 `/<slug>/game/` 以 iframe 嵌入。
 - 大廳第一版：遊戲卡片、標籤篩選、繁中/EN 切換、本機最高分；既有三款遊戲以外部連結卡片列出（沿用其現有網址）。
 - 第一版無廣告；`ads.txt` 於 §5.1 第二階段才加入。
 
@@ -145,12 +145,12 @@ games/<slug>/
 ### 5.1 網域與託管（兩階段）
 
 **第一階段（現在）：免費 GitHub Pages，無廣告**
-- `site` 部署於 `kyoangel.github.io/game_kyo/`。Vite `base` 一律由環境變數 `SITE_BASE` 控制（預設 `/game_kyo/`），程式碼內不得寫死路徑，確保日後換網域只改設定。
+- `site` 部署於 `kyoangel.github.io/game_kyo/`。網站與遊戲內所有連結一律用相對路徑（`./`、`../`），遊戲 build 用 `base: './'`；`SITE_URL` 環境變數只用於 canonical 網址。換網域時只改 `SITE_URL`。
 - 入口站（CrazyGames、GameDistribution）不受影響，可照常送審與分潤。
 
 **第二階段（累積數款遊戲後，由使用者決定時機）：自訂網域 + AdSense**
 - 自訂網域（建議 Cloudflare Registrar），指向 GitHub Pages：根網域 A 記錄 `185.199.108.153`～`185.199.111.153`，`www` CNAME → `kyoangel.github.io`；啟用 Enforce HTTPS；於 GitHub 帳號驗證網域。
-- `SITE_BASE=/`；加入 `ads.txt`；申請 AdSense H5 Games，通過後 `site` adapter 接上廣告。
+- `SITE_URL=https://<domain>/`；加入 `ads.txt`；申請 AdSense H5 Games，通過後 `site` adapter 接上廣告。
 - 若流量超過 GitHub Pages 軟性上限（約 100 GB/月）或觸及其商業用途條款，改用 Cloudflare Pages，網域不變。
 
 ### 5.2 CI（擴充現有 `.github/workflows/deploy.yml`）
