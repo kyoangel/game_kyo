@@ -14,7 +14,7 @@ jobs:
       merge10: ${{ steps.filter.outputs.merge10 }}
       merge10x: ${{ steps.filter.outputs.merge10x }}
       pixel-squad: ${{ steps.filter.outputs.pixel-squad }}
-      hub: ${{ steps.filter.outputs.hub }}
+      platform: ${{ steps.filter.outputs.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -27,8 +27,18 @@ jobs:
               - 'workspace-merge10x/**'
             pixel-squad:
               - 'workspace-pixel-squad/**'
-            hub:
-              - 'hub/**'
+            platform:
+              - 'packages/**'
+              - 'games/**'
+              - 'site/**'
+              - 'scripts/**'
+              - 'templates/**'
+              - 'e2e/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'vitest.config.ts'
+              - 'playwright.config.ts'
 
   build-merge10:
     needs: changes
@@ -108,15 +118,37 @@ jobs:
           name: dist-pixel-squad
           path: workspace-pixel-squad/dist
 
+  build-platform:
+    needs: changes
+    if: needs.changes.outputs.platform == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:smoke
+      - run: npm run build:site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-site
+          path: dist/site
+
   deploy:
-    needs: [changes, build-merge10, build-merge10x, build-pixel-squad]
+    needs: [changes, build-merge10, build-merge10x, build-pixel-squad, build-platform]
     if: |
       always() && !failure() && !cancelled() &&
       (
         needs.build-merge10.result == 'success' ||
         needs.build-merge10x.result == 'success' ||
         needs.build-pixel-squad.result == 'success' ||
-        needs.changes.outputs.hub == 'true'
+        needs.build-platform.result == 'success'
       )
     runs-on: ubuntu-latest
     steps:
@@ -164,11 +196,16 @@ jobs:
           branch: gh-pages
           clean: false
 
-      - name: Deploy hub
-        if: needs.changes.outputs.hub == 'true'
+      - uses: actions/download-artifact@v4
+        if: needs.build-platform.result == 'success'
+        with:
+          name: dist-site
+          path: dist/site
+      - name: Deploy site (lobby + new games)
+        if: needs.build-platform.result == 'success'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: hub
+          folder: dist/site
           target-folder: .
           branch: gh-pages
           clean: false
