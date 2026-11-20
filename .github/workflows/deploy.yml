@@ -39,6 +39,7 @@ jobs:
               - 'tsconfig*.json'
               - 'vitest.config.ts'
               - 'playwright.config.ts'
+              - '.github/workflows/deploy.yml'
 
   build-merge10:
     needs: changes
