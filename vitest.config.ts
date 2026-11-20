@@ -17,5 +17,7 @@ export default defineConfig({
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     environment: 'node',
+    // Node 26 ships a global localStorage getter that shadows jsdom's; disable it so jsdom tests get jsdom's storage.
+    poolOptions: { forks: { execArgv: ['--no-experimental-webstorage'] } },
   },
 });
