@@ -1,0 +1,13 @@
+{
+  "slug": "dodge-drop",
+  "version": "0.1.0",
+  "title": { "en": "Dodge Drop", "zh-TW": "Dodge Drop" },
+  "description": { "en": "Tap the circles before they disappear.", "zh-TW": "在圓圈消失前點擊它們。" },
+  "instructions": { "en": "Tap or click each circle. Miss three and the round ends.", "zh-TW": "點擊每個圓圈，漏掉三個就結束。" },
+  "tags": ["arcade"],
+  "orientation": "portrait",
+  "controls": ["mouse", "touch"],
+  "cover": "cover.svg",
+  "targets": ["site", "crazygames", "gamedistribution"],
+  "releases": {}
+}
