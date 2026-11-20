@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status (2026-11-21):** ✅ All 8 tasks complete (commits bbb4ae5..3944bc3). Live: https://kyoangel.github.io/game_kyo/ . Deviation: vitest forks run with `--no-experimental-webstorage` (Node 26 localStorage shadows jsdom); deploy.yml added to the platform paths filter.
+
 **Goal:** Stand up the npm-workspaces mini-game framework (platform abstraction + Phaser game-kit + game template), ship the first new game `dodge-drop`, and deploy a generated lobby site to GitHub Pages.
 
 **Architecture:** Games call a single `Platform` interface; Vite aliases `@platform/active` to exactly one adapter file chosen by the `PLATFORM` env var, so each build contains only that platform's code. `@gf/game-kit` wraps Phaser 3 with standard Preload → Title → Play → GameOver scenes and a `GameSession` that owns gameplay/ad/best-score state. A Node script renders a static, SEO-friendly lobby plus one wrapper page per game from each `games/<slug>/game.json`.
