@@ -3,3 +3,8 @@ export { getKit, Kit, KIT_KEY } from './kit.ts';
 export { GameSession, type SessionState } from './session.ts';
 export { createI18n, mergeStrings, resolveLocale, type Strings } from './i18n.ts';
 export type { GameManifest } from './manifest.ts';
+export { DEFAULT_THEME, resolveTheme, cssColor, type Theme } from './theme.ts';
+export { SaveData } from './save.ts';
+export { addTrauma, decayTrauma, shakeOffset } from './juice/trauma.ts';
+export { PENTATONIC, pentatonic } from './audio/notes.ts';
+export { keyVector, joystickVector, type Vec } from './input/vector.ts';

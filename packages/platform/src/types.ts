@@ -8,6 +8,7 @@ export const AD_RESULTS: readonly AdResult[] = ['shown', 'rewarded', 'skipped', 
 export interface PlatformFeatures {
   externalLinks: boolean;
   leaderboard: boolean;
+  rewardedAds: boolean;
 }
 
 export interface PlatformStorage {

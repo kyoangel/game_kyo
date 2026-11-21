@@ -87,7 +87,7 @@ describe('crazygames adapter specifics', () => {
   it('has id crazygames, no external links, no leaderboard', () => {
     const { platform } = make();
     expect(platform.id).toBe('crazygames');
-    expect(platform.features).toEqual({ externalLinks: false, leaderboard: false });
+    expect(platform.features).toEqual({ externalLinks: false, leaderboard: false, rewardedAds: true });
   });
 
   it('loads the SDK script once and inits the SDK once even if init is called twice', async () => {
