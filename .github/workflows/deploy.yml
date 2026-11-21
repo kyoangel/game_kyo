@@ -141,6 +141,28 @@ jobs:
           name: dist-site
           path: dist/site
 
+  release-portals:
+    needs: [changes, build-platform]
+    if: needs.build-platform.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:portals
+      - run: npm run build:portals
+      - name: Create GitHub Releases for new game versions
+        run: node scripts/release-portals.ts
+
   deploy:
     needs: [changes, build-merge10, build-merge10x, build-pixel-squad, build-platform]
     if: |
