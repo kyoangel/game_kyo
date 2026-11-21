@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkArtifact, MAX_ARTIFACT_BYTES, SDK_HOSTS } from './check-artifact.ts';
+import { checkArtifact, INERT_URL_PREFIXES, MAX_ARTIFACT_BYTES, SDK_HOSTS } from './check-artifact.ts';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -28,6 +28,24 @@ describe('checkArtifact', () => {
       'assets/main.js': `fetch("https://${SDK_HOSTS.crazygames}/crazygames-sdk-v3.js");var ns="http://www.w3.org/2000/svg";`,
     });
     expect(checkArtifact(dir, 'crazygames')).toEqual([]);
+  });
+
+  it('accepts every exact inert Phaser URL prefix', () => {
+    const js = INERT_URL_PREFIXES.map((u, i) => `var u${i}="${u}";`).join('') + 'var l="https://opensource.org/licenses/MIT|MIT";';
+    const dir = fixture({ 'index.html': INDEX, 'assets/main.js': js });
+    expect(checkArtifact(dir, 'crazygames')).toEqual([]);
+  });
+
+  it('rejects other URLs on inert hosts and prefix-lookalike hosts', () => {
+    for (const url of [
+      'https://github.com/someone/repo',
+      'https://opensource.org/other',
+      'https://phaser.io.evil.com/x',
+      'https://github.com/niklasvh/base64-arraybuffer-evil',
+    ]) {
+      const dir = fixture({ 'index.html': INDEX, 'assets/main.js': `var u="${url}";` });
+      expect(checkArtifact(dir, 'crazygames').join('\n'), url).toMatch(/is not allowed/);
+    }
   });
 
   it('passes a clean gamedistribution build', () => {

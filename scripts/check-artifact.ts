@@ -17,18 +17,31 @@ const FOREIGN_SDK_HOST: Record<PortalPlatform, string> = {
 };
 
 /**
- * Hosts that appear as inert text inside the bundled Phaser library (license headers, credits, XML/SVG
- * namespaces). Found by scanning a real PLATFORM=site build of dodge-drop; none is ever fetched at runtime.
- * Keep this list minimal: add a host only after inspecting its context in the bundle.
+ * Exact URLs (prefixes) that appear as inert text inside the bundled Phaser library (license headers, credits,
+ * XML/SVG namespaces). Found by scanning a real build of dodge-drop; none is ever fetched at runtime. Whole hosts
+ * are NOT allowed (e.g. a real github.com link in a game must still be rejected, portals ban external links).
+ * A prefix matches only at a boundary: the URL must equal it or continue with one of "/ | ? #".
+ * Keep this list minimal: add an entry only after inspecting its context in the bundle.
  */
-export const INERT_HOSTS: readonly string[] = [
-  'www.w3.org',
-  'opensource.org',
-  'github.com',
-  'phaser.io',
-  'prunegames.com',
-  'steffe.se',
+export const INERT_URL_PREFIXES: readonly string[] = [
+  'https://opensource.org/licenses/MIT',
+  'https://github.com/photonstorm/phaser3-plugin-template/blob/master/LICENSE',
+  'https://github.com/photonstorm/phaser/blob/master/license.txt',
+  'https://github.com/niklasvh/base64-arraybuffer',
+  'https://phaser.io',
+  'http://prunegames.com',
+  'http://steffe.se',
+  'http://www.w3.org/2000/svg',
+  'http://www.w3.org/1999/xhtml',
 ];
+
+function isInertUrl(url: string): boolean {
+  return INERT_URL_PREFIXES.some((prefix) => {
+    if (!url.startsWith(prefix)) return false;
+    const next = url.charAt(prefix.length);
+    return next === '' || '/|?#'.includes(next);
+  });
+}
 
 const TEXT_EXT = new Set(['.html', '.js', '.css', '.json']);
 const URL_RE = /https?:\/\/[^\s"'`<>()\\]+/gi;
@@ -73,7 +86,7 @@ export function checkArtifact(dir: string, platform: PortalPlatform): string[] {
   }
   if (!files.some((f) => f.rel === 'index.html')) errors.push('index.html missing at the artifact root');
 
-  const allowed = new Set<string>([SDK_HOSTS[platform], ...INERT_HOSTS]);
+  const allowed = new Set<string>([SDK_HOSTS[platform]]);
   const foreign = FOREIGN_SDK_HOST[platform];
   const seen = new Set<string>();
 
@@ -89,11 +102,11 @@ export function checkArtifact(dir: string, platform: PortalPlatform): string[] {
     for (const url of text.match(URL_RE) ?? []) {
       const host = HOST_RE.exec(url)?.[1]?.toLowerCase();
       if (!host || !VALID_HOST_RE.test(host)) continue;
-      if (allowed.has(host) || host === foreign) continue;
+      if (allowed.has(host) || host === foreign || isInertUrl(url)) continue;
       const key = `${host}|${file.rel}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      errors.push(`external URL host "${host}" is not allowed for ${platform} (in ${file.rel})`);
+      errors.push(`external URL "${url}" (host "${host}") is not allowed for ${platform} (in ${file.rel})`);
     }
   }
   return errors;
