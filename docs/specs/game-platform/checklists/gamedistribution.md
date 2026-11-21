@@ -27,7 +27,7 @@ Produced by `npm run build:portals` (CI job `release-portals` attaches the zip t
 - [ ] Local testing: ads generally do not show locally; use `gdsdk.openConsole()` in the browser console (select the right frame when iframed). We never set `advertisementSettings.debug`.
 - [ ] Interstitials must be triggered from a user gesture (GD docs: call `showAd()` from a mouseup / touchend handler). Confirm the game's ad moments (game over, retry) follow a tap or key press; otherwise the ad may silently not show.
 - [ ] Game title, description, instructions and tags entered (from `game.json`).
-- [ ] Thumbnails / screenshots uploaded. **UNVERIFIED:** required sizes (GD docs not found); prepare them by hand (no cover-rendering script exists yet).
+- [ ] Thumbnails / screenshots uploaded. The PNGs from `npm run covers -- <slug>` in `games/<slug>/store/` are a starting point. **UNVERIFIED:** required sizes (GD docs not found); confirm on the upload form and re-crop by hand if needed.
 - [ ] No other portal's branding, no external links (the adapter sets `features.externalLinks = false`).
 - [ ] Game pauses and mutes during ads, and works with ads unavailable.
 - [ ] Request publication. **UNVERIFIED / conflicting:** review time is "up to 2 days" (FAQ) vs "up to two weeks" (SDK wiki).

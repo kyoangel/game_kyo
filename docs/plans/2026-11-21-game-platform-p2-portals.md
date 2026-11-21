@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status (2026-11-21):** All 8 tasks complete (commits c905229..HEAD of the P2 series). Manual submission steps remain with the user (see Task 8 Step 8).
+
 **Goal:** Add the `crazygames` and `gamedistribution` platform adapters, build-artifact checks, per-portal zips published as GitHub Releases, a release-status command, per-platform submission checklists and store covers, so `dodge-drop` is ready for its first manual submission.
 
 **Architecture:** Each adapter lives in `packages/platform/src/adapters/<id>.ts`, loads its portal SDK from the portal CDN through a shared never-rejecting `loadScript`, and degrades (ads `'unavailable'`, localStorage storage) whenever the SDK is missing, times out or is disabled. `scripts/build-portals.ts` reuses `buildGames` to build each portal target into `dist/portals/<platform>/<slug>`, runs `checkArtifact` (size, relative paths, external-URL allowlist, foreign-SDK ban), and zips with the system `zip` CLI into `dist/release/`. A new CI job `release-portals` publishes one GitHub Release per `<slug>-v<version>`. Playwright portal smoke tests serve the builds with the real SDK URLs intercepted by tiny fake SDK scripts.

@@ -18,7 +18,7 @@ Produced by `npm run build:portals` (CI job `release-portals` runs the same comm
 ## Manual: before uploading
 
 - [ ] Zip is `dist/release/<slug>-crazygames-v<version>.zip` (download from the GitHub Release or run `npm run build:portals`). **UNVERIFIED:** whether CrazyGames wants `index.html` at the zip root (we ship it at the root); confirm on the upload form.
-- [ ] Covers prepared by hand (no cover-rendering script exists yet): landscape 1920x1080, portrait 800x1200, square 800x800 (all three required; no borders, only the title text, no store logos or icons). **UNVERIFIED:** exact sizes; confirm on the upload form.
+- [ ] Covers rendered with `npm run covers -- <slug>` into `games/<slug>/store/`: landscape 1920x1080, portrait 800x1200, square 800x800 (all three required, sizes per CrazyGames docs; no borders, only the title text, no store logos or icons). Look at each PNG before uploading.
 - [ ] Description and controls text entered (taken from `game.json` `description` / `instructions` / `controls`); English is required.
 - [ ] Orientation chosen in the form to match `game.json` `orientation` (the dashboard setting, not game logic).
 - [ ] Game is playable with mouse + keyboard, and with touch if `controls` lists touch; no custom fullscreen button.

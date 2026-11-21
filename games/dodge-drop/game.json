@@ -9,5 +9,8 @@
   "controls": ["mouse", "touch", "keyboard"],
   "cover": "cover.svg",
   "targets": ["site", "crazygames", "gamedistribution"],
-  "releases": {}
+  "releases": {
+    "crazygames": { "status": "todo", "version": "0.1.0" },
+    "gamedistribution": { "status": "todo", "version": "0.1.0" }
+  }
 }
