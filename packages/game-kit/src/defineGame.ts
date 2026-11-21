@@ -84,6 +84,7 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
       get best() { return session.best; },
       get lastScore() { return session.lastScore; },
       get activeScenes() { return kit.activeScenes(); },
+      get pausedScenes() { return kit.pausedScenes(); },
       endRound: (score = 0) => kit.gameOver(score),
     };
   }

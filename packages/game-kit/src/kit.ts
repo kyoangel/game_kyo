@@ -6,9 +6,21 @@ import type { SaveData } from './save.ts';
 import { createInput, type GameInput } from './input/input.ts';
 import { createFx, type Fx } from './juice/fx.ts';
 import type { GameSession } from './session.ts';
+import { RunFlow } from './runFlow.ts';
 import { resolveTheme, type Theme } from './theme.ts';
 
 export const KIT_KEY = 'gk:kit';
+export const OVERLAY_KEY = 'GKGameOver';
+
+export interface GameOverOptions {
+  revive?: () => void;
+}
+
+export interface OverlayData {
+  score: number;
+  newBest: boolean;
+  offerRevive: boolean;
+}
 
 /** Facade handed to scenes via getKit(scene). Scene switching lives here; state lives in GameSession. */
 export class Kit {
@@ -19,7 +31,11 @@ export class Kit {
   readonly save: SaveData;
   readonly audio: GameAudio;
   readonly theme: Theme;
+  readonly flow = new RunFlow();
   private readonly translate: (key: string) => string;
+  private overlayUp = false;
+  private reviveCb: (() => void) | undefined;
+  private playKeyCache: string | undefined;
 
   constructor(game: Phaser.Game, session: GameSession, platform: Platform, t: (key: string) => string, def: GameDefinition, save: SaveData, audio: GameAudio) {
     this.game = game;
@@ -36,14 +52,53 @@ export class Kit {
     return this.translate(key);
   }
 
-  start(): void {
-    this.session.start();
-    this.switchTo('Play');
+  /** Key of the play scene registered by def.playScene. */
+  get playKey(): string {
+    if (!this.playKeyCache) {
+      try {
+        this.playKeyCache = new this.def.playScene().sys.settings.key || 'Play';
+      } catch {
+        this.playKeyCache = 'Play';
+      }
+    }
+    return this.playKeyCache;
   }
 
-  async gameOver(score: number): Promise<void> {
-    if (!(await this.session.gameOver(score))) return;
-    this.switchTo('GKGameOver', { score });
+  start(): void {
+    this.flow.reset();
+    this.overlayUp = false;
+    this.session.start();
+    this.switchTo(this.playKey);
+  }
+
+  async gameOver(score: number, opts?: GameOverOptions): Promise<void> {
+    if (this.overlayUp || this.session.state !== 'playing') return;
+    this.overlayUp = true;
+    const offerRevive = this.flow.canOfferRevive(opts?.revive !== undefined, this.platform.features.rewardedAds);
+    this.reviveCb = offerRevive ? opts?.revive : undefined;
+    const newBest = score > this.session.best && score > 0;
+    this.game.scene.pause(this.playKey);
+    if (!offerRevive) await this.session.gameOver(score);
+    this.game.scene.getScene(this.playKey).scene.launch(OVERLAY_KEY, { score, newBest, offerRevive } satisfies OverlayData);
+  }
+
+  /** Overlay: revive offer declined / timed out / ad not rewarded. Commits the score. */
+  async commitGameOver(score: number): Promise<void> {
+    await this.session.gameOver(score);
+  }
+
+  /** Overlay: user chose Revive. Resolves true when the ad was rewarded and play resumed. */
+  async acceptRevive(): Promise<boolean> {
+    const result = await this.session.rewarded();
+    if (result !== 'rewarded') return false;
+    this.flow.markReviveUsed();
+    this.game.scene.stop(OVERLAY_KEY);
+    this.game.scene.resume(this.playKey);
+    this.overlayUp = false;
+    const cb = this.reviveCb;
+    this.reviveCb = undefined;
+    cb?.();
+    return true;
   }
 
   breakpoint(): Promise<AdResult> {
@@ -52,7 +107,11 @@ export class Kit {
 
   async retry(): Promise<void> {
     await this.session.retry();
-    this.switchTo('Play');
+    this.flow.reset();
+    this.overlayUp = false;
+    this.game.scene.stop(OVERLAY_KEY);
+    this.game.scene.stop(this.playKey);
+    this.game.scene.start(this.playKey);
   }
 
   showRewarded(): Promise<AdResult> {
@@ -61,6 +120,10 @@ export class Kit {
 
   activeScenes(): string[] {
     return this.game.scene.getScenes(true).map((s) => s.scene.key);
+  }
+
+  pausedScenes(): string[] {
+    return this.game.scene.getScenes(false).filter((s) => s.sys.isPaused()).map((s) => s.scene.key);
   }
 
   fx(scene: Phaser.Scene): Fx {
@@ -110,7 +173,10 @@ export class Kit {
   }
 
   private switchTo(key: string, data?: object): void {
-    for (const s of this.game.scene.getScenes(true)) this.game.scene.stop(s.scene.key);
+    this.overlayUp = false;
+    for (const s of this.game.scene.getScenes(false)) {
+      if (s.sys.isActive() || s.sys.isPaused()) this.game.scene.stop(s.scene.key);
+    }
     this.game.scene.start(key, data);
   }
 }

@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { addTrauma, decayTrauma, shakeOffset } from './trauma.ts';
 
 export interface Fx {
+  /** True while a hitStop is active; game update loops may skip simulation. */
+  readonly frozen: boolean;
   burst(x: number, y: number, opts?: { color?: number; count?: number; speed?: number; lifespanMs?: number }): void;
   shake(trauma: number): void;
   hitStop(ms: number): Promise<void>;
@@ -76,6 +78,10 @@ export function createFx(scene: Phaser.Scene): Fx {
   scene.events.once('destroy', cleanup);
 
   return {
+    get frozen() {
+      return frozen > 0;
+    },
+
     burst(x, y, opts = {}) {
       const { color = 0xffffff, count = 24, speed = 420, lifespanMs = 600 } = opts;
       const e = scene.add.particles(x, y, 'gk-dot', {
