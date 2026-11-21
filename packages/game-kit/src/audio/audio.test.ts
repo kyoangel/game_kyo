@@ -20,6 +20,7 @@ function fakeCtx() {
     state: 'suspended',
     destination: {},
     resume: async () => { ctx.state = 'running'; },
+    suspend: async () => { ctx.state = 'suspended'; },
     createOscillator: () => { created.osc++; return { type: 'sine', frequency: param(), connect() {}, start() {}, stop() {} }; },
     createGain: () => { const g = { gain: param(), connect() {} }; created.gains.push(g); return g; },
     createBuffer: (_c: number, n: number) => ({ getChannelData: () => new Float32Array(n) }),
@@ -80,5 +81,22 @@ describe('createGameAudio', () => {
     await a.toggleMute();
     a.setAdPaused(true); a.setAdPaused(false);
     expect(master.gain.value).toBe(0);
+  });
+  it('ad pause suspends and resumes the context once unlocked; never throws', async () => {
+    const f = fakeCtx();
+    const a = createGameAudio(store().save, () => f.ctx);
+    a.setAdPaused(true); // not unlocked: must not touch ctx
+    expect(f.ctx.state).toBe('suspended');
+    a.setAdPaused(false);
+    a.unlock();
+    await Promise.resolve();
+    expect(f.ctx.state).toBe('running');
+    a.setAdPaused(true);
+    expect(f.ctx.state).toBe('suspended');
+    a.setAdPaused(false);
+    await Promise.resolve();
+    expect(f.ctx.state).toBe('running');
+    (f.ctx as unknown as { suspend: () => never }).suspend = () => { throw new Error('x'); };
+    expect(() => a.setAdPaused(true)).not.toThrow();
   });
 });

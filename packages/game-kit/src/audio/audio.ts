@@ -174,6 +174,13 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     setAdPaused(paused) {
       adPaused = paused;
       applyMaster();
+      if (ctx && unlocked) {
+        try {
+          void Promise.resolve(paused ? ctx.suspend() : ctx.resume()).catch(() => {});
+        } catch {
+          /* never throw from audio */
+        }
+      }
     },
     async loadMuted() {
       muted = (await save.getNumber('muted', 0)) === 1;

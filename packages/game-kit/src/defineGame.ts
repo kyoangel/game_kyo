@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { createPlatform } from '@platform/active';
 import { BUILTIN_STRINGS } from './builtinStrings.ts';
+import { sceneList as pureSceneList } from './sceneList.ts';
+import type { ResultsContext } from './results.ts';
+import type { Theme } from './theme.ts';
 import { createGameAudio } from './audio/audio.ts';
 import { SaveData } from './save.ts';
 import { createI18n, mergeStrings, type Strings } from './i18n.ts';
@@ -19,6 +22,15 @@ export interface GameDefinition {
   backgroundColor?: string;
   preload?: (scene: Phaser.Scene) => void;
   parent?: string;
+  theme?: Partial<Theme>;
+  scenes?: Array<new () => Phaser.Scene>;
+  titleMenu?: Array<{ labelKey: string; scene: string }>;
+  titleBackdrop?: (scene: Phaser.Scene) => void;
+  results?: (scene: Phaser.Scene, ctx: ResultsContext) => void;
+}
+
+export function sceneList(def: GameDefinition): Array<new () => Phaser.Scene> {
+  return pureSceneList<new () => Phaser.Scene>(def, { preload: PreloadScene, title: TitleScene, gameOver: GameOverScene });
 }
 
 function titleStrings(title: Record<string, string>): Strings {
@@ -45,7 +57,7 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
     height: def.height,
     backgroundColor: def.backgroundColor ?? '#111111',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [PreloadScene, TitleScene, def.playScene, GameOverScene],
+    scene: sceneList(def),
   });
   const kit = new Kit(game, session, platform, t, def, save, audio);
   game.registry.set(KIT_KEY, kit);

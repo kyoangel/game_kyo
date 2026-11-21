@@ -1,4 +1,4 @@
-export { defineGame, type GameDefinition } from './defineGame.ts';
+export { defineGame, sceneList, type GameDefinition } from './defineGame.ts';
 export { getKit, Kit, KIT_KEY } from './kit.ts';
 export { GameSession, type SessionState } from './session.ts';
 export { createI18n, mergeStrings, resolveLocale, type Strings } from './i18n.ts';
@@ -11,3 +11,8 @@ export { keyVector, joystickVector, type Vec } from './input/vector.ts';
 export { createGameAudio, type GameAudio } from './audio/audio.ts';
 export { type SfxName } from './audio/sfx.ts';
 export { BPM, LAYERS, stepsToSchedule } from './audio/music.ts';
+export { createFx, type Fx } from './juice/fx.ts';
+export { ensureTextures, addBackground } from './juice/textures.ts';
+export { createInput, type GameInput } from './input/input.ts';
+export { addButton, consumeButtonTap } from './ui/button.ts';
+export type { ResultsContext } from './results.ts';
