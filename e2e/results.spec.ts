@@ -35,7 +35,7 @@ for (const slug of slugs) {
     expect(await page.evaluate(() => (window as unknown as W).__gk!.pausedScenes)).toContain('Play');
     expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).toBe('over');
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(900);
     await page.mouse.click(x + width / 2, y + height / 2);
     await page.waitForFunction(
       () => (window as unknown as W).__gk?.state === 'playing' && (window as unknown as W).__gk!.activeScenes.includes('Play') && !(window as unknown as W).__gk!.activeScenes.includes('GKGameOver'),

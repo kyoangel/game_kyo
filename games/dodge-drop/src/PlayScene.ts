@@ -1,76 +1,698 @@
 import Phaser from 'phaser';
-import { getKit } from '@gf/game-kit';
-import { fallSpeed, PLAYER_SPEED, spawnInterval } from './difficulty.ts';
+import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
+import { Combo, horizontalGap, isNearMiss } from './combo.ts';
+import { fallSpeed } from './difficulty.ts';
+import { SKINS, type Skin } from './economy.ts';
+import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
+import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
+import { mulberry32 } from './rng.ts';
+import { RUN_STATE_KEY, type RunState } from './runState.ts';
+import { skinTextureKey } from './skinArt.ts';
+import { BLOCK_H, isRush, planWave, PLAYER_HITBOX_W, waveKindAt, type WaveKind } from './waves.ts';
 
-const PLAYER_W = 90;
-const PLAYER_H = 28;
+const W = 720;
+const H = 1280;
+const PLAYER_Y = 1100;
+const PLAYER_HALF = 28;
+const KEY_ACCEL = 5000;
+const KEY_DECEL = 7000;
+const KEY_MAX = 640;
+const TELEGRAPH = 0.4;
+const BLOCK_POOL = 48;
+const CHEV_POOL = 48;
+const PICKUP_POOL = 8;
+const DOT_COUNT = 26;
+const INVULN_REVIVE = 2;
+const INVULN_SHIELD = 0.5;
+const PRISM_STEPS = 72;
+
+interface Pending {
+  at: number;
+  x: number;
+  w: number;
+  h: number;
+  speedMul: number;
+  rush: boolean;
+  chev: Chev | null;
+}
+interface Chev {
+  img: Phaser.GameObjects.Image;
+  active: boolean;
+  age: number;
+}
+interface Block {
+  img: Phaser.GameObjects.Image;
+  active: boolean;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  speedMul: number;
+  checked: boolean;
+}
+interface Pickup {
+  img: Phaser.GameObjects.Image;
+  active: boolean;
+  kind: 'star' | 'shield';
+  y: number;
+  x: number;
+}
+
+function layersFor(t: number): 1 | 2 | 3 | 4 {
+  if (t >= 60) return 4;
+  if (t >= 30) return 3;
+  if (t >= 10) return 2;
+  return 1;
+}
+
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return `${m}:${r < 10 ? '0' : ''}${r}`;
+}
 
 export class PlayScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle;
-  private blocks: Phaser.GameObjects.Rectangle[] = [];
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private hud!: Phaser.GameObjects.Text;
-  private elapsed = 0;
-  private spawnIn = 0;
-  private dodged = 0;
-  private over = false;
+  private kit!: Kit;
+  private fx!: Fx;
+  private gin!: GameInput;
+  private rng: () => number = Math.random;
+  private runId = 0;
+  private ready = false;
+  private dead = false;
+
+  private t = 0;
+  private score = 0;
+  private dispScore = 0;
+  private stars = 0;
+  private combo = new Combo();
+  private earned: MedalId[] = [];
+
+  private skin: Skin = SKINS[0]!;
+  private player!: Phaser.GameObjects.Image;
+  private trail: { stop(): void } | null = null;
+  private ring!: Phaser.GameObjects.Image;
+  private vel = 0;
+  private tiltN = 0;
+  private invuln = 0;
+  private shieldHeld = false;
+  private prism: number[] = [];
+
+  private blocks: Block[] = [];
+  private chevs: Chev[] = [];
+  private pending: Pending[] = [];
+  private pickups: Pickup[] = [];
+  private planEnd = TELEGRAPH;
+  private fillerNext = false;
+  private gapX: number | undefined;
+  private nextStar = 7;
+  private nextShield = 25;
+
+  private rushIdx = 0;
+  private rushWarned = false;
+  private lastLayers = 0;
+
+  private grid!: Phaser.GameObjects.Graphics;
+  private gridPhase = 0;
+  private dots: Phaser.GameObjects.Image[] = [];
+  private dotSpeed: number[] = [];
+
+  private scoreText!: Phaser.GameObjects.Text;
+  private comboText!: Phaser.GameObjects.Text;
+  private comboBar!: Phaser.GameObjects.Graphics;
+  private timerText!: Phaser.GameObjects.Text;
+  private hint!: Phaser.GameObjects.Text;
+  private rushBanner!: Phaser.GameObjects.Text;
+  private lastScoreShown = -1;
+  private lastSecShown = -1;
+  private lastComboShown = -1;
+  private rushBannerUntil = 0;
 
   constructor() {
     super('Play');
   }
 
   create(): void {
-    const { width, height } = this.scale;
-    this.blocks = [];
-    this.elapsed = 0;
-    this.spawnIn = 0;
-    this.dodged = 0;
-    this.over = false;
-    this.player = this.add.rectangle(width / 2, height - 80, PLAYER_W, PLAYER_H, 0x4ade80);
-    this.hud = this.add.text(24, 24, '', { fontSize: '32px', color: '#ffffff' });
-    this.cursors = this.input.keyboard?.createCursorKeys();
-    const follow = (p: Phaser.Input.Pointer) => this.movePlayerTo(p.x);
-    this.input.on('pointerdown', follow);
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (p.isDown) follow(p);
+    this.kit = getKit(this);
+    this.fx = this.kit.fx(this);
+    this.gin = this.kit.input(this, { joystick: false });
+    const { theme } = this.kit;
+    ensureTextures(this, theme);
+    ensurePlayTextures(this);
+    addBackground(this);
+
+    this.runId++;
+    this.ready = false;
+    this.dead = false;
+    this.rng = mulberry32(Date.now() >>> 0);
+    this.t = 0;
+    this.score = 0;
+    this.dispScore = 0;
+    this.stars = 0;
+    this.combo = new Combo();
+    this.earned = [];
+    this.vel = 0;
+    this.tiltN = 0;
+    this.invuln = 0;
+    this.shieldHeld = false;
+    this.pending = [];
+    this.planEnd = TELEGRAPH;
+    this.fillerNext = false;
+    this.gapX = undefined;
+    this.nextStar = 6 + this.rng() * 3;
+    this.nextShield = 25;
+    this.rushIdx = 0;
+    this.rushWarned = false;
+    this.lastLayers = 0;
+    this.rushBannerUntil = 0;
+    this.lastScoreShown = -1;
+    this.lastSecShown = -1;
+    this.lastComboShown = -1;
+    this.trail = null;
+
+    this.buildBackdrop();
+    this.buildPools();
+    this.buildHud();
+
+    const id = this.runId;
+    void this.kit.save.getJSON<string>('skin', 'cyan').then((sid) => {
+      if (id !== this.runId || !this.sys.isActive()) return;
+      this.skin = SKINS.find((s) => s.id === sid) ?? SKINS[0]!;
+      this.buildPlayer();
+      this.ready = true;
+      this.kit.audio.music.start();
+      this.setLayers(true);
     });
   }
 
-  update(_time: number, deltaMs: number): void {
-    if (this.over) return;
-    const dt = deltaMs / 1000;
-    const { width, height } = this.scale;
-    this.elapsed += dt;
+  // ---------------------------------------------------------------- build
 
-    if (this.cursors?.left.isDown) this.movePlayerTo(this.player.x - PLAYER_SPEED * dt);
-    if (this.cursors?.right.isDown) this.movePlayerTo(this.player.x + PLAYER_SPEED * dt);
-
-    this.spawnIn -= dt;
-    if (this.spawnIn <= 0) {
-      const w = Phaser.Math.Between(60, 160);
-      this.blocks.push(this.add.rectangle(Phaser.Math.Between(w / 2, width - w / 2), -30, w, 40, 0xf87171));
-      this.spawnIn = spawnInterval(this.elapsed);
+  private buildBackdrop(): void {
+    this.grid = this.add.graphics().setDepth(-90);
+    this.gridPhase = 0;
+    this.dots = [];
+    this.dotSpeed = [];
+    for (let i = 0; i < DOT_COUNT; i++) {
+      const d = this.add
+        .image(this.rng() * W, this.rng() * H, 'gk-dot')
+        .setDepth(-80)
+        .setAlpha(0.12 + this.rng() * 0.25)
+        .setScale(0.6 + this.rng() * 1.2);
+      this.dots.push(d);
+      this.dotSpeed.push(8 + this.rng() * 30);
     }
-
-    const speed = fallSpeed(this.elapsed);
-    const playerBounds = this.player.getBounds();
-    for (const block of [...this.blocks]) {
-      block.y += speed * dt;
-      if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, block.getBounds())) {
-        this.over = true;
-        void getKit(this).gameOver(this.dodged);
-        return;
-      }
-      if (block.y - block.height / 2 > height) {
-        block.destroy();
-        this.blocks.splice(this.blocks.indexOf(block), 1);
-        this.dodged += 1;
-      }
-    }
-    this.hud.setText(`${getKit(this).t('gk.score')}: ${this.dodged}`);
   }
 
-  private movePlayerTo(x: number): void {
-    this.player.x = Phaser.Math.Clamp(x, PLAYER_W / 2, this.scale.width - PLAYER_W / 2);
+  private buildPools(): void {
+    this.blocks = [];
+    for (let i = 0; i < BLOCK_POOL; i++) this.blocks.push(this.makeBlock());
+    this.chevs = [];
+    for (let i = 0; i < CHEV_POOL; i++) {
+      this.chevs.push({ img: this.add.image(0, 0, warnTexture(this, 16)).setVisible(false).setDepth(4), active: false, age: 0 });
+    }
+    this.pickups = [];
+    for (let i = 0; i < PICKUP_POOL; i++) {
+      this.pickups.push({ img: this.add.image(0, 0, 'dd-star').setVisible(false).setDepth(6), active: false, kind: 'star', y: 0, x: 0 });
+    }
+  }
+
+  private makeBlock(): Block {
+    const { key } = blockTexture(this, 80, false);
+    return { img: this.add.image(0, 0, key).setVisible(false).setDepth(5), active: false, x: 0, y: 0, w: 0, h: 0, speedMul: 1, checked: false };
+  }
+
+  private buildPlayer(): void {
+    const key = skinTextureKey(this, this.skin);
+    this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
+    this.ring = this.add.image(W / 2, PLAYER_Y, 'dd-ring').setDepth(11).setVisible(false);
+    if (this.skin.color === 'cycle') {
+      this.prism = [];
+      for (let i = 0; i < PRISM_STEPS; i++) {
+        const c = Phaser.Display.Color.HSVToRGB(i / PRISM_STEPS, 0.65, 1) as Phaser.Types.Display.ColorObject;
+        this.prism.push(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
+      }
+    }
+    this.startTrail();
+  }
+
+  private skinColor(): number {
+    if (this.skin.color !== 'cycle') return this.skin.color;
+    return this.prism.length > 0 ? this.prism[Math.floor(this.t * 20) % PRISM_STEPS]! : 0xffffff;
+  }
+
+  private startTrail(): void {
+    const tc = this.skin.trailColor;
+    this.trail = this.fx.trail(this.player, { color: tc === 'rainbow' ? 0xffffff : tc });
+  }
+
+  private textStyle(size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      fontFamily: this.kit.theme.font,
+      fontSize: `${size}px`,
+      fontStyle: 'bold',
+      color: cssColor(color),
+      stroke: '#1a1033',
+      strokeThickness: 6,
+    };
+  }
+
+  private buildHud(): void {
+    const { theme } = this.kit;
+    this.scoreText = this.add.text(24, 18, '0', this.textStyle(48, theme.text)).setDepth(100);
+    this.comboText = this.add.text(24, 76, '', this.textStyle(40, theme.accent)).setDepth(100).setVisible(false);
+    this.comboBar = this.add.graphics().setDepth(100);
+    this.timerText = this.add.text(W - 100, 24, '0:00', this.textStyle(40, theme.text)).setOrigin(1, 0).setDepth(100);
+    this.kit.addMuteButton(this, W - 48, 48).setDepth(100);
+    this.hint = this.add
+      .text(W / 2, 880, this.kit.t('dragHint'), this.textStyle(36, theme.muted))
+      .setOrigin(0.5)
+      .setDepth(100);
+    this.tweens.add({ targets: this.hint, alpha: 0, delay: 3000, duration: 600 });
+    this.rushBanner = this.add
+      .text(W / 2, 330, this.kit.t('rush'), { ...this.textStyle(110, 0xffa14d), strokeThickness: 10 })
+      .setOrigin(0.5)
+      .setDepth(100)
+      .setVisible(false);
+  }
+
+  // ---------------------------------------------------------------- loop
+
+  update(_time: number, deltaMs: number): void {
+    const raw = Math.min(deltaMs, 50) / 1000;
+    const dt = raw * this.time.timeScale;
+    const drag = this.gin.dragDx();
+    if (this.fx.frozen || !this.ready) return;
+
+    this.updateBackdrop(dt);
+    if (!this.dead) {
+      const prev = this.t;
+      this.t += dt;
+      this.movePlayer(dt, drag);
+      this.schedule();
+      this.updateRush();
+      this.setLayers(false);
+      this.combo.tick(dt);
+      if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
+      this.updateMedals(prev, this.t);
+    }
+    this.updateChevrons(dt);
+    this.updateBlocks(dt);
+    this.updatePickups(dt);
+    if (!this.dead) this.updatePlayerVisual(dt);
+    this.updateHud(dt);
+  }
+
+  private updateBackdrop(dt: number): void {
+    const speed = fallSpeed(this.t) * (isRush(this.t) ? 1.4 : 1);
+    this.gridPhase = (this.gridPhase + (dt * speed * 0.3) / 160) % 1;
+    const g = this.grid;
+    g.clear();
+    const vpX = W / 2;
+    const rows = 14;
+    for (let i = 0; i < rows; i++) {
+      const d = (i + this.gridPhase) / rows;
+      const y = d * d * H;
+      g.lineStyle(2, 0x9ee9ff, 0.05 + 0.12 * d);
+      g.lineBetween(0, y, W, y);
+    }
+    g.lineStyle(2, 0x9ee9ff, 0.1);
+    for (let i = -6; i <= 6; i++) {
+      g.lineBetween(vpX + i * 8, 0, vpX + i * 160, H);
+    }
+    for (let i = 0; i < this.dots.length; i++) {
+      const d = this.dots[i]!;
+      d.y += this.dotSpeed[i]! * dt;
+      if (d.y > H + 10) {
+        d.y = -10;
+        d.x = this.rng() * W;
+      }
+    }
+  }
+
+  private movePlayer(dt: number, drag: number): void {
+    const before = this.player.x;
+    let x = before + drag;
+    const dir = this.gin.vector().x;
+    if (dir !== 0) {
+      if (Math.sign(dir) !== Math.sign(this.vel) && this.vel !== 0) this.vel += Math.sign(dir) * KEY_DECEL * dt;
+      this.vel = Phaser.Math.Clamp(this.vel + Math.sign(dir) * KEY_ACCEL * dt, -KEY_MAX, KEY_MAX);
+    } else if (this.vel !== 0) {
+      const dv = KEY_DECEL * dt;
+      this.vel = Math.abs(this.vel) <= dv ? 0 : this.vel - Math.sign(this.vel) * dv;
+    }
+    x += this.vel * dt;
+    x = Phaser.Math.Clamp(x, PLAYER_HALF, W - PLAYER_HALF);
+    if (x === PLAYER_HALF || x === W - PLAYER_HALF) this.vel = 0;
+    this.player.x = x;
+    const eff = dt > 0 ? (x - before) / dt : 0;
+    this.tiltN += (Phaser.Math.Clamp(eff / KEY_MAX, -1, 1) - this.tiltN) * Math.min(1, dt * 14);
+  }
+
+  private updatePlayerVisual(dt: number): void {
+    const n = Math.abs(this.tiltN);
+    this.player.setAngle(this.tiltN * 12);
+    this.player.setScale(1 + 0.25 * n, 1 - 0.15 * n);
+    if (this.skin.color === 'cycle') this.player.setTint(this.skinColor());
+    const blink = this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0;
+    this.player.setAlpha(blink ? 0.35 : 1);
+    this.ring.setVisible(this.shieldHeld);
+    if (this.shieldHeld) {
+      this.ring.setPosition(this.player.x, this.player.y);
+      this.ring.setScale(1 + Math.sin(this.t * 8) * 0.04);
+      this.ring.rotation += dt * 1.5;
+    }
+  }
+
+  // ------------------------------------------------------------ scheduler
+
+  private schedule(): void {
+    const t = this.t;
+    while (this.planEnd < t + 2.5) {
+      let kind: WaveKind = this.fillerNext ? 'rain' : waveKindAt(this.planEnd);
+      if (this.fillerNext) this.fillerNext = false;
+      else if (kind !== 'rain' && kind !== 'rainHeavy') this.fillerNext = true;
+      const plan = planWave(kind, this.planEnd, this.rng, W, this.gapX);
+      if (plan.gapX !== undefined) this.gapX = plan.gapX;
+      for (const sp of plan.spawns) {
+        const at = this.planEnd + sp.at;
+        this.pending.push({ at, x: sp.x, w: sp.w, h: sp.h, speedMul: sp.speedMul, rush: isRush(at), chev: null });
+      }
+      this.planEnd += plan.duration;
+    }
+
+    for (let i = this.pending.length - 1; i >= 0; i--) {
+      const p = this.pending[i]!;
+      if (p.chev === null && t >= p.at - TELEGRAPH) this.acquireChev(p);
+      if (t >= p.at) {
+        this.spawnBlock(p, t - p.at);
+        if (p.chev) p.chev.active = false;
+        if (p.chev) p.chev.img.setVisible(false);
+        this.pending[i] = this.pending[this.pending.length - 1]!;
+        this.pending.pop();
+      }
+    }
+
+    if (t >= this.nextStar) {
+      if (this.spawnStar()) this.nextStar = t + 6 + this.rng() * 3;
+      else this.nextStar = t + 0.4;
+    }
+    if (t >= this.nextShield && !this.shieldHeld && !this.pickups.some((p) => p.active && p.kind === 'shield')) {
+      if (this.spawnPickup('shield', 60 + this.rng() * (W - 120))) this.nextShield = t + 30 + this.rng() * 10;
+    }
+  }
+
+  private acquireChev(p: Pending): void {
+    const c = this.chevs.find((q) => !q.active);
+    if (!c) return;
+    c.active = true;
+    c.age = 0;
+    const key = warnTexture(this, p.w);
+    c.img.setTexture(key).setPosition(p.x, WARN_H / 2 + 4).setVisible(true).setAlpha(1);
+    c.img.setDisplaySize(p.w, WARN_H);
+    c.img.setTint(p.rush ? BLOCK_ORANGE : 0xffffff);
+    p.chev = c;
+  }
+
+  private spawnBlock(p: Pending, late: number): void {
+    let b = this.blocks.find((q) => !q.active);
+    if (!b) {
+      b = this.makeBlock();
+      this.blocks.push(b);
+    }
+    const { key, bodyW } = blockTexture(this, p.w, p.rush);
+    b.active = true;
+    b.checked = false;
+    b.x = p.x;
+    b.w = p.w;
+    b.h = p.h;
+    b.speedMul = p.speedMul;
+    b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * p.speedMul;
+    b.img.setTexture(key).setVisible(true);
+    b.img.setScale(p.w / bodyW, 1);
+    b.img.setPosition(b.x, b.y);
+  }
+
+  private spawnStar(): boolean {
+    for (let tries = 0; tries < 8; tries++) {
+      const x = 60 + this.rng() * (W - 120);
+      if (this.starLaneFree(x)) return this.spawnPickup('star', x);
+    }
+    return false;
+  }
+
+  /** True if no wall/block is about to occupy this x at the top of the screen. */
+  private starLaneFree(x: number): boolean {
+    for (const b of this.blocks) {
+      if (b.active && b.y < 420 && Math.abs(b.x - x) < b.w / 2 + 50) return false;
+    }
+    for (const p of this.pending) {
+      if (p.at < this.t + 1.2 && Math.abs(p.x - x) < p.w / 2 + 50) return false;
+    }
+    return true;
+  }
+
+  private spawnPickup(kind: 'star' | 'shield', x: number): boolean {
+    const p = this.pickups.find((q) => !q.active);
+    if (!p) return false;
+    p.active = true;
+    p.kind = kind;
+    p.x = x;
+    p.y = -30;
+    p.img.setTexture(kind === 'star' ? 'dd-star' : 'dd-shield').setVisible(true).setPosition(x, p.y).setAlpha(1).setScale(1);
+    return true;
+  }
+
+  // ------------------------------------------------------------- rush/music
+
+  private updateRush(): void {
+    const next = 45 + 45 * this.rushIdx;
+    if (!this.rushWarned && this.t >= next - 1) {
+      this.rushWarned = true;
+      this.rushBannerUntil = next + 0.8;
+      this.kit.audio.sfx('rush');
+    }
+    if (this.rushWarned && this.t >= next + 4) {
+      this.rushIdx++;
+      this.rushWarned = false;
+    }
+    const show = this.rushWarned && this.t < this.rushBannerUntil;
+    this.rushBanner.setVisible(show);
+    if (show) {
+      this.rushBanner.setScale(1 + 0.08 * Math.sin(this.t * 24));
+      this.rushBanner.setAlpha(Math.floor(this.t * 10) % 2 === 0 ? 1 : 0.6);
+    }
+  }
+
+  private setLayers(force: boolean): void {
+    const n = isRush(this.t) ? 4 : layersFor(this.t);
+    if (n === this.lastLayers && !force) return;
+    this.lastLayers = n;
+    this.kit.audio.music.setLayers(n);
+  }
+
+  // ------------------------------------------------------------ simulation
+
+  private updateChevrons(dt: number): void {
+    for (const c of this.chevs) {
+      if (!c.active) continue;
+      c.age += dt;
+      c.img.setAlpha(Math.floor(c.age * 20) % 2 === 0 ? 1 : 0.3);
+    }
+  }
+
+  private updateBlocks(dt: number): void {
+    const rushMul = isRush(this.t) ? 1.4 : 1;
+    const base = fallSpeed(this.t) * rushMul;
+    const px = this.dead ? 0 : this.player.x;
+    for (const b of this.blocks) {
+      if (!b.active) continue;
+      b.y += base * b.speedMul * dt;
+      b.img.y = b.y;
+      if (!this.dead) {
+        const dy = Math.abs(b.y - PLAYER_Y);
+        const reachY = (PLAYER_HITBOX_W + b.h * 0.9) / 2;
+        const gap = horizontalGap({ x: px, w: PLAYER_HITBOX_W }, { x: b.x, w: b.w * 0.9 });
+        if (dy < reachY && gap <= 0 && this.invuln <= 0) {
+          this.onHit(b);
+          continue;
+        }
+        if (!b.checked && b.y >= PLAYER_Y) {
+          b.checked = true;
+          if (isNearMiss(gap)) this.onNearMiss(b);
+        }
+      }
+      if (b.y - BLOCK_H / 2 > H + BLOCK_PAD) {
+        b.active = false;
+        b.img.setVisible(false);
+        if (!this.dead) this.score += this.combo.multiplier;
+      }
+    }
+  }
+
+  private updatePickups(dt: number): void {
+    const speed = fallSpeed(this.t) * 0.9;
+    for (const p of this.pickups) {
+      if (!p.active) continue;
+      p.y += speed * dt;
+      p.img.y = p.y;
+      p.img.rotation += (p.kind === 'star' ? 3 : 1.2) * dt;
+      if (p.y > H + 40) {
+        p.active = false;
+        p.img.setVisible(false);
+        continue;
+      }
+      if (this.dead) continue;
+      const half = (p.kind === 'star' ? 36 : 40) * 1.4 * 0.5;
+      if (Math.abs(p.y - PLAYER_Y) < half + PLAYER_HITBOX_W / 2 && Math.abs(p.x - this.player.x) < half + PLAYER_HITBOX_W / 2) {
+        p.active = false;
+        p.img.setVisible(false);
+        this.collect(p);
+      }
+    }
+  }
+
+  private collect(p: Pickup): void {
+    if (p.kind === 'star') {
+      this.stars++;
+      this.score += 10;
+      this.kit.audio.sfx('pickup');
+      this.fx.burst(p.x, p.y, { color: 0xffe14d, count: 16, speed: 300, lifespanMs: 450 });
+      this.fx.popText(p.x, p.y - 20, '+10', { color: 0xffe14d, size: 30 });
+    } else {
+      this.shieldHeld = true;
+      this.kit.audio.sfx('shield');
+      this.fx.burst(p.x, p.y, { color: 0x58ff9a, count: 18, speed: 320, lifespanMs: 500 });
+    }
+  }
+
+  private onNearMiss(b: Block): void {
+    const pts = this.combo.hit();
+    this.score += pts;
+    const mult = this.combo.multiplier;
+    const side = Math.sign(b.x - this.player.x) || 1;
+    this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: 34 });
+    this.kit.audio.sfx('nearMiss', { step: this.combo.count });
+    this.fx.burst(this.player.x + side * 24, PLAYER_Y, { color: 0xffffff, count: 8, speed: 260, lifespanMs: 300 });
+  }
+
+  private onHit(b: Block): void {
+    if (this.shieldHeld) {
+      this.shieldHeld = false;
+      this.ring.setVisible(false);
+      this.invuln = INVULN_SHIELD;
+      this.combo.reset();
+      b.active = false;
+      b.img.setVisible(false);
+      this.kit.audio.sfx('shieldBreak');
+      this.fx.burst(b.x, b.y, { color: BLOCK_PINK, count: 28, speed: 480, lifespanMs: 500 });
+      this.fx.burst(this.player.x, PLAYER_Y, { color: 0x58ff9a, count: 20, speed: 380, lifespanMs: 500 });
+      void this.fx.hitStop(60);
+      return;
+    }
+    if (this.dead) return;
+    this.dead = true;
+    void this.die();
+  }
+
+  // ----------------------------------------------------------------- medals
+
+  private updateMedals(prev: number, now: number): void {
+    for (const id of medalsReached(prev, now)) {
+      this.earned.push(id);
+      this.kit.audio.sfx('medal');
+      this.fx.burst(W / 2, 170, { color: MEDALS.find((m) => m.id === id)!.color, count: 30, speed: 420, lifespanMs: 700 });
+      this.showMedalToast(id);
+      void this.kit.save.getJSON<unknown>('medals', []).then((saved) => this.kit.save.setJSON('medals', mergeMedals(saved, [id])));
+    }
+  }
+
+  private showMedalToast(id: MedalId): void {
+    const m = MEDALS.find((q) => q.id === id)!;
+    const c = this.add.container(W / 2, -60).setDepth(110);
+    const g = this.add.graphics();
+    g.fillStyle(0x1a1033, 0.85);
+    g.fillRoundedRect(-170, -38, 340, 76, 38);
+    g.lineStyle(4, m.color, 1);
+    g.strokeRoundedRect(-170, -38, 340, 76, 38);
+    g.fillStyle(m.color, 1);
+    g.fillCircle(-126, 0, 24);
+    g.fillStyle(0xffffff, 0.5);
+    g.fillCircle(-133, -7, 8);
+    const label = this.add.text(-84, 0, this.kit.t(`medal.${id}`), this.textStyle(36, m.color)).setOrigin(0, 0.5);
+    c.add([g, label]);
+    this.tweens.add({ targets: c, y: 170, duration: 250, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: c, y: -80, delay: 1750, duration: 250, onComplete: () => c.destroy() });
+  }
+
+  // ----------------------------------------------------------------- death
+
+  private async die(): Promise<void> {
+    const id = this.runId;
+    const col = this.skinColor();
+    await this.fx.hitStop(80);
+    if (id !== this.runId) return;
+    this.fx.shake(0.8);
+    this.fx.flash(this.kit.theme.danger, 120);
+    this.fx.burst(this.player.x, PLAYER_Y, { color: col, count: 40, speed: 560, lifespanMs: 700 });
+    this.player.setVisible(false);
+    this.ring.setVisible(false);
+    this.trail?.stop();
+    this.trail = null;
+    this.kit.audio.sfx('death');
+    this.kit.audio.music.stop();
+    await this.fx.timeScale(0.3, 500);
+    if (id !== this.runId) return;
+    const state: RunState = { score: this.score, seconds: Math.floor(this.t), stars: this.stars, medals: [...this.earned] };
+    this.registry.set(RUN_STATE_KEY, state);
+    void this.kit.gameOver(this.score, { revive: () => this.revive() });
+  }
+
+  private revive(): void {
+    for (const b of this.blocks) {
+      if (b.active && b.y > PLAYER_Y - 400 - b.h / 2) {
+        b.active = false;
+        b.img.setVisible(false);
+      }
+    }
+    this.dead = false;
+    this.combo.reset();
+    this.invuln = INVULN_REVIVE;
+    this.vel = 0;
+    this.player.setVisible(true);
+    this.startTrail();
+    this.kit.audio.music.start();
+    this.setLayers(true);
+  }
+
+  // -------------------------------------------------------------------- hud
+
+  private updateHud(dt: number): void {
+    this.dispScore += (this.score - this.dispScore) * Math.min(1, dt * 12);
+    if (this.score - this.dispScore < 0.5) this.dispScore = this.score;
+    const shown = Math.round(this.dispScore);
+    if (shown !== this.lastScoreShown) {
+      this.lastScoreShown = shown;
+      this.scoreText.setText(String(shown));
+    }
+    const sec = Math.floor(this.t);
+    if (sec !== this.lastSecShown) {
+      this.lastSecShown = sec;
+      this.timerText.setText(fmtTime(sec));
+    }
+    const c = this.combo.count;
+    const mult = this.combo.multiplier;
+    const key = c === 0 ? 0 : mult;
+    if (key !== this.lastComboShown) {
+      this.lastComboShown = key;
+      this.comboText.setVisible(c > 0).setText(`×${mult}`);
+      if (c > 0) this.tweens.add({ targets: this.comboText, scale: { from: 1.4, to: 1 }, duration: 160 });
+    }
+    this.comboBar.clear();
+    if (c > 0) {
+      const frac = Math.max(0, 1 - this.combo.sinceLast / 2.5);
+      this.comboBar.fillStyle(0x1a1033, 0.6);
+      this.comboBar.fillRoundedRect(24, 140, 170, 12, 6);
+      this.comboBar.fillStyle(this.kit.theme.accent, 1);
+      this.comboBar.fillRoundedRect(24, 140, 170 * frac, 12, 6);
+    }
   }
 }
