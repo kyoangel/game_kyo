@@ -7,7 +7,7 @@ export default defineConfig({
       '@platform/active': fileURLToPath(new URL('./packages/platform/src/adapters/local.ts', import.meta.url)),
     },
   },
-  define: { __GK_TEST_HOOKS__: 'false' },
+  define: { __GK_TEST_HOOKS__: 'false', __GK_GD_GAME_ID__: '""' },
   test: {
     include: [
       'packages/*/src/**/*.test.ts',

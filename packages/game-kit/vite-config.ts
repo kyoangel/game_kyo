@@ -29,7 +29,10 @@ export function createGameViteConfig(gameDir: string, env: NodeJS.ProcessEnv = p
     base: './',
     publicDir: resolve(gameDir, 'public'),
     resolve: { alias: { '@platform/active': adapter } },
-    define: { __GK_TEST_HOOKS__: JSON.stringify(platform === 'local') },
+    define: {
+      __GK_TEST_HOOKS__: JSON.stringify(platform === 'local'),
+      __GK_GD_GAME_ID__: JSON.stringify(env.GD_GAME_ID ?? ''),
+    },
     build: {
       outDir: env.GAME_OUT_DIR ?? resolve(gameDir, 'dist', platform),
       emptyOutDir: true,

@@ -60,4 +60,16 @@ describe('validateManifest', () => {
     expect(
       errorsOf({ ...valid(), releases: { crazygames: { status: 'submitted', version: '0.1.0', submittedAt: '12/01' } } }).join(),
     ).toMatch(/submittedAt/));
+
+  it('accepts optional portalIds.gamedistribution', () => {
+    expect(validateManifest({ ...valid(), portalIds: { gamedistribution: 'abc123' } }).ok).toBe(true);
+    expect(validateManifest({ ...valid(), portalIds: {} }).ok).toBe(true);
+  });
+
+  it('rejects malformed portalIds', () => {
+    expect(errorsOf({ ...valid(), portalIds: 'abc' }).join()).toMatch(/portalIds must be an object/);
+    expect(errorsOf({ ...valid(), portalIds: { gamedistribution: '' } }).join()).toMatch(/portalIds\.gamedistribution/);
+    expect(errorsOf({ ...valid(), portalIds: { gamedistribution: 42 } }).join()).toMatch(/portalIds\.gamedistribution/);
+    expect(errorsOf({ ...valid(), portalIds: { poki: 'x' } }).join()).toMatch(/portalIds\.poki: unknown portal/);
+  });
 });

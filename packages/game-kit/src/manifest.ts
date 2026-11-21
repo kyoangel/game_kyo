@@ -10,6 +10,10 @@ export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
 export type Orientation = (typeof ORIENTATIONS)[number];
 export type Control = (typeof CONTROLS)[number];
 export type LocalizedText = { en: string } & Record<string, string>;
+export const PORTAL_ID_KEYS = ['gamedistribution'] as const;
+export interface PortalIds {
+  gamedistribution?: string;
+}
 
 export interface Release {
   status: ReleaseStatus;
@@ -30,6 +34,8 @@ export interface GameManifest {
   cover: string;
   targets: Target[];
   releases: Partial<Record<Target, Release>>;
+  /** Ids issued by a portal dashboard; GameDistribution needs its gameId at build time. */
+  portalIds?: PortalIds;
 }
 
 export type ValidationResult = { ok: true; manifest: GameManifest } | { ok: false; errors: string[] };
@@ -80,6 +86,21 @@ function checkReleases(v: unknown, errors: string[]): void {
   }
 }
 
+function checkPortalIds(v: unknown, errors: string[]): void {
+  if (v === undefined) return;
+  if (!isObject(v)) {
+    errors.push('portalIds must be an object');
+    return;
+  }
+  for (const [portal, id] of Object.entries(v)) {
+    if (!oneOf(PORTAL_ID_KEYS, portal)) {
+      errors.push(`portalIds.${portal}: unknown portal`);
+      continue;
+    }
+    if (typeof id !== 'string' || id.trim() === '') errors.push(`portalIds.${portal} must be a non-empty string`);
+  }
+}
+
 export function validateManifest(raw: unknown): ValidationResult {
   if (!isObject(raw)) return { ok: false, errors: ['manifest must be a JSON object'] };
   const m = raw;
@@ -99,5 +120,6 @@ export function validateManifest(raw: unknown): ValidationResult {
   if (!isStringArray(m.targets) || m.targets.length === 0 || m.targets.some((t) => !oneOf(KNOWN_TARGETS, t)))
     errors.push(`targets must be a non-empty subset of ${KNOWN_TARGETS.join(', ')}`);
   checkReleases(m.releases, errors);
+  checkPortalIds(m.portalIds, errors);
   return errors.length > 0 ? { ok: false, errors } : { ok: true, manifest: m as unknown as GameManifest };
 }

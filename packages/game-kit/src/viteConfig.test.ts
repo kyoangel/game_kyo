@@ -28,4 +28,9 @@ describe('vite-config', () => {
   it('defaults PLATFORM to local', () => {
     expect(createGameViteConfig('/tmp/g', {}).define?.__GK_TEST_HOOKS__).toBe('true');
   });
+
+  it('defines __GK_GD_GAME_ID__ from GD_GAME_ID, empty by default', () => {
+    expect(createGameViteConfig('/tmp/g', {}).define?.__GK_GD_GAME_ID__).toBe('""');
+    expect(createGameViteConfig('/tmp/g', { GD_GAME_ID: 'abc123' }).define?.__GK_GD_GAME_ID__).toBe('"abc123"');
+  });
 });
