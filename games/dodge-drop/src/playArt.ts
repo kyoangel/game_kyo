@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { BLOCK_H } from './waves.ts';
+import { BLOCK_H, BLOCK_PAD } from './waves.ts';
 
-export const BLOCK_PAD = 14;
+export { BLOCK_PAD };
 export const BLOCK_PINK = 0xff4fa3;
 export const BLOCK_ORANGE = 0xffa14d;
 export const WARN_H = 26;

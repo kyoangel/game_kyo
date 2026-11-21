@@ -9,7 +9,8 @@ import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, ensurePlayTextures, 
 import { mulberry32 } from './rng.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
-import { BLOCK_H, isRush, planWave, PLAYER_HITBOX_W, waveKindAt, type WaveKind } from './waves.ts';
+import { SpawnScheduler } from './schedule.ts';
+import { BLOCK_H, isRush, PLAYER_HITBOX_W } from './waves.ts';
 
 const W = 720;
 const H = 1280;
@@ -96,9 +97,7 @@ export class PlayScene extends Phaser.Scene {
   private chevs: Chev[] = [];
   private pending: Pending[] = [];
   private pickups: Pickup[] = [];
-  private planEnd = TELEGRAPH;
-  private fillerNext = false;
-  private gapX: number | undefined;
+  private scheduler!: SpawnScheduler;
   private nextStar = 7;
   private nextShield = 25;
 
@@ -150,9 +149,7 @@ export class PlayScene extends Phaser.Scene {
     this.invuln = 0;
     this.shieldHeld = false;
     this.pending = [];
-    this.planEnd = TELEGRAPH;
-    this.fillerNext = false;
-    this.gapX = undefined;
+    this.scheduler = new SpawnScheduler(this.rng, W);
     this.nextStar = 6 + this.rng() * 3;
     this.nextShield = 25;
     this.rushIdx = 0;
@@ -380,17 +377,8 @@ export class PlayScene extends Phaser.Scene {
 
   private schedule(): void {
     const t = this.t;
-    while (this.planEnd < t + 2.5) {
-      let kind: WaveKind = this.fillerNext ? 'rain' : waveKindAt(this.planEnd);
-      if (this.fillerNext) this.fillerNext = false;
-      else if (kind !== 'rain' && kind !== 'rainHeavy') this.fillerNext = true;
-      const plan = planWave(kind, this.planEnd, this.rng, W, this.gapX);
-      if (plan.gapX !== undefined) this.gapX = plan.gapX;
-      for (const sp of plan.spawns) {
-        const at = this.planEnd + sp.at;
-        this.pending.push({ at, x: sp.x, w: sp.w, h: sp.h, speedMul: sp.speedMul, rush: isRush(at), chev: null });
-      }
-      this.planEnd += plan.duration;
+    for (const sp of this.scheduler.planUntil(t + 2.5)) {
+      this.pending.push({ at: sp.at, x: sp.x, w: sp.w, h: sp.h, speedMul: sp.speedMul, rush: isRush(sp.at), chev: null });
     }
 
     for (let i = this.pending.length - 1; i >= 0; i--) {

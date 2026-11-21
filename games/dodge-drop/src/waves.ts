@@ -11,6 +11,9 @@ export interface Spawn {
 
 export const PLAYER_HITBOX_W = 44.8;
 export const BLOCK_H = 40;
+export const BLOCK_PAD = 14;
+/** Centre y at which a block appears (just above the screen). */
+export const SPAWN_Y = -BLOCK_H / 2 - BLOCK_PAD;
 
 const GAP_W = 2.5 * PLAYER_HITBOX_W; // 112 >= 2.2 x hitbox
 const MAX_GAP_SHIFT = 360;
