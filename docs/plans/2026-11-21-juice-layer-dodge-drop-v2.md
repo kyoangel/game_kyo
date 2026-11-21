@@ -10,7 +10,7 @@
 
 **Specs (read the sections your task names):** `docs/specs/game-platform/juice-layer.md` (JL §n) and `docs/specs/dodge-drop/v2-design.md` (DD).
 
-**Status:** not started.
+**Status:** complete 2026-11-21 — commits f1f68ef..af47b23 (spec, plan, Tasks 1–7, CI e2e timing fix). Task 8 verification: 9/9 checks PASS (god-mode 130 s run: combo ×2, stars, shield, rush at 46 s & 91 s, all 4 medals, music layers; revive once per run; ×2 coins; instant retry ~350 ms; skin purchase; 0 console errors; site build 1.5 MB). Site-only; no portal submission until the owner approves after playing.
 
 ## Global Constraints
 
