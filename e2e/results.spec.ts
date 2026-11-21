@@ -35,13 +35,15 @@ for (const slug of slugs) {
     expect(await page.evaluate(() => (window as unknown as W).__gk!.pausedScenes)).toContain('Play');
     expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).toBe('over');
 
-    await page.waitForTimeout(900);
-    await page.mouse.click(x + width / 2, y + height / 2);
-    await page.waitForFunction(
-      () => (window as unknown as W).__gk?.state === 'playing' && (window as unknown as W).__gk!.activeScenes.includes('Play') && !(window as unknown as W).__gk!.activeScenes.includes('GKGameOver'),
-      undefined,
-      { timeout: 1500 },
-    );
+    // The overlay's input guard runs on game time, which is slow under CI software rendering:
+    // keep tapping until the retry lands instead of relying on one fixed-delay tap.
+    const retried = () => (window as unknown as W).__gk?.state === 'playing' && (window as unknown as W).__gk!.activeScenes.includes('Play') && !(window as unknown as W).__gk!.activeScenes.includes('GKGameOver');
+    const deadline = Date.now() + 8000;
+    while (!(await page.evaluate(retried)) && Date.now() < deadline) {
+      await page.mouse.click(x + width / 2, y + height / 2);
+      await page.waitForTimeout(300);
+    }
+    expect(await page.evaluate(retried)).toBe(true);
     expect(errors).toEqual([]);
   });
 }
