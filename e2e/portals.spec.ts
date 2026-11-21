@@ -57,10 +57,13 @@ for (const portal of PORTALS) {
       const calls = () => page.evaluate(() => window.__fakeSdkCalls ?? []);
 
       if (portal.platform === 'crazygames') {
-        // loadingStart/Stop only fire when the game preloads assets (Phaser emits no 'progress' for an
-        // empty queue, and the adapter only starts loading lazily), so a no-asset game observes init only.
-        await expect.poll(calls, { timeout: 15_000 }).toContain('init');
-        expect((await calls())[0]).toBe('init');
+        // PreloadScene reports loadingProgress(0) up front, so every game (even with no preloaded assets)
+        // makes the adapter send loadingStart, then loadingStop on loadingDone, after init.
+        await expect.poll(calls, { timeout: 15_000 }).toContain('game.loadingStop');
+        const seen = await calls();
+        expect(seen[0]).toBe('init');
+        expect(seen.indexOf('game.loadingStart')).toBeGreaterThan(seen.indexOf('init'));
+        expect(seen.indexOf('game.loadingStop')).toBeGreaterThan(seen.indexOf('game.loadingStart'));
       } else {
         await expect.poll(calls, { timeout: 15_000 }).toContain('SDK_READY');
         expect(await calls()).toContain('GD_OPTIONS.gameId=smoke-test-game-id');
@@ -73,6 +76,8 @@ for (const portal of PORTALS) {
 
       if (portal.platform === 'crazygames') {
         await expect.poll(calls, { timeout: 10_000 }).toContain('game.gameplayStart');
+        const after = await calls();
+        expect(after.indexOf('game.gameplayStart')).toBeGreaterThan(after.indexOf('game.loadingStop'));
       } else {
         await page.waitForTimeout(500);
       }
