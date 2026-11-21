@@ -8,3 +8,6 @@ export { SaveData } from './save.ts';
 export { addTrauma, decayTrauma, shakeOffset } from './juice/trauma.ts';
 export { PENTATONIC, pentatonic } from './audio/notes.ts';
 export { keyVector, joystickVector, type Vec } from './input/vector.ts';
+export { createGameAudio, type GameAudio } from './audio/audio.ts';
+export { type SfxName } from './audio/sfx.ts';
+export { BPM, LAYERS, stepsToSchedule } from './audio/music.ts';

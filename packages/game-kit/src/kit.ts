@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import type { AdResult, Platform } from '@gf/platform';
+import type { GameAudio } from './audio/audio.ts';
 import type { GameDefinition } from './defineGame.ts';
+import type { SaveData } from './save.ts';
 import type { GameSession } from './session.ts';
 
 export const KIT_KEY = 'gk:kit';
@@ -11,14 +13,18 @@ export class Kit {
   readonly session: GameSession;
   readonly platform: Platform;
   readonly def: GameDefinition;
+  readonly save: SaveData;
+  readonly audio: GameAudio;
   private readonly translate: (key: string) => string;
 
-  constructor(game: Phaser.Game, session: GameSession, platform: Platform, t: (key: string) => string, def: GameDefinition) {
+  constructor(game: Phaser.Game, session: GameSession, platform: Platform, t: (key: string) => string, def: GameDefinition, save: SaveData, audio: GameAudio) {
     this.game = game;
     this.session = session;
     this.platform = platform;
     this.translate = t;
     this.def = def;
+    this.save = save;
+    this.audio = audio;
   }
 
   t(key: string): string {

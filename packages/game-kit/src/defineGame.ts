@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { createPlatform } from '@platform/active';
 import { BUILTIN_STRINGS } from './builtinStrings.ts';
+import { createGameAudio } from './audio/audio.ts';
+import { SaveData } from './save.ts';
 import { createI18n, mergeStrings, type Strings } from './i18n.ts';
 import { KIT_KEY, Kit } from './kit.ts';
 import { GameOverScene } from './scenes/GameOverScene.ts';
@@ -32,6 +34,10 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
   const session = new GameSession(platform, def.manifest.slug);
   await session.loadBest();
 
+  const save = new SaveData(platform.storage, def.manifest.slug);
+  const audio = createGameAudio(save);
+  await audio.loadMuted();
+
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: def.parent ?? 'game',
@@ -41,15 +47,24 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [PreloadScene, TitleScene, def.playScene, GameOverScene],
   });
-  const kit = new Kit(game, session, platform, t, def);
+  const kit = new Kit(game, session, platform, t, def, save, audio);
   game.registry.set(KIT_KEY, kit);
 
   // Ads: freeze the loop and mute. Tab hidden: Phaser's built-in auto-pause handles it.
   session.onPauseChange((paused) => {
     game.sound.mute = paused;
+    audio.setAdPaused(paused);
     if (paused) game.loop.sleep();
     else game.loop.wake();
   });
+
+  const unlockAudio = (): void => {
+    window.removeEventListener('pointerdown', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+    audio.unlock();
+  };
+  window.addEventListener('pointerdown', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
 
   if (__GK_TEST_HOOKS__) {
     (window as unknown as { __gk: unknown }).__gk = {
