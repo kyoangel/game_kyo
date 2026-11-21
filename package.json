@@ -11,6 +11,7 @@
     "build:site": "node scripts/build-site.ts",
     "test:smoke": "npm run build:local && playwright test",
     "build:portals": "node scripts/build-portals.ts",
+    "release-status": "node scripts/release-status.ts",
     "test:portals": "node scripts/build-portals.ts --smoke && playwright test e2e/portals.spec.ts"
   },
   "devDependencies": {
