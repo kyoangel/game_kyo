@@ -2098,7 +2098,7 @@ git push origin master
 - Modify: `.github/workflows/deploy.yml`
 
 **Interfaces:**
-- Produces: `parseZipName(file): { slug, platform, version } | null`, `groupReleases(zipPaths): ReleaseGroup[]` where `ReleaseGroup = { tag: string /* <slug>-v<version> */; slug; version; zips: string[] }`, `releaseNotes(group): string`. CLI `node scripts/release-portals.ts [dir=dist/release]`: for each group, if the GitHub release `<tag>` does not exist, `gh release create <tag> <zips...> --title "<slug> v<version>" --notes ... [--target $GITHUB_SHA]`; if it exists, skip. `DRY_RUN=1` prints what would happen without calling `gh`.
+- Produces: `parseZipName(file): { slug, platform, version } | null`, `groupReleases(zipPaths): ReleaseGroup[]` where `ReleaseGroup = { tag: string /* <slug>-v<version> */; slug; version; zips: string[] }`, `releaseNotes(group): string`. CLI `node scripts/release-portals.ts [dir=dist/release]`: for each group, if the GitHub release `<tag>` does not exist, `gh release create <tag> <zips...> --title "<slug> v<version>" --notes ... [--target $GITHUB_SHA]`; if it exists, upload only the zips not yet attached (`gh release upload <tag> <missing zips>`, never `--clobber` — already-attached zips may have been submitted and must stay immutable). `missingZips(group, attachedNames): string[]` is the pure helper. `DRY_RUN=1` prints what would happen without calling `gh`.
 - Consumes: zip naming from Task 5 (`<slug>-<platform>-v<version>.zip`).
 
 - [ ] **Step 1: Write the failing tests**
@@ -2106,7 +2106,7 @@ git push origin master
 `scripts/release-portals.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
-import { groupReleases, parseZipName, releaseNotes } from './release-portals.ts';
+import { groupReleases, missingZips, parseZipName, releaseNotes } from './release-portals.ts';
 
 describe('parseZipName', () => {
   it('parses slug, platform and version from a path', () => {
@@ -2141,6 +2141,17 @@ describe('groupReleases', () => {
   });
 
   it('returns an empty list when there are no zips', () => expect(groupReleases([])).toEqual([]));
+});
+
+describe('missingZips', () => {
+  it('returns only zips whose file name is not attached yet', () => {
+    const [g] = groupReleases([
+      'dist/release/alpha-crazygames-v1.0.0.zip',
+      'dist/release/alpha-gamedistribution-v1.0.0.zip',
+    ]);
+    expect(missingZips(g!, ['alpha-crazygames-v1.0.0.zip'])).toEqual(['dist/release/alpha-gamedistribution-v1.0.0.zip']);
+    expect(missingZips(g!, ['alpha-crazygames-v1.0.0.zip', 'alpha-gamedistribution-v1.0.0.zip'])).toEqual([]);
+  });
 });
 
 describe('releaseNotes', () => {
@@ -2253,12 +2264,21 @@ export function releaseNotes(group: ReleaseGroup): string {
   return lines.join('\n');
 }
 
-function releaseExists(tag: string): boolean {
+export function missingZips(group: ReleaseGroup, attachedNames: string[]): string[] {
+  const attached = new Set(attachedNames);
+  return group.zips.filter((z) => !attached.has(basename(z)));
+}
+
+/** Asset names attached to an existing release, or null when the release does not exist. */
+function attachedAssets(tag: string): string[] | null {
   try {
-    execFileSync('gh', ['release', 'view', tag], { stdio: 'ignore' });
-    return true;
+    const out = execFileSync('gh', ['release', 'view', tag, '--json', 'assets', '--jq', '.assets[].name'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\n').filter(Boolean);
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -2270,11 +2290,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (groups.length === 0) console.log(`[release] no portal zips in ${dir}; nothing to do`);
   for (const group of groups) {
     if (dry) {
-      console.log(`[release] would create release ${group.tag} with ${group.zips.length} zip(s) (skipped if it already exists)`);
+      console.log(`[release] would create release ${group.tag} with ${group.zips.length} zip(s) (or upload missing ones if it exists)`);
       continue;
     }
-    if (releaseExists(group.tag)) {
-      console.log(`[release] ${group.tag} already exists; skipping (bump the game version for a new release)`);
+    const attached = attachedAssets(group.tag);
+    if (attached !== null) {
+      const missing = missingZips(group, attached);
+      if (missing.length === 0) {
+        console.log(`[release] ${group.tag} already has all zips; nothing to do`);
+      } else {
+        execFileSync('gh', ['release', 'upload', group.tag, ...missing], { stdio: 'inherit' });
+        console.log(`[release] ${group.tag}: uploaded ${missing.length} missing zip(s)`);
+      }
       continue;
     }
     const args = ['release', 'create', group.tag, ...group.zips, '--title', `${group.slug} v${group.version}`, '--notes', releaseNotes(group)];
@@ -2327,7 +2354,7 @@ Then (zips exist from Task 5; rebuild with `npm run build:portals` if `dist/rele
 ```bash
 DRY_RUN=1 node scripts/release-portals.ts
 ```
-Expected output: `[release] would create release dodge-drop-v0.1.0 with 1 zip(s) (skipped if it already exists)`.
+Expected output: `[release] would create release dodge-drop-v0.1.0 with 1 zip(s) (or upload missing ones if it exists)`.
 
 Do NOT run the script without `DRY_RUN=1` locally.
 
@@ -2595,7 +2622,7 @@ Produced by `npm run build:portals` (CI job `release-portals` attaches the zip t
 ## Manual: getting a gameId and building the zip
 
 - [ ] Create a developer account and register the game in https://developer.gamedistribution.com to obtain its **gameId** (a hash). **UNVERIFIED:** whether the id is issued before the first zip upload; if the dashboard demands a zip first, build a throwaway one with `GD_GAME_ID=placeholder node scripts/build-games.ts gamedistribution` (output in `dist/gamedistribution/<slug>`), upload it, then rebuild with the real id.
-- [ ] Add the id to `games/<slug>/game.json`: `"portalIds": { "gamedistribution": "<gameId>" }`, commit, push. CI then builds `<slug>-gamedistribution-v<version>.zip`. Note: CI only creates a GitHub Release when the tag `<slug>-v<version>` does not exist yet; if the CrazyGames zip already created it, build the GD zip locally with `npm run build:portals` (output in `dist/release/`) or bump the game version.
+- [ ] Add the id to `games/<slug>/game.json`: `"portalIds": { "gamedistribution": "<gameId>" }`, commit, push. CI then builds `<slug>-gamedistribution-v<version>.zip`. CI attaches it to the existing `<slug>-v<version>` release if that tag already exists (missing zips are uploaded; existing ones are never overwritten).
 - [ ] Upload the zip on the Upload tab of the developer dashboard. **UNVERIFIED:** whether `index.html` must be at the zip root (we ship it at the root).
 - [ ] Rewarded ads: if the game uses rewarded ads, enable the **Rewarded Ads** flag for the game in the dashboard (documented requirement); otherwise `preloadAd('rewarded')` rejects and the adapter resolves `unavailable`.
 
@@ -2862,7 +2889,7 @@ git push origin master
 The plan ends here for automation. In the final report, tell the user verbatim that the following are manual and cannot be automated:
 
 1. **CrazyGames:** create a developer account, then upload `dodge-drop-crazygames-v0.1.0.zip` (from the GitHub Release `dodge-drop-v0.1.0`, or `npm run build:portals` then `dist/release/`). Upload the three covers from `games/dodge-drop/store/`, enter description/controls, choose orientation (portrait), tick **Progress Save**, and work through `docs/specs/game-platform/checklists/crazygames.md`.
-2. **GameDistribution:** register the game in https://developer.gamedistribution.com to get the **gameId**, add `"portalIds": { "gamedistribution": "<gameId>" }` to `games/dodge-drop/game.json`, push, then build the GD zip (`npm run build:portals` locally, because the GitHub Release for `v0.1.0` already exists and CI will not add files to it; or bump the game version). Upload it, watch one ad in the preview to activate the SDK, enable Rewarded Ads if used, and work through `docs/specs/game-platform/checklists/gamedistribution.md`.
+2. **GameDistribution:** register the game in https://developer.gamedistribution.com to get the **gameId**, add `"portalIds": { "gamedistribution": "<gameId>" }` to `games/dodge-drop/game.json`, push; CI builds the GD zip and attaches it to the existing `dodge-drop-v0.1.0` release (missing assets are uploaded, existing ones never overwritten). Upload it, watch one ad in the preview to activate the SDK, enable Rewarded Ads if used, and work through `docs/specs/game-platform/checklists/gamedistribution.md`.
 3. After each submission set `releases.<portal>.status` to `submitted` with `submittedAt` in `game.json`, commit and push, then run `npm run release-status`.
 4. Decide whether to bump `dodge-drop` to `1.0.0` before the first submission (it is still `0.1.0`).
 
@@ -2899,7 +2926,7 @@ The plan ends here for automation. In the final report, tell the user verbatim t
 
 ## Open issues for controller
 
-1. **Release skip vs later GD zip.** Decision says "tag exists → skip". The GD zip only appears after the user adds `portalIds.gamedistribution`, usually after the CrazyGames zip already created `dodge-drop-v0.1.0`, so CI never attaches the GD zip to that release (needs a version bump or a local `npm run build:portals`). Implemented as decided and documented in the GD checklist and Task 8 Step 8. Suggested follow-up: `gh release upload` for missing assets on an existing tag.
+1. **RESOLVED by controller (2026-11-21): existing tag → upload only missing zips (Task 6 updated).** Original note: Decision said "tag exists → skip". The GD zip only appears after the user adds `portalIds.gamedistribution`, usually after the CrazyGames zip already created `dodge-drop-v0.1.0`, so CI never attaches the GD zip to that release (needs a version bump or a local `npm run build:portals`). Implemented as decided and documented in the GD checklist and Task 8 Step 8. Suggested follow-up: `gh release upload` for missing assets on an existing tag.
 2. **Allowlist is wider than the decision's example.** A real Phaser bundle contains inert strings for `opensource.org`, `prunegames.com`, `github.com`, `phaser.io`, `steffe.se` besides `www.w3.org` (found by scanning a real build); all are in `INERT_HOSTS` with a documented rationale. Small additions beyond the decision: `checkArtifact` also rejects root-absolute / protocol-relative `src|href` in `index.html` and symlinks; manifest validation rejects unknown `portalIds` keys.
 3. **GD smoke cannot assert "reaches GKTitle".** Test hooks are off in non-local builds and the GD adapter makes no SDK call at scene transitions. GD smoke asserts SDK_READY handshake, `GD_OPTIONS.gameId` set before load, canvas present, click without errors, and that the only external host requested is the GD SDK host. CG smoke asserts `loadingStop` (right before Title) and `gameplayStart` (after clicking Title).
 4. **GD ads need a user gesture** (research B2). `session.breakpoint()` may call `showInterstitial` outside a gesture; on GD that may yield `unavailable` or a silent no-show. Retry (GameOver tap) is fine. Flagged in the GD checklist; no code change planned.
