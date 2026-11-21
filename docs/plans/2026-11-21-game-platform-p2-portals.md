@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status (2026-11-21):** All 8 tasks complete (commits c905229..HEAD of the P2 series). Manual submission steps remain with the user (see Task 8 Step 8).
+**Status (2026-11-21):** All 8 tasks complete (commits 79b28dc..ec277ef of the P2 series). Follow-up fixes: 64ba03f. Manual submission steps remain with the user (see Task 8 Step 8).
 
 **Goal:** Add the `crazygames` and `gamedistribution` platform adapters, build-artifact checks, per-portal zips published as GitHub Releases, a release-status command, per-platform submission checklists and store covers, so `dodge-drop` is ready for its first manual submission.
 
@@ -2873,7 +2873,7 @@ Expected: typecheck/tests green; `release-status` shows `dodge-drop  0.1.0  craz
 
 - [ ] **Step 7: Mark this plan done, commit, push**
 
-Edit this file's header: below the `# Game Platform P2 — Portals Implementation Plan` title and the `> **For agentic workers:**` line, add the line `**Status (<today's date>):** All 8 tasks complete (commits <first sha>..<last sha>). Manual submission steps remain with the user (see Task 8 Step 8).` using real values from `git log --oneline -8`.
+Edit this file's header: below the `# Game Platform P2 — Portals Implementation Plan` title and the `> **For agentic workers:**` line, add the line `**Status (<today's date>):** All 8 tasks complete (commits <first sha>..<last sha>). Follow-up fixes: 64ba03f. Manual submission steps remain with the user (see Task 8 Step 8).` using real values from `git log --oneline -8`.
 
 ```bash
 git add scripts/render-covers.ts scripts/render-covers.test.ts games/dodge-drop/store/landscape-1920x1080.png games/dodge-drop/store/portrait-800x1200.png games/dodge-drop/store/square-800x800.png games/dodge-drop/game.json package.json docs/plans/2026-11-21-game-platform-p2-portals.md
