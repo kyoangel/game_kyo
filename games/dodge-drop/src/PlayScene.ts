@@ -3,6 +3,7 @@ import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInpu
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { fallSpeed } from './difficulty.ts';
 import { SKINS, type Skin } from './economy.ts';
+import { formatTime } from './format.ts';
 import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
 import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
 import { mulberry32 } from './rng.ts';
@@ -63,12 +64,6 @@ function layersFor(t: number): 1 | 2 | 3 | 4 {
   if (t >= 30) return 3;
   if (t >= 10) return 2;
   return 1;
-}
-
-function fmtTime(s: number): string {
-  const m = Math.floor(s / 60);
-  const r = Math.floor(s % 60);
-  return `${m}:${r < 10 ? '0' : ''}${r}`;
 }
 
 export class PlayScene extends Phaser.Scene {
@@ -168,6 +163,25 @@ export class PlayScene extends Phaser.Scene {
     this.lastSecShown = -1;
     this.lastComboShown = -1;
     this.trail = null;
+
+    if (__GK_TEST_HOOKS__) {
+      const w = window as unknown as { __dd?: { god: boolean } };
+      const god = w.__dd?.god ?? false;
+      w.__dd = {
+        god,
+        stats: () => ({
+          t: this.t,
+          score: this.score,
+          combo: this.combo.count,
+          multiplier: this.combo.multiplier,
+          stars: this.stars,
+          shieldHeld: this.shieldHeld,
+          rush: isRush(this.t),
+          medals: [...this.earned],
+          layers: isRush(this.t) ? 4 : layersFor(this.t),
+        }),
+      } as { god: boolean };
+    }
 
     this.buildBackdrop();
     this.buildPools();
@@ -588,6 +602,11 @@ export class PlayScene extends Phaser.Scene {
       void this.fx.hitStop(60);
       return;
     }
+    if (__GK_TEST_HOOKS__ && (window as unknown as { __dd?: { god: boolean } }).__dd?.god) {
+      b.active = false;
+      b.img.setVisible(false);
+      return;
+    }
     if (this.dead) return;
     this.dead = true;
     void this.die();
@@ -676,7 +695,7 @@ export class PlayScene extends Phaser.Scene {
     const sec = Math.floor(this.t);
     if (sec !== this.lastSecShown) {
       this.lastSecShown = sec;
-      this.timerText.setText(fmtTime(sec));
+      this.timerText.setText(formatTime(sec));
     }
     const c = this.combo.count;
     const mult = this.combo.multiplier;

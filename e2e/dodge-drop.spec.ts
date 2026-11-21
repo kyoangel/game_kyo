@@ -49,3 +49,28 @@ test('dodge-drop: plays with keys, survives or dies cleanly, overlay tap returns
   );
   expect(errors).toEqual([]);
 });
+
+test('dodge-drop: Skins scene opens from the title and Back returns', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(`console: ${m.text()}`);
+  });
+  await page.goto('/dodge-drop/');
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
+  const box = (await page.locator('canvas').boundingBox())!;
+  const at = (gx: number, gy: number) => ({ x: box.x + (gx / 720) * box.width, y: box.y + (gy / 1280) * box.height });
+
+  const skins = at(360, 1280 * 0.72);
+  await page.mouse.click(skins.x, skins.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Skins'));
+  expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).not.toBe('playing');
+
+  const back = at(120, 80);
+  await page.mouse.click(back.x, back.y);
+  await page.waitForFunction(() => {
+    const s = (window as unknown as W).__gk!.activeScenes;
+    return s.includes('GKTitle') && !s.includes('Skins');
+  });
+  expect(errors).toEqual([]);
+});
