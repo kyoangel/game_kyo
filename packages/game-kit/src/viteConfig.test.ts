@@ -3,7 +3,7 @@ import { availablePlatforms, createGameViteConfig, resolveAdapter } from '../vit
 
 describe('vite-config', () => {
   it('lists implemented adapters', () => {
-    expect(availablePlatforms()).toEqual(expect.arrayContaining(['local', 'site']));
+    expect(availablePlatforms()).toEqual(expect.arrayContaining(['local', 'site', 'crazygames', 'gamedistribution']));
     expect(availablePlatforms().some((p) => p.endsWith('.test'))).toBe(false);
   });
 
