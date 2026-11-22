@@ -1,5 +1,6 @@
 // Everything the CrazyGames portal form needs, derived from game.json, for the publish-crazygames skill.
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { GameManifest } from '../packages/game-kit/src/manifest.ts';
 
 /** Exact radio labels on the CrazyGames Upload page ("Does your game save progress?"), 2026-11-22. */
@@ -69,3 +70,44 @@ export function preflightProblems(
   for (const file of Object.values(p.videos)) if (!exists(file)) out.push(`missing ${file} (run npm run store-video -- ${p.slug})`);
   return out;
 }
+
+// ---- CLI: npm run publish:prep -- <slug> ----
+// Thin IO shell: build the portal artifact, make missing covers/videos, check everything, write the payload JSON.
+async function main(slug: string | undefined): Promise<number> {
+  const { execFileSync } = await import('node:child_process');
+  const { existsSync, mkdirSync, readFileSync, writeFileSync } = await import('node:fs');
+  const { resolve } = await import('node:path');
+  const { loadGames } = await import('./lib/games.ts');
+  const { readPngSize, renderCovers } = await import('./render-covers.ts');
+
+  const game = loadGames().find((g) => g.slug === slug);
+  if (!slug || !game) {
+    console.error('usage: npm run publish:prep -- <slug>');
+    return 2;
+  }
+  const root = resolve('.');
+  const payload = crazyGamesPayload(game, root);
+  const run = (args: string[]) => execFileSync('npm', ['run', ...args], { stdio: 'inherit' });
+
+  run(['build:portals']);
+  if (Object.values(payload.covers).some((f) => !existsSync(f))) await renderCovers(slug);
+  if (Object.values(payload.videos).some((f) => !existsSync(f))) run(['store-video', '--', slug]);
+
+  const pngSize = (f: string): [number, number] => {
+    const { width, height } = readPngSize(readFileSync(f));
+    return [width, height];
+  };
+  const problems = preflightProblems(payload, game, existsSync, pngSize);
+  if (problems.length > 0) {
+    for (const p of problems) console.error(`[publish:prep] ${p}`);
+    return 1;
+  }
+  const outDir = resolve('dist', 'publish');
+  mkdirSync(outDir, { recursive: true });
+  const out = resolve(outDir, `${slug}-crazygames.json`);
+  writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`);
+  console.log(`[publish:prep] ready: ${out}`);
+  return 0;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(await main(process.argv[2]));

@@ -17,7 +17,8 @@
     "release-status": "node scripts/release-status.ts",
     "covers": "node scripts/render-covers.ts",
     "test:portals": "node scripts/build-portals.ts --smoke && playwright test e2e/portals.spec.ts",
-    "store-video": "node scripts/store-video.ts"
+    "store-video": "node scripts/store-video.ts",
+    "publish:prep": "node scripts/publish-payload.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
