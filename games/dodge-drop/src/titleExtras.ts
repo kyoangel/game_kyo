@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addButton, cssColor, getKit, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
+import { addButton, cssColor, getKit, markButtonTap, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
 import { renderBoostBar } from './boostBar.ts';
 import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { mergeMedals } from './medals.ts';
@@ -61,10 +61,12 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     const ms = missions;
     const enabled = availableTiers(medals);
 
-    // Top-left star coin balance (mirrors mute/fullscreen buttons at y = 60 on the right).
-    const balIcon = drawCurrencyIcon(scene, 42, 60, 38).setDepth(2);
-    objs.push(balIcon);
-    txt(70, 60, String(coins), 32, 0xffe14d, 0);
+    // Top-center star coin balance: clear of the site's top-left back icon and the top-right icon buttons.
+    const balTxt = txt(0, 60, String(coins), 32, 0xffe14d, 0);
+    const balW = 38 + 8 + balTxt.width;
+    const balX = ctx.width / 2 - balW / 2;
+    objs.push(drawCurrencyIcon(scene, balX + 19, 60, 38));
+    balTxt.setX(balX + 46);
 
     // Single-run quick-buy boost strip between Title (0.30) and Tap to Start (0.55).
     const barObjs = renderBoostBar(scene, kit, {
@@ -115,42 +117,45 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       objs.push(btn);
     });
 
-    // Control chips (Drag / Tilt): only on devices that can really deliver tilt readings.
-    if (__GK_TEST_HOOKS__) (window as unknown as { __ddTitle?: object }).__ddTitle = { tiltChip: tiltAvail, control };
+    // Tilt on/off icon next to mute/fullscreen: only on devices that can really deliver tilt readings.
+    if (__GK_TEST_HOOKS__) (window as unknown as { __ddTitle?: object }).__ddTitle = { tiltToggle: tiltAvail, control };
     if (tiltAvail) {
-      (['drag', 'tilt'] as const).forEach((id, i) => {
-        const sel = control === id;
-        const btn = addButton(scene, ctx.width / 2 + (i - 0.5) * 136, ctx.below - 22, kit.t(`control.${id}`), {
-          width: 126, height: 40, fontSize: 20,
-          fill: sel ? theme.accent : theme.primary,
-          textColor: sel ? 0x1a1033 : 0xffffff,
-          strokeThickness: sel ? 0 : 4,
-          onClick: () => {
-            if (id === 'drag') {
-              if (control === 'drag') return;
-              control = 'drag';
-              persist(() => kit.save.setJSON('control', 'drag'));
-              render();
-              return;
-            }
-            // Must be called synchronously from this tap: iOS only shows its motion prompt from a user gesture.
-            void requestTilt(browserTiltEnv()).then((ok) => {
-              if (!scene.sys.isActive()) return;
-              if (ok) {
-                control = 'tilt';
-                persist(() => kit.save.setJSON('control', 'tilt'));
-              } else {
-                control = 'drag';
-                tiltAvail = false;
-                persist(() => kit.save.setJSON('control', 'drag'));
-                toast(kit.t('tiltFailed'));
-              }
-              render();
-            });
-          },
+      const on = control === 'tilt';
+      const g = scene.add.graphics();
+      g.fillStyle(0x1a1033, 0.5);
+      g.fillCircle(0, 0, 28);
+      if (on) {
+        g.lineStyle(3, theme.accent, 1);
+        g.strokeCircle(0, 0, 28);
+      }
+      const icon = scene.add.image(0, 0, 'dd-tilt').setDisplaySize(40, 40).setTint(on ? theme.accent : theme.muted).setAlpha(on ? 1 : 0.7);
+      const c = scene.add.container(ctx.width - 212, 60, [g, icon]);
+      c.setSize(76, 76);
+      c.setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => {
+        markButtonTap(scene);
+        if (control === 'tilt') {
+          control = 'drag';
+          persist(() => kit.save.setJSON('control', 'drag'));
+          render();
+          return;
+        }
+        // Must be called synchronously from this tap: iOS only shows its motion prompt from a user gesture.
+        void requestTilt(browserTiltEnv()).then((ok) => {
+          if (!scene.sys.isActive()) return;
+          if (ok) {
+            control = 'tilt';
+            persist(() => kit.save.setJSON('control', 'tilt'));
+          } else {
+            control = 'drag';
+            tiltAvail = false;
+            persist(() => kit.save.setJSON('control', 'drag'));
+            toast(kit.t('tiltFailed'));
+          }
+          render();
         });
-        objs.push(btn);
       });
+      objs.push(c);
     }
 
     // Missions

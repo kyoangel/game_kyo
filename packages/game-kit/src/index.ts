@@ -15,6 +15,6 @@ export { BPM, LAYERS, stepsToSchedule } from './audio/music.ts';
 export { createFx, type Fx } from './juice/fx.ts';
 export { ensureTextures, addBackground } from './juice/textures.ts';
 export { createInput, type GameInput } from './input/input.ts';
-export { addButton, consumeButtonTap, textResolution } from './ui/button.ts';
+export { addButton, consumeButtonTap, markButtonTap, textResolution } from './ui/button.ts';
 export type { ResultsContext } from './results.ts';
 export type { TitleExtrasContext } from './titleLayout.ts';
