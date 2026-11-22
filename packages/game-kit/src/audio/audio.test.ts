@@ -120,6 +120,22 @@ describe('createGameAudio', () => {
     a.music.setMode('normal');
     expect(a.music.mode).toBe('normal');
   });
+  it('randomTrack picks a different track each time', () => {
+    const f = fakeCtx();
+    const a = createGameAudio(store().save, () => f.ctx);
+    for (let i = 0; i < 20; i++) {
+      const before = a.music.trackIndex;
+      a.music.randomTrack(() => (i % 10) / 10);
+      expect(a.music.trackIndex).not.toBe(before);
+      expect(a.music.trackIndex).toBeGreaterThanOrEqual(0);
+      expect(a.music.trackIndex).toBeLessThan(TRACKS.length);
+    }
+    a.music.setTrack(0);
+    a.music.randomTrack(() => 0.99);
+    expect(a.music.trackIndex).toBe(2);
+    a.music.randomTrack(() => 0);
+    expect(a.music.trackIndex).toBe(0);
+  });
   it('balances music bus louder than sfx bus for mobile speakers', () => {
     expect(MUSIC_BUS).toBeGreaterThan(SFX_BUS);
     expect(MUSIC_BUS).toBeGreaterThanOrEqual(0.5);

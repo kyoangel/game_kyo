@@ -22,6 +22,8 @@ export interface GameAudio {
     setLayers(n: 1 | 2 | 3 | 4): void;
     setMode(mode: MusicMode): void;
     nextTrack(): void;
+    /** Jump to a random track other than the current one. */
+    randomTrack(rng?: () => number): void;
     setTrack(index: number): void;
     readonly trackIndex: number;
     readonly mode: MusicMode;
@@ -212,6 +214,12 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       },
       nextTrack() {
         trackIdx = (trackIdx + 1) % TRACKS.length;
+        stepIdx = 0;
+      },
+      randomTrack(rng = Math.random) {
+        if (TRACKS.length < 2) return;
+        const r = Math.min(TRACKS.length - 2, Math.floor(rng() * (TRACKS.length - 1)));
+        trackIdx = r >= trackIdx ? r + 1 : r;
         stepIdx = 0;
       },
       setTrack(index) {

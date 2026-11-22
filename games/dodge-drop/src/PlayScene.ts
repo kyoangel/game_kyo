@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode } from '@gf/game-kit';
+import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
@@ -310,7 +310,9 @@ export class PlayScene extends Phaser.Scene {
       this.buildPlayer();
       this.syncShieldHud();
       this.ready = true;
-      if (this.runId > 1) this.kit.audio.music.nextTrack();
+      // Random track per run: any track on the first run, never the same one twice in a row after that.
+      if (this.runId > 1) this.kit.audio.music.randomTrack();
+      else this.kit.audio.music.setTrack(Math.floor(Math.random() * TRACKS.length));
       this.kit.audio.music.start();
       this.setLayers(true);
     });
