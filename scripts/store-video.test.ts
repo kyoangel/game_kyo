@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RECORD_VIEWPORT, videoFilters } from './store-video.ts';
+import { ffmpegArgs, MAX_SECONDS, RECORD_VIEWPORT, videoFilters } from './store-video.ts';
 
 describe('videoFilters', () => {
   it('portrait game: 2:3 centre crop scaled to 1080x1620, landscape = blurred sides', () => {
@@ -24,4 +24,21 @@ describe('videoFilters', () => {
     expect(RECORD_VIEWPORT.portrait).toEqual({ width: 720, height: 1080 });
     expect(RECORD_VIEWPORT.landscape).toEqual({ width: 1280, height: 720 });
   });
+});
+
+describe('ffmpegArgs', () => {
+  const args = ffmpegArgs('in.webm', 'out.mp4', '[0:v]null[v]', true);
+  it('trims under the 20 s cap', () => {
+    expect(MAX_SECONDS).toBe(19.9);
+    expect(args).toEqual(expect.arrayContaining(['-t', '19.9']));
+  });
+  it('fades out video and audio', () => {
+    expect(args[args.indexOf('-filter_complex') + 1]).toBe('[0:v]null[v];[v]fade=t=out:st=19.4:d=0.5,format=yuv420p[out]');
+    expect(args).toEqual(expect.arrayContaining(['-af', 'afade=t=out:st=19.4:d=0.5', '-map', '0:a?']));
+  });
+  it('encodes h264 + faststart, overwrites output', () => {
+    expect(args).toEqual(expect.arrayContaining(['-y', '-c:v', 'libx264', '-crf', '20', '-movflags', '+faststart']));
+    expect(args.at(-1)).toBe('out.mp4');
+  });
+  it('omits audio when the source has none', () => expect(ffmpegArgs('in.webm', 'o.mp4', '[0:v]null[v]', false)).toContain('-an'));
 });

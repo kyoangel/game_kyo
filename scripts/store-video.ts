@@ -30,3 +30,18 @@ export function videoFilters(orientation: Orientation, top: number): { portrait:
     portrait: `[0:v]${src},fps=60,split[a][b];[b]scale=-2:${P.h},crop=${P.w}:${P.h},${BLUR}[bg];[a]scale=${P.w}:-2:flags=lanczos[fg];[bg][fg]overlay=0:(H-h)/2[v]`,
   };
 }
+
+/** Portals cap preview videos at 20 s; stay just under it. */
+export const MAX_SECONDS = 19.9;
+
+/** Full ffmpeg argument list: trim, 0.5 s fade-out, h264/yuv420p, aac, web-friendly (faststart). */
+export function ffmpegArgs(input: string, output: string, filter: string, hasAudio: boolean): string[] {
+  const st = (MAX_SECONDS - 0.5).toFixed(1);
+  const audio = hasAudio ? ['-map', '0:a?', '-af', `afade=t=out:st=${st}:d=0.5`, '-c:a', 'aac', '-b:a', '128k'] : ['-an'];
+  return [
+    '-v', 'error', '-y', '-i', input, '-t', String(MAX_SECONDS),
+    '-filter_complex', `${filter};[v]fade=t=out:st=${st}:d=0.5,format=yuv420p[out]`, '-map', '[out]',
+    ...audio,
+    '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', output,
+  ];
+}
