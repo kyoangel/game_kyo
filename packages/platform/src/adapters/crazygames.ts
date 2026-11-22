@@ -113,7 +113,7 @@ export function createPlatform(opts: CrazyGamesOptions = {}): Platform {
 
   return {
     id: 'crazygames',
-    features: { externalLinks: false, leaderboard: false, rewardedAds: true },
+    features: { externalLinks: false, leaderboard: false, rewardedAds: true, fullscreenButton: false },
     init() {
       initPromise ??= doInit();
       return initPromise;

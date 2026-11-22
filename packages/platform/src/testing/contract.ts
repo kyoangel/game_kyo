@@ -22,6 +22,7 @@ export function runPlatformContract(name: string, f: ContractFactories): void {
       expect(typeof p.features.externalLinks).toBe('boolean');
       expect(typeof p.features.leaderboard).toBe('boolean');
       expect(typeof p.features.rewardedAds).toBe("boolean");
+      expect(typeof p.features.fullscreenButton).toBe("boolean");
       expect(p.locale().length).toBeGreaterThan(0);
     });
 

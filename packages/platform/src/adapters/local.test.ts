@@ -12,7 +12,7 @@ describe('local adapter specifics', () => {
   it('is id local with all features on', () => {
     const p = createPlatform();
     expect(p.id).toBe('local');
-    expect(p.features).toEqual({ externalLinks: true, leaderboard: true, rewardedAds: true });
+    expect(p.features).toEqual({ externalLinks: true, leaderboard: true, rewardedAds: true, fullscreenButton: true });
   });
 
   it('interstitial resolves shown, rewarded resolves rewarded by default', async () => {

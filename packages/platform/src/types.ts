@@ -9,6 +9,8 @@ export interface PlatformFeatures {
   externalLinks: boolean;
   leaderboard: boolean;
   rewardedAds: boolean;
+  /** Show the in-game fullscreen toggle (only the site; portals provide their own). */
+  fullscreenButton: boolean;
 }
 
 export interface PlatformStorage {

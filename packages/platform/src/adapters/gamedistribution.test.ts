@@ -67,7 +67,7 @@ describe('gamedistribution adapter specifics', () => {
   it('has id gamedistribution, no external links, no leaderboard', () => {
     const { platform } = make();
     expect(platform.id).toBe('gamedistribution');
-    expect(platform.features).toEqual({ externalLinks: false, leaderboard: false, rewardedAds: true });
+    expect(platform.features).toEqual({ externalLinks: false, leaderboard: false, rewardedAds: true, fullscreenButton: false });
   });
 
   it('sets GD_OPTIONS (gameId + onEvent) BEFORE loading the SDK script', async () => {

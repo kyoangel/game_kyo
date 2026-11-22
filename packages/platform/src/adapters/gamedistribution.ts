@@ -104,7 +104,7 @@ export function createPlatform(opts: GameDistributionOptions = {}): Platform {
 
   return {
     id: 'gamedistribution',
-    features: { externalLinks: false, leaderboard: false, rewardedAds: true },
+    features: { externalLinks: false, leaderboard: false, rewardedAds: true, fullscreenButton: false },
     init() {
       initPromise ??= doInit();
       return initPromise;

@@ -4,6 +4,12 @@ import { cssColor } from '../theme.ts';
 
 const handled = new WeakMap<Phaser.Scene, boolean>();
 
+/** Mark the current pointer as handled by a UI control so scene-wide tap handlers (e.g. tap-to-start) skip it. */
+export function markButtonTap(scene: Phaser.Scene): void {
+  handled.set(scene, true);
+  scene.input.once('pointerup', () => setTimeout(() => handled.set(scene, false), 0));
+}
+
 /** True once if a button handled the current pointer; scene-wide tap handlers should skip when it returns true. */
 export function consumeButtonTap(scene: Phaser.Scene): boolean {
   const v = handled.get(scene) === true;
@@ -47,9 +53,7 @@ export function addButton(
   c.setSize(w, h);
   c.setInteractive({ useHandCursor: true });
   c.on('pointerdown', () => {
-    handled.set(scene, true);
-    // clear a stale flag if no scene handler consumed it
-    scene.input.once('pointerup', () => setTimeout(() => handled.set(scene, false), 0));
+    markButtonTap(scene);
     c.setScale(0.94);
     kit.audio.sfx('click');
   });

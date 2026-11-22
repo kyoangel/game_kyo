@@ -6,7 +6,9 @@ import type { SaveData } from './save.ts';
 import { createInput, type GameInput } from './input/input.ts';
 import { createFx, type Fx } from './juice/fx.ts';
 import type { GameSession } from './session.ts';
+import { markButtonTap } from './ui/button.ts';
 import { RunFlow } from './runFlow.ts';
+import { fullscreenAvailable } from './ui/fullscreenSupport.ts';
 import { resolveTheme, type Theme } from './theme.ts';
 
 export const KIT_KEY = 'gk:kit';
@@ -167,7 +169,57 @@ export class Kit {
     c.setSize(size, size);
     c.setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => {
+      markButtonTap(scene);
       void this.audio.toggleMute().then(draw);
+    });
+    return c;
+  }
+
+  /** True when a fullscreen toggle should be shown (platform feature on and the browser allows it). */
+  get fullscreenAvailable(): boolean {
+    return fullscreenAvailable(this.platform.features.fullscreenButton, typeof document === 'undefined' ? undefined : document);
+  }
+
+  /** Fullscreen toggle button, or null when unavailable. Place it next to the mute button. */
+  addFullscreenButton(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Container | null {
+    if (!this.fullscreenAvailable) return null;
+    const size = 56;
+    const g = scene.add.graphics();
+    const draw = (): void => {
+      g.clear();
+      g.fillStyle(0x1a1033, 0.5);
+      g.fillCircle(0, 0, size / 2);
+      g.lineStyle(4, this.theme.text, 1);
+      const out = !scene.scale.isFullscreen;
+      // Four corner brackets: pointing outwards to enter fullscreen, inwards to leave it.
+      for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+        const cx = sx * (out ? 15 : 7);
+        const cy = sy * (out ? 15 : 7);
+        const arm = out ? -9 : 9;
+        g.beginPath();
+        g.moveTo(cx + sx * arm, cy);
+        g.lineTo(cx, cy);
+        g.lineTo(cx, cy + sy * arm);
+        g.strokePath();
+      }
+    };
+    draw();
+    const c = scene.add.container(x, y, [g]);
+    c.setSize(size, size);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => {
+      markButtonTap(scene);
+      if (scene.scale.isFullscreen) scene.scale.stopFullscreen();
+      else scene.scale.startFullscreen();
+    });
+    const redraw = (): void => {
+      if (g.active) draw();
+    };
+    scene.scale.on('enterfullscreen', redraw);
+    scene.scale.on('leavefullscreen', redraw);
+    scene.events.once('shutdown', () => {
+      scene.scale.off('enterfullscreen', redraw);
+      scene.scale.off('leavefullscreen', redraw);
     });
     return c;
   }

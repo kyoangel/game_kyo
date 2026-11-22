@@ -68,6 +68,7 @@ export class TitleScene extends Phaser.Scene {
       });
     });
     kit.addMuteButton(this, width - 60, 60);
+    kit.addFullscreenButton(this, width - 128, 60);
     kit.def.titleExtras?.(this, titleLayout(width, height, menu.length));
 
     let started = false;

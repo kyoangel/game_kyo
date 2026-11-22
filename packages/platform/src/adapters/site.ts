@@ -8,7 +8,7 @@ export function createPlatform(): Platform {
   const events = createAdEvents();
   return {
     id: 'site',
-    features: { externalLinks: true, leaderboard: false, rewardedAds: false },
+    features: { externalLinks: true, leaderboard: false, rewardedAds: false, fullscreenButton: true },
     async init() {},
     loadingProgress() {},
     loadingDone() {},

@@ -367,8 +367,9 @@ export class PlayScene extends Phaser.Scene {
     this.comboText = this.add.text(24, 76, '', this.textStyle(40, theme.accent)).setDepth(100).setVisible(false);
     this.comboBar = this.add.graphics().setDepth(100);
     this.buildStrip();
-    this.timerText = this.add.text(W - 100, 24, '0:00', this.textStyle(40, theme.text)).setOrigin(1, 0).setDepth(100);
+    this.timerText = this.add.text(this.kit.fullscreenAvailable ? W - 168 : W - 100, 24, '0:00', this.textStyle(40, theme.text)).setOrigin(1, 0).setDepth(100);
     this.kit.addMuteButton(this, W - 48, 48).setDepth(100);
+    this.kit.addFullscreenButton(this, W - 116, 48)?.setDepth(100);
     this.hint = this.add
       .text(W / 2, 800, this.kit.t('dragHint'), this.textStyle(36, theme.muted))
       .setOrigin(0.5)

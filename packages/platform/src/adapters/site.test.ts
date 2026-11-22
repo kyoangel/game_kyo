@@ -9,7 +9,7 @@ describe('site adapter (phase 1)', () => {
   it('has no ads yet and allows external links', async () => {
     const p = createPlatform();
     expect(p.id).toBe('site');
-    expect(p.features).toEqual({ externalLinks: true, leaderboard: false, rewardedAds: false });
+    expect(p.features).toEqual({ externalLinks: true, leaderboard: false, rewardedAds: false, fullscreenButton: true });
     expect(await p.showInterstitial()).toBe('unavailable');
     expect(await p.showRewarded()).toBe('unavailable');
   });

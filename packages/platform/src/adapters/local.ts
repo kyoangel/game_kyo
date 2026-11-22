@@ -50,7 +50,7 @@ export function createPlatform(opts: LocalOptions = {}): Platform {
 
   return {
     id: 'local',
-    features: { externalLinks: true, leaderboard: true, rewardedAds: true },
+    features: { externalLinks: true, leaderboard: true, rewardedAds: true, fullscreenButton: true },
     async init() {},
     loadingProgress() {},
     loadingDone() {},
