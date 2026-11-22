@@ -46,3 +46,6 @@ h1 { font-size: 2rem; }
   html.game-page .back [data-l] { display: none !important; }
   html.game-page .back::before { content: '←'; }
 }
+
+/* Visually hidden but available to screen readers (game page title: the game shows its own). */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
