@@ -121,7 +121,7 @@ ${legacy.map(legacyCard).join('\n')}
 }
 
 export function renderGamePage(game: GameManifest, opts: RenderOptions): string {
-  const body = `<header class="game-header"><a class="back" href="../" aria-label="${escapeHtml(UI.back!.en!)}">${bilingual(UI.back!)}</a><h1>${bilingual(game.title)}</h1></header>
+  const body = `<header class="game-header"><a class="back" href="../" aria-label="${escapeHtml(UI.back!.en!)}">${bilingual(UI.back!)}</a><h1 class="sr-only">${bilingual(game.title)}</h1></header>
 <div class="frame ${game.orientation}"><iframe src="./game/index.html" title="${escapeHtml(game.title.en)}" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
 <section class="about"><p>${bilingual(game.description)}</p><h2>${bilingual(UI.howTo!)}</h2><p>${bilingual(game.instructions)}</p></section>`;
   return shell({
