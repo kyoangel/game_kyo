@@ -15,6 +15,7 @@ import { mulberry32 } from './rng.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
 import { SpawnScheduler } from './schedule.ts';
+import { nextToastSlot } from './toastSlot.ts';
 import { BLOCK_H, isRush, PLAYER_HITBOX_W } from './waves.ts';
 
 const W = 720;
@@ -94,6 +95,7 @@ export class PlayScene extends Phaser.Scene {
   private trail: { stop(): void } | null = null;
   private ring!: Phaser.GameObjects.Image;
   private shieldBadge!: Phaser.GameObjects.Text;
+  private shieldBadgeIcon!: Phaser.GameObjects.Image;
   private vel = 0;
   private tiltN = 0;
   private invuln = 0;
@@ -112,7 +114,8 @@ export class PlayScene extends Phaser.Scene {
   private stats: RunStats = emptyStats();
   private missionState: MissionState = { active: [], stars: 0, rank: 1, completedCount: 0 };
   private toasted = new Set<MissionId>();
-  private toastQueue = 0;
+  private toastFreeAt = 0;
+  private lastNearPopT = -1;
   private toastCheck = 0;
   private graceBanner!: Phaser.GameObjects.Text;
 
@@ -180,7 +183,9 @@ export class PlayScene extends Phaser.Scene {
     this.runStartT = 0;
     this.stats = emptyStats();
     this.toasted = new Set();
-    this.toastQueue = 0;
+    this.toastFreeAt = 0;
+    this.lastNearPopT = -1;
+    this.fx?.clearPops();
     this.toastCheck = 0;
     this.nextStar = 6 + this.rng() * 3;
     this.nextShield = 25;
@@ -307,6 +312,7 @@ export class PlayScene extends Phaser.Scene {
     const key = skinTextureKey(this, this.skin);
     this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
     this.ring = this.add.image(W / 2, PLAYER_Y, 'dd-ring').setDepth(11).setVisible(false);
+    this.shieldBadgeIcon = this.add.image(W / 2, PLAYER_Y, 'dd-shield').setScale(0.6).setDepth(12).setVisible(false);
     this.shieldBadge = this.add.text(W / 2, PLAYER_Y, '', { ...this.textStyle(30, 0x58ff9a), strokeThickness: 6 }).setOrigin(0.5).setDepth(12).setVisible(false);
     if (this.skin.color === 'cycle') {
       this.prism = [];
@@ -468,7 +474,11 @@ export class PlayScene extends Phaser.Scene {
     this.player.setAlpha(blink ? 0.35 : 1);
     this.ring.setVisible(this.shieldHeld);
     this.shieldBadge.setVisible(this.shieldHits >= 2);
-    if (this.shieldHits >= 2) this.shieldBadge.setPosition(this.player.x + 40, this.player.y - 44);
+    this.shieldBadgeIcon.setVisible(this.shieldHits >= 2);
+    if (this.shieldHits >= 2) {
+      this.shieldBadgeIcon.setPosition(this.player.x + 26, this.player.y - 44);
+      this.shieldBadge.setPosition(this.player.x + 58, this.player.y - 44);
+    }
     if (this.shieldHeld) {
       this.ring.setPosition(this.player.x, this.player.y);
       this.ring.setScale(1 + Math.sin(this.t * 8) * 0.04);
@@ -753,6 +763,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private collect(p: Pickup): void {
+    if (this.dead) return;
     if (p.kind === 'star') {
       this.stars++;
       this.stats.stars++;
@@ -780,7 +791,11 @@ export class PlayScene extends Phaser.Scene {
     this.stats.nearMisses++;
     this.stats.maxMultiplier = Math.max(this.stats.maxMultiplier, mult);
     const side = Math.sign(b.x - this.player.x) || 1;
-    this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: 34 });
+    // Two blocks passing on both sides in the same row must not stack two pops on top of each other.
+    if (this.t - this.lastNearPopT >= 0.2) {
+      this.lastNearPopT = this.t;
+      this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: 34 });
+    }
     this.kit.audio.sfx('nearMiss', { step: this.combo.count });
     this.fx.burst(this.player.x + side * 24, PLAYER_Y, { color: 0xffffff, count: 8, speed: 260, lifespanMs: 300 });
   }
@@ -791,6 +806,7 @@ export class PlayScene extends Phaser.Scene {
       this.stats.shieldBlocks++;
       this.ring.setVisible(this.shieldHits > 0);
       this.shieldBadge.setText(`×${this.shieldHits}`).setVisible(this.shieldHits >= 2);
+      this.shieldBadgeIcon.setVisible(this.shieldHits >= 2);
       this.invuln = INVULN_SHIELD;
       this.combo.reset();
       b.active = false;
@@ -857,11 +873,10 @@ export class PlayScene extends Phaser.Scene {
     this.toastCheck = 0;
     for (const m of newlyCompleted(this.missionState, this.stats, this.toasted)) {
       this.toasted.add(m.id);
-      const delay = this.toastQueue;
-      this.toastQueue += 1.6;
-      this.time.delayedCall(delay * 1000, () => {
-        this.toastQueue = Math.max(0, this.toastQueue - 1.6);
-        if (this.sys.isActive()) this.showMissionToast();
+      const slot = nextToastSlot(this.time.now, this.toastFreeAt, 1600);
+      this.toastFreeAt = slot.freeAt;
+      this.time.delayedCall(slot.showAt - this.time.now, () => {
+        if (this.sys.isActive() && !this.dead) this.showMissionToast();
       });
     }
   }
@@ -903,12 +918,14 @@ export class PlayScene extends Phaser.Scene {
     this.player.setVisible(false);
     this.ring.setVisible(false);
     this.shieldBadge.setVisible(false);
+    this.shieldBadgeIcon.setVisible(false);
     this.trail?.stop();
     this.trail = null;
     this.kit.audio.sfx('death');
     this.kit.audio.music.stop();
     await this.fx.timeScale(0.3, 500);
     if (id !== this.runId) return;
+    this.fx.clearPops();
     const state: RunState = {
       score: this.score,
       seconds: Math.floor(this.t - this.runStartT),

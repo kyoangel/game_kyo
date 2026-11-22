@@ -10,6 +10,29 @@ function bucket(w: number): number {
   return Math.max(16, Math.ceil(w / 8) * 8);
 }
 
+/** Rounded-top crest (shield) outline centred on (cx, cy); scale 1 is about 40 px wide and 46 px tall. */
+export function shieldPoints(cx: number, cy: number, scale: number): Phaser.Math.Vector2[] {
+  const pts: Phaser.Math.Vector2[] = [];
+  const v = (x: number, y: number): void => {
+    pts.push(new Phaser.Math.Vector2(cx + x * scale, cy + y * scale));
+  };
+  v(-20, -20);
+  for (let i = 0; i <= 4; i++) v(-20 + i * 10, -22 + 3 * Math.sin((i / 4) * Math.PI) * -1 + 0);
+  v(20, -20);
+  v(20, 2);
+  for (let i = 1; i <= 5; i++) {
+    const a = (i / 6) * (Math.PI / 2);
+    v(20 * Math.cos(a), 2 + 21 * Math.sin(a));
+  }
+  v(0, 23);
+  for (let i = 5; i >= 1; i--) {
+    const a = (i / 6) * (Math.PI / 2);
+    v(-20 * Math.cos(a), 2 + 21 * Math.sin(a));
+  }
+  v(-20, 2);
+  return pts;
+}
+
 function gfx(scene: Phaser.Scene): Phaser.GameObjects.Graphics {
   return scene.make.graphics({}, false);
 }
@@ -85,14 +108,15 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
   }
   if (!tex.exists('dd-shield')) {
     const g = gfx(scene);
-    g.lineStyle(10, 0x58ff9a, 0.25);
-    g.strokeCircle(32, 32, 24);
-    g.lineStyle(5, 0x58ff9a, 1);
-    g.strokeCircle(32, 32, 22);
-    g.fillStyle(0x58ff9a, 0.25);
-    g.fillCircle(32, 32, 20);
-    g.fillStyle(0xffffff, 0.9);
-    g.fillTriangle(24, 24, 40, 24, 32, 42);
+    const crest = shieldPoints(32, 32, 1);
+    g.fillStyle(0x58ff9a, 0.3);
+    g.fillPoints(shieldPoints(32, 32, 1.12), true);
+    g.fillStyle(0x58ff9a, 1);
+    g.fillPoints(crest, true);
+    g.lineStyle(4, 0xffffff, 1);
+    g.strokePoints(crest, true);
+    g.fillStyle(0xffffff, 0.35);
+    g.fillPoints(shieldPoints(32, 32, 0.55), true);
     g.generateTexture('dd-shield', 64, 64);
     g.destroy();
   }
