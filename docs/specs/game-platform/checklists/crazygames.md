@@ -17,7 +17,7 @@ Produced by `npm run build:portals` (CI job `release-portals` runs the same comm
 
 ## Manual: before uploading
 
-- [ ] Zip is `dist/release/<slug>-crazygames-v<version>.zip` (download from the GitHub Release or run `npm run build:portals`). **UNVERIFIED:** whether CrazyGames wants `index.html` at the zip root (we ship it at the root); confirm on the upload form.
+- [ ] Upload the **unzipped files**, not the zip: the CrazyGames upload zone rejects archives ("Archive files are not supported", confirmed 2026-11-22). Unzip `dist/release/<slug>-crazygames-v<version>.zip` (or use `dist/portals/crazygames/<slug>/` after `npm run build:portals`) and drag `index.html`, `cover.svg` and the `assets/` folder into the upload zone.
 - [ ] Covers rendered with `npm run covers -- <slug>` into `games/<slug>/store/`: landscape 1920x1080, portrait 800x1200, square 800x800 (all three required, sizes per CrazyGames docs; no borders, only the title text, no store logos or icons). Look at each PNG before uploading.
 - [ ] Description and controls text entered (taken from `game.json` `description` / `instructions` / `controls`); English is required.
 - [ ] Orientation chosen in the form to match `game.json` `orientation` (the dashboard setting, not game logic).
