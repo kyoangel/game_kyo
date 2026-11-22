@@ -121,3 +121,9 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
     g.destroy();
   }
 }
+
+/** Currency icon: the same star as the in-game pickup, so collected stars visibly read as star coins. */
+export function drawCurrencyIcon(scene: Phaser.Scene, x: number, y: number, size: number): Phaser.GameObjects.Image {
+  ensurePlayTextures(scene);
+  return scene.add.image(x, y, 'dd-star').setDisplaySize(size, size);
+}

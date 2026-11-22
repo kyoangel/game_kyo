@@ -6,7 +6,7 @@ import { sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
 import { emptyWorkshop, sanitizeWorkshop, shieldInterval, starInterval } from './workshop.ts';
 import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
-import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
+import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakTint, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
 import { SKINS, type Skin } from './economy.ts';
 import { formatTime } from './format.ts';
 import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
@@ -137,6 +137,7 @@ export class PlayScene extends Phaser.Scene {
   private odShown = false;
   private streaks: { img: Phaser.GameObjects.Image; active: boolean; speed: number }[] = [];
   private streakAcc = 0;
+  private streakN = 0;
   private vignettes: Phaser.GameObjects.Image[] = [];
 
   private get shieldHeld(): boolean {
@@ -213,6 +214,7 @@ export class PlayScene extends Phaser.Scene {
           overdrive: overdrive(this.t),
           streaks: this.streaks.filter((s) => s.active).length,
         }),
+        warp: (seconds: number) => { this.t += seconds; },
       } as { god: boolean };
     }
 
@@ -653,7 +655,7 @@ export class PlayScene extends Phaser.Scene {
         .setPosition(streakX(this.rng() < 0.5 ? 0 : 1, this.rng(), W), -len / 2 - this.rng() * 200)
         .setDisplaySize(streakWidth(this.rng()), len)
         .setAlpha(streakAlpha(od, this.rng()))
-        .setTint(this.rng() < 0.5 ? 0xffffff : 0x9ee9ff);
+        .setTint(streakTint(this.streakN++));
     }
   }
 

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { addButton, cssColor, getKit, type Kit, type ResultsContext } from '@gf/game-kit';
 import { formatTime, sanitizeOwned } from './format.ts';
 import { MEDALS, mergeMedals } from './medals.ts';
+import { drawCurrencyIcon } from './playArt.ts';
 import { missionLabel } from './missionLabel.ts';
 import { emptyStats, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
 import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
@@ -53,36 +54,51 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
   };
 
   // Immediate (no storage needed): coins placeholder, survived, medal slots.
-  const coinsText = scene.add.text(cx - 100, top + 28, `+0 ${kit.t('coins')}`, style(kit, 52, 0xffe14d)).setOrigin(0.5);
+  const coinsText = scene.add.text(cx - 80, top + 28, `+0 ${kit.t('coins')}`, style(kit, 46, 0xffe14d)).setOrigin(0.5);
+  const coinIcon = drawCurrencyIcon(scene, 0, top + 28, 48);
+  const setCoins = (n: number): void => {
+    coinsText.setText(`+${n} ${kit.t('coins')}`);
+    coinIcon.setX(coinsText.x - coinsText.width / 2 - 30);
+  };
+  setCoins(0);
   scene.add.text(cx, top + 100, `${kit.t('survived')} ${formatTime(run.seconds)}`, style(kit, 30, theme.text)).setOrigin(0.5);
 
   const slots = scene.add.graphics();
   const slotX = (i: number): number => cx + (i - 1.5) * 100;
-  const slotY = top + 150;
+  const slotY = top + 156;
+  MEDALS.forEach((m, i) => {
+    scene.add.text(slotX(i), top + 184, formatTime(m.seconds), style(kit, 18, theme.muted)).setOrigin(0.5);
+  });
   const drawSlots = (owned: Set<string>): void => {
     slots.clear();
     MEDALS.forEach((m, i) => {
       const x = slotX(i);
       const fresh = run.medals.includes(m.id);
-      if (owned.has(m.id)) {
-        slots.fillStyle(m.color, fresh ? 1 : 0.7);
-        slots.fillCircle(x, slotY, 22);
+      const has = owned.has(m.id);
+      const a = has ? (fresh ? 1 : 0.7) : 0.4;
+      // two-tail ribbon above the disc
+      slots.fillStyle(m.color, a);
+      slots.fillTriangle(x - 14, slotY - 34, x - 2, slotY - 34, x + 4, slotY - 10);
+      slots.fillTriangle(x + 14, slotY - 34, x + 2, slotY - 34, x - 4, slotY - 10);
+      if (has) {
+        slots.fillStyle(m.color, a);
+        slots.fillCircle(x, slotY, 20);
         slots.fillStyle(0xffffff, 0.45);
-        slots.fillCircle(x - 7, slotY - 7, 7);
+        slots.fillCircle(x - 6, slotY - 6, 6);
         slots.lineStyle(4, 0xffffff, fresh ? 0.95 : 0.4);
-        slots.strokeCircle(x, slotY, 22);
+        slots.strokeCircle(x, slotY, 20);
       } else {
         slots.fillStyle(0x1a1033, 0.55);
-        slots.fillCircle(x, slotY, 22);
+        slots.fillCircle(x, slotY, 20);
         slots.lineStyle(3, m.color, 0.35);
-        slots.strokeCircle(x, slotY, 22);
+        slots.strokeCircle(x, slotY, 20);
       }
     });
   };
   drawSlots(new Set(run.medals));
   if (run.medals.length > 0) {
     const names = run.medals.map((id) => kit.t(`medal.${id}`)).join(' + ');
-    scene.add.text(cx, top + 190, names, style(kit, 24, theme.accent)).setOrigin(0.5);
+    scene.add.text(cx, top + 208, names, style(kit, 22, theme.accent)).setOrigin(0.5);
   }
 
   const save = kit.save;
@@ -138,7 +154,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
   function render(s: Settled, before: Mission[]): void {
     const coin = s.coin;
     let shown = coin.coins;
-    coinsText.setText(`+${shown} ${kit.t('coins')}`);
+    setCoins(shown);
     drawSlots(new Set(s.medals));
 
     if (coin.floorApplied || coin.multiplier > 1) {
@@ -152,8 +168,8 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     let goalTo = s.goalTo;
     if (s.goal) {
       const g = s.goal;
-      const text = scene.add.text(cx, top + 222, goalText(kit, g, s.goalFrom), style(kit, 28, theme.text)).setOrigin(0.5);
-      const barY = top + 248;
+      const text = scene.add.text(cx, top + 236, goalText(kit, g, s.goalFrom), style(kit, 28, theme.text)).setOrigin(0.5);
+      const barY = top + 262;
       const g2 = scene.add.graphics();
       let pulse: Phaser.Tweens.Tween | null = null;
       const paint = (frac: number): void => {
@@ -191,7 +207,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     // Missions: a completed mission stays visible as its check row (replacement is shown on the title).
     const doneIds = new Set(s.missions.completed.map((m) => m.id));
     before.forEach((old, i) => {
-      const y = top + 284 + i * 28;
+      const y = top + 298 + i * 28;
       const target = missionTarget(old);
       if (doneIds.has(old.id)) {
         const label = missionLabel(kit.t(`mission.${old.id}`), old, target);
@@ -229,7 +245,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
             credit(coin.coins);
             if (!scene.sys.isActive()) return;
             shown = coin.coins * 2;
-            coinsText.setText(`+${shown} ${kit.t('coins')}`);
+            setCoins(shown);
             bonusHook?.(coin.coins);
             kit.audio.sfx('pickup');
             btn.destroy();

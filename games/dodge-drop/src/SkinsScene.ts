@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addBackground, addButton, cssColor, ensureTextures, getKit, type Kit } from '@gf/game-kit';
 import { buySkin, SKINS } from './economy.ts';
 import { sanitizeOwned } from './format.ts';
-import { MEDALS, mergeMedals } from './medals.ts';
+import { drawCurrencyIcon } from './playArt.ts';
 import { skinTextureKey } from './skinArt.ts';
 
 const CARD_W = 320;
@@ -16,7 +16,6 @@ export class SkinsScene extends Phaser.Scene {
   private coins = 0;
   private owned: string[] = ['cyan'];
   private selected = 'cyan';
-  private medals: string[] = [];
   private layer: Phaser.GameObjects.Container | undefined;
   private prism: Phaser.GameObjects.Image[] = [];
   private busy = false;
@@ -47,13 +46,11 @@ export class SkinsScene extends Phaser.Scene {
       this.kit.save.getNumber('coins', 0),
       this.kit.save.getJSON<unknown>('skins', []),
       this.kit.save.getJSON<string>('skin', 'cyan'),
-      this.kit.save.getJSON<unknown>('medals', []),
-    ]).then(([coins, owned, sel, medals]) => {
+    ]).then(([coins, owned, sel]) => {
       if (!this.sys.isActive()) return;
       this.coins = Math.max(0, Math.floor(coins));
       this.owned = sanitizeOwned(owned);
       this.selected = this.owned.includes(sel) ? sel : 'cyan';
-      this.medals = mergeMedals(medals, []);
       this.render();
     });
   }
@@ -77,31 +74,10 @@ export class SkinsScene extends Phaser.Scene {
     this.layer = layer;
 
     // balance
-    const coin = this.add.graphics();
-    coin.fillStyle(0xffe14d, 1);
-    coin.fillCircle(300, 190, 24);
-    coin.lineStyle(4, 0xffffff, 0.9);
-    coin.strokeCircle(300, 190, 24);
-    coin.fillStyle(0xffffff, 0.5);
-    coin.fillCircle(292, 182, 7);
+    const icon = drawCurrencyIcon(this, 290, 190, 64);
     const bal = this.add.text(338, 190, String(this.coins), this.style(54, 0xffe14d)).setOrigin(0, 0.5);
-    layer.add([coin, bal]);
-
-    // medal row
-    const mg = this.add.graphics();
-    MEDALS.forEach((m, i) => {
-      const x = 360 + (i - 1.5) * 110;
-      const has = this.medals.includes(m.id);
-      mg.fillStyle(has ? m.color : 0x1a1033, has ? 1 : 0.55);
-      mg.fillCircle(x, 290, 28);
-      if (has) {
-        mg.fillStyle(0xffffff, 0.45);
-        mg.fillCircle(x - 8, 282, 8);
-      }
-      mg.lineStyle(3, has ? 0xffffff : m.color, has ? 0.9 : 0.35);
-      mg.strokeCircle(x, 290, 28);
-    });
-    layer.add(mg);
+    const balLabel = this.add.text(360, 236, this.kit.t('balance'), this.style(24, theme.muted)).setOrigin(0.5);
+    layer.add([icon, bal, balLabel]);
 
     SKINS.forEach((skin, i) => {
       const col = i % 2;
@@ -125,9 +101,7 @@ export class SkinsScene extends Phaser.Scene {
       const text = this.add.text(0, 62, label, this.style(34, labelColor)).setOrigin(0.5);
       const card = this.add.container(x, y, [bg, img, text]);
       if (!owned) {
-        const dot = this.add.graphics();
-        dot.fillStyle(0xffe14d, affordable ? 1 : 0.45);
-        dot.fillCircle(-text.width / 2 - 20, 62, 11);
+        const dot = drawCurrencyIcon(this, -text.width / 2 - 22, 62, 32).setAlpha(affordable ? 1 : 0.45);
         card.add(dot);
       }
       card.setSize(CARD_W, CARD_H);

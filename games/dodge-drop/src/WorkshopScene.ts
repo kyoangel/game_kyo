@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { addBackground, addButton, cssColor, ensureTextures, getKit, type Kit } from '@gf/game-kit';
+import { drawCurrencyIcon } from './playArt.ts';
 import { buyUpgrade, effectValue, MAX_LEVEL, nextCost, sanitizeWorkshop, UPGRADE_IDS, type UpgradeId, type Workshop } from './workshop.ts';
 
 const ROW_Y0 = 270;
@@ -71,7 +72,8 @@ export class WorkshopScene extends Phaser.Scene {
     const { theme } = this.kit;
     const add = <T extends Phaser.GameObjects.GameObject>(o: T): T => { this.layer.push(o); return o; };
 
-    add(this.add.text(this.scale.width / 2, 170, `${this.kit.t('balance')}: ${this.coins}`, this.style(32, 0xffe14d)).setOrigin(0.5));
+    const balTxt = add(this.add.text(this.scale.width / 2 + 22, 170, `${this.kit.t('balance')}: ${this.coins}`, this.style(32, 0xffe14d)).setOrigin(0.5));
+    add(drawCurrencyIcon(this, balTxt.x - balTxt.width / 2 - 24, 170, 40));
 
     UPGRADE_IDS.forEach((id, i) => {
       const y = ROW_Y0 + i * ROW_STEP;
@@ -102,6 +104,7 @@ export class WorkshopScene extends Phaser.Scene {
           textColor: affordable ? 0xffe14d : 0xaaaaaa,
           onClick: () => this.onBuy(id, y),
         }));
+        add(drawCurrencyIcon(this, 541, y, 34)).setDepth(3);
       }
     });
   }

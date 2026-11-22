@@ -7,9 +7,9 @@ import { availableTiers, sanitizeStartTier, type StartTier } from './progression
 
 const TIERS: Array<{ id: StartTier; key: string }> = [
   { id: 'none', key: 'tier.none' },
-  { id: 'bronze', key: 'medal.bronze' },
-  { id: 'silver', key: 'medal.silver' },
-  { id: 'gold', key: 'medal.gold' },
+  { id: 'bronze', key: 'tierChip.bronze' },
+  { id: 'silver', key: 'tierChip.silver' },
+  { id: 'gold', key: 'tierChip.gold' },
 ];
 
 /** Title extras: start-tier chips and the three active missions with skip buttons. */
@@ -45,7 +45,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       const on = enabled.includes(tr.id);
       const sel = on && tier === tr.id;
       const btn = addButton(scene, ctx.width / 2 + (i - 1.5) * 162, cy, kit.t(tr.key), {
-        width: 150, height: 44, fontSize: 22,
+        width: 150, height: 44, fontSize: 20,
         fill: sel ? theme.accent : on ? theme.primary : theme.muted,
         textColor: sel ? 0x1a1033 : 0xffffff,
         onClick: () => {
@@ -73,7 +73,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       txt(100, y, missionLabel(kit.t(`mission.${m.id}`), m, m.progress), 22, theme.text, 0);
       const cost = skipCost(m);
       const afford = coins >= cost;
-      const btn = addButton(scene, 640, y, `${kit.t('skip')} ${cost}`, {
+      const btn = addButton(scene, 640, y, `${kit.t('skip')} ${cost}★`, {
         width: 140, height: 40, fontSize: 20,
         fill: afford ? theme.primary : theme.muted,
         onClick: () => {
