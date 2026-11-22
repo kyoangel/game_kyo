@@ -94,17 +94,22 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
 
     // Start chips
     const cy = ctx.below + 24;
+    txt(ctx.width / 2, cy - 38, kit.t('tierHeader'), 20, theme.muted);
     TIERS.forEach((tr, i) => {
       const on = enabled.includes(tr.id);
       const sel = on && tier === tr.id;
       const btn = addButton(scene, ctx.width / 2 + (i - 1.5) * 162, cy, kit.t(tr.key), {
-        width: 150, height: 44, fontSize: 20,
+        width: 150, height: 44, fontSize: 19,
         fill: sel ? theme.accent : on ? theme.primary : theme.muted,
         textColor: sel ? 0x1a1033 : 0xffffff,
         // a dark stroke on dark text smears into a blurry blob: selected chips have no stroke
         strokeThickness: sel ? 0 : 4,
         onClick: () => {
-          if (!on || tier === tr.id) return;
+          if (!on) {
+            toast(kit.t(`tierLocked.${tr.id}`));
+            return;
+          }
+          if (tier === tr.id) return;
           tier = tr.id;
           const v = tr.id;
           persist(() => kit.save.setJSON('startTier', v));
@@ -113,12 +118,15 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       });
       if (!on) btn.setAlpha(0.4);
       objs.push(btn);
+      if (!on) objs.push(drawLock(scene, ctx.width / 2 + (i - 1.5) * 162 + 62, cy - 14));
     });
 
     // Tilt on/off icon next to mute/fullscreen: only on devices that can really deliver tilt readings.
     if (__GK_TEST_HOOKS__) (window as unknown as { __ddTitle?: object }).__ddTitle = { tiltToggle: tiltAvail, control };
     if (tiltAvail) {
       const on = control === 'tilt';
+      // Flush with the icons actually shown (mute, then fullscreen when available).
+      const tiltX = kit.nextTopRightX(ctx.width);
       const g = scene.add.graphics();
       g.fillStyle(0x1a1033, 0.5);
       g.fillCircle(0, 0, 28);
@@ -127,7 +135,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
         g.strokeCircle(0, 0, 28);
       }
       const icon = scene.add.image(0, 0, 'dd-tilt').setDisplaySize(40, 40).setTint(on ? theme.accent : theme.muted).setAlpha(on ? 1 : 0.7);
-      const c = scene.add.container(ctx.width - 212, 60, [g, icon]);
+      const c = scene.add.container(tiltX, 60, [g, icon]);
       c.setSize(76, 76);
       c.setInteractive({ useHandCursor: true });
       c.on('pointerdown', () => {
@@ -136,7 +144,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
           control = 'drag';
           persist(() => kit.save.setJSON('control', 'drag'));
           render();
-          kit.hintBelow(scene, ctx.width - 212, 60, kit.t('tiltOff'));
+          kit.hintBelow(scene, tiltX, 60, kit.t('tiltOff'));
           return;
         }
         // Must be called synchronously from this tap: iOS only shows its motion prompt from a user gesture.
@@ -145,7 +153,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
           if (ok) {
             control = 'tilt';
             persist(() => kit.save.setJSON('control', 'tilt'));
-            kit.hintBelow(scene, ctx.width - 212, 60, kit.t('tiltOn'));
+            kit.hintBelow(scene, tiltX, 60, kit.t('tiltOn'));
           } else {
             control = 'drag';
             tiltAvail = false;
@@ -227,6 +235,20 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       render();
     });
   });
+}
+
+/** Small drawn padlock (no emoji/font dependency) for locked start chips. */
+function drawLock(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Graphics {
+  const g = scene.add.graphics({ x, y });
+  g.fillStyle(0x1a1033, 0.9);
+  g.fillCircle(0, 0, 13);
+  g.lineStyle(3, 0xffffff, 1);
+  g.beginPath();
+  g.arc(0, -2, 5, Math.PI, 0, false);
+  g.strokePath();
+  g.fillStyle(0xffffff, 1);
+  g.fillRoundedRect(-6, -2, 12, 9, 2);
+  return g;
 }
 
 async function load(kit: Kit): Promise<{

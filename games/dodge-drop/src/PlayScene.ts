@@ -19,11 +19,14 @@ import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
 import { tiltToVelocity } from './tilt.ts';
 import { TiltReader } from './tiltSensor.ts';
-import { nextToastSlot } from './toastSlot.ts';
+import { nextToastSlot, rushBannerUntil } from './toastSlot.ts';
 import { BLOCK_H, isRush, PLAYER_HITBOX_W } from './waves.ts';
 
 const W = 720;
 const H = 1280;
+/** Big centre banners (tier start, RUSH, OVERDRIVE) share one slot, below the medal (170) and mission (250) toasts; chomp sits under it. */
+const BANNER_Y = 380;
+const CHOMP_BANNER_Y = 520;
 const PLAYER_HALF = 28;
 const KEY_ACCEL = 5000;
 const KEY_DECEL = 7000;
@@ -418,22 +421,22 @@ export class PlayScene extends Phaser.Scene {
     this.hintDone = false;
     this.toastObjs = new Set();
     this.rushBanner = this.add
-      .text(W / 2, 330, this.kit.t('rush'), { ...this.textStyle(110, 0xffa14d), strokeThickness: 10 })
+      .text(W / 2, BANNER_Y, this.kit.t('rush'), { ...this.textStyle(110, 0xffa14d), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
     this.odBanner = this.add
-      .text(W / 2, 330, this.kit.t('overdrive'), { ...this.textStyle(96, 0xffa14d), strokeThickness: 10 })
+      .text(W / 2, BANNER_Y, this.kit.t('overdrive'), { ...this.textStyle(96, 0xffa14d), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
     this.graceBanner = this.add
-      .text(W / 2, 330, '', { ...this.textStyle(84, theme.accent), strokeThickness: 10 })
+      .text(W / 2, BANNER_Y, '', { ...this.textStyle(84, theme.accent), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
     this.chompBanner = this.add
-      .text(W / 2, 260, this.kit.t('chompBanner'), { ...this.textStyle(82, 0x3ff0ff), strokeThickness: 10 })
+      .text(W / 2, CHOMP_BANNER_Y, this.kit.t('chompBanner'), { ...this.textStyle(82, 0x3ff0ff), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
@@ -474,7 +477,7 @@ export class PlayScene extends Phaser.Scene {
       this.stats.score = this.score - this.cfg.headStart;
       this.checkMissions(dt);
     }
-    this.graceBanner.setVisible(this.cfg.grace > 0 && !this.dead && this.t < this.cfg.startT + GRACE_SECONDS);
+    this.graceBanner.setVisible(this.graceBannerVisible() && !this.dead);
     this.updateChevrons(dt);
     this.updateBlocks(dt);
     this.updatePickups(dt);
@@ -699,7 +702,9 @@ export class PlayScene extends Phaser.Scene {
     const next = rushStartAt(this.rushIdx);
     if (!this.rushWarned && this.t >= next - 1) {
       this.rushWarned = true;
-      this.rushBannerUntil = next + 0.8;
+      // A rush that starts inside the tier-start banner's window shows its banner right after it (never on top of it).
+      const graceEnd = this.cfg.grace > 0 ? this.cfg.startT + GRACE_SECONDS : 0;
+      this.rushBannerUntil = rushBannerUntil(next, graceEnd);
       this.kit.audio.sfx('rush');
     }
     if (this.rushWarned && this.t >= next + 4) {
@@ -707,12 +712,16 @@ export class PlayScene extends Phaser.Scene {
       this.rushIdx++;
       this.rushWarned = false;
     }
-    const show = this.rushWarned && this.t < this.rushBannerUntil;
+    const show = this.rushWarned && this.t < this.rushBannerUntil && !this.graceBannerVisible();
     this.rushBanner.setVisible(show);
     if (show) {
       this.rushBanner.setScale(1 + 0.08 * Math.sin(this.t * 24));
       this.rushBanner.setAlpha(Math.floor(this.t * 10) % 2 === 0 ? 1 : 0.6);
     }
+  }
+
+  private graceBannerVisible(): boolean {
+    return this.cfg.grace > 0 && this.t < this.cfg.startT + GRACE_SECONDS;
   }
 
   private layerCount(): 1 | 2 | 3 | 4 {
@@ -724,7 +733,7 @@ export class PlayScene extends Phaser.Scene {
       this.odShown = true;
       this.kit.audio.sfx('rush');
     }
-    const show = this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.2;
+    const show = this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.2 && !this.graceBannerVisible();
     this.odBanner.setVisible(show);
     if (show) {
       this.odBanner.setScale(1 + 0.08 * Math.sin(this.t * 24));

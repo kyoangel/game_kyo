@@ -37,3 +37,29 @@ export const PANEL_TOP = 252;
 export function shopStyle(kit: Kit, size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
   return { fontFamily: kit.theme.font, fontSize: `${size}px`, fontStyle: 'bold', color: cssColor(color), stroke: '#1a1033', strokeThickness: 5, align: 'center' };
 }
+
+/**
+ * Wrapped description text that never runs past `maxWidth` and never takes more than `maxLines` lines:
+ * the font shrinks (down to `minSize`) until it fits.
+ */
+export function fitText(
+  scene: Phaser.Scene, kit: Kit, x: number, y: number, str: string, color: number,
+  opts: { size: number; minSize: number; maxWidth: number; maxLines: number; twoLineSize?: number },
+): Phaser.GameObjects.Text {
+  const t = scene.add.text(x, y, str, { ...shopStyle(kit, opts.size, color), align: 'left', strokeThickness: 3, wordWrap: { width: opts.maxWidth, useAdvancedWrap: true } }).setOrigin(0, 0.5);
+  let size = opts.size;
+  while (size > opts.minSize && t.getWrappedText().length > opts.maxLines) {
+    size -= 1;
+    t.setFontSize(size);
+  }
+  // Two lines are taller: use the smaller two-line size when it still keeps the text within maxLines.
+  if (opts.twoLineSize && t.getWrappedText().length > 1 && size > opts.twoLineSize) {
+    t.setFontSize(opts.twoLineSize);
+    size = opts.twoLineSize;
+    while (size > opts.minSize && t.getWrappedText().length > opts.maxLines) {
+      size -= 1;
+      t.setFontSize(size);
+    }
+  }
+  return t;
+}

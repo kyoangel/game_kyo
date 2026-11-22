@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addButton } from '@gf/game-kit';
 import { BOOST_COSTS, BOOST_IDS, buyBoost, canBuyBoost } from './boosts.ts';
 import { boostIconKey, drawCurrencyIcon } from './playArt.ts';
-import { shopStyle, type ShopCtx } from './shopTypes.ts';
+import { fitText, shopStyle, type ShopCtx } from './shopTypes.ts';
 import { shieldCapacity } from './workshop.ts';
 
 const ROW_Y0 = 300;
@@ -30,7 +30,8 @@ export function renderBoostsPanel(ctx: ShopCtx): void {
 
     const tag = id === 'shield' ? `  (${b.shields}/${shieldCap})` : '';
     ctx.add(scene.add.text(150, y - 28, `${kit.t(`boost.${id}`)}${tag}`, shopStyle(kit, 32, theme.text)).setOrigin(0, 0.5));
-    ctx.add(scene.add.text(150, y + 22, kit.t(`boostDesc.${id}`), { ...shopStyle(kit, 20, theme.muted), strokeThickness: 3, wordWrap: { width: 330 } }).setOrigin(0, 0.5));
+    // Ends at x=480, >= 16 px clear of the price button (left edge 515).
+    ctx.add(fitText(scene, kit, 150, y + 20, kit.t(`boostDesc.${id}`), theme.muted, { size: 20, minSize: 15, maxWidth: 330, maxLines: 2 }));
 
     if (maxed) {
       ctx.add(scene.add.image(600, y - 14, 'dd-check-green').setDisplaySize(36, 36));
