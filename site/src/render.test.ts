@@ -64,3 +64,23 @@ describe('renderGamePage', () => {
   });
   it('shows instructions', () => expect(html).toContain('Move left and right.'));
 });
+
+describe('mobile page chrome', () => {
+  const page = renderGamePage(game(), opts);
+  const lobby = renderLobby([game()], legacy, opts);
+  it('uses a notch-safe viewport and links the web app manifest + touch icon on every page', () => {
+    for (const html of [page, lobby]) {
+      expect(html).toContain('viewport-fit=cover');
+      expect(html).toContain('rel="manifest"');
+      expect(html).toContain('apple-mobile-web-app-capable');
+      expect(html).toContain('rel="apple-touch-icon"');
+    }
+    expect(page).toContain('href="../static/manifest.webmanifest"');
+    expect(lobby).toContain('href="./static/manifest.webmanifest"');
+  });
+  it('marks only the game page for the full-viewport layout and labels the back icon', () => {
+    expect(page).toContain('<html lang="en" data-lang="en" class="game-page">');
+    expect(lobby).not.toContain('game-page');
+    expect(page).toContain('aria-label="← All games"');
+  });
+});

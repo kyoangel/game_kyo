@@ -14,6 +14,7 @@ export default defineConfig({
     serve('dist/local', 5180),
     serve('dist/portals-smoke/crazygames', 5181),
     serve('dist/portals-smoke/gamedistribution', 5182),
+    serve('dist/site', 5183),
   ],
   use: { baseURL: 'http://localhost:5180' },
 });

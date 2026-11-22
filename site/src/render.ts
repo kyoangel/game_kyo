@@ -54,12 +54,19 @@ const LOBBY_SCRIPT =
   "try{v=localStorage.getItem('gk:'+c.getAttribute('data-slug')+':best')}catch(e){}" +
   "if(v){var el=c.querySelector('.best');el.hidden=false;el.querySelector('b').textContent=v;}});";
 
-function shell(o: { title: string; description: string; canonical: string; root: string; body: string; script?: string }): string {
+function shell(o: { title: string; description: string; canonical: string; root: string; body: string; script?: string; pageClass?: string }): string {
+  const cls = o.pageClass ? ` class="${o.pageClass}"` : '';
   return `<!doctype html>
-<html lang="en" data-lang="en">
+<html lang="en" data-lang="en"${cls}>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c0f55">
+<link rel="manifest" href="${o.root}static/manifest.webmanifest">
+<link rel="apple-touch-icon" href="${o.root}static/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>${escapeHtml(o.title)}</title>
 <meta name="description" content="${escapeHtml(o.description)}">
 <link rel="canonical" href="${escapeHtml(o.canonical)}">
@@ -114,7 +121,7 @@ ${legacy.map(legacyCard).join('\n')}
 }
 
 export function renderGamePage(game: GameManifest, opts: RenderOptions): string {
-  const body = `<header class="game-header"><a class="back" href="../">${bilingual(UI.back!)}</a><h1>${bilingual(game.title)}</h1></header>
+  const body = `<header class="game-header"><a class="back" href="../" aria-label="${escapeHtml(UI.back!.en!)}">${bilingual(UI.back!)}</a><h1>${bilingual(game.title)}</h1></header>
 <div class="frame ${game.orientation}"><iframe src="./game/index.html" title="${escapeHtml(game.title.en)}" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
 <section class="about"><p>${bilingual(game.description)}</p><h2>${bilingual(UI.howTo!)}</h2><p>${bilingual(game.instructions)}</p></section>`;
   return shell({
@@ -123,5 +130,6 @@ export function renderGamePage(game: GameManifest, opts: RenderOptions): string 
     canonical: `${opts.siteUrl}${game.slug}/`,
     root: '../',
     body,
+    pageClass: 'game-page',
   });
 }
