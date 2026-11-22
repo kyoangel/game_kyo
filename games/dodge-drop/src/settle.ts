@@ -2,7 +2,7 @@ import { SKINS } from './economy.ts';
 import { mergeMedals } from './medals.ts';
 import { applyRun, rankMultiplier, type ApplyResult, type MissionState } from './missions.ts';
 import {
-  advanceStartTier, nextLossStreak, runCoins, updateAssist,
+  nextLossStreak, runCoins, updateAssist,
   type AssistState, type CoinResult, type StartTier,
 } from './progression.ts';
 import type { RunState } from './runState.ts';
@@ -51,7 +51,8 @@ export function settleRun(run: RunState, saved: Saved, rng: () => number): Settl
   const assist = updateAssist(saved.assist, {
     score: run.score - run.headStart, seconds: run.seconds, bronzeOwned: medals.includes('bronze'),
   });
-  const startTier = advanceStartTier(saved.startTier, run.medals);
+  // Start tier is only ever changed by the player (owner decision 2026-11-22): default stays 0:00.
+  const startTier = saved.startTier;
   const missions = applyRun(saved.missions, run.stats, rng);
   const missionCoins = missions.coinsGained;
   const coinsAfter = saved.coins + coin.coins + missionCoins;

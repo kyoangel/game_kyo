@@ -59,11 +59,11 @@ describe('settleRun', () => {
     expect(s.coin.coins).toBe(4);
     expect(s.coin.floorApplied).toBe(true);
   });
-  it('bronze run resets streak, retires assist, advances tier', () => {
+  it('bronze run resets streak, retires assist, keeps the chosen start tier (default 0:00)', () => {
     const s = settleRun(run({ score: 200, seconds: 31, medals: ['bronze'] }), saved({ lossStreak: 3, medals: ['neon'] }), rng);
     expect(s.lossStreak).toBe(0);
     expect(s.assist.retired).toBe(true);
-    expect(s.startTier).toBe('bronze');
+    expect(s.startTier).toBe('none');
     expect(s.medals).toEqual(expect.arrayContaining(['bronze', 'neon']));
   });
   it('tier-start run: coin base excludes head start, tier stays, assist ignored', () => {

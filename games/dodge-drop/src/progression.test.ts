@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  advanceStartTier, availableTiers, DEFAULT_ASSIST, HEAD_START_SCORE, headStartScore, nextLossStreak, runCoins,
+  availableTiers, DEFAULT_ASSIST, HEAD_START_SCORE, headStartScore, nextLossStreak, runCoins,
   rushesBefore, rushStartAt, sanitizeAssist, sanitizeStartTier, START_TIERS, tierSeconds, updateAssist, type AssistState,
 } from './progression.ts';
 
@@ -99,16 +99,6 @@ describe('start tiers', () => {
     expect(sanitizeStartTier('silver', ['bronze', 'silver'])).toBe('silver');
     expect(sanitizeStartTier('gold', ['bronze'])).toBe('none');
     expect(sanitizeStartTier(42, ['bronze'])).toBe('none');
-  });
-  it('auto-advances up to the newest medal, never down', () => {
-    expect(advanceStartTier('none', ['bronze'])).toBe('bronze');
-    expect(advanceStartTier('none', ['bronze', 'silver'])).toBe('silver');
-    expect(advanceStartTier('silver', ['gold', 'neon'])).toBe('gold');
-    expect(advanceStartTier('gold', ['bronze'])).toBe('gold');
-    expect(advanceStartTier('bronze', [])).toBe('bronze');
-    expect(advanceStartTier('none', ['neon'])).toBe('none');
-    expect(advanceStartTier('gold', ['gold', 'neon', 'diamond', 'legend'])).toBe('gold');
-    expect(advanceStartTier('none', ['diamond', 'legend'])).toBe('none');
   });
 });
 

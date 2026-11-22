@@ -74,12 +74,6 @@ export function sanitizeStartTier(raw: unknown, medals: readonly string[]): Star
   return availableTiers(medals).find((t) => t === raw) ?? 'none';
 }
 
-export function advanceStartTier(current: StartTier, runMedals: readonly string[]): StartTier {
-  let best: StartTier = 'none';
-  for (const t of START_TIERS) if (runMedals.includes(t.id) && t.seconds > tierSeconds(best)) best = t.id;
-  return tierSeconds(best) > tierSeconds(current) ? best : current;
-}
-
 /** Round, readable head starts for tier starts (owner decision 2026-11-22); count for best, never for coins. */
 export const HEAD_START_SCORE: Record<'bronze' | 'silver' | 'gold', number> = { bronze: 100, silver: 200, gold: 300 };
 
