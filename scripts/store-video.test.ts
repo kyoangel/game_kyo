@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ffmpegArgs, MAX_SECONDS, RECORD_VIEWPORT, videoFilters } from './store-video.ts';
+import { ffmpegArgs, MAX_SECONDS, RECORD_VIEWPORT, videoFilters, videoProblems } from './store-video.ts';
 
 describe('videoFilters', () => {
   it('portrait game: 2:3 centre crop scaled to 1080x1620, landscape = blurred sides', () => {
@@ -41,4 +41,13 @@ describe('ffmpegArgs', () => {
     expect(args.at(-1)).toBe('out.mp4');
   });
   it('omits audio when the source has none', () => expect(ffmpegArgs('in.webm', 'o.mp4', '[0:v]null[v]', false)).toContain('-an'));
+});
+
+describe('videoProblems', () => {
+  const probe = (w: number, h: number, d: string) =>
+    JSON.stringify({ streams: [{ codec_type: 'video', codec_name: 'h264', width: w, height: h }], format: { duration: d } });
+  it('passes a correct file', () => expect(videoProblems(probe(1080, 1620, '19.9'), 1080, 1620)).toEqual([]));
+  it('flags wrong size', () =>
+    expect(videoProblems(probe(720, 1264, '19.9'), 1080, 1620)).toEqual(['size 720x1264, expected 1080x1620']));
+  it('flags > 20 s', () => expect(videoProblems(probe(1080, 1620, '21.0'), 1080, 1620)).toEqual(['duration 21.0 s exceeds 20 s']));
 });

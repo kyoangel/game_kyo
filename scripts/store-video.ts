@@ -45,3 +45,16 @@ export function ffmpegArgs(input: string, output: string, filter: string, hasAud
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', output,
   ];
 }
+
+/** Problems with an encoded video, from `ffprobe -show_streams -show_format -of json` output. */
+export function videoProblems(ffprobeJson: string, w: number, h: number): string[] {
+  const j = JSON.parse(ffprobeJson) as {
+    streams: Array<{ codec_type: string; width?: number; height?: number }>;
+    format: { duration: string };
+  };
+  const v = j.streams.find((s) => s.codec_type === 'video');
+  const out: string[] = [];
+  if (!v || v.width !== w || v.height !== h) out.push(`size ${v?.width}x${v?.height}, expected ${w}x${h}`);
+  if (Number(j.format.duration) > 20) out.push(`duration ${j.format.duration} s exceeds 20 s`);
+  return out;
+}
