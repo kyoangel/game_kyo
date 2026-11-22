@@ -1,0 +1,51 @@
+#!/bin/sh
+# Versioned pre-push gate (enabled by `npm install` via the prepare script).
+# Docs-only pushes pass instantly; code pushes must pass typecheck + tests (+ smoke when relevant).
+# Escape hatch: SKIP_PREPUSH=1 git push
+
+if [ "$SKIP_PREPUSH" = "1" ]; then
+  echo "pre-push: SKIP_PREPUSH=1 set, skipping checks (CI will still run them)" >&2
+  exit 0
+fi
+
+ZERO=0000000000000000000000000000000000000000
+files=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "$local_sha" ] && continue
+  [ "$local_sha" = "$ZERO" ] && continue # branch deletion
+  if [ "$remote_sha" = "$ZERO" ] || ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+    range="origin/master..$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+  files="$files
+$(git diff --name-only "$range" 2>/dev/null)"
+done
+if [ -z "$(printf '%s' "$files" | tr -d '[:space:]')" ]; then
+  files="$(git diff --name-only origin/master..HEAD 2>/dev/null)"
+fi
+
+# Classify: docs-only files are ignored; workspace*/ only has its own CI; the rest needs checks.
+need_checks=0
+need_smoke=0
+for f in $(printf '%s\n' "$files" | sort -u); do
+  case "$f" in
+    '') ;;
+    docs/*|*.md|.superpowers/*) ;;
+    workspace/*|workspace-*/*) ;;
+    games/*|packages/*|site/*|scripts/*|e2e/*|templates/*) need_checks=1; need_smoke=1 ;;
+    *) need_checks=1; need_smoke=1 ;; # root configs, workflows, hooks, package.json ...
+  esac
+done
+
+if [ "$need_checks" = "0" ]; then
+  echo "pre-push: nothing that needs local checks (docs/workspace-only changes)" >&2
+  exit 0
+fi
+
+echo "pre-push: running typecheck + tests$( [ "$need_smoke" = 1 ] && echo ' + smoke')" >&2
+npm run typecheck && npm test || { echo "pre-push: FAILED (SKIP_PREPUSH=1 git push to bypass)" >&2; exit 1; }
+if [ "$need_smoke" = "1" ]; then
+  npm run test:smoke || { echo "pre-push: smoke FAILED (SKIP_PREPUSH=1 git push to bypass)" >&2; exit 1; }
+fi
+echo "pre-push: OK" >&2

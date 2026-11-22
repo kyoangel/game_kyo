@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": ["packages/*", "games/*"],
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "new-game": "node scripts/new-game.ts",
