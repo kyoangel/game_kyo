@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { addButton, cssColor, getKit, type Kit, type ResultsContext } from '@gf/game-kit';
 import { formatTime, sanitizeOwned } from './format.ts';
 import { MEDALS, mergeMedals } from './medals.ts';
+import { missionLabel } from './missionLabel.ts';
 import { emptyStats, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
 import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
@@ -142,8 +143,8 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
 
     if (coin.floorApplied || coin.multiplier > 1) {
       const txt = coin.floorApplied
-        ? fill(kit.t('coinsMin'), { n: coin.coins, m: coin.floor })
-        : fill(kit.t('coinsMult'), { n: coin.coins, x: coin.multiplier.toFixed(2) });
+        ? fill(kit.t('coinsMin'), { m: coin.floor })
+        : fill(kit.t('coinsMult'), { x: coin.multiplier.toFixed(2) });
       scene.add.text(cx, top + 70, txt, style(kit, 24, theme.muted)).setOrigin(0.5);
     }
 
@@ -187,27 +188,28 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       };
     }
 
-    // Missions
+    // Missions: a completed mission stays visible as its check row (replacement is shown on the title).
     const doneIds = new Set(s.missions.completed.map((m) => m.id));
-    s.missions.state.active.forEach((now, i) => {
+    before.forEach((old, i) => {
       const y = top + 284 + i * 28;
-      const old = before[i]!;
-      if (doneIds.has(old.id) && !(now.id === old.id && now.tier === old.tier)) {
-        const t = scene.add.text(cx, y, `✓ ${kit.t(`mission.${old.id}`)} ${missionTarget(old)}/${missionTarget(old)}  +${old.tier}★`, style(kit, 24, 0x58ff9a)).setOrigin(0.5).setScale(0.4);
+      const target = missionTarget(old);
+      if (doneIds.has(old.id)) {
+        const label = missionLabel(kit.t(`mission.${old.id}`), old, target);
+        const t = scene.add.text(cx, y, `✓ ${label} +${old.tier}★`, style(kit, 24, 0x58ff9a)).setOrigin(0.5).setScale(0.4);
         scene.tweens.add({ targets: t, scale: 1, duration: 300, ease: 'Back.Out' });
-        scene.time.delayedCall(1800, () => {
-          if (scene.sys.isActive()) t.setText(missionLine(kit, now)).setColor(cssColor(theme.muted)).setAlpha(0.7);
-        });
       } else {
-        scene.add.text(cx, y, missionLine(kit, now), style(kit, 24, theme.text)).setOrigin(0.5);
+        const now = s.missions.state.active[i] ?? old;
+        scene.add.text(cx, y, missionLabel(kit.t(`mission.${now.id}`), now, now.progress), style(kit, 24, theme.text)).setOrigin(0.5);
       }
     });
 
-    // Rank up
+    // Rank up: beside the "Survived" line so it never crowds the retry prompt.
     if (s.missions.rankAfter > s.missions.rankBefore) {
-      const rt = scene.add.text(cx, top + 372, fill(kit.t('rankUp'), { n: s.missions.rankAfter }), style(kit, 36, 0xffe14d)).setOrigin(0.5).setScale(0.3);
+      const rx = cx + 215;
+      const ry = top + 100;
+      const rt = scene.add.text(rx, ry, fill(kit.t('rankUp'), { n: s.missions.rankAfter }), style(kit, 30, 0xffe14d)).setOrigin(0.5).setScale(0.3);
       scene.tweens.add({ targets: rt, scale: 1, duration: 400, ease: 'Back.Out' });
-      kit.fx(scene).burst(cx, top + 372, { color: 0xffe14d, count: 24, speed: 340, lifespanMs: 600 });
+      kit.fx(scene).burst(rx, ry, { color: 0xffe14d, count: 24, speed: 340, lifespanMs: 600 });
       kit.audio.sfx('medal');
     }
 
@@ -236,8 +238,4 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       });
     }
   }
-}
-
-function missionLine(kit: Kit, m: Mission): string {
-  return `${kit.t(`mission.${m.id}`)} ${Math.min(m.progress, missionTarget(m))}/${missionTarget(m)}`;
 }

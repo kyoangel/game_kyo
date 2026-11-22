@@ -76,3 +76,101 @@ test('dodge-drop: Skins scene opens from the title and Back returns', async ({ p
   });
   expect(errors).toEqual([]);
 });
+
+// ---- Meta-progression (Phase 1) ----
+type Dd = { god?: boolean; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { t: number; score: number; startTier: string } };
+type WD = { __dd?: Dd };
+
+const MISSIONS_SEED = '{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}';
+
+async function seed(page: import('@playwright/test').Page, kv: Record<string, string>, god = false): Promise<void> {
+  await page.addInitScript(([entries, g]) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    for (const [k, v] of Object.entries(entries as Record<string, string>)) localStorage.setItem(`gk:dodge-drop:${k}`, v);
+    if (g) (window as unknown as WD).__dd = { god: true };
+  }, [kv, god] as const);
+}
+const ls = (page: import('@playwright/test').Page, key: string) => page.evaluate((k) => localStorage.getItem(`gk:dodge-drop:${k}`), key);
+
+function watch(page: import('@playwright/test').Page): string[] {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
+  return errors;
+}
+
+async function openTitle(page: import('@playwright/test').Page) {
+  await page.goto('/dodge-drop/');
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
+  const box = (await page.locator('canvas').boundingBox())!;
+  const at = (gx: number, gy: number) => ({ x: box.x + (gx / 720) * box.width, y: box.y + (gy / 1280) * box.height });
+  return { box, at };
+}
+
+test('dodge-drop: Workshop buy persists level and coins', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '100' });
+  const { at } = await openTitle(page);
+  // Upgrades button: titleLayout menu row 2 (y = 0.72H + 96).
+  const up = at(360, 1280 * 0.72 + 96);
+  await page.mouse.click(up.x, up.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Workshop'));
+  await page.waitForTimeout(500);
+  // First row cost button: WorkshopScene ROW_Y0 = 270, x = 600.
+  const buy = at(600, 270);
+  await page.mouse.click(buy.x, buy.y);
+  await expect.poll(async () => JSON.parse((await ls(page, 'workshop')) ?? '{}').shield).toBe(1);
+  expect(await ls(page, 'coins')).toBe('85');
+  const back = at(120, 80);
+  await page.mouse.click(back.x, back.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: results expose near-goal and mission rows', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '10', missions: MISSIONS_SEED });
+  const { box } = await openTitle(page);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
+  await page.evaluate(() => void (window as unknown as W).__gk!.endRound(5));
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKGameOver'));
+  await page.waitForFunction(() => (window as unknown as WD).__dd?.results !== undefined);
+  const r = await page.evaluate(() => (window as unknown as WD).__dd!.results!);
+  expect((r.goal as { cost: number }).cost).toBe(15);
+  expect(r.missions.map((m) => m.id)).toEqual(['score', 'combo', 'runs']);
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: silver tier start sets the game clock', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { medals: '["bronze","silver"]', startTier: '"silver"' }, true);
+  const { box } = await openTitle(page);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
+  await page.waitForFunction(() => (window as unknown as WD).__dd?.stats?.().startTier === 'silver');
+  const s = await page.evaluate(() => (window as unknown as WD).__dd!.stats!());
+  expect(s.t).toBeGreaterThanOrEqual(60);
+  expect(s.t).toBeLessThan(63);
+  expect(s.score).toBeGreaterThanOrEqual(147);
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: title chips select a tier and skip replaces a mission', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { medals: '["bronze"]', coins: '100', missions: MISSIONS_SEED });
+  const { at } = await openTitle(page);
+  await page.waitForTimeout(500);
+  // Bronze chip: titleLayout below (829.6) + 24, x = 360 + (1 - 1.5) * 162 = 279.
+  const chip = at(279, 854);
+  await page.mouse.click(chip.x, chip.y);
+  await expect.poll(() => ls(page, 'startTier')).toBe('"bronze"');
+  // First mission skip: menuBottom (1053.6) + 12 + 26, x = 640.
+  const skip = at(640, 1092);
+  await page.mouse.click(skip.x, skip.y);
+  await expect.poll(() => ls(page, 'coins')).toBe('60');
+  const saved = JSON.parse((await ls(page, 'missions'))!);
+  expect(saved.active[0].id).not.toBe('score');
+  expect(errors).toEqual([]);
+});
