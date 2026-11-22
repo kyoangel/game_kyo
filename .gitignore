@@ -5,7 +5,8 @@ dist-ios/
 traces/
 __pycache__/
 *.pyc
-.claude/
+.claude/*
+!.claude/skills/
 .pytest_cache/
 workspace/test-results/
 test-results/
