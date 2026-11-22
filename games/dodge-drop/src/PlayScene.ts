@@ -15,6 +15,7 @@ import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, edibleBlockTexture, 
 import { mulberry32 } from './rng.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
+import { playDeath, playNearMiss, startSkinTrail, type SkinTrail } from './skinFxRender.ts';
 import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
 import { tiltToVelocity } from './tilt.ts';
@@ -99,7 +100,7 @@ export class PlayScene extends Phaser.Scene {
 
   private skin: Skin = SKINS[0]!;
   private player!: Phaser.GameObjects.Image;
-  private trail: { stop(): void } | null = null;
+  private trail: SkinTrail | null = null;
   private ring!: Phaser.GameObjects.Image;
   private chompRing!: Phaser.GameObjects.Image;
   private chompBanner!: Phaser.GameObjects.Text;
@@ -232,6 +233,8 @@ export class PlayScene extends Phaser.Scene {
           t: this.t,
           score: this.score,
           combo: this.combo.count,
+          nearMisses: this.stats.nearMisses,
+          dead: this.dead,
           multiplier: this.combo.multiplier,
           stars: this.stars,
           shieldHeld: this.shieldHeld,
@@ -367,8 +370,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private startTrail(): void {
-    const tc = this.skin.trailColor;
-    this.trail = this.fx.trail(this.player, { color: tc === 'rainbow' ? 0xffffff : tc });
+    this.trail = startSkinTrail(this, this.player, this.skin);
   }
 
   private textStyle(size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
@@ -560,6 +562,7 @@ export class PlayScene extends Phaser.Scene {
     } else if (this.skin.color === 'cycle') {
       this.player.setTint(this.skinColor());
     }
+    this.trail?.update(this.t * 1000, n);
     const blink = !chomping && this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0;
     this.player.setAlpha(blink ? 0.35 : 1);
     this.ring.setVisible(this.shieldHeld);
@@ -932,7 +935,7 @@ export class PlayScene extends Phaser.Scene {
       this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: 34 });
     }
     this.kit.audio.sfx('nearMiss', { step: this.combo.count });
-    this.fx.burst(this.player.x + side * 24, PLAYER_Y, { color: 0xffffff, count: 8, speed: 260, lifespanMs: 300 });
+    playNearMiss(this, this.fx, this.skin, this.player.x, PLAYER_Y, side, this.skinColor());
   }
 
   private eatBlock(b: Block): void {
@@ -1061,7 +1064,7 @@ export class PlayScene extends Phaser.Scene {
     if (id !== this.runId) return;
     this.fx.shake(0.8);
     this.fx.flash(this.kit.theme.danger, 120);
-    this.fx.burst(this.player.x, PLAYER_Y, { color: col, count: 40, speed: 560, lifespanMs: 700 });
+    playDeath(this, this.fx, this.skin, this.player.x, PLAYER_Y, col);
     this.hintDone = true;
     this.tweens.killTweensOf(this.hint);
     this.hint.setVisible(false);

@@ -21,11 +21,7 @@ export function skinTextureKey(scene: Phaser.Scene, skin: Skin): string {
   const g = scene.make.graphics({}, false);
   const c = 32;
   const fill = skin.color === 'cycle' ? 0xffffff : skin.color;
-  // baked soft glow halo (cheap on every renderer)
-  for (let i = 3; i >= 1; i--) {
-    g.fillStyle(fill, 0.1 * (4 - i));
-    g.fillCircle(c, c, 28 + i * 1.2);
-  }
+  // no halo/ring: only the real shield ring may circle the player (skins are cosmetic)
   g.fillStyle(fill, 1);
   g.lineStyle(3, 0xffffff, 0.95);
   switch (skin.shape) {

@@ -4,6 +4,8 @@ import { buySkin, SKINS } from './economy.ts';
 import { drawCurrencyIcon } from './playArt.ts';
 import { shopStyle, type ShopCtx } from './shopTypes.ts';
 import { skinTextureKey } from './skinArt.ts';
+import { fxLineKey, skinFxSpec, hueColor } from './skinFx.ts';
+import { playNearMiss, startSkinTrail, type SkinTrail } from './skinFxRender.ts';
 import { skinAction } from './skinsState.ts';
 
 const CARD_W = 320;
@@ -20,9 +22,11 @@ export class SkinsPanel {
   /** Skin shown in the preview panel (never spends coins). */
   private previewId: string;
   private previewObjs: Phaser.GameObjects.GameObject[] = [];
-  private trail: { stop(): void } | null = null;
+  private trail: SkinTrail | null = null;
+  private previewImg: Phaser.GameObjects.Image | null = null;
   private prism: Phaser.GameObjects.Image[] = [];
   private busy = false;
+  private lastPx = 0;
 
   constructor(initialPreview: string) {
     this.previewId = initialPreview;
@@ -30,15 +34,19 @@ export class SkinsPanel {
 
   /** Per-frame rainbow tint for the prism skin. */
   update(time: number): void {
-    if (this.prism.length === 0) return;
-    const c = Phaser.Display.Color.HSVToRGB(((time / 1500) % 1), 0.55, 1) as Phaser.Types.Display.ColorObject;
-    const tint = Phaser.Display.Color.GetColor(c.r, c.g, c.b);
-    for (const img of this.prism) img.setTint(tint);
+    if (this.prism.length > 0) {
+      const tint = hueColor(time / 1500, 0.55);
+      for (const img of this.prism) img.setTint(tint);
+    }
+    const pv = this.previewImg;
+    if (this.trail && pv) this.trail.update(time, Math.min(1, Math.abs(pv.x - this.lastPx) / 12));
+    if (pv) this.lastPx = pv.x;
   }
 
   destroy(scene: Phaser.Scene): void {
     this.trail?.stop();
     this.trail = null;
+    this.previewImg = null;
     for (const o of this.previewObjs) {
       scene.tweens.killTweensOf(o);
       o.destroy();
@@ -101,9 +109,9 @@ export class SkinsPanel {
 
     const panel = scene.add.graphics();
     panel.fillStyle(0x1a1033, 0.78);
-    panel.fillRoundedRect(60, 250, 600, 360, 28);
+    panel.fillRoundedRect(60, 250, 600, 340, 28);
     panel.lineStyle(3, theme.primary, 0.5);
-    panel.strokeRoundedRect(60, 250, 600, 360, 28);
+    panel.strokeRoundedRect(60, 250, 600, 340, 28);
     const name = scene.add.text(PREVIEW_X, 425, kit.t(`skin.${skin.id}`), shopStyle(kit, 40, theme.text)).setOrigin(0.5);
     layer.add([panel, name]);
 
@@ -112,8 +120,28 @@ export class SkinsPanel {
     if (skin.color === 'cycle') this.prism.push(img);
     this.previewObjs.push(img);
     scene.tweens.add({ targets: img, x: PREVIEW_X + 120, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    const tc = skin.trailColor;
-    this.trail = kit.fx(scene).trail(img, { color: tc === 'rainbow' ? 0xffffff : tc });
+    this.previewImg = img;
+    this.lastPx = img.x;
+    this.trail = startSkinTrail(scene, img, skin);
+
+    // tap the preview to play this skin's near-miss effect once
+    const zone = scene.add.zone(PREVIEW_X, PREVIEW_Y, 560, 150).setInteractive({ useHandCursor: true });
+    zone.on('pointerup', () => {
+      const tint = skin.color === 'cycle' ? hueColor(scene.time.now / 1500, 0.55) : skin.color;
+      playNearMiss(scene, kit.fx(scene), skin, img.x, PREVIEW_Y, 1, tint);
+      kit.audio.sfx('nearMiss', { step: 1 });
+    });
+    this.previewObjs.push(zone);
+
+    // cosmetic tag, effect list, and the no-gameplay-effect note
+    const tag = scene.add.text(PREVIEW_X + 238, 276, kit.t('skin.tag'), { ...shopStyle(kit, 24, 0x1a1033), strokeThickness: 0 }).setOrigin(0.5);
+    const tagBg = scene.add.graphics();
+    tagBg.fillStyle(theme.primary, 1);
+    tagBg.fillRoundedRect(tag.x - tag.width / 2 - 14, 276 - 18, tag.width + 28, 36, 18);
+    layer.add([tagBg, tag]);
+    const fxLine = scene.add.text(PREVIEW_X, 462, kit.t(fxLineKey(skinFxSpec(skin))), shopStyle(kit, 26, theme.muted)).setOrigin(0.5);
+    const note = scene.add.text(PREVIEW_X, 613, kit.t('skin.note'), shopStyle(kit, 24, theme.muted)).setOrigin(0.5);
+    layer.add([fxLine, note]);
 
     // single action button
     const bx = PREVIEW_X;

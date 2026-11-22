@@ -97,6 +97,11 @@ export const strings: Strings = {
     'upgrade.combo': 'Steady Combo',
     'upgrade.luck': 'Lucky Stars',
     'skin.lime': 'Lime', 'skin.orb': 'Orb', 'skin.tri': 'Triangle', 'skin.diamond': 'Diamond',
+    'skin.tag': 'Cosmetic',
+    'skin.note': 'Skins change looks only — no gameplay effect',
+    'skin.fx.basic': 'Trail',
+    'skin.fx.mid': 'Trail · Near-miss FX',
+    'skin.fx.extra': 'Trail · Near-miss FX · Death FX',
     'skin.hex': 'Hexagon', 'skin.star': 'Star', 'skin.prism': 'Prism', 'skin.cyan': 'Cyan',
   },
   'zh-TW': {
@@ -194,6 +199,11 @@ export const strings: Strings = {
     'upgrade.combo': '連擊延長',
     'upgrade.luck': '幸運星',
     'skin.lime': '萊姆', 'skin.orb': '圓球', 'skin.tri': '三角', 'skin.diamond': '鑽石',
+    'skin.tag': '外觀',
+    'skin.note': '造型只改變外觀，不影響能力',
+    'skin.fx.basic': '拖尾',
+    'skin.fx.mid': '拖尾・擦邊特效',
+    'skin.fx.extra': '拖尾・擦邊特效・死亡特效',
     'skin.hex': '六角', 'skin.star': '星形', 'skin.prism': '稜鏡', 'skin.cyan': '青藍',
   },
 };
