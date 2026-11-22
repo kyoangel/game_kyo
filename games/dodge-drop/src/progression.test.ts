@@ -112,10 +112,10 @@ describe('start tiers', () => {
 });
 
 describe('headStartScore', () => {
-  it('constants for 30/60/90 are 44/147/304', () => {
-    expect(HEAD_START_SCORE).toEqual({ bronze: 44, silver: 147, gold: 304 });
+  it('constants for 30/60/90 are 44/149/342', () => {
+    expect(HEAD_START_SCORE).toEqual({ bronze: 44, silver: 149, gold: 342 });
     expect(headStartScore('none')).toBe(0);
-    expect(headStartScore('silver')).toBe(147);
+    expect(headStartScore('silver')).toBe(149);
   });
   it('equal the blocks spawned before T by the standard seed-1 scheduler', () => {
     for (const [tier, T] of [['bronze', 30], ['silver', 60], ['gold', 90]] as const) {
@@ -125,7 +125,7 @@ describe('headStartScore', () => {
 });
 
 describe('rushesBefore', () => {
-  it('counts rushes (45 s, 90 s, 135 s, 4 s long) fully ended before the clock', () => {
-    expect([0, 30, 48.9, 49, 60, 90, 93.9, 94, 139].map(rushesBefore)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 3]);
+  it('counts rushes (45 s and 90 s only, 4 s long; none from 120 s) fully ended before the clock', () => {
+    expect([0, 30, 48.9, 49, 60, 90, 93.9, 94, 139].map(rushesBefore)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 2]);
   });
 });

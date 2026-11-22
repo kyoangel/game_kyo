@@ -55,9 +55,10 @@ Timeline:
 |---|---|
 | 0–10 s | `rain` only, at 60% of the base speed |
 | every 20 s from 10 s | a new wave block. The kind cycles `wall → stairs → zigzag → rain-heavy`, then repeats, with `rain` filler between pattern instances |
-| every 45 s from 45 s | a **Rush**: 4 s at 1.4× speed, a "RUSH!" banner and `rush` sfx, and the music jumps a layer for its duration |
+| 45 s and 90 s | a **Rush**: 4 s at 1.4× speed, a "RUSH!" banner and `rush` sfx, and the music jumps a layer for its duration. No rushes exist from 120 s on (see Overdrive) |
 
-- Base speed and interval keep the existing curves: `fallSpeed = min(900, 260 + 12t)` and `spawnInterval = max(0.25, 0.9 − 0.02t)`.
+- Base speed and interval follow the original curves up to 32.5 s (interval) / 53.33 s (speed): `fallSpeed = 260 + 12t` and `spawnInterval = max(0.25, 0.9 − 0.02t)`. After that difficulty keeps rising: `spawnInterval = max(0.15, 0.25 − 0.0011 (t − 32.5))` (0.15 at ≈123.4 s) and `fallSpeed = min(1150, 900 + 4 (t − 53.33))` (1150 at ≈115.8 s).
+- **Overdrive (from 120 s, after Neon):** rushes stop and speed never drops back. The motion multiplier `speedBoost(t)` is 1.4 in a rush, 1 otherwise before 120 s, then `1 + 0.3 × min(1, (t − 120) / 30)` (1.30 from 150 s). The validator (`fairness.ts`) and `PlayScene` both use this one function. At 120 s an `OVERDRIVE!` / `極速模式！` banner and the `rush` sfx play, music stays at 4 layers, and new blocks are orange. Racing streaks scale with `overdrive(t)` (0 at 120 s, 1 at 150 s): up to 28 pooled white/cyan speed lines (2–4 px wide, 90–260 px long, alpha 0.2–0.6 × intensity) in the 130 px bands on both screen edges falling at 2.5× block speed, plus a `0x1a1033` edge vignette at alpha 0.55 × intensity; the backdrop grid and dots scroll faster too. Pure helpers live in `speedFx.ts`.
 - Patterns scale their `speedMul` from these curves.
 - Tests cover all of the following for 200 seeds:
   - every `wall` has a passable gap;

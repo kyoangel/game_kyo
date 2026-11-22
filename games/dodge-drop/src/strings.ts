@@ -5,6 +5,7 @@ export const strings: Strings = {
   en: {
     dragHint: 'Drag anywhere ←→',
     rush: 'RUSH!',
+    overdrive: 'OVERDRIVE!',
     missionComplete: 'Mission complete!',
     'tierStart.bronze': 'Bronze start',
     'tierStart.silver': 'Silver start',
@@ -68,6 +69,7 @@ export const strings: Strings = {
   'zh-TW': {
     dragHint: '在任意處左右拖曳',
     rush: '加速！',
+    overdrive: '極速模式！',
     missionComplete: '任務完成！',
     'tierStart.bronze': '銅盃起跑',
     'tierStart.silver': '銀盃起跑',

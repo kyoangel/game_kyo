@@ -79,12 +79,13 @@ export function advanceStartTier(current: StartTier, runMedals: readonly string[
   return tierSeconds(best) > tierSeconds(current) ? best : current;
 }
 
-export const HEAD_START_SCORE: Record<'bronze' | 'silver' | 'gold', number> = { bronze: 44, silver: 147, gold: 304 };
+export const HEAD_START_SCORE: Record<'bronze' | 'silver' | 'gold', number> = { bronze: 44, silver: 149, gold: 342 };
 
 export function headStartScore(t: StartTier): number {
   return t === 'none' ? 0 : HEAD_START_SCORE[t];
 }
 
 export function rushesBefore(clock: number): number {
-  return clock < 49 ? 0 : Math.floor((clock - 49) / 45) + 1;
+  // rushes exist only at 45 s and 90 s (none from OVERDRIVE_T)
+  return clock < 49 ? 0 : clock < 94 ? 1 : 2;
 }

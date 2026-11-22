@@ -1,6 +1,6 @@
-import { fallSpeed } from './difficulty.ts';
+import { fallSpeed, speedBoost } from './difficulty.ts';
 import type { Spawn } from './waves.ts';
-import { isRush, PLAYER_HITBOX_W, SPAWN_Y } from './waves.ts';
+import { PLAYER_HITBOX_W, SPAWN_Y } from './waves.ts';
 
 export type Scheduled = Spawn;
 
@@ -18,7 +18,7 @@ const SAFETY = 6;
 const HIT_SCALE = 0.9;
 
 /**
- * Simulates the real motion model (per-frame integration of fallSpeed * rush * speedMul) and
+ * Simulates the real motion model (per-frame integration of fallSpeed * speedBoost * speedMul) and
  * a player moving at most SAFE_PLAYER_SPEED. Returns the time at which no x position is
  * safe any more, or null. The player may start anywhere in [fromT]; blocks are simulated
  * from their spawn so earlier blocks still constrain the window.
@@ -37,7 +37,7 @@ export function firstDeadEnd(
   const D = new Float64Array(kEnd + 2);
   for (let k = 0; k <= kEnd; k++) {
     const t = k * DT;
-    D[k + 1] = D[k]! + fallSpeed(t) * (isRush(t) ? 1.4 : 1) * sm * DT;
+    D[k + 1] = D[k]! + fallSpeed(t) * speedBoost(t) * sm * DT;
   }
 
   const n = Math.floor((width - PLAYER_HITBOX_W) / CELL) + 1;

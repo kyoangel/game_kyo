@@ -1,4 +1,4 @@
-import { spawnInterval } from './difficulty.ts';
+import { OVERDRIVE_T, spawnInterval } from './difficulty.ts';
 
 export type WaveKind = 'rain' | 'wall' | 'stairs' | 'zigzag' | 'rainHeavy';
 export interface Spawn {
@@ -27,7 +27,7 @@ export function waveKindAt(t: number): WaveKind {
 }
 
 export function isRush(t: number): boolean {
-  return t >= 45 && (t - 45) % 45 < 4;
+  return t >= 45 && t < OVERDRIVE_T && (t - 45) % 45 < 4;
 }
 
 interface Plan {

@@ -23,6 +23,8 @@ describe('isRush', () => {
     expect(isRush(50)).toBe(false);
     expect(isRush(91)).toBe(true);
     expect(isRush(10)).toBe(false);
+    expect(isRush(135)).toBe(false);
+    expect(isRush(136)).toBe(false);
   });
 });
 

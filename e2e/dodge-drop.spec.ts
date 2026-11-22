@@ -153,7 +153,7 @@ test('dodge-drop: silver tier start sets the game clock', async ({ page }) => {
   const s = await page.evaluate(() => (window as unknown as WD).__dd!.stats!());
   expect(s.t).toBeGreaterThanOrEqual(60);
   expect(s.t).toBeLessThan(63);
-  expect(s.score).toBeGreaterThanOrEqual(147);
+  expect(s.score).toBeGreaterThanOrEqual(149);
   expect(errors).toEqual([]);
 });
 
@@ -172,5 +172,20 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   await expect.poll(() => ls(page, 'coins')).toBe('60');
   const saved = JSON.parse((await ls(page, 'missions'))!);
   expect(saved.active[0].id).not.toBe('score');
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: Overdrive streaks appear after 120 s and the run stays error-free', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = watch(page);
+  await seed(page, { medals: '["bronze","silver","gold"]', startTier: '"gold"' }, true);
+  const { box } = await openTitle(page);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
+  await page.waitForFunction(() => ((window as unknown as { __dd?: { stats?: () => { t: number } } }).__dd?.stats?.().t ?? 0) >= 150, undefined, { timeout: 100_000 });
+  const s = await page.evaluate(() => (window as unknown as { __dd: { stats: () => { overdrive: number; streaks: number; layers: number } } }).__dd.stats());
+  expect(s.overdrive).toBe(1);
+  expect(s.streaks).toBeGreaterThan(0);
+  expect(s.layers).toBe(4);
   expect(errors).toEqual([]);
 });

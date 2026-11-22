@@ -5,7 +5,8 @@ import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type Miss
 import { sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
 import { emptyWorkshop, sanitizeWorkshop, shieldInterval, starInterval } from './workshop.ts';
-import { fallSpeed } from './difficulty.ts';
+import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
+import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
 import { SKINS, type Skin } from './economy.ts';
 import { formatTime } from './format.ts';
 import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
@@ -132,6 +133,11 @@ export class PlayScene extends Phaser.Scene {
   private lastSecShown = -1;
   private lastComboShown = -1;
   private rushBannerUntil = 0;
+  private odBanner!: Phaser.GameObjects.Text;
+  private odShown = false;
+  private streaks: { img: Phaser.GameObjects.Image; active: boolean; speed: number }[] = [];
+  private streakAcc = 0;
+  private vignettes: Phaser.GameObjects.Image[] = [];
 
   private get shieldHeld(): boolean {
     return this.shieldHits > 0;
@@ -177,6 +183,8 @@ export class PlayScene extends Phaser.Scene {
     this.rushWarned = false;
     this.lastLayers = 0;
     this.rushBannerUntil = 0;
+    this.odShown = false;
+    this.streakAcc = 0;
     this.lastScoreShown = -1;
     this.lastSecShown = -1;
     this.lastComboShown = -1;
@@ -199,9 +207,11 @@ export class PlayScene extends Phaser.Scene {
           shieldHits: this.shieldHits,
           headStart: this.cfg.headStart,
           assisted: this.cfg.assisted,
-          rush: isRush(this.t),
+          rush: isRush(this.t) || this.t >= OVERDRIVE_T,
           medals: [...this.earned],
-          layers: isRush(this.t) ? 4 : layersFor(this.t),
+          layers: this.layerCount(),
+          overdrive: overdrive(this.t),
+          streaks: this.streaks.filter((s) => s.active).length,
         }),
       } as { god: boolean };
     }
@@ -209,6 +219,7 @@ export class PlayScene extends Phaser.Scene {
     this.buildBackdrop();
     this.buildPools();
     this.buildHud();
+    this.buildSpeedFx();
 
     const id = this.runId;
     const save = this.kit.save;
@@ -336,6 +347,11 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
+    this.odBanner = this.add
+      .text(W / 2, 330, this.kit.t('overdrive'), { ...this.textStyle(96, 0xffa14d), strokeThickness: 10 })
+      .setOrigin(0.5)
+      .setDepth(100)
+      .setVisible(false);
     this.graceBanner = this.add
       .text(W / 2, 330, '', { ...this.textStyle(84, theme.accent), strokeThickness: 10 })
       .setOrigin(0.5)
@@ -352,12 +368,14 @@ export class PlayScene extends Phaser.Scene {
     if (this.fx.frozen || !this.ready) return;
 
     this.updateBackdrop(dt);
+    this.updateSpeedFx(dt);
     if (!this.dead) {
       const prev = this.t;
       this.t += dt;
       this.movePlayer(dt, drag);
       this.schedule();
       this.updateRush();
+      this.updateOverdriveBanner();
       this.setLayers(false);
       this.combo.tick(dt);
       if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
@@ -375,7 +393,8 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private updateBackdrop(dt: number): void {
-    const speed = fallSpeed(this.t) * (isRush(this.t) ? 1.4 : 1);
+    const od = overdrive(this.t);
+    const speed = fallSpeed(this.t) * speedBoost(this.t) * (1 + od);
     this.gridPhase = (this.gridPhase + (dt * speed * 0.3) / 160) % 1;
     const g = this.grid;
     g.clear();
@@ -393,7 +412,7 @@ export class PlayScene extends Phaser.Scene {
     }
     for (let i = 0; i < this.dots.length; i++) {
       const d = this.dots[i]!;
-      d.y += this.dotSpeed[i]! * dt;
+      d.y += this.dotSpeed[i]! * (1 + 4 * od) * dt;
       if (d.y > H + 10) {
         d.y = -10;
         d.x = this.rng() * W;
@@ -441,7 +460,7 @@ export class PlayScene extends Phaser.Scene {
   private schedule(): void {
     const t = this.t;
     for (const sp of this.scheduler.planUntil(t + 2.5)) {
-      this.pending.push({ at: sp.at, x: sp.x, w: sp.w, h: sp.h, speedMul: sp.speedMul, rush: isRush(sp.at), chev: null });
+      this.pending.push({ at: sp.at, x: sp.x, w: sp.w, h: sp.h, speedMul: sp.speedMul, rush: isRush(sp.at) || sp.at >= OVERDRIVE_T, chev: null });
     }
 
     for (let i = this.pending.length - 1; i >= 0; i--) {
@@ -490,7 +509,7 @@ export class PlayScene extends Phaser.Scene {
     b.w = p.w;
     b.h = p.h;
     b.speedMul = p.speedMul;
-    b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * p.speedMul * this.cfg.speedMul;
+    b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * speedBoost(this.t) * p.speedMul * this.cfg.speedMul;
     b.img.setTexture(key).setVisible(true);
     b.img.setScale(p.w / bodyW, 1);
     b.img.setPosition(b.x, b.y);
@@ -530,6 +549,10 @@ export class PlayScene extends Phaser.Scene {
 
   private updateRush(): void {
     const next = 45 + 45 * this.rushIdx;
+    if (next >= OVERDRIVE_T) {
+      this.rushBanner.setVisible(false);
+      return;
+    }
     if (!this.rushWarned && this.t >= next - 1) {
       this.rushWarned = true;
       this.rushBannerUntil = next + 0.8;
@@ -548,8 +571,94 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  private layerCount(): 1 | 2 | 3 | 4 {
+    return isRush(this.t) || this.t >= OVERDRIVE_T ? 4 : layersFor(this.t);
+  }
+
+  private updateOverdriveBanner(): void {
+    if (!this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.5) {
+      this.odShown = true;
+      this.kit.audio.sfx('rush');
+    }
+    const show = this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.2;
+    this.odBanner.setVisible(show);
+    if (show) {
+      this.odBanner.setScale(1 + 0.08 * Math.sin(this.t * 24));
+      this.odBanner.setAlpha(Math.floor(this.t * 10) % 2 === 0 ? 1 : 0.6);
+    }
+  }
+
+  // ------------------------------------------------------------ speed fx
+
+  private buildSpeedFx(): void {
+    if (!this.textures.exists('dd-streak')) {
+      const g = this.make.graphics({}, false);
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(0, 0, 4, 4);
+      g.generateTexture('dd-streak', 4, 4);
+      g.destroy();
+    }
+    if (!this.textures.exists('dd-vignette')) {
+      const tex = this.textures.createCanvas('dd-vignette', EDGE_W + 20, 4);
+      if (tex) {
+        const ctx = tex.getContext();
+        const grad = ctx.createLinearGradient(0, 0, EDGE_W + 20, 0);
+        grad.addColorStop(0, 'rgba(26,16,51,1)');
+        grad.addColorStop(1, 'rgba(26,16,51,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, EDGE_W + 20, 4);
+        tex.refresh();
+      }
+    }
+    this.streaks = [];
+    this.streakAcc = 0;
+    for (let i = 0; i < MAX_STREAKS; i++) {
+      this.streaks.push({ img: this.add.image(0, 0, 'dd-streak').setVisible(false).setDepth(48), active: false, speed: 0 });
+    }
+    const left = this.add.image(0, 0, 'dd-vignette').setOrigin(0, 0).setDisplaySize(EDGE_W + 20, H).setDepth(50).setAlpha(0);
+    const right = this.add.image(W, 0, 'dd-vignette').setOrigin(1, 0).setFlipX(true).setDisplaySize(EDGE_W + 20, H).setDepth(50).setAlpha(0);
+    this.vignettes = [left, right];
+  }
+
+  private clearStreaks(): void {
+    for (const s of this.streaks) {
+      s.active = false;
+      s.img.setVisible(false);
+    }
+    this.streakAcc = 0;
+  }
+
+  private updateSpeedFx(dt: number): void {
+    const od = overdrive(this.t);
+    for (const v of this.vignettes) v.setAlpha(vignetteAlpha(od));
+    const blockSpeed = fallSpeed(this.t) * speedBoost(this.t);
+    for (const s of this.streaks) {
+      if (!s.active) continue;
+      s.img.y += streakSpeed(blockSpeed) * dt;
+      if (s.img.y - s.img.displayHeight / 2 > H) {
+        s.active = false;
+        s.img.setVisible(false);
+      }
+    }
+    if (od <= 0 || this.dead) return;
+    this.streakAcc += streakSpawnRate(od) * dt;
+    while (this.streakAcc >= 1) {
+      this.streakAcc -= 1;
+      const s = this.streaks.find((q) => !q.active);
+      if (!s) break;
+      const sizeR = this.rng();
+      const len = streakLen(sizeR);
+      s.active = true;
+      s.img.setVisible(true)
+        .setPosition(streakX(this.rng() < 0.5 ? 0 : 1, this.rng(), W), -len / 2 - this.rng() * 200)
+        .setDisplaySize(streakWidth(this.rng()), len)
+        .setAlpha(streakAlpha(od, this.rng()))
+        .setTint(this.rng() < 0.5 ? 0xffffff : 0x9ee9ff);
+    }
+  }
+
   private setLayers(force: boolean): void {
-    const n = isRush(this.t) ? 4 : layersFor(this.t);
+    const n = this.layerCount();
     if (n === this.lastLayers && !force) return;
     this.lastLayers = n;
     this.kit.audio.music.setLayers(n);
@@ -566,8 +675,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private updateBlocks(dt: number): void {
-    const rushMul = isRush(this.t) ? 1.4 : 1;
-    const base = fallSpeed(this.t) * rushMul;
+    const base = fallSpeed(this.t) * speedBoost(this.t);
     const px = this.dead ? 0 : this.player.x;
     for (const b of this.blocks) {
       if (!b.active) continue;
@@ -595,7 +703,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private updatePickups(dt: number): void {
-    const speed = fallSpeed(this.t) * 0.9;
+    const speed = fallSpeed(this.t) * speedBoost(this.t) * 0.9;
     for (const p of this.pickups) {
       if (!p.active) continue;
       const radius = this.cfg.magnetRadius;
@@ -778,6 +886,7 @@ export class PlayScene extends Phaser.Scene {
       }
     }
     this.dead = false;
+    this.clearStreaks();
     this.combo.reset();
     this.invuln = INVULN_REVIVE;
     this.vel = 0;

@@ -24,8 +24,8 @@ async function badSeeds(seeds: number[], opts: Opts, toT: number, validate = tru
 }
 
 describe('SpawnScheduler', () => {
-  it('leaves a survivable path through every field for seeds 1..300', async () => {
-    expect(await badSeeds(SEEDS, {}, 180)).toEqual([]);
+  it('leaves a survivable path through every field for seeds 1..300 up to 240 s', async () => {
+    expect(await badSeeds(SEEDS, {}, 240)).toEqual([]);
   }, 120_000);
 
   it('the property is meaningful: unvalidated planning is unsurvivable on some seeds', async () => {
