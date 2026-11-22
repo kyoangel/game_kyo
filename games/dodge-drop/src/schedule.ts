@@ -4,6 +4,13 @@ import { planWave, waveKindAt, type WaveKind } from './waves.ts';
 export type { Scheduled };
 
 const START = 0.4;
+export const START_GRACE = 2.0;
+
+export interface DifficultyOptions {
+  speedMul?: number;
+  intervalMul?: number;
+  startT?: number;
+}
 /** Waves are planned this far beyond `untilT`; those spawns stay removable until emitted. */
 const LOOKAHEAD = 5;
 /** Validation window: history simulated before the first new spawn, and after the last. */
@@ -15,7 +22,7 @@ interface Entry extends Scheduled {
 }
 
 export class SpawnScheduler {
-  private planEnd = START;
+  private planEnd: number;
   private fillerNext = false;
   private gapX: number | undefined;
   private committed: Scheduled[] = [];
@@ -24,11 +31,15 @@ export class SpawnScheduler {
   private readonly rng: () => number;
   private readonly width: number;
   private readonly validate: boolean;
+  private readonly opts: DifficultyOptions;
 
-  constructor(rng: () => number, width: number, validate = true) {
+  constructor(rng: () => number, width: number, validate = true, opts: DifficultyOptions = {}) {
     this.rng = rng;
     this.width = width;
     this.validate = validate;
+    this.opts = opts;
+    const startT = opts.startT ?? 0;
+    this.planEnd = startT > 0 ? startT + START_GRACE : START;
   }
 
   /**
@@ -53,7 +64,7 @@ export class SpawnScheduler {
     let kind: WaveKind = this.fillerNext ? 'rain' : waveKindAt(this.planEnd);
     if (this.fillerNext) this.fillerNext = false;
     else if (kind !== 'rain' && kind !== 'rainHeavy') this.fillerNext = true;
-    const plan = planWave(kind, this.planEnd, this.rng, this.width, this.gapX);
+    const plan = planWave(kind, this.planEnd, this.rng, this.width, this.gapX, this.opts.intervalMul ?? 1);
     if (plan.gapX !== undefined) this.gapX = plan.gapX;
     const isWall = kind === 'wall';
     const fresh: Entry[] = plan.spawns.map((sp) => ({ ...sp, at: this.planEnd + sp.at, wall: isWall }));
@@ -69,7 +80,9 @@ export class SpawnScheduler {
     const fromT = Math.max(0, first - LOOKBACK);
     const toT = last + LOOKFORWARD;
     const history = this.committed.filter((c) => c.at > fromT - 12);
-    const dead = (): number | null => firstDeadEnd([...history, ...this.buffer], this.width, fromT, toT);
+    const dead = (): number | null => firstDeadEnd([...history, ...this.buffer], this.width, fromT, toT, {
+        speedMul: this.opts.speedMul ?? 1,
+      });
     let d = dead();
     while (d !== null) {
       const cands = this.buffer.filter((e) => !e.wall).sort((a, b) => b.at - a.at);

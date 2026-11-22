@@ -68,9 +68,9 @@ function wall(rng: () => number, width: number, prevGapX?: number): Plan {
   return { spawns, duration: 1 + BREATHER, gapX };
 }
 
-function stairs(rng: () => number, width: number): Plan {
+function stairs(rng: () => number, width: number, intervalMul: number): Plan {
   const count = 5;
-  const gap = 0.25;
+  const gap = 0.25 * intervalMul;
   const w = width / 6;
   const step = (width - w) / (count - 1);
   const ltr = rng() < 0.5;
@@ -82,9 +82,9 @@ function stairs(rng: () => number, width: number): Plan {
   return { spawns, duration: (count - 1) * gap + BREATHER };
 }
 
-function zigzag(rng: () => number, width: number): Plan {
+function zigzag(rng: () => number, width: number, intervalMul: number): Plan {
   const count = 6;
-  const gap = 0.45;
+  const gap = 0.45 * intervalMul;
   const third = width / 3;
   let left = rng() < 0.5;
   const spawns: Spawn[] = [];
@@ -98,17 +98,24 @@ function zigzag(rng: () => number, width: number): Plan {
   return { spawns, duration: (count - 1) * gap + BREATHER };
 }
 
-export function planWave(kind: WaveKind, t: number, rng: () => number, width: number, prevGapX?: number): Plan {
+export function planWave(
+  kind: WaveKind,
+  t: number,
+  rng: () => number,
+  width: number,
+  prevGapX?: number,
+  intervalMul = 1,
+): Plan {
   switch (kind) {
     case 'rain':
-      return rain(t, rng, width, 1);
+      return rain(t, rng, width, intervalMul);
     case 'rainHeavy':
-      return rain(t, rng, width, 0.6);
+      return rain(t, rng, width, 0.6 * intervalMul);
     case 'wall':
       return wall(rng, width, prevGapX);
     case 'stairs':
-      return stairs(rng, width);
+      return stairs(rng, width, intervalMul);
     case 'zigzag':
-      return zigzag(rng, width);
+      return zigzag(rng, width, intervalMul);
   }
 }

@@ -4,6 +4,11 @@ import { isRush, PLAYER_HITBOX_W, SPAWN_Y } from './waves.ts';
 
 export type Scheduled = Spawn;
 
+export interface FieldOptions {
+  /** Global block speed multiplier (default 1). */
+  speedMul?: number;
+}
+
 export const PLAYER_Y = 1100;
 /** Conservative player speed (keyboard max is 640). */
 export const SAFE_PLAYER_SPEED = 520;
@@ -18,14 +23,21 @@ const HIT_SCALE = 0.9;
  * safe any more, or null. The player may start anywhere in [fromT]; blocks are simulated
  * from their spawn so earlier blocks still constrain the window.
  */
-export function firstDeadEnd(spawns: Scheduled[], width: number, fromT: number, toT: number): number | null {
+export function firstDeadEnd(
+  spawns: Scheduled[],
+  width: number,
+  fromT: number,
+  toT: number,
+  opts?: FieldOptions,
+): number | null {
+  const sm = opts?.speedMul ?? 1;
   const kStart = Math.max(0, Math.floor(fromT / DT));
   const kEnd = Math.floor(toT / DT);
   if (kEnd < kStart) return null;
   const D = new Float64Array(kEnd + 2);
   for (let k = 0; k <= kEnd; k++) {
     const t = k * DT;
-    D[k + 1] = D[k]! + fallSpeed(t) * (isRush(t) ? 1.4 : 1) * DT;
+    D[k + 1] = D[k]! + fallSpeed(t) * (isRush(t) ? 1.4 : 1) * sm * DT;
   }
 
   const n = Math.floor((width - PLAYER_HITBOX_W) / CELL) + 1;

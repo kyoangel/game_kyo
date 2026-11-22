@@ -91,3 +91,20 @@ describe('planWave fairness', () => {
     expect(planWave('wall', 15, mulberry32(3), W).gapX).toBeDefined();
   });
 });
+
+describe('intervalMul', () => {
+  it('stretches rain, stairs and zigzag spacing; default is unchanged', () => {
+    const mk = () => mulberry32(5);
+    const base = planWave('rain', 20, mk(), 720);
+    const slow = planWave('rain', 20, mk(), 720, undefined, 1.25);
+    expect(slow.spawns.length).toBeLessThan(base.spawns.length);
+    expect(planWave('rain', 20, mk(), 720, undefined, 1)).toEqual(base);
+    const s0 = planWave('stairs', 30, mk(), 720);
+    const s1 = planWave('stairs', 30, mk(), 720, undefined, 1.25);
+    expect(s1.spawns[1]!.at).toBeCloseTo(s0.spawns[1]!.at * 1.25, 9);
+    expect(s1.duration).toBeGreaterThan(s0.duration);
+    const z0 = planWave('zigzag', 50, mk(), 720);
+    const z1 = planWave('zigzag', 50, mk(), 720, undefined, 1.25);
+    expect(z1.spawns[1]!.at).toBeCloseTo(z0.spawns[1]!.at * 1.25, 9);
+  });
+});

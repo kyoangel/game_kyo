@@ -38,3 +38,24 @@ describe('firstDeadEnd', () => {
     expect(firstDeadEnd(spawns, W, 0, 30)).toBeNull();
   });
 });
+
+describe('firstDeadEnd with speedMul', () => {
+  it('speedMul 1 is identical to no option', () => {
+    const spawns = [...wall(5, 360), { at: 4.85, x: 360, w: 100, ...B, speedMul: 1 }];
+    expect(firstDeadEnd(spawns, W, 0, 20, { speedMul: 1 })).toBe(firstDeadEnd(spawns, W, 0, 20));
+  });
+  it('still detects an overtaking dead end when everything falls at 0.85x', () => {
+    const slowWall = wall(3, 360, 0.6);
+    const hits: number[] = [];
+    for (let at = 3.5; at < 8; at += 0.05) {
+      const fast = { at, x: 360, w: 100, ...B, speedMul: 1.0 };
+      if (firstDeadEnd([...slowWall, fast], W, 0, 30, { speedMul: 0.85 }) !== null) hits.push(at);
+    }
+    expect(hits.length).toBeGreaterThan(0);
+  });
+  it('blocks arrive later at 0.5x: a sealed wall row falls outside the window', () => {
+    const spawns = [...wall(3, 360), { at: 3.0, x: 360, w: 100, ...B, speedMul: 1 }];
+    expect(firstDeadEnd(spawns, W, 0, 8, { speedMul: 1 })).not.toBeNull();
+    expect(firstDeadEnd(spawns, W, 0, 8, { speedMul: 0.5 })).toBeNull();
+  });
+});

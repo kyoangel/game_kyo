@@ -42,3 +42,52 @@ describe('SpawnScheduler', () => {
     expect(stepped).toEqual(b.planUntil(60));
   });
 });
+
+const ASSIST = { speedMul: 0.85, intervalMul: 1.25 };
+
+describe('SpawnScheduler difficulty options', () => {
+  it('no options behaves exactly like before', () => {
+    const a = new SpawnScheduler(mulberry32(3), W).planUntil(60);
+    const b = new SpawnScheduler(mulberry32(3), W, true, {}).planUntil(60);
+    expect(b).toEqual(a);
+  });
+
+  it('intervalMul 1.25 plans fewer spawns than 1.0 over the same window', () => {
+    const n1 = new SpawnScheduler(mulberry32(5), W).planUntil(60).length;
+    const n2 = new SpawnScheduler(mulberry32(5), W, true, { intervalMul: 1.25 }).planUntil(60).length;
+    expect(n2).toBeLessThan(n1);
+  });
+
+  it('startT = 60 plans nothing before startT + 2.0 s of grace', () => {
+    const all = new SpawnScheduler(mulberry32(9), W, true, { startT: 60 }).planUntil(120);
+    expect(all.length).toBeGreaterThan(20);
+    expect(Math.min(...all.map((s) => s.at))).toBeGreaterThanOrEqual(62);
+  });
+
+  it('assist multipliers keep every field survivable for seeds 1..300 (validator uses the same speedMul)', () => {
+    const bad: number[] = [];
+    for (const seed of SEEDS) {
+      const all = new SpawnScheduler(mulberry32(seed), W, true, ASSIST).planUntil(120);
+      if (firstDeadEnd(all, W, 0, 120, { speedMul: ASSIST.speedMul }) !== null) bad.push(seed);
+    }
+    expect(bad).toEqual([]);
+  }, 120_000);
+
+  it('a tier start at 60 s keeps every field survivable for seeds 1..300', () => {
+    const bad: number[] = [];
+    for (const seed of SEEDS) {
+      const all = new SpawnScheduler(mulberry32(seed), W, true, { startT: 60 }).planUntil(150);
+      if (firstDeadEnd(all, W, 60, 150) !== null) bad.push(seed);
+    }
+    expect(bad).toEqual([]);
+  }, 120_000);
+
+  it('assist + tier start together stay survivable (seeds 1..100)', () => {
+    const bad: number[] = [];
+    for (const seed of SEEDS.slice(0, 100)) {
+      const all = new SpawnScheduler(mulberry32(seed), W, true, { ...ASSIST, startT: 30 }).planUntil(110);
+      if (firstDeadEnd(all, W, 30, 110, { speedMul: ASSIST.speedMul }) !== null) bad.push(seed);
+    }
+    expect(bad).toEqual([]);
+  }, 120_000);
+});
