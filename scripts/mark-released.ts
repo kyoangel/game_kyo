@@ -9,8 +9,11 @@ import type { ReleaseStatus, Target } from '../packages/game-kit/src/manifest.ts
 export function markReleased(text: string, target: Target, status: ReleaseStatus, date: string, reason?: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('date must be YYYY-MM-DD');
   if (status === 'rejected' && !reason) throw new Error('rejected needs a reason');
-  const g = JSON.parse(text) as { version: string; releases: Record<string, unknown> };
-  g.releases[target] = { status, version: g.version, submittedAt: date, ...(reason ? { reason } : {}) };
+  const g = JSON.parse(text) as { version: string; releases: Record<string, { status?: string; version?: string; submittedAt?: string; reason?: string } | undefined> };
+  const prev = g.releases[target];
+  // A later status (approved/live/rejected) for the same version keeps the date it was submitted.
+  const submittedAt = status !== 'submitted' && prev?.version === g.version && prev.submittedAt ? prev.submittedAt : date;
+  g.releases[target] = { status, version: g.version, submittedAt, ...(reason ? { reason } : {}) };
   return `${JSON.stringify(g, null, 2)}\n`;
 }
 

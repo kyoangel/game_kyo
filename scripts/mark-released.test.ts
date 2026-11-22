@@ -16,6 +16,14 @@ describe('markReleased', () => {
       submittedAt: '2026-11-23',
       reason: 'too slow',
     }));
+  it('keeps the original submittedAt when a submitted version is later approved', () => {
+    const submitted = markReleased(src, 'crazygames', 'submitted', '2026-11-22');
+    expect(JSON.parse(markReleased(submitted, 'crazygames', 'basic', '2026-11-30')).releases.crazygames).toEqual({
+      status: 'basic',
+      version: '1.2.3',
+      submittedAt: '2026-11-22',
+    });
+  });
   it('rejects an invalid date', () =>
     expect(() => markReleased(src, 'crazygames', 'submitted', '22/11/2026')).toThrow(/YYYY-MM-DD/));
   it('refuses rejected without a reason', () =>
