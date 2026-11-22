@@ -11,7 +11,7 @@ import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpe
 import { SKINS, type Skin } from './economy.ts';
 import { formatTime } from './format.ts';
 import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
-import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
+import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, edibleBlockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
 import { mulberry32 } from './rng.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
@@ -60,6 +60,7 @@ interface Block {
   w: number;
   h: number;
   speedMul: number;
+  rush: boolean;
   checked: boolean;
 }
 interface Pickup {
@@ -99,8 +100,7 @@ export class PlayScene extends Phaser.Scene {
   private ring!: Phaser.GameObjects.Image;
   private chompRing!: Phaser.GameObjects.Image;
   private chompBanner!: Phaser.GameObjects.Text;
-  private shieldBadge!: Phaser.GameObjects.Text;
-  private shieldBadgeIcon!: Phaser.GameObjects.Image;
+  private shieldHudIcons: Phaser.GameObjects.Image[] = [];
   private vel = 0;
   private tiltN = 0;
   private invuln = 0;
@@ -108,6 +108,7 @@ export class PlayScene extends Phaser.Scene {
   private chompArmed = false;
   private chompTimer = 0;
   private chompBannerUntil = 0;
+  private ghostMode: 'none' | 'blue' | 'white' = 'none';
   private prism: number[] = [];
 
   private blocks: Block[] = [];
@@ -192,6 +193,7 @@ export class PlayScene extends Phaser.Scene {
     this.chompArmed = false;
     this.chompTimer = 0;
     this.chompBannerUntil = 0;
+    this.ghostMode = 'none';
     this.pending = [];
     this.cfg = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: this.rng });
     this.runStartT = 0;
@@ -298,7 +300,7 @@ export class PlayScene extends Phaser.Scene {
       this.combo = new Combo(cfg.comboTimeout);
       if (cfg.grace > 0) this.graceBanner.setText(this.kit.t(`tierStart.${cfg.tier}`));
       this.buildPlayer();
-      if (this.shieldHits >= 2) this.shieldBadge.setText(`×${this.shieldHits}`);
+      this.syncShieldHud();
       this.ready = true;
       this.kit.audio.music.start();
       this.setLayers(true);
@@ -338,7 +340,7 @@ export class PlayScene extends Phaser.Scene {
 
   private makeBlock(): Block {
     const { key } = blockTexture(this, 80, false);
-    return { img: this.add.image(0, 0, key).setVisible(false).setDepth(5), active: false, x: 0, y: 0, w: 0, h: 0, speedMul: 1, checked: false };
+    return { img: this.add.image(0, 0, key).setVisible(false).setDepth(5), active: false, x: 0, y: 0, w: 0, h: 0, speedMul: 1, rush: false, checked: false };
   }
 
   private buildPlayer(): void {
@@ -346,8 +348,6 @@ export class PlayScene extends Phaser.Scene {
     this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
     this.ring = this.add.image(W / 2, PLAYER_Y, 'dd-ring').setDepth(11).setVisible(false);
     this.chompRing = this.add.image(W / 2, PLAYER_Y, 'dd-chomp-ring').setDepth(11).setVisible(false);
-    this.shieldBadgeIcon = this.add.image(W / 2, PLAYER_Y, 'dd-shield').setScale(0.6).setDepth(12).setVisible(false);
-    this.shieldBadge = this.add.text(W / 2, PLAYER_Y, '', { ...this.textStyle(30, 0x58ff9a), strokeThickness: 6 }).setOrigin(0.5).setDepth(12).setVisible(false);
     if (this.skin.color === 'cycle') {
       this.prism = [];
       for (let i = 0; i < PRISM_STEPS; i++) {
@@ -400,6 +400,13 @@ export class PlayScene extends Phaser.Scene {
     this.scoreText = this.add.text(24, 18, '0', this.textStyle(48, theme.text)).setDepth(100);
     this.comboText = this.add.text(24, 76, '', this.textStyle(40, theme.accent)).setDepth(100).setVisible(false);
     this.comboBar = this.add.graphics().setDepth(100);
+    // Top-center shield icon row (up to 7 icons, growing rightward clear of left score/back arrow & right timer).
+    this.shieldHudIcons = [];
+    for (let i = 0; i < 7; i++) {
+      this.shieldHudIcons.push(
+        this.add.image(220 + i * 30, 44, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
+      );
+    }
     this.buildStrip();
     this.timerText = this.add.text(this.kit.fullscreenAvailable ? W - 176 : W - 100, 24, '0:00', this.textStyle(40, theme.text)).setOrigin(1, 0).setDepth(100);
     this.kit.addMuteButton(this, W - 48, 48).setDepth(100);
@@ -426,7 +433,7 @@ export class PlayScene extends Phaser.Scene {
       .setDepth(100)
       .setVisible(false);
     this.chompBanner = this.add
-      .text(W / 2, 260, this.kit.t('chompBanner'), { ...this.textStyle(82, 0xffe14d), strokeThickness: 10 })
+      .text(W / 2, 260, this.kit.t('chompBanner'), { ...this.textStyle(82, 0x3ff0ff), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
@@ -459,6 +466,7 @@ export class PlayScene extends Phaser.Scene {
           this.player.setTexture(skinTextureKey(this, this.skin));
           this.invuln = Math.max(this.invuln, CHOMP_EXIT_INVULN);
         }
+        this.syncGhostBlocks();
       }
       this.chompBanner.setVisible(this.t < this.chompBannerUntil);
       this.updateMedals(prev, this.t);
@@ -553,12 +561,6 @@ export class PlayScene extends Phaser.Scene {
     this.player.setAlpha(blink ? 0.35 : 1);
     this.ring.setVisible(this.shieldHeld);
     this.chompRing.setVisible(this.chompArmed && !chomping);
-    this.shieldBadge.setVisible(this.shieldHits >= 2);
-    this.shieldBadgeIcon.setVisible(this.shieldHits >= 2);
-    if (this.shieldHits >= 2) {
-      this.shieldBadgeIcon.setPosition(this.player.x + 26, this.player.y - 44);
-      this.shieldBadge.setPosition(this.player.x + 58, this.player.y - 44);
-    }
     if (this.shieldHeld) {
       this.ring.setPosition(this.player.x, this.player.y);
       this.ring.setScale(baseScale * (1 + Math.sin(this.t * 8) * 0.04));
@@ -618,17 +620,47 @@ export class PlayScene extends Phaser.Scene {
       b = this.makeBlock();
       this.blocks.push(b);
     }
-    const { key, bodyW } = blockTexture(this, p.w, p.rush);
+    const tex =
+      this.ghostMode === 'none'
+        ? blockTexture(this, p.w, p.rush)
+        : edibleBlockTexture(this, p.w, this.ghostMode === 'white');
     b.active = true;
     b.checked = false;
     b.x = p.x;
     b.w = p.w;
     b.h = p.h;
     b.speedMul = p.speedMul;
+    b.rush = p.rush;
     b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * speedBoost(this.t) * p.speedMul * this.cfg.speedMul;
-    b.img.setTexture(key).setVisible(true);
-    b.img.setScale(p.w / bodyW, 1);
+    b.img.setTexture(tex.key).setVisible(true);
+    b.img.setScale(p.w / tex.bodyW, 1);
     b.img.setPosition(b.x, b.y);
+  }
+
+  private syncShieldHud(): void {
+    for (let i = 0; i < this.shieldHudIcons.length; i++) {
+      this.shieldHudIcons[i]!.setVisible(!this.dead && i < this.shieldHits);
+    }
+  }
+
+  private syncGhostBlocks(): void {
+    const want: 'none' | 'blue' | 'white' =
+      this.chompTimer <= 0
+        ? 'none'
+        : this.chompTimer < 1.5 && Math.floor(this.t * 10) % 2 === 0
+          ? 'white'
+          : 'blue';
+    if (want === this.ghostMode) return;
+    this.ghostMode = want;
+    for (const b of this.blocks) {
+      if (!b.active) continue;
+      const tex =
+        want === 'none'
+          ? blockTexture(this, b.w, b.rush)
+          : edibleBlockTexture(this, b.w, want === 'white');
+      b.img.setTexture(tex.key);
+      b.img.setScale(b.w / tex.bodyW, 1);
+    }
   }
 
   private spawnStar(): boolean {
@@ -872,10 +904,10 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  /** +1 held shield up to the Shield Stack capacity; keeps the count badge in sync. */
+  /** +1 held shield up to the Shield Stack capacity; keeps the top HUD shield icons in sync. */
   private addShield(): void {
     this.shieldHits = shieldAfterPickup(this.shieldHits, this.cfg.shieldCapacity);
-    this.shieldBadge.setText(`×${this.shieldHits}`);
+    this.syncShieldHud();
   }
 
   private onNearMiss(b: Block): void {
@@ -899,8 +931,8 @@ export class PlayScene extends Phaser.Scene {
     b.img.setVisible(false);
     this.score += CHOMP_BLOCK_SCORE;
     this.kit.audio.sfx('pickup');
-    this.fx.burst(b.x, b.y, { color: 0xffe14d, count: 18, speed: 420, lifespanMs: 420 });
-    this.fx.burst(b.x, b.y, { color: BLOCK_PINK, count: 12, speed: 360, lifespanMs: 380 });
+    this.fx.burst(b.x, b.y, { color: 0x3b7bff, count: 18, speed: 420, lifespanMs: 420 });
+    this.fx.burst(b.x, b.y, { color: 0xffe14d, count: 12, speed: 360, lifespanMs: 380 });
     this.fx.popText(b.x, b.y - 20, `+${CHOMP_BLOCK_SCORE}`, { color: 0xffe14d, size: 34 });
     this.fx.shake(0.2);
   }
@@ -910,8 +942,7 @@ export class PlayScene extends Phaser.Scene {
       this.shieldHits -= 1;
       this.stats.shieldBlocks++;
       this.ring.setVisible(this.shieldHits > 0);
-      this.shieldBadge.setText(`×${this.shieldHits}`).setVisible(this.shieldHits >= 2);
-      this.shieldBadgeIcon.setVisible(this.shieldHits >= 2);
+      this.syncShieldHud();
       this.invuln = INVULN_SHIELD;
       this.combo.reset();
       b.active = false;
@@ -929,6 +960,7 @@ export class PlayScene extends Phaser.Scene {
       this.chompRing.setVisible(false);
       this.kit.audio.sfx('rush');
       this.eatBlock(b);
+      this.syncGhostBlocks();
       return;
     }
     if (__GK_TEST_HOOKS__ && (window as unknown as { __dd?: { god: boolean } }).__dd?.god) {
@@ -1033,8 +1065,7 @@ export class PlayScene extends Phaser.Scene {
     this.ring.setVisible(false);
     this.chompRing.setVisible(false);
     this.chompBanner.setVisible(false);
-    this.shieldBadge.setVisible(false);
-    this.shieldBadgeIcon.setVisible(false);
+    this.syncShieldHud();
     this.trail?.stop();
     this.trail = null;
     this.kit.audio.sfx('death');

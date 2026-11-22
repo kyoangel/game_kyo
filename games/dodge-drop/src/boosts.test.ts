@@ -36,7 +36,7 @@ describe('boosts', () => {
 
   it('rejects purchase when coins are insufficient', () => {
     expect(buyBoost({ coins: 9, boosts: emptyBoosts(), shieldCap: 2 }, 'shield')).toEqual({ ok: false, reason: 'poor' });
-    expect(buyBoost({ coins: 39, boosts: emptyBoosts(), shieldCap: 2 }, 'shrink')).toEqual({ ok: false, reason: 'poor' });
-    expect(buyBoost({ coins: 99, boosts: emptyBoosts(), shieldCap: 2 }, 'chomp')).toEqual({ ok: false, reason: 'poor' });
+    expect(buyBoost({ coins: 14, boosts: emptyBoosts(), shieldCap: 2 }, 'shrink')).toEqual({ ok: false, reason: 'poor' });
+    expect(buyBoost({ coins: 19, boosts: emptyBoosts(), shieldCap: 2 }, 'chomp')).toEqual({ ok: false, reason: 'poor' });
   });
 });

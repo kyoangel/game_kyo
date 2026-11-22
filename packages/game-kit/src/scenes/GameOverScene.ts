@@ -34,7 +34,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    this.add.rectangle(0, 0, width, height, 0x000000, 0.55).setOrigin(0, 0).setDepth(-1);
+    this.add.rectangle(0, 0, width, height, 0x0d0624, 0.84).setOrigin(0, 0).setDepth(-1);
     if (this.offerRevive) this.showRevive();
     else this.showResults();
   }
@@ -155,9 +155,10 @@ export class GameOverScene extends Phaser.Scene {
     const cx = width / 2;
     const fx = kit.fx(this);
 
-    this.add.text(cx, height * 0.14, kit.t('gk.gameOver'), this.style(60, theme.text)).setOrigin(0.5);
+    this.add.text(cx, height * 0.13, kit.t('gk.gameOver'), this.style(60, theme.text)).setOrigin(0.5);
 
-    const scoreText = this.add.text(cx, height * 0.26, '0', this.style(120, theme.accent)).setOrigin(0.5);
+    this.add.text(cx, height * 0.205, kit.t('gk.score'), this.style(26, theme.muted)).setOrigin(0.5);
+    const scoreText = this.add.text(cx, height * 0.28, '0', this.style(116, theme.accent)).setOrigin(0.5);
     const counter = { v: 0 };
     this.tweens.add({
       targets: counter,
@@ -168,13 +169,13 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     if (this.newBest) {
-      const banner = this.add.text(cx, height * 0.36, kit.t('gk.newBest'), this.style(52, theme.accent)).setOrigin(0.5).setScale(0.2);
+      const banner = this.add.text(cx, height * 0.37, kit.t('gk.newBest'), this.style(48, theme.accent)).setOrigin(0.5).setScale(0.2);
       this.tweens.add({ targets: banner, scale: 1, duration: 350, ease: 'Back.easeOut' });
-      fx.burst(cx, height * 0.36, { color: theme.accent, count: 40, speed: 520 });
+      fx.burst(cx, height * 0.37, { color: theme.accent, count: 40, speed: 520 });
       kit.audio.sfx('newBest');
     }
 
-    this.add.text(cx, height * 0.43, `${kit.t('gk.best')}: ${kit.session.best}`, this.style(36, theme.muted)).setOrigin(0.5);
+    this.add.text(cx, height * 0.43, `${kit.t('gk.best')}: ${kit.session.best}`, this.style(34, theme.muted)).setOrigin(0.5);
 
     kit.def.results?.(this, {
       score: this.score,

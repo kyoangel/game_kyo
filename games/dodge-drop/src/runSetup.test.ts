@@ -41,8 +41,17 @@ describe('buildRunConfig', () => {
       workshop: ws({ shieldStack: 2 }),
       boosts: { shields: 4, shrink: true, chomp: true },
     });
-    expect(c.startShieldHits).toBe(3); // clamped to shieldCapacity(2) = 3
+    expect(c.startShieldHits).toBe(3); // bought shields clamped to shieldCapacity(2) = 3
     expect(c.playerScale).toBeCloseTo(0.7, 9);
     expect(c.chompArmed).toBe(true);
+  });
+  it('free start shield stacks on top of maxed purchased shields (never wastes coins)', () => {
+    const c = buildRunConfig({
+      ...base,
+      workshop: ws({ shieldStack: 4, startShield: 5 }), // capacity 5, 100% free start shield
+      boosts: { shields: 5, shrink: false, chomp: false },
+    });
+    expect(c.shieldCapacity).toBe(5);
+    expect(c.startShieldHits).toBe(6); // 5 bought + 1 free start shield
   });
 });

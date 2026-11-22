@@ -24,10 +24,13 @@ export function buildRunConfig(i: { workshop: Workshop; assist: AssistState; tie
   const startT = tierSeconds(tier);
   const assisted = assist.active;
   const capacity = shieldCapacity(w.shieldStack);
-  let startShieldHits = 0;
-  if (assisted) startShieldHits = 1;
-  else if (w.startShield > 0 && rng() < startShieldChance(w.startShield)) startShieldHits = 1;
-  startShieldHits = Math.min(capacity, startShieldHits + Math.max(0, Math.floor(boosts.shields)));
+  let freeStartShield = 0;
+  if (assisted) freeStartShield = 1;
+  else if (w.startShield > 0 && rng() < startShieldChance(w.startShield)) freeStartShield = 1;
+  const boughtShields = Math.min(capacity, Math.max(0, Math.floor(boosts.shields)));
+  // Free start shield stacks on top of purchased shields so buying up to capacity never wastes coins;
+  // in-run pickups are still capped by shieldCapacity.
+  const startShieldHits = freeStartShield + boughtShields;
   return {
     tier, startT, grace: startT > 0 ? GRACE_SECONDS : 0, headStart: headStartScore(tier),
     assisted, speedMul: assisted ? ASSIST_SPEED_MUL : 1, intervalMul: assisted ? ASSIST_INTERVAL_MUL : 1,

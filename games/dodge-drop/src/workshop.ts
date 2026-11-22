@@ -54,9 +54,9 @@ export function shieldInterval(level: number, r: number): number {
 export function shieldCapacity(stackLevel: number): number {
   return 1 + lvl(stackLevel);
 }
-/** A shield pickup adds exactly one held shield, never above capacity. */
+/** A shield pickup adds one held shield up to capacity, never reducing an already over-cap count. */
 export function shieldAfterPickup(held: number, capacity: number): number {
-  return Math.min(capacity, held + 1);
+  return Math.max(held, Math.min(capacity, held + 1));
 }
 export function startShieldChance(level: number): number {
   return lvl(level) / 5;

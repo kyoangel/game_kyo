@@ -4,8 +4,8 @@ export const BOOST_IDS: readonly BoostId[] = ['shield', 'shrink', 'chomp'];
 
 export const BOOST_COSTS: Record<BoostId, number> = {
   shield: 10,
-  shrink: 40,
-  chomp: 100,
+  shrink: 15,
+  chomp: 20,
 };
 
 /** Visual & hitbox scale multiplier when Mini Mode (shrink) is active. */

@@ -28,7 +28,7 @@ export function renderBoostsPanel(ctx: ShopCtx): void {
     bg.strokeRoundedRect(20, y - ROW_H / 2, 680, ROW_H, 22);
     ctx.add(scene.add.image(84, y, boostIconKey(id)).setDisplaySize(84, 84));
 
-    const tag = id === 'shield' && b.shields > 0 ? `  ×${b.shields}` : '';
+    const tag = id === 'shield' ? `  (${b.shields}/${shieldCap})` : '';
     ctx.add(scene.add.text(150, y - 28, `${kit.t(`boost.${id}`)}${tag}`, shopStyle(kit, 32, theme.text)).setOrigin(0, 0.5));
     ctx.add(scene.add.text(150, y + 22, kit.t(`boostDesc.${id}`), { ...shopStyle(kit, 20, theme.muted), strokeThickness: 3, wordWrap: { width: 330 } }).setOrigin(0, 0.5));
 

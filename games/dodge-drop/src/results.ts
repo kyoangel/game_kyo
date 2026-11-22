@@ -3,10 +3,9 @@ import { addButton, cssColor, getKit, type Kit, type ResultsContext } from '@gf/
 import { renderBoostBar } from './boostBar.ts';
 import { buyBoost, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { formatTime, sanitizeOwned } from './format.ts';
-import { MEDALS, mergeMedals } from './medals.ts';
+import { mergeMedals } from './medals.ts';
 import { drawCurrencyIcon } from './playArt.ts';
-import { missionLabel } from './missionLabel.ts';
-import { emptyStats, missionReward, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
+import { emptyStats, sanitizeMissions } from './missions.ts';
 import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { settleRun, type Goal, type Saved, type Settled } from './settle.ts';
@@ -35,7 +34,12 @@ function goalText(kit: Kit, g: Goal, balance: number): string {
   return fill(kit.t(key), vars);
 }
 
-/** Results hook: coin breakdown, medals, near-goal bar, missions, rank-up, optional rewarded x2. Lays out in [ctx.top, ~height*0.8]. */
+/**
+ * Clean results hook:
+ * - Top-left pill shows live star-coin balance + green "+N" gain for this run.
+ * - Center shows survived time, optional rank-up, next-goal progress bar, and optional rewarded x2.
+ * - Bottom shows the 3-button quick-buy boost bar above the retry hint.
+ */
 export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
   const kit = getKit(scene);
   const { theme } = kit;
@@ -45,7 +49,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
 
   let bonusHook: ((extra: number) => void) | null = null;
 
-  // Serialize read-modify-write so the x2 bonus never races the first credit.
+  // Serialize read-modify-write so the x2 bonus and boost buys never race the first credit.
   let chain: Promise<void> = Promise.resolve();
   const credit = (amount: number): void => {
     if (amount <= 0) return;
@@ -55,54 +59,8 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     });
   };
 
-  // Immediate (no storage needed): coins placeholder, survived, medal slots.
-  const coinsText = scene.add.text(cx - 80, top + 28, `+0 ${kit.t('coins')}`, style(kit, 46, 0xffe14d)).setOrigin(0.5);
-  const coinIcon = drawCurrencyIcon(scene, 0, top + 28, 48);
-  const setCoins = (n: number): void => {
-    coinsText.setText(`+${n} ${kit.t('coins')}`);
-    coinIcon.setX(coinsText.x - coinsText.width / 2 - 30);
-  };
-  setCoins(0);
-  scene.add.text(cx, top + 100, `${kit.t('survived')} ${formatTime(run.seconds)}`, style(kit, 30, theme.text)).setOrigin(0.5);
-
-  const slots = scene.add.graphics();
-  // six medals in one row (smaller spacing keeps the layout below unchanged)
-  const slotX = (i: number): number => cx + (i - (MEDALS.length - 1) / 2) * 108;
-  const slotY = top + 156;
-  MEDALS.forEach((m, i) => {
-    scene.add.text(slotX(i), top + 184, formatTime(m.seconds), style(kit, 18, theme.muted)).setOrigin(0.5);
-  });
-  const drawSlots = (owned: Set<string>): void => {
-    slots.clear();
-    MEDALS.forEach((m, i) => {
-      const x = slotX(i);
-      const fresh = run.medals.includes(m.id);
-      const has = owned.has(m.id);
-      const a = has ? (fresh ? 1 : 0.7) : 0.4;
-      // two-tail ribbon above the disc
-      slots.fillStyle(m.color, a);
-      slots.fillTriangle(x - 14, slotY - 34, x - 2, slotY - 34, x + 4, slotY - 10);
-      slots.fillTriangle(x + 14, slotY - 34, x + 2, slotY - 34, x - 4, slotY - 10);
-      if (has) {
-        slots.fillStyle(m.color, a);
-        slots.fillCircle(x, slotY, 20);
-        slots.fillStyle(0xffffff, 0.45);
-        slots.fillCircle(x - 6, slotY - 6, 6);
-        slots.lineStyle(4, 0xffffff, fresh ? 0.95 : 0.4);
-        slots.strokeCircle(x, slotY, 20);
-      } else {
-        slots.fillStyle(0x1a1033, 0.55);
-        slots.fillCircle(x, slotY, 20);
-        slots.lineStyle(3, m.color, 0.35);
-        slots.strokeCircle(x, slotY, 20);
-      }
-    });
-  };
-  drawSlots(new Set(run.medals));
-  if (run.medals.length > 0) {
-    const names = run.medals.map((id) => kit.t(`medal.${id}`)).join(' + ');
-    scene.add.text(cx, top + 208, names, style(kit, 22, theme.accent)).setOrigin(0.5);
-  }
+  // Immediate: survived time.
+  scene.add.text(cx, top + 20, `${kit.t('survived')} ${formatTime(run.seconds)}`, style(kit, 32, theme.text)).setOrigin(0.5);
 
   const save = kit.save;
   void Promise.all([
@@ -132,7 +90,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     const settled = settleRun(run, saved, Math.random);
     const initialBoosts = sanitizeBoosts(rawBoosts, shieldCap);
 
-    // Persist (coins via credit; medals already saved by PlayScene).
+    // Persist settled progress (coins via credit; medals already saved by PlayScene).
     credit(settled.coin.coins + settled.missionCoins);
     chain = chain.then(async () => {
       await save.setNumber('lossStreak', settled.lossStreak);
@@ -156,79 +114,59 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       };
     }
 
-    if (scene.sys.isActive()) render(settled, saved.missions.active, initialBoosts, shieldCap);
+    if (scene.sys.isActive()) render(settled, initialBoosts, shieldCap);
   });
 
-  function render(s: Settled, before: Mission[], initialBoosts: RunBoosts, shieldCap: number): void {
+  function render(s: Settled, initialBoosts: RunBoosts, shieldCap: number): void {
     const coin = s.coin;
     const mCoins = s.missionCoins;
-    let shown = coin.coins + mCoins;
+    let earnedTotal = coin.coins + mCoins;
     let liveCoins = s.coinsAfter;
     let liveBoosts = initialBoosts;
-    setCoins(shown);
-    drawSlots(new Set(s.medals));
 
-    // Top-left live star coin balance so players can immediately see what they can spend on boosts.
-    // Dark pill so the paused play HUD (score) never shows through the balance.
+    // Top-left live star coin balance + "+N" earned indicator in one clean pill.
     const pill = scene.add.graphics().setDepth(2);
-    pill.fillStyle(0x1a1033, 0.92);
-    pill.fillRoundedRect(12, 32, 170, 56, 28);
-    drawCurrencyIcon(scene, 42, 60, 38).setDepth(2);
-    const balText = scene.add.text(70, 60, String(liveCoins), style(kit, 32, 0xffe14d)).setOrigin(0, 0.5).setDepth(2);
+    drawCurrencyIcon(scene, 42, 60, 38).setDepth(3);
+    const balText = scene.add.text(70, 60, String(liveCoins), style(kit, 32, 0xffe14d)).setOrigin(0, 0.5).setDepth(3);
+    const gainText = scene.add.text(0, 60, '', style(kit, 26, 0x58ff9a)).setOrigin(0, 0.5).setDepth(3);
 
-    let boostObjs: Phaser.GameObjects.GameObject[] = [];
-    const paintBoostBar = (): void => {
-      for (const o of boostObjs) o.destroy();
-      boostObjs = renderBoostBar(scene, kit, {
-        cx,
-        // Between the retry hint (0.82H) and Home (0.91H) without touching either.
-        y: Math.round(scene.scale.height * 0.858),
-        height: 44,
-        coins: liveCoins,
-        boosts: liveBoosts,
-        shieldCap,
-        depth: 4,
-        showLabel: false,
-        onBuy: (id) => {
-          const res = buyBoost({ coins: liveCoins, boosts: liveBoosts, shieldCap }, id);
-          if (!res.ok) return;
-          const delta = res.coins - liveCoins;
-          liveCoins = res.coins;
-          liveBoosts = res.boosts;
-          const nextBoosts = res.boosts;
-          balText.setText(String(liveCoins));
-          kit.audio.sfx('pickup');
-          chain = chain.then(async () => {
-            const cur = await save.getNumber('coins', 0);
-            await save.setNumber('coins', Math.max(0, cur + delta));
-            await save.setJSON('boosts', nextBoosts);
-          });
-          paintBoostBar();
-        },
-      });
+    const paintBalancePill = (): void => {
+      balText.setText(String(liveCoins));
+      if (earnedTotal > 0) {
+        gainText.setText(`+${earnedTotal}`).setVisible(true);
+        gainText.setX(balText.x + balText.width + 12);
+      } else {
+        gainText.setVisible(false);
+      }
+      const rightEdge = earnedTotal > 0 ? gainText.x + gainText.width : balText.x + balText.width;
+      const pillW = Math.max(130, rightEdge + 10);
+      pill.clear();
+      pill.fillStyle(0x1a1033, 0.94);
+      pill.fillRoundedRect(12, 32, pillW, 56, 28);
     };
-    paintBoostBar();
+    paintBalancePill();
 
-    if (coin.floorApplied || coin.multiplier > 1 || mCoins > 0) {
-      const parts: string[] = [];
-      if (coin.floorApplied) parts.push(fill(kit.t('coinsMin'), { m: coin.floor }));
-      else if (coin.multiplier > 1) parts.push(fill(kit.t('coinsMult'), { x: coin.multiplier.toFixed(2) }));
-      if (mCoins > 0) parts.push(fill(kit.t('missionCoinsLine'), { n: mCoins }));
-      const txt = parts.join(' · ');
-      scene.add.text(cx, top + 70, txt, style(kit, 24, theme.muted)).setOrigin(0.5);
+    // Rank up: beside the "Survived" line so it never crowds the layout.
+    if (s.missions.rankAfter > s.missions.rankBefore) {
+      const rx = cx + 215;
+      const ry = top + 20;
+      const rt = scene.add.text(rx, ry, fill(kit.t('rankUp'), { n: s.missions.rankAfter }), style(kit, 28, 0xffe14d)).setOrigin(0.5).setScale(0.3);
+      scene.tweens.add({ targets: rt, scale: 1, duration: 400, ease: 'Back.Out' });
+      kit.fx(scene).burst(rx, ry, { color: 0xffe14d, count: 24, speed: 340, lifespanMs: 600 });
+      kit.audio.sfx('medal');
     }
 
-    // Near-goal bar
+    // Near-goal bar with generous whitespace.
     let goalTo = s.goalTo;
     if (s.goal) {
       const g = s.goal;
-      const text = scene.add.text(cx, top + 236, goalText(kit, g, s.goalFrom), style(kit, 28, theme.text)).setOrigin(0.5);
-      const barY = top + 262;
+      const text = scene.add.text(cx, top + 92, goalText(kit, g, s.goalFrom), style(kit, 26, theme.text)).setOrigin(0.5);
+      const barY = top + 122;
       const g2 = scene.add.graphics();
       let pulse: Phaser.Tweens.Tween | null = null;
       const paint = (frac: number): void => {
         g2.clear();
-        g2.fillStyle(0x1a1033, 0.7);
+        g2.fillStyle(0x1a1033, 0.75);
         g2.fillRoundedRect(cx - BAR_W / 2, barY - BAR_H / 2, BAR_W, BAR_H, 7);
         if (frac > 0) {
           g2.fillStyle(theme.accent, 1);
@@ -258,42 +196,45 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       };
     }
 
-    // Missions: a completed mission stays visible as its check row (replacement is shown on the title).
-    const doneIds = new Set(s.missions.completed.map((m) => m.id));
-    before.forEach((old, i) => {
-      const y = top + 298 + i * 28;
-      const target = missionTarget(old);
-      if (doneIds.has(old.id)) {
-        // Completed this run: drawn check + label + reward with the star-coin icon.
-        const label = missionLabel(kit.t(`mission.${old.id}`), old, target);
-        const t = scene.add.text(cx, y, `${label}  +${missionReward(old)}`, style(kit, 24, 0x58ff9a)).setOrigin(0.5);
-        const chk = scene.add.image(t.x - t.width / 2 - 20, y, 'dd-check-green').setDisplaySize(26, 26);
-        const star = drawCurrencyIcon(scene, t.x + t.width / 2 + 18, y, 24);
-        const grp = scene.add.container(0, 0, [t, chk, star]).setScale(0.4);
-        grp.setPosition(cx * 0.6, y * 0.6);
-        scene.tweens.add({ targets: grp, scale: 1, x: 0, y: 0, duration: 300, ease: 'Back.Out' });
-      } else {
-        const now = s.missions.state.active[i] ?? old;
-        scene.add.text(cx, y, missionLabel(kit.t(`mission.${now.id}`), now, now.progress), style(kit, 24, theme.text)).setOrigin(0.5);
-      }
-    });
+    // Quick-buy boost bar cleanly above "Tap anywhere to retry" (0.82H).
+    let boostObjs: Phaser.GameObjects.GameObject[] = [];
+    const paintBoostBar = (): void => {
+      for (const o of boostObjs) o.destroy();
+      boostObjs = renderBoostBar(scene, kit, {
+        cx,
+        y: Math.round(scene.scale.height * 0.745),
+        height: 50,
+        coins: liveCoins,
+        boosts: liveBoosts,
+        shieldCap,
+        depth: 4,
+        showLabel: true,
+        onBuy: (id) => {
+          const res = buyBoost({ coins: liveCoins, boosts: liveBoosts, shieldCap }, id);
+          if (!res.ok) return;
+          const delta = res.coins - liveCoins;
+          liveCoins = res.coins;
+          liveBoosts = res.boosts;
+          const nextBoosts = res.boosts;
+          paintBalancePill();
+          kit.audio.sfx('pickup');
+          chain = chain.then(async () => {
+            const cur = await save.getNumber('coins', 0);
+            await save.setNumber('coins', Math.max(0, cur + delta));
+            await save.setJSON('boosts', nextBoosts);
+          });
+          paintBoostBar();
+        },
+      });
+    };
+    paintBoostBar();
 
-    // Rank up: beside the "Survived" line so it never crowds the retry prompt.
-    if (s.missions.rankAfter > s.missions.rankBefore) {
-      const rx = cx + 215;
-      const ry = top + 100;
-      const rt = scene.add.text(rx, ry, fill(kit.t('rankUp'), { n: s.missions.rankAfter }), style(kit, 30, 0xffe14d)).setOrigin(0.5).setScale(0.3);
-      scene.tweens.add({ targets: rt, scale: 1, duration: 400, ease: 'Back.Out' });
-      kit.fx(scene).burst(rx, ry, { color: 0xffe14d, count: 24, speed: 340, lifespanMs: 600 });
-      kit.audio.sfx('medal');
-    }
-
-    // Rewarded x2
+    // Optional Rewarded x2 button placed cleanly between near-goal bar and boost bar.
     if (ctx.rewardedAds && coin.coins > 0) {
       let used = false;
       let busy = false;
-      const btn = addButton(scene, cx + 200, top + 28, '×2', {
-        width: 200, height: 64, fill: theme.accent, textColor: 0x1a1033, fontSize: 34,
+      const btn = addButton(scene, cx, top + 190, `×2 (+${coin.coins})`, {
+        width: 240, height: 56, fill: theme.accent, textColor: 0x1a1033, fontSize: 28,
         onClick: () => {
           if (used || busy) return;
           busy = true;
@@ -303,10 +244,9 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
             used = true;
             credit(coin.coins);
             if (!scene.sys.isActive()) return;
-            shown = coin.coins * 2 + mCoins;
+            earnedTotal = coin.coins * 2 + mCoins;
             liveCoins += coin.coins;
-            balText.setText(String(liveCoins));
-            setCoins(shown);
+            paintBalancePill();
             bonusHook?.(coin.coins);
             paintBoostBar();
             kit.audio.sfx('pickup');

@@ -56,7 +56,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
       id === 'shield' ? opts.boosts.shields >= opts.shieldCap : equipped;
 
     const name = kit.t(`boost.${id}`);
-    const countTag = id === 'shield' && opts.boosts.shields > 0 ? `×${opts.boosts.shields}` : '';
+    const countTag = id === 'shield' ? ` ${opts.boosts.shields}/${opts.shieldCap}` : '';
     const showCost = !(id === 'shield' ? maxed : equipped);
     const label = showCost ? `${name}${countTag} ${cost}` : `${name}${countTag}`;
 
@@ -65,7 +65,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     const btn = addButton(scene, bx, opts.y, label, {
       width: btnW,
       height: btnH,
-      fontSize: 20,
+      fontSize: 18,
       fill,
       textColor,
       strokeThickness: equipped ? 0 : 4,
@@ -76,12 +76,12 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     });
     // Drawn icons (no emoji: some Android fonts render them as boxes). Label shifts right to make room.
     const text = btn.list[1] as Phaser.GameObjects.Text;
-    text.x += 14;
-    const icon = scene.add.image(-btnW / 2 + 28, 0, equipped && id !== 'shield' ? 'dd-check' : boostIconKey(id));
-    icon.setDisplaySize(btnH * 0.62, btnH * 0.62);
+    text.x += showCost ? 6 : 14;
+    const icon = scene.add.image(-btnW / 2 + 24, 0, maxed ? 'dd-check' : boostIconKey(id));
+    icon.setDisplaySize(btnH * 0.58, btnH * 0.58);
     btn.add(icon);
     if (showCost) {
-      const star = scene.add.image(text.x + text.width / 2 + 14, 0, 'dd-star').setDisplaySize(22, 22);
+      const star = scene.add.image(text.x + text.width / 2 + 12, 0, 'dd-star').setDisplaySize(20, 20);
       btn.add(star);
     }
     if (!canBuy && !equipped) btn.setAlpha(0.55);

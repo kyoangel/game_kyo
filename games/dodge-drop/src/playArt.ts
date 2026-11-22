@@ -63,6 +63,39 @@ export function blockTexture(scene: Phaser.Scene, w: number, rush: boolean): { k
   return { key, bodyW: bw };
 }
 
+/** Edible neon-blue block texture during Chomp mode (flashes white/blue in the final 1.5 s). */
+export function edibleBlockTexture(scene: Phaser.Scene, w: number, flash: boolean): { key: string; bodyW: number } {
+  const bw = bucket(w);
+  const key = `dd-edible-${bw}-${flash ? 'w' : 'b'}`;
+  if (!scene.textures.exists(key)) {
+    const body = flash ? 0xeaf6ff : 0x2da8ff;
+    const glow = flash ? 0xffffff : 0x3ff0ff;
+    const g = gfx(scene);
+    const P = BLOCK_PAD;
+    for (let i = 4; i >= 1; i--) {
+      g.fillStyle(glow, 0.09 * (5 - i));
+      const e = (i * P) / 4;
+      g.fillRoundedRect(P - e, P - e, bw + e * 2, BLOCK_H + e * 2, 12 + e);
+    }
+    g.fillStyle(body, 1);
+    g.fillRoundedRect(P, P, bw, BLOCK_H, 12);
+    // Crisp white dashed/glossy neon rim + soft energy dots so it reads as soft & edible
+    g.lineStyle(2.5, flash ? 0x2da8ff : 0xb8f6ff, 0.9);
+    g.strokeRoundedRect(P + 1, P + 1, bw - 2, BLOCK_H - 2, 11);
+    g.fillStyle(0xffffff, 0.85);
+    g.fillRoundedRect(P + 8, P + 3, bw - 16, 3, 1.5);
+    const dots = Math.max(2, Math.floor(bw / 34));
+    const step = bw / (dots + 1);
+    g.fillStyle(flash ? 0x2da8ff : 0xffffff, 0.55);
+    for (let i = 1; i <= dots; i++) {
+      g.fillCircle(P + i * step, P + BLOCK_H * 0.58, 3.5);
+    }
+    g.generateTexture(key, bw + P * 2, BLOCK_H + P * 2);
+    g.destroy();
+  }
+  return { key, bodyW: bw };
+}
+
 /** Telegraph chevron strip texture (red chevrons on a faint bar), cached per width bucket. */
 export function warnTexture(scene: Phaser.Scene, w: number): string {
   const bw = bucket(w);
@@ -132,31 +165,42 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
     g.destroy();
   }
   if (!tex.exists('dd-chomp-open')) {
-    const drawPac = (key: string, mouthRad: number): void => {
+    // Original glowing neon-cyan chomper cube with an upward-facing animated jaw
+    const drawChomper = (key: string, jawHalfW: number, jawDepth: number): void => {
       const g = gfx(scene);
-      g.fillStyle(0xffe14d, 0.25);
-      g.fillCircle(36, 36, 32);
-      g.fillStyle(0xffe14d, 1);
-      g.slice(36, 36, 28, -Math.PI / 2 + mouthRad, Math.PI * 1.5 - mouthRad, false);
-      g.fillPath();
+      for (let i = 3; i >= 1; i--) {
+        g.fillStyle(0x3ff0ff, 0.1 * (4 - i));
+        g.fillRoundedRect(10 - i * 2, 10 - i * 2, 52 + i * 4, 52 + i * 4, 14 + i * 2);
+      }
+      g.fillStyle(0x3ff0ff, 1);
+      g.fillRoundedRect(10, 10, 52, 52, 13);
       g.lineStyle(3, 0xffffff, 0.95);
-      g.beginPath();
-      g.arc(36, 36, 28, -Math.PI / 2 + mouthRad, Math.PI * 1.5 - mouthRad, false);
-      g.strokePath();
-      // Cute arcade eye facing upward toward falling blocks
+      g.strokeRoundedRect(10, 10, 52, 52, 13);
+      // Dark neon-lined upward chomping V-jaw
       g.fillStyle(0x1a1033, 1);
-      g.fillCircle(24, 30, 4);
+      g.fillTriangle(36 - jawHalfW, 10, 36 + jawHalfW, 10, 36, 10 + jawDepth);
+      // Little white neon fangs along the jaw rim
+      g.fillStyle(0xffffff, 0.95);
+      g.fillTriangle(36 - jawHalfW + 2, 10, 36 - jawHalfW + 8, 10, 36 - jawHalfW + 5, 16);
+      g.fillTriangle(36 + jawHalfW - 8, 10, 36 + jawHalfW - 2, 10, 36 + jawHalfW - 5, 16);
+      // Bright eyes below the jaw
+      g.fillStyle(0x1a1033, 1);
+      g.fillCircle(23, 40, 4.5);
+      g.fillCircle(49, 40, 4.5);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(22, 38.5, 1.8);
+      g.fillCircle(48, 38.5, 1.8);
       g.generateTexture(key, 72, 72);
       g.destroy();
     };
-    drawPac('dd-chomp-open', 0.52);
-    drawPac('dd-chomp-closed', 0.1);
+    drawChomper('dd-chomp-open', 20, 24);
+    drawChomper('dd-chomp-closed', 14, 9);
   }
   if (!tex.exists('dd-chomp-ring')) {
     const g = gfx(scene);
-    g.lineStyle(8, 0xffe14d, 0.28);
+    g.lineStyle(8, 0x3ff0ff, 0.28);
     g.strokeCircle(48, 48, 42);
-    g.lineStyle(3, 0xffe14d, 0.95);
+    g.lineStyle(3, 0x3ff0ff, 0.95);
     g.strokeCircle(48, 48, 40);
     g.generateTexture('dd-chomp-ring', 96, 96);
     g.destroy();
