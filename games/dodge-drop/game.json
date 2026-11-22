@@ -24,6 +24,22 @@
     "keyboard"
   ],
   "cover": "cover.svg",
+  "store": {
+    "controls": {
+      "en": "- Drag left or right with the mouse or your finger to move\n- Arrow keys or A / D to move\n- On phones, tilt control can be turned on in the game\n- Space or Enter to play again after a run"
+    },
+    "crazygames": {
+      "category": "Arcade",
+      "tags": [
+        "Avoid",
+        "Speed",
+        "Skill",
+        "Difficult",
+        "2D"
+      ],
+      "progressSave": "sdk"
+    }
+  },
   "targets": [
     "site",
     "crazygames",
@@ -31,8 +47,9 @@
   ],
   "releases": {
     "crazygames": {
-      "status": "todo",
-      "version": "0.1.0"
+      "status": "submitted",
+      "version": "2.8.4",
+      "submittedAt": "2026-11-22"
     },
     "gamedistribution": {
       "status": "todo",
