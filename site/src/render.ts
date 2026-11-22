@@ -41,14 +41,16 @@ function bilingual(map: Record<string, string>): string {
 }
 
 const LANG_BOOT =
-  "(function(){var l;try{l=localStorage.getItem('gk:lang')}catch(e){}" +
+  "(function(){var l;try{var q=new URLSearchParams(location.search).get('lang');if(q==='en'||q==='zh-TW')localStorage.setItem('gk:lang',q);l=localStorage.getItem('gk:lang')}catch(e){}" +
   "if(l!=='en'&&l!=='zh-TW'){l=/^zh/i.test(navigator.language)?'zh-TW':'en'}" +
   'document.documentElement.setAttribute(\'data-lang\',l);document.documentElement.lang=l;})();';
 
 const LANG_TOGGLE =
   "document.querySelectorAll('[data-set-lang]').forEach(function(b){b.addEventListener('click',function(){" +
   "var l=b.getAttribute('data-set-lang');document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;" +
-  "try{localStorage.setItem('gk:lang',l)}catch(e){}});});";
+  "try{localStorage.setItem('gk:lang',l)}catch(e){}" +
+  // The embedded game reads the language at boot: reload it so it follows the switch.
+  "var f=document.querySelector('.frame iframe');if(f){try{f.contentWindow.location.reload()}catch(e){f.src=f.src}}});});";
 
 const LOBBY_SCRIPT =
   "document.querySelectorAll('[data-filter]').forEach(function(b){b.addEventListener('click',function(){" +

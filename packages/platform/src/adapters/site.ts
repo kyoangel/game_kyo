@@ -1,5 +1,5 @@
 import { createAdEvents } from '../adEvents.ts';
-import { detectLocale } from '../locale.ts';
+import { siteLocale } from '../locale.ts';
 import { createSafeLocalStorage } from '../storage.ts';
 import type { Platform } from '../types.ts';
 import { SUPPORT_URL } from '../support.ts';
@@ -19,7 +19,7 @@ export function createPlatform(): Platform {
     showInterstitial: async () => 'unavailable',
     showRewarded: async () => 'unavailable',
     storage: createSafeLocalStorage('gk:'),
-    locale: detectLocale,
+    locale: siteLocale,
     onAdPause: events.onPause,
     onAdResume: events.onResume,
   };

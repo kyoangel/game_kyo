@@ -63,6 +63,10 @@ describe('renderGamePage', () => {
     expect(html).toContain('<link rel="canonical" href="https://example.test/root/dodge-drop/">');
   });
   it('shows instructions', () => expect(html).toContain('Move left and right.'));
+  it('honours ?lang= and reloads the game when the language switches', () => {
+    expect(html).toContain("get('lang')");
+    expect(html).toContain('contentWindow.location.reload()');
+  });
   it('links to the support page in a new tab, on the lobby too', () => {
     for (const page of [html, renderLobby([game()], legacy, opts)]) {
       expect(page).toContain(`<a class="support" href="${SUPPORT_URL}" target="_blank" rel="noopener">`);

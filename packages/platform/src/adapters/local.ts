@@ -1,6 +1,6 @@
 import { createAdEvents } from '../adEvents.ts';
 import { createIntervalGate } from '../intervalGate.ts';
-import { detectLocale } from '../locale.ts';
+import { siteLocale } from '../locale.ts';
 import { createSafeLocalStorage } from '../storage.ts';
 import type { AdResult, Platform } from '../types.ts';
 import { SUPPORT_URL } from '../support.ts';
@@ -64,7 +64,7 @@ export function createPlatform(opts: LocalOptions = {}): Platform {
     },
     showRewarded: () => fakeAd('rewarded'),
     storage: createSafeLocalStorage('gk:'),
-    locale: detectLocale,
+    locale: siteLocale,
     onAdPause: events.onPause,
     onAdResume: events.onResume,
   };
