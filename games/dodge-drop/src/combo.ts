@@ -7,13 +7,18 @@ export function horizontalGap(a: { x: number; w: number }, b: { x: number; w: nu
   return Math.abs(a.x - b.x) - (a.w + b.w) / 2;
 }
 
-export function isNearMiss(gap: number): boolean {
-  return gap > 0 && gap <= NEAR_MISS_PX;
+export function isNearMiss(gap: number, windowPx: number = NEAR_MISS_PX): boolean {
+  return gap > 0 && gap <= windowPx;
 }
 
 export class Combo {
   count = 0;
   sinceLast = 0;
+  readonly timeout: number;
+
+  constructor(timeout: number = COMBO_TIMEOUT) {
+    this.timeout = timeout;
+  }
 
   get multiplier(): number {
     return Math.min(MAX_MULT, 1 + Math.floor(this.count / 3));
@@ -27,7 +32,7 @@ export class Combo {
 
   tick(dt: number): boolean {
     this.sinceLast += dt;
-    if (this.count > 0 && this.sinceLast >= COMBO_TIMEOUT) {
+    if (this.count > 0 && this.sinceLast >= this.timeout) {
       this.reset();
       return true;
     }

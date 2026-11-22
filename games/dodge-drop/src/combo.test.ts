@@ -52,3 +52,19 @@ describe('Combo', () => {
     expect(c.count).toBe(0);
   });
 });
+
+describe('configurable window and timeout', () => {
+  it('isNearMiss accepts a custom window', () => {
+    expect(isNearMiss(30, 32)).toBe(true);
+    expect(isNearMiss(30)).toBe(false);
+    expect(isNearMiss(0, 32)).toBe(false);
+  });
+  it('Combo honours a custom timeout', () => {
+    const c = new Combo(3.25);
+    c.hit();
+    expect(c.tick(2.6)).toBe(false);
+    expect(c.count).toBe(1);
+    expect(c.tick(0.7)).toBe(true);
+    expect(c.count).toBe(0);
+  });
+});

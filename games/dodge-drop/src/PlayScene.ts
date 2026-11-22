@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
+import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
+import { sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
+import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
+import { emptyWorkshop, sanitizeWorkshop, shieldInterval, starInterval } from './workshop.ts';
 import { fallSpeed } from './difficulty.ts';
 import { SKINS, type Skin } from './economy.ts';
 import { formatTime } from './format.ts';
@@ -90,7 +94,7 @@ export class PlayScene extends Phaser.Scene {
   private vel = 0;
   private tiltN = 0;
   private invuln = 0;
-  private shieldHeld = false;
+  private shieldHits = 0;
   private prism: number[] = [];
 
   private blocks: Block[] = [];
@@ -100,6 +104,14 @@ export class PlayScene extends Phaser.Scene {
   private scheduler!: SpawnScheduler;
   private nextStar = 7;
   private nextShield = 25;
+  private cfg: RunConfig = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: () => 0.5 });
+  private runStartT = 0;
+  private stats: RunStats = emptyStats();
+  private missionState: MissionState = { active: [], stars: 0, rank: 1, completedCount: 0 };
+  private toasted = new Set<MissionId>();
+  private toastQueue = 0;
+  private toastCheck = 0;
+  private graceBanner!: Phaser.GameObjects.Text;
 
   private rushIdx = 0;
   private rushWarned = false;
@@ -120,6 +132,10 @@ export class PlayScene extends Phaser.Scene {
   private lastSecShown = -1;
   private lastComboShown = -1;
   private rushBannerUntil = 0;
+
+  private get shieldHeld(): boolean {
+    return this.shieldHits > 0;
+  }
 
   constructor() {
     super('Play');
@@ -147,9 +163,14 @@ export class PlayScene extends Phaser.Scene {
     this.vel = 0;
     this.tiltN = 0;
     this.invuln = 0;
-    this.shieldHeld = false;
+    this.shieldHits = 0;
     this.pending = [];
-    this.scheduler = new SpawnScheduler(this.rng, W);
+    this.cfg = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: this.rng });
+    this.runStartT = 0;
+    this.stats = emptyStats();
+    this.toasted = new Set();
+    this.toastQueue = 0;
+    this.toastCheck = 0;
     this.nextStar = 6 + this.rng() * 3;
     this.nextShield = 25;
     this.rushIdx = 0;
@@ -173,6 +194,11 @@ export class PlayScene extends Phaser.Scene {
           multiplier: this.combo.multiplier,
           stars: this.stars,
           shieldHeld: this.shieldHeld,
+          clock: this.t,
+          startTier: this.cfg.tier,
+          shieldHits: this.shieldHits,
+          headStart: this.cfg.headStart,
+          assisted: this.cfg.assisted,
           rush: isRush(this.t),
           medals: [...this.earned],
           layers: isRush(this.t) ? 4 : layersFor(this.t),
@@ -185,9 +211,32 @@ export class PlayScene extends Phaser.Scene {
     this.buildHud();
 
     const id = this.runId;
-    void this.kit.save.getJSON<string>('skin', 'cyan').then((sid) => {
+    const save = this.kit.save;
+    void Promise.all([
+      save.getJSON<string>('skin', 'cyan'),
+      save.getJSON<unknown>('workshop', {}),
+      save.getJSON<unknown>('assist', {}),
+      save.getJSON<unknown>('startTier', 'none'),
+      save.getJSON<unknown>('medals', []),
+      save.getJSON<unknown>('missions', null),
+    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions]) => {
       if (id !== this.runId || !this.sys.isActive()) return;
       this.skin = SKINS.find((s) => s.id === sid) ?? SKINS[0]!;
+      const tier = sanitizeStartTier(rawTier, mergeMedals(rawMedals, []));
+      const cfg = buildRunConfig({ workshop: sanitizeWorkshop(rawWs), assist: sanitizeAssist(rawAssist), tier, rng: this.rng });
+      this.cfg = cfg;
+      this.missionState = sanitizeMissions(rawMissions, this.rng);
+      this.scheduler = new SpawnScheduler(this.rng, W, true, { speedMul: cfg.speedMul, intervalMul: cfg.intervalMul, startT: cfg.startT });
+      this.t = cfg.startT;
+      this.runStartT = cfg.startT;
+      this.score = cfg.headStart;
+      this.dispScore = cfg.headStart;
+      this.rushIdx = cfg.rushIdx;
+      this.nextShield = cfg.firstShieldAt;
+      this.nextStar = cfg.startT + starInterval(cfg.luckLevel, this.rng());
+      this.shieldHits = cfg.startShieldHits;
+      this.combo = new Combo(cfg.comboTimeout);
+      if (cfg.grace > 0) this.graceBanner.setText(this.kit.t(`tierStart.${cfg.tier}`));
       this.buildPlayer();
       this.ready = true;
       this.kit.audio.music.start();
@@ -283,6 +332,11 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
+    this.graceBanner = this.add
+      .text(W / 2, 330, '', { ...this.textStyle(84, theme.accent), strokeThickness: 10 })
+      .setOrigin(0.5)
+      .setDepth(100)
+      .setVisible(false);
   }
 
   // ---------------------------------------------------------------- loop
@@ -304,7 +358,11 @@ export class PlayScene extends Phaser.Scene {
       this.combo.tick(dt);
       if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
       this.updateMedals(prev, this.t);
+      this.stats.seconds = Math.floor(this.t - this.runStartT);
+      this.stats.score = this.score - this.cfg.headStart;
+      this.checkMissions(dt);
     }
+    this.graceBanner.setVisible(this.cfg.grace > 0 && !this.dead && this.t < this.cfg.startT + GRACE_SECONDS);
     this.updateChevrons(dt);
     this.updateBlocks(dt);
     this.updatePickups(dt);
@@ -367,6 +425,7 @@ export class PlayScene extends Phaser.Scene {
     this.player.setAlpha(blink ? 0.35 : 1);
     this.ring.setVisible(this.shieldHeld);
     if (this.shieldHeld) {
+      this.ring.setTexture(this.shieldHits >= 2 ? 'dd-ring2' : 'dd-ring');
       this.ring.setPosition(this.player.x, this.player.y);
       this.ring.setScale(1 + Math.sin(this.t * 8) * 0.04);
       this.ring.rotation += dt * 1.5;
@@ -394,11 +453,11 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (t >= this.nextStar) {
-      if (this.spawnStar()) this.nextStar = t + 6 + this.rng() * 3;
+      if (this.spawnStar()) this.nextStar = t + starInterval(this.cfg.luckLevel, this.rng());
       else this.nextStar = t + 0.4;
     }
-    if (t >= this.nextShield && !this.shieldHeld && !this.pickups.some((p) => p.active && p.kind === 'shield')) {
-      if (this.spawnPickup('shield', 60 + this.rng() * (W - 120))) this.nextShield = t + 30 + this.rng() * 10;
+    if (t >= this.nextShield && this.shieldHits < this.cfg.shieldCapacity && !this.pickups.some((p) => p.active && p.kind === 'shield')) {
+      if (this.spawnPickup('shield', 60 + this.rng() * (W - 120))) this.nextShield = t + shieldInterval(this.cfg.shieldLevel, this.rng());
     }
   }
 
@@ -427,7 +486,7 @@ export class PlayScene extends Phaser.Scene {
     b.w = p.w;
     b.h = p.h;
     b.speedMul = p.speedMul;
-    b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * p.speedMul;
+    b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * p.speedMul * this.cfg.speedMul;
     b.img.setTexture(key).setVisible(true);
     b.img.setScale(p.w / bodyW, 1);
     b.img.setPosition(b.x, b.y);
@@ -473,6 +532,7 @@ export class PlayScene extends Phaser.Scene {
       this.kit.audio.sfx('rush');
     }
     if (this.rushWarned && this.t >= next + 4) {
+      if (next >= this.runStartT) this.stats.rushes++;
       this.rushIdx++;
       this.rushWarned = false;
     }
@@ -507,7 +567,7 @@ export class PlayScene extends Phaser.Scene {
     const px = this.dead ? 0 : this.player.x;
     for (const b of this.blocks) {
       if (!b.active) continue;
-      b.y += base * b.speedMul * dt;
+      b.y += base * b.speedMul * this.cfg.speedMul * dt;
       b.img.y = b.y;
       if (!this.dead) {
         const dy = Math.abs(b.y - PLAYER_Y);
@@ -519,7 +579,7 @@ export class PlayScene extends Phaser.Scene {
         }
         if (!b.checked && b.y >= PLAYER_Y) {
           b.checked = true;
-          if (isNearMiss(gap)) this.onNearMiss(b);
+          if (isNearMiss(gap, this.cfg.nearMissWindow)) this.onNearMiss(b);
         }
       }
       if (b.y - BLOCK_H / 2 > H + BLOCK_PAD) {
@@ -534,7 +594,18 @@ export class PlayScene extends Phaser.Scene {
     const speed = fallSpeed(this.t) * 0.9;
     for (const p of this.pickups) {
       if (!p.active) continue;
-      p.y += speed * dt;
+      const radius = this.cfg.magnetRadius;
+      const mdx = this.dead ? 0 : this.player.x - p.x;
+      const mdy = this.dead ? 0 : PLAYER_Y - p.y;
+      const md = Math.hypot(mdx, mdy);
+      if (p.kind === 'star' && radius > 0 && !this.dead && md <= radius && md > 0) {
+        const step = Math.min(md, MAGNET_SPEED * dt);
+        p.x += (mdx / md) * step;
+        p.y += (mdy / md) * step;
+      } else {
+        p.y += speed * dt;
+      }
+      p.img.x = p.x;
       p.img.y = p.y;
       p.img.rotation += (p.kind === 'star' ? 3 : 1.2) * dt;
       if (p.y > H + 40) {
@@ -555,12 +626,13 @@ export class PlayScene extends Phaser.Scene {
   private collect(p: Pickup): void {
     if (p.kind === 'star') {
       this.stars++;
+      this.stats.stars++;
       this.score += 10;
       this.kit.audio.sfx('pickup');
       this.fx.burst(p.x, p.y, { color: 0xffe14d, count: 16, speed: 300, lifespanMs: 450 });
       this.fx.popText(p.x, p.y - 20, '+10', { color: 0xffe14d, size: 30 });
     } else {
-      this.shieldHeld = true;
+      this.shieldHits = this.cfg.shieldCapacity;
       this.kit.audio.sfx('shield');
       this.fx.burst(p.x, p.y, { color: 0x58ff9a, count: 18, speed: 320, lifespanMs: 500 });
     }
@@ -570,6 +642,8 @@ export class PlayScene extends Phaser.Scene {
     const pts = this.combo.hit();
     this.score += pts;
     const mult = this.combo.multiplier;
+    this.stats.nearMisses++;
+    this.stats.maxMultiplier = Math.max(this.stats.maxMultiplier, mult);
     const side = Math.sign(b.x - this.player.x) || 1;
     this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: 34 });
     this.kit.audio.sfx('nearMiss', { step: this.combo.count });
@@ -577,9 +651,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private onHit(b: Block): void {
-    if (this.shieldHeld) {
-      this.shieldHeld = false;
-      this.ring.setVisible(false);
+    if (this.shieldHits > 0) {
+      this.shieldHits -= 1;
+      this.stats.shieldBlocks++;
+      this.ring.setVisible(this.shieldHits > 0);
       this.invuln = INVULN_SHIELD;
       this.combo.reset();
       b.active = false;
@@ -630,6 +705,36 @@ export class PlayScene extends Phaser.Scene {
     this.tweens.add({ targets: c, y: -80, delay: 1750, duration: 250, onComplete: () => c.destroy() });
   }
 
+  private checkMissions(dt: number): void {
+    this.toastCheck += dt;
+    if (this.toastCheck < 0.25) return;
+    this.toastCheck = 0;
+    for (const m of newlyCompleted(this.missionState, this.stats, this.toasted)) {
+      this.toasted.add(m.id);
+      const delay = this.toastQueue;
+      this.toastQueue += 1.6;
+      this.time.delayedCall(delay * 1000, () => {
+        this.toastQueue = Math.max(0, this.toastQueue - 1.6);
+        if (this.sys.isActive()) this.showMissionToast();
+      });
+    }
+  }
+
+  private showMissionToast(): void {
+    const { accent } = this.kit.theme;
+    const c = this.add.container(W / 2, -60).setDepth(110);
+    const g = this.add.graphics();
+    g.fillStyle(0x1a1033, 0.85);
+    g.fillRoundedRect(-200, -38, 400, 76, 38);
+    g.lineStyle(4, accent, 1);
+    g.strokeRoundedRect(-200, -38, 400, 76, 38);
+    const label = this.add.text(0, 0, this.kit.t('missionComplete'), this.textStyle(34, accent)).setOrigin(0.5);
+    c.add([g, label]);
+    this.kit.audio.sfx('medal');
+    this.tweens.add({ targets: c, y: 250, duration: 250, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: c, y: -80, delay: 1250, duration: 250, onComplete: () => c.destroy() });
+  }
+
   // ----------------------------------------------------------------- death
 
   private async die(): Promise<void> {
@@ -648,7 +753,15 @@ export class PlayScene extends Phaser.Scene {
     this.kit.audio.music.stop();
     await this.fx.timeScale(0.3, 500);
     if (id !== this.runId) return;
-    const state: RunState = { score: this.score, seconds: Math.floor(this.t), stars: this.stars, medals: [...this.earned] };
+    const state: RunState = {
+      score: this.score,
+      seconds: Math.floor(this.t - this.runStartT),
+      stars: this.stars,
+      medals: [...this.earned],
+      headStart: this.cfg.headStart,
+      startTier: this.cfg.tier,
+      stats: { ...this.stats, runs: 1 },
+    };
     this.registry.set(RUN_STATE_KEY, state);
     void this.kit.gameOver(this.score, { revive: () => this.revive() });
   }
@@ -695,7 +808,7 @@ export class PlayScene extends Phaser.Scene {
     }
     this.comboBar.clear();
     if (c > 0) {
-      const frac = Math.max(0, 1 - this.combo.sinceLast / 2.5);
+      const frac = Math.max(0, 1 - this.combo.sinceLast / this.combo.timeout);
       this.comboBar.fillStyle(0x1a1033, 0.6);
       this.comboBar.fillRoundedRect(24, 140, 170, 12, 6);
       this.comboBar.fillStyle(this.kit.theme.accent, 1);

@@ -3,9 +3,10 @@ import { addButton, cssColor, getKit, type Kit, type ResultsContext } from '@gf/
 import { coinsForRun } from './economy.ts';
 import { formatTime } from './format.ts';
 import { MEDALS, mergeMedals } from './medals.ts';
+import { emptyStats } from './missions.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 
-const EMPTY: RunState = { score: 0, seconds: 0, stars: 0, medals: [] };
+const EMPTY: RunState = { score: 0, seconds: 0, stars: 0, medals: [], headStart: 0, startTier: 'none', stats: emptyStats() };
 
 function style(kit: Kit, size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
   return { fontFamily: kit.theme.font, fontSize: `${size}px`, fontStyle: 'bold', color: cssColor(color), stroke: '#1a1033', strokeThickness: 5, align: 'center' };
