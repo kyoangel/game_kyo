@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
-import { emptyStats, localDay, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
+import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
 import { emptyWorkshop, sanitizeWorkshop, shieldAfterPickup, shieldCapacity, shieldInterval, starInterval } from './workshop.ts';
@@ -120,7 +120,7 @@ export class PlayScene extends Phaser.Scene {
   private cfg: RunConfig = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: () => 0.5 });
   private runStartT = 0;
   private stats: RunStats = emptyStats();
-  private missionState: MissionState = { active: [], stars: 0, rank: 1, completedCount: 0, day: '', swapsUsed: 0 };
+  private missionState: MissionState = { active: [], stars: 0, rank: 1, completedCount: 0 };
   private toasted = new Set<MissionId>();
   private tilt = new TiltReader();
   private tiltNeutral: number | null = null;
@@ -278,7 +278,7 @@ export class PlayScene extends Phaser.Scene {
       }
       const cfg = buildRunConfig({ workshop: ws, assist: sanitizeAssist(rawAssist), tier, rng: this.rng, boosts });
       this.cfg = cfg;
-      this.missionState = sanitizeMissions(rawMissions, this.rng, localDay(new Date()));
+      this.missionState = sanitizeMissions(rawMissions, this.rng);
       // Persist the drawn missions so results (and later runs) see exactly what in-run toasts referred to.
       if (rawMissions === null || JSON.stringify(rawMissions) !== JSON.stringify(this.missionState)) {
         void save.setJSON('missions', this.missionState);

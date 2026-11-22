@@ -13,7 +13,7 @@ const ms = (o: Partial<MissionState> = {}): MissionState => ({
     { id: 'score', tier: 1, progress: 0 },
     { id: 'starsRun', tier: 1, progress: 0 },
   ],
-  stars: 0, rank: 1, completedCount: 0, day: '2026-11-22', swapsUsed: 0, ...o,
+  stars: 0, rank: 1, completedCount: 0, ...o,
 });
 const saved = (o: Partial<Saved> = {}): Saved => ({
   coins: 20, lossStreak: 0, assist: { ...DEFAULT_ASSIST }, startTier: 'none', medals: [],

@@ -6,7 +6,7 @@ import { formatTime, sanitizeOwned } from './format.ts';
 import { MEDALS, mergeMedals } from './medals.ts';
 import { drawCurrencyIcon } from './playArt.ts';
 import { missionLabel } from './missionLabel.ts';
-import { emptyStats, localDay, missionReward, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
+import { emptyStats, missionReward, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
 import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { settleRun, type Goal, type Saved, type Settled } from './settle.ts';
@@ -125,11 +125,11 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       assist: sanitizeAssist(rawAssist),
       startTier: sanitizeStartTier(rawTier, savedMedals),
       medals: savedMedals,
-      missions: sanitizeMissions(rawMissions, Math.random, localDay(new Date())),
+      missions: sanitizeMissions(rawMissions, Math.random),
       workshop,
       ownedSkins: sanitizeOwned(rawSkins),
     };
-    const settled = settleRun(run, saved);
+    const settled = settleRun(run, saved, Math.random);
     const initialBoosts = sanitizeBoosts(rawBoosts, shieldCap);
 
     // Persist (coins via credit; medals already saved by PlayScene).

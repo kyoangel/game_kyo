@@ -4,9 +4,7 @@ import { renderBoostBar } from './boostBar.ts';
 import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { mergeMedals } from './medals.ts';
 import { missionLabel } from './missionLabel.ts';
-import {
-  allDone, localDay, missionReward, missionTarget, msUntilReset, rankProgress, sanitizeMissions, swapCost, swapMission, type MissionState,
-} from './missions.ts';
+import { missionReward, missionTarget, rankProgress, sanitizeMissions, swapCost, swapMission, type MissionState } from './missions.ts';
 import { drawCurrencyIcon, ensureUiTextures } from './playArt.ts';
 import { browserTiltEnv, detectTilt, requestTilt } from './tiltSensor.ts';
 import { availableTiers, sanitizeStartTier, type StartTier } from './progression.ts';
@@ -165,30 +163,24 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     panel.fillStyle(0x1a1033, 0.72);
     panel.fillRoundedRect(6, y0, ctx.width - 12, 3 * 52, 18);
     objs.push(panel);
-    const cost = swapCost(ms);
+    const cost = swapCost();
     ms.active.forEach((m, i) => {
       const y = y0 + 26 + i * 52;
-      const done = m.done === true;
       // Difficulty: 1-3 small dots (drawn). A star always means currency.
       for (let k = 0; k <= m.tier - 1; k++) {
-        panel.fillStyle(done ? 0x58ff9a : theme.accent, 1);
+        panel.fillStyle(theme.accent, 1);
         panel.fillCircle(30 + k * 14, y, 5);
       }
-      if (done) {
-        objs.push(scene.add.image(100, y, 'dd-check-green').setDisplaySize(26, 26));
-      }
-      txt(done ? 120 : 98, y, missionLabel(kit.t(`mission.${m.id}`), m, done ? missionTarget(m) : m.progress), 21, done ? 0x58ff9a : theme.text, 0);
+      txt(98, y, missionLabel(kit.t(`mission.${m.id}`), m, m.progress), 21, theme.text, 0);
       // Reward in star coins.
       const rw = txt(548, y, `+${missionReward(m)}`, 22, 0xffe14d, 1);
       objs.push(drawCurrencyIcon(scene, rw.x + 17, y, 24));
-      if (done) return;
       const afford = coins >= cost;
-      const free = cost === 0;
-      const btn = addButton(scene, 648, y, free ? kit.t('swapFree') : kit.t('skip') + ' ' + cost, {
-        width: 124, height: 40, fontSize: free ? 19 : 20,
-        fill: free ? theme.accent : afford ? theme.primary : theme.muted,
-        textColor: free ? 0x1a1033 : 0xffffff,
-        strokeThickness: free ? 0 : 4,
+      const btn = addButton(scene, 648, y, kit.t('skip') + ' ' + cost, {
+        width: 124, height: 40, fontSize: 20,
+        fill: afford ? theme.primary : theme.muted,
+        textColor: 0xffffff,
+        strokeThickness: 4,
         onClick: () => {
           const res = swapMission(ms, i, coins, Math.random);
           if (!res.ok) return;
@@ -203,25 +195,15 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
           render();
         },
       });
-      if (!free) {
-        const text = btn.list[1] as Phaser.GameObjects.Text;
-        text.x -= 11;
-        btn.add(scene.add.image(text.x + text.width / 2 + 13, 0, 'dd-star').setDisplaySize(20, 20));
-      }
+      const text = btn.list[1] as Phaser.GameObjects.Text;
+      text.x -= 11;
+      btn.add(scene.add.image(text.x + text.width / 2 + 13, 0, 'dd-star').setDisplaySize(20, 20));
       if (!afford) btn.setAlpha(0.6);
       objs.push(btn);
     });
 
     const rp = rankProgress(ms.stars);
     txt(ctx.width - 24, ctx.menuBottom - 4, kit.t('rank').replace('{n}', String(ms.rank)).replace('{a}', String(rp.have)).replace('{b}', String(rp.need)), 22, theme.muted, 1);
-    if (allDone(ms)) {
-      const left = Math.max(0, msUntilReset(new Date()));
-      const h = Math.floor(left / 3600000);
-      const m = Math.floor((left % 3600000) / 60000);
-      const pad = (n: number): string => String(n).padStart(2, '0');
-      const msg = kit.t('comeBack').replace('{h}', String(h)).replace('{m}', String(m)).replace('{hh}', pad(h)).replace('{mm}', pad(m));
-      txt(ctx.width / 2, y0 + 3 * 52 + 30, msg, 22, theme.accent);
-    }
     // Keep extras above the panel and the backdrop blocks that spawn later.
     for (const o of objs) if (o !== panel) (o as unknown as Phaser.GameObjects.Components.Depth).setDepth(2);
   };
@@ -260,7 +242,7 @@ async function load(kit: Kit): Promise<{
   ]);
   const medals = mergeMedals(rawMedals, []);
   const shieldCap = shieldCapacity(sanitizeWorkshop(rawWs).shieldStack);
-  const missions = sanitizeMissions(rawMissions, Math.random, localDay(new Date()));
+  const missions = sanitizeMissions(rawMissions, Math.random);
   return {
     medals,
     tier: sanitizeStartTier(rawTier, medals),

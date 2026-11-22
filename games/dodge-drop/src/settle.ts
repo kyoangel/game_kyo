@@ -41,7 +41,7 @@ export interface Settled {
   goalFrom: number; goalTo: number;
 }
 
-export function settleRun(run: RunState, saved: Saved, _rng?: () => number): Settled {
+export function settleRun(run: RunState, saved: Saved, rng: () => number): Settled {
   const lossStreak = nextLossStreak(saved.lossStreak, run.seconds);
   const coin = runCoins({
     score: run.score, headStart: run.headStart, stars: run.stars, lossStreak,
@@ -52,7 +52,7 @@ export function settleRun(run: RunState, saved: Saved, _rng?: () => number): Set
     score: run.score - run.headStart, seconds: run.seconds, bronzeOwned: medals.includes('bronze'),
   });
   const startTier = advanceStartTier(saved.startTier, run.medals);
-  const missions = applyRun(saved.missions, run.stats);
+  const missions = applyRun(saved.missions, run.stats, rng);
   const missionCoins = missions.coinsGained;
   const coinsAfter = saved.coins + coin.coins + missionCoins;
   return {

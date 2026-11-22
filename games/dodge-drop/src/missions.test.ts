@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyRun, drawMission, emptyStats, initialMissions, isComplete, liveProgress, MISSION_POOL, missionTarget,
   newlyCompleted, pickTier, rankFromStars, rankMultiplier, runValue, sanitizeMissions, swapCost, swapMission,
-  missionReward, rankProgress, rollDay, localDay, msUntilReset, allDone,
+  missionReward, rankProgress, SWAP_COST,
   type Mission, type MissionState, type RunStats,
 } from './missions.ts';
 
@@ -11,8 +11,7 @@ const seq = (...v: number[]) => {
   return () => v[i++ % v.length]!;
 };
 const stats = (o: Partial<RunStats> = {}): RunStats => ({ ...emptyStats(), ...o });
-const DAY = '2026-11-22';
-const state = (active: Mission[], stars = 0): MissionState => ({ active, stars, rank: rankFromStars(stars), completedCount: 0, day: DAY, swapsUsed: 0 });
+const state = (active: Mission[], stars = 0): MissionState => ({ active, stars, rank: rankFromStars(stars), completedCount: 0 });
 
 describe('pool', () => {
   it('has the 9 templates with the spec targets and scopes', () => {
@@ -73,11 +72,12 @@ describe('drawMission / initialMissions', () => {
     expect(drawMission([], 1, () => 0.9999).id).toBe('runs');
   });
   it('initial state: 3 distinct tier-1 missions, rank 1, no stars', () => {
-    const s = initialMissions(seq(0.1, 0.5, 0.9), DAY);
+    const s = initialMissions(seq(0.1, 0.5, 0.9));
     expect(s.active).toHaveLength(3);
     expect(new Set(s.active.map((m) => m.id)).size).toBe(3);
     expect(s.active.every((m) => m.tier === 1 && m.progress === 0)).toBe(true);
-    expect([s.stars, s.rank, s.completedCount, s.day, s.swapsUsed]).toEqual([0, 1, 0, DAY, 0]);
+    expect([s.stars, s.rank, s.completedCount]).toEqual([0, 1, 0]);
+    expect(Object.keys(s).sort()).toEqual(['active', 'completedCount', 'rank', 'stars']);
   });
 });
 
@@ -110,34 +110,38 @@ describe('applyRun', () => {
     { id: 'combo', tier: 1, progress: 0 },
     { id: 'survive', tier: 2, progress: 0 },
   ];
-  it('completes, awards stars + coins, stores progress for the rest, keeps done missions in place', () => {
-    const r = applyRun(state(active), stats({ nearMisses: 6, maxMultiplier: 2, seconds: 30 }));
+  it('completes, awards stars + coins, replaces completed missions, stores progress for the rest', () => {
+    const r = applyRun(state(active), stats({ nearMisses: 6, maxMultiplier: 2, seconds: 30 }), seq(0.5));
     expect(r.completed.map((m) => m.id)).toEqual(['nearMiss', 'combo']);
     expect(r.starsGained).toBe(2);
     expect(r.coinsGained).toBe(40);
     expect(r.state.stars).toBe(2);
     expect(r.state.completedCount).toBe(2);
-    expect(r.state.active.map((m) => m.id)).toEqual(['nearMiss', 'combo', 'survive']);
-    expect(r.state.active.map((m) => m.done === true)).toEqual([true, true, false]);
+    expect(r.replacements).toHaveLength(2);
+    expect(r.state.active).toHaveLength(3);
     expect(r.state.active[2]).toEqual({ id: 'survive', tier: 2, progress: 30 });
+    const ids = r.state.active.map((m) => m.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids).not.toContain('nearMiss');
+    expect(ids).not.toContain('combo');
+    expect(r.state.active.slice(0, 2).every((m) => m.progress === 0)).toBe(true);
     expect(r.rankBefore).toBe(1);
     expect(r.rankAfter).toBe(1);
   });
+  it('replacement tier is rank-weighted by the new rank', () => {
+    const st = state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'runs', tier: 3, progress: 0 }], 4);
+    const r = applyRun(st, stats({ seconds: 50 }), seq(0.99));
+    expect(r.rankAfter).toBe(2);
+    expect(r.replacements[0]!.tier).toBe(2);
+  });
   it('reward is 20 x tier coins', () => {
     expect([1, 2, 3].map((t) => missionReward({ id: 'combo', tier: t as 1 | 2 | 3, progress: 0 }))).toEqual([20, 40, 60]);
-    const r = applyRun(state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]), stats({ seconds: 50 }));
+    const r = applyRun(state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]), stats({ seconds: 50 }), seq(0.5));
     expect(r.coinsGained).toBe(40);
-  });
-  it('done missions are not completed or rewarded twice', () => {
-    const st = state([{ id: 'runs', tier: 1, progress: 3, done: true }, { id: 'combo', tier: 1, progress: 0 }, { id: 'score', tier: 1, progress: 0 }]);
-    const r = applyRun(st, stats({ runs: 1 }));
-    expect(r.completed).toEqual([]);
-    expect(r.coinsGained).toBe(0);
-    expect(r.state.active[0]).toEqual({ id: 'runs', tier: 1, progress: 3, done: true });
   });
   it('rank-up when stars cross a multiple of 5', () => {
     const st = state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 1, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }], 4);
-    const r = applyRun(st, stats({ seconds: 50 }));
+    const r = applyRun(st, stats({ seconds: 50 }), seq(0.5));
     expect(r.starsGained).toBe(2);
     expect(r.rankBefore).toBe(1);
     expect(r.rankAfter).toBe(2);
@@ -145,86 +149,51 @@ describe('applyRun', () => {
   });
   it('runs mission counts the run', () => {
     const st = state([{ id: 'runs', tier: 1, progress: 2 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'rush', tier: 3, progress: 0 }]);
-    expect(applyRun(st, stats({ runs: 1 })).completed.map((m) => m.id)).toEqual(['runs']);
+    expect(applyRun(st, stats({ runs: 1 }), seq(0.5)).completed.map((m) => m.id)).toEqual(['runs']);
   });
   it('is pure: input state is not mutated', () => {
     const st = state(active.map((m) => ({ ...m })));
-    applyRun(st, stats({ nearMisses: 99 }));
+    applyRun(st, stats({ nearMisses: 99 }), seq(0.5));
     expect(st.active[0]!.progress).toBe(4);
     expect(st.stars).toBe(0);
   });
 });
 
-describe('newlyCompleted ignores done missions', () => {
-  it('skips done', () => {
-    const st = state([{ id: 'combo', tier: 1, progress: 2, done: true }, { id: 'score', tier: 1, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]);
-    expect(newlyCompleted(st, stats({ maxMultiplier: 4, score: 200 }), new Set()).map((m) => m.id)).toEqual(['score']);
-  });
-});
-
 describe('swap', () => {
-  const st = state([{ id: 'nearMiss', tier: 2, progress: 3 }, { id: 'combo', tier: 1, progress: 0, done: true }, { id: 'score', tier: 3, progress: 0 }], 7);
-  it('first swap of the day is free, later ones cost 15', () => {
-    expect(swapCost(st)).toBe(0);
-    expect(swapCost({ ...st, swapsUsed: 1 })).toBe(15);
-    expect(swapCost({ ...st, swapsUsed: 4 })).toBe(15);
+  const st = state([{ id: 'nearMiss', tier: 2, progress: 3 }, { id: 'combo', tier: 1, progress: 0 }, { id: 'score', tier: 3, progress: 0 }], 7);
+  it('always costs a flat 5', () => {
+    expect(SWAP_COST).toBe(5);
+    expect(swapCost()).toBe(5);
   });
-  it('rejects when poor, index invalid, or mission is done', () => {
-    const paid = { ...st, swapsUsed: 1 };
-    expect(swapMission(paid, 0, 14, seq(0.5))).toEqual({ ok: false, reason: 'poor' });
+  it('rejects when poor or index invalid', () => {
+    expect(swapMission(st, 0, 4, seq(0.5))).toEqual({ ok: false, reason: 'poor' });
     expect(swapMission(st, 5, 999, seq(0.5))).toEqual({ ok: false, reason: 'index' });
-    expect(swapMission(st, 1, 999, seq(0.5))).toEqual({ ok: false, reason: 'done' });
   });
-  it('free swap spends no coins, bumps swapsUsed, keeps tier and excludes today ids', () => {
-    const r = swapMission(st, 0, 0, seq(0));
+  it('the first swap is not free: 0 coins cannot swap', () => {
+    expect(swapMission(st, 0, 0, seq(0))).toEqual({ ok: false, reason: 'poor' });
+  });
+  it('swap spends 5, keeps tier, progress 0 and excludes active ids', () => {
+    const r = swapMission(st, 0, 100, seq(0));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.coins).toBe(0);
-    expect(r.state.swapsUsed).toBe(1);
+    expect(r.coins).toBe(95);
     expect(r.state.active[0]!.tier).toBe(2);
     expect(r.state.active[0]!.progress).toBe(0);
     expect(['nearMiss', 'combo', 'score']).not.toContain(r.state.active[0]!.id);
     expect(r.state.stars).toBe(7);
     expect(r.state.rank).toBe(2);
   });
-  it('paid swap costs 15', () => {
-    const r = swapMission({ ...st, swapsUsed: 2 }, 0, 100, seq(0));
-    expect(r.ok && r.coins).toBe(85);
-  });
 });
 
-describe('daily rollover', () => {
-  const old = (day?: string): MissionState => ({
-    active: [{ id: 'combo', tier: 2, progress: 1, done: true }, { id: 'score', tier: 1, progress: 50 }, { id: 'runs', tier: 1, progress: 1 }],
-    stars: 12, rank: 3, completedCount: 4, day: day ?? DAY, swapsUsed: 3,
-  });
-  it('same day: state unchanged', () => {
-    const s = old();
-    expect(rollDay(s, DAY, seq(0.5))).toBe(s);
-  });
-  it('new day: 3 fresh distinct missions, swaps reset, stars/rank/count kept', () => {
-    const r = rollDay(old('2026-11-21'), DAY, seq(0.1, 0.5, 0.9));
-    expect(r.day).toBe(DAY);
-    expect(r.swapsUsed).toBe(0);
-    expect(r.active).toHaveLength(3);
-    expect(new Set(r.active.map((m) => m.id)).size).toBe(3);
-    expect(r.active.every((m) => m.progress === 0 && !m.done)).toBe(true);
-    expect([r.stars, r.rank, r.completedCount]).toEqual([12, 3, 4]);
-  });
-  it('localDay formats the local date; msUntilReset counts to next local midnight', () => {
-    expect(localDay(new Date(2026, 10, 2, 23, 59))).toBe('2026-11-02');
-    expect(msUntilReset(new Date(2026, 10, 2, 22, 30, 0))).toBe(90 * 60 * 1000);
-  });
-  it('rankProgress shows stars toward next rank; allDone detects a finished day', () => {
+describe('rankProgress', () => {
+  it('shows stars toward next rank', () => {
     expect(rankProgress(12)).toEqual({ have: 2, need: 5 });
-    expect(allDone(old())).toBe(false);
-    expect(allDone({ ...old(), active: old().active.map((m) => ({ ...m, done: true })) })).toBe(true);
   });
 });
 
 describe('sanitizeMissions', () => {
   it('garbage -> initial state', () => {
-    const s = sanitizeMissions('x', seq(0.1, 0.5, 0.9), DAY);
+    const s = sanitizeMissions('x', seq(0.1, 0.5, 0.9));
     expect(s.active).toHaveLength(3);
     expect(s.active.every((m) => m.tier === 1)).toBe(true);
   });
@@ -236,9 +205,9 @@ describe('sanitizeMissions', () => {
         { id: 'nope', tier: 1, progress: 0 },
         { id: 'runs', tier: 9, progress: 2 },
       ],
-      stars: 12.7, rank: 99, completedCount: -3, day: DAY, swapsUsed: 2.9,
+      stars: 12.7, rank: 99, completedCount: -3,
     };
-    const s = sanitizeMissions(raw, seq(0.1, 0.5, 0.9), DAY);
+    const s = sanitizeMissions(raw, seq(0.1, 0.5, 0.9));
     expect(s.active).toHaveLength(3);
     expect(s.active[0]).toEqual({ id: 'combo', tier: 2, progress: 0 });
     expect(new Set(s.active.map((m) => m.id)).size).toBe(3);
@@ -246,16 +215,17 @@ describe('sanitizeMissions', () => {
     expect(s.rank).toBe(3);
     expect(s.completedCount).toBe(0);
   });
-  it('keeps done flags and swapsUsed on the same day', () => {
-    const s = sanitizeMissions({ active: [{ id: 'combo', tier: 1, progress: 2, done: true }], stars: 3, day: DAY, swapsUsed: 2.9 }, seq(0.1, 0.5, 0.9), DAY);
-    expect(s.active[0]).toEqual({ id: 'combo', tier: 1, progress: 2, done: true });
-    expect(s.swapsUsed).toBe(2);
-  });
-  it('old state without day is a new day: fresh set, stars/rank kept', () => {
-    const s = sanitizeMissions({ active: [{ id: 'combo', tier: 1, progress: 2 }], stars: 12, completedCount: 4 }, seq(0.1, 0.5, 0.9), DAY);
-    expect(s.day).toBe(DAY);
-    expect(s.swapsUsed).toBe(0);
-    expect(s.active.every((m) => m.progress === 0)).toBe(true);
+  it('accepts a saved 2.5.0 state (day/swapsUsed/done): ignores the daily fields, re-draws done missions, keeps the rest', () => {
+    const s = sanitizeMissions({
+      active: [{ id: 'combo', tier: 1, progress: 2, done: true }, { id: 'score', tier: 2, progress: 50 }, { id: 'runs', tier: 1, progress: 1 }],
+      stars: 12, completedCount: 4, day: '2020-01-01', swapsUsed: 3,
+    }, seq(0.5));
+    expect(Object.keys(s).sort()).toEqual(['active', 'completedCount', 'rank', 'stars']);
+    expect(s.active).toHaveLength(3);
+    expect(s.active.map((m) => m.id)).not.toContain('combo');
+    expect(s.active[0]).toEqual({ id: 'score', tier: 2, progress: 50 });
+    expect(s.active[1]).toEqual({ id: 'runs', tier: 1, progress: 1 });
+    expect(s.active.every((m) => !('done' in m))).toBe(true);
     expect([s.stars, s.rank, s.completedCount]).toEqual([12, 3, 4]);
   });
 });
