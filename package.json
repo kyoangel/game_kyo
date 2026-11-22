@@ -11,6 +11,7 @@
     "build:local": "node scripts/build-games.ts local",
     "build:site": "node scripts/build-site.ts",
     "test:smoke": "npm run build:local && playwright test e2e/smoke.spec.ts e2e/results.spec.ts e2e/dodge-drop.spec.ts e2e/dodge-drop-mobile.spec.ts",
+    "test:rwd": "npm run build:local && npm run build:site && playwright test e2e/rwd.spec.ts",
     "test:site": "npm run build:site && playwright test e2e/site-mobile.spec.ts",
     "build:portals": "node scripts/build-portals.ts",
     "release-status": "node scripts/release-status.ts",

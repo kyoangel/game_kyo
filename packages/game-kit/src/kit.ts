@@ -166,7 +166,8 @@ export class Kit {
     };
     draw();
     const c = scene.add.container(x, y, [g]);
-    c.setSize(size, size);
+    // Hit area larger than the 56 px visual: ~40 css px on a 375 px wide phone.
+    c.setSize(76, 76);
     c.setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => {
       markButtonTap(scene);
@@ -205,7 +206,8 @@ export class Kit {
     };
     draw();
     const c = scene.add.container(x, y, [g]);
-    c.setSize(size, size);
+    // Hit area larger than the 56 px visual: ~40 css px on a 375 px wide phone.
+    c.setSize(76, 76);
     c.setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => {
       markButtonTap(scene);
