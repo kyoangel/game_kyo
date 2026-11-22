@@ -13,7 +13,7 @@ const ms = (o: Partial<MissionState> = {}): MissionState => ({
     { id: 'score', tier: 1, progress: 0 },
     { id: 'starsRun', tier: 1, progress: 0 },
   ],
-  stars: 0, rank: 1, completedCount: 0, ...o,
+  stars: 0, rank: 1, completedCount: 0, day: '2026-11-22', swapsUsed: 0, ...o,
 });
 const saved = (o: Partial<Saved> = {}): Saved => ({
   coins: 20, lossStreak: 0, assist: { ...DEFAULT_ASSIST }, startTier: 'none', medals: [],
@@ -85,6 +85,8 @@ describe('settleRun', () => {
     expect(s.missions.completed.map((m) => m.id)).toEqual(['starsRun']);
     expect(s.missions.rankAfter).toBe(2);
     expect(s.coin.multiplier).toBe(1);
+    expect(s.missionCoins).toBe(40);
+    expect(s.coinsAfter).toBe(20 + s.coin.coins + 40);
   });
   it('goal bar balances', () => {
     const s = settleRun(run({ score: 100, seconds: 15, stars: 3 }), saved({ coins: 10 }), rng);

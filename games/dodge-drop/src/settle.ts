@@ -32,6 +32,8 @@ export function nearGoal(workshop: Workshop, ownedSkins: readonly string[]): Goa
 
 export interface Settled {
   coin: CoinResult;
+  /** Star coins from completed missions (20 x tier each). */
+  missionCoins: number;
   coinsAfter: number;
   lossStreak: number; assist: AssistState; startTier: StartTier; medals: string[];
   missions: ApplyResult;
@@ -39,7 +41,7 @@ export interface Settled {
   goalFrom: number; goalTo: number;
 }
 
-export function settleRun(run: RunState, saved: Saved, rng: () => number): Settled {
+export function settleRun(run: RunState, saved: Saved, _rng?: () => number): Settled {
   const lossStreak = nextLossStreak(saved.lossStreak, run.seconds);
   const coin = runCoins({
     score: run.score, headStart: run.headStart, stars: run.stars, lossStreak,
@@ -50,10 +52,11 @@ export function settleRun(run: RunState, saved: Saved, rng: () => number): Settl
     score: run.score - run.headStart, seconds: run.seconds, bronzeOwned: medals.includes('bronze'),
   });
   const startTier = advanceStartTier(saved.startTier, run.medals);
-  const missions = applyRun(saved.missions, run.stats, rng);
-  const coinsAfter = saved.coins + coin.coins;
+  const missions = applyRun(saved.missions, run.stats);
+  const missionCoins = missions.coinsGained;
+  const coinsAfter = saved.coins + coin.coins + missionCoins;
   return {
-    coin, coinsAfter, lossStreak, assist, startTier, medals, missions,
+    coin, missionCoins, coinsAfter, lossStreak, assist, startTier, medals, missions,
     goal: nearGoal(saved.workshop, saved.ownedSkins),
     goalFrom: saved.coins, goalTo: coinsAfter,
   };

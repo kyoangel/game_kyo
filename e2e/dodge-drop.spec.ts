@@ -81,7 +81,12 @@ test('dodge-drop: Skins scene opens from the title and Back returns', async ({ p
 type Dd = { god?: boolean; giveShield?: () => void; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { t: number; score: number; startTier: string; shieldHits: number; shieldHeld: boolean; clock: number } };
 type WD = { __dd?: Dd };
 
-const MISSIONS_SEED = '{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}';
+const localToday = (): string => {
+  const d = new Date();
+  const p = (n: number): string => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const MISSIONS_SEED = `{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0,"day":"${localToday()}","swapsUsed":0}`;
 
 async function seed(page: import('@playwright/test').Page, kv: Record<string, string>, god = false): Promise<void> {
   await page.addInitScript(([entries, g]) => {
@@ -169,7 +174,9 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   // First mission skip: menuBottom (1053.6) + 12 + 26, x = 640.
   const skip = at(640, 1092);
   await page.mouse.click(skip.x, skip.y);
-  await expect.poll(() => ls(page, 'coins')).toBe('60');
+  // The first swap of the day is free; coins stay at 100.
+  await expect.poll(async () => JSON.parse((await ls(page, 'missions'))!).swapsUsed).toBe(1);
+  expect(await ls(page, 'coins')).toBe('100');
   const saved = JSON.parse((await ls(page, 'missions'))!);
   expect(saved.active[0].id).not.toBe('score');
   expect(errors).toEqual([]);
@@ -218,7 +225,7 @@ test('dodge-drop: tapping a start-tier chip or a skip does not start the run; em
   expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).not.toBe('playing');
   const skip = at(640, 1092);
   await page.mouse.click(skip.x, skip.y);
-  await expect.poll(() => ls(page, 'coins')).toBe('60');
+  await expect.poll(async () => JSON.parse((await ls(page, 'missions'))!).swapsUsed).toBe(1);
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => (window as unknown as W).__gk!.activeScenes)).toContain('GKTitle');
   const empty = at(360, 400);

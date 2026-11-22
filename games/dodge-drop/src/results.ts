@@ -6,7 +6,7 @@ import { formatTime, sanitizeOwned } from './format.ts';
 import { MEDALS, mergeMedals } from './medals.ts';
 import { drawCurrencyIcon } from './playArt.ts';
 import { missionLabel } from './missionLabel.ts';
-import { emptyStats, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
+import { emptyStats, localDay, missionReward, missionTarget, sanitizeMissions, type Mission } from './missions.ts';
 import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { settleRun, type Goal, type Saved, type Settled } from './settle.ts';
@@ -125,15 +125,15 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       assist: sanitizeAssist(rawAssist),
       startTier: sanitizeStartTier(rawTier, savedMedals),
       medals: savedMedals,
-      missions: sanitizeMissions(rawMissions, Math.random),
+      missions: sanitizeMissions(rawMissions, Math.random, localDay(new Date())),
       workshop,
       ownedSkins: sanitizeOwned(rawSkins),
     };
-    const settled = settleRun(run, saved, Math.random);
+    const settled = settleRun(run, saved);
     const initialBoosts = sanitizeBoosts(rawBoosts, shieldCap);
 
     // Persist (coins via credit; medals already saved by PlayScene).
-    credit(settled.coin.coins);
+    credit(settled.coin.coins + settled.missionCoins);
     chain = chain.then(async () => {
       await save.setNumber('lossStreak', settled.lossStreak);
       await save.setJSON('assist', settled.assist);
@@ -146,6 +146,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       w.__dd = w.__dd ?? {};
       w.__dd.results = {
         coins: settled.coin.coins,
+        missionCoins: settled.missionCoins,
         goal: settled.goal,
         missions: settled.missions.state.active,
         completed: settled.missions.completed.map((m) => m.id),
@@ -160,7 +161,8 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
 
   function render(s: Settled, before: Mission[], initialBoosts: RunBoosts, shieldCap: number): void {
     const coin = s.coin;
-    let shown = coin.coins;
+    const mCoins = s.missionCoins;
+    let shown = coin.coins + mCoins;
     let liveCoins = s.coinsAfter;
     let liveBoosts = initialBoosts;
     setCoins(shown);
@@ -207,10 +209,12 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     };
     paintBoostBar();
 
-    if (coin.floorApplied || coin.multiplier > 1) {
-      const txt = coin.floorApplied
-        ? fill(kit.t('coinsMin'), { m: coin.floor })
-        : fill(kit.t('coinsMult'), { x: coin.multiplier.toFixed(2) });
+    if (coin.floorApplied || coin.multiplier > 1 || mCoins > 0) {
+      const parts: string[] = [];
+      if (coin.floorApplied) parts.push(fill(kit.t('coinsMin'), { m: coin.floor }));
+      else if (coin.multiplier > 1) parts.push(fill(kit.t('coinsMult'), { x: coin.multiplier.toFixed(2) }));
+      if (mCoins > 0) parts.push(fill(kit.t('missionCoinsLine'), { n: mCoins }));
+      const txt = parts.join(' · ');
       scene.add.text(cx, top + 70, txt, style(kit, 24, theme.muted)).setOrigin(0.5);
     }
 
@@ -260,12 +264,19 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       const y = top + 298 + i * 28;
       const target = missionTarget(old);
       if (doneIds.has(old.id)) {
+        // Completed this run: drawn check + label + reward with the star-coin icon.
         const label = missionLabel(kit.t(`mission.${old.id}`), old, target);
-        const t = scene.add.text(cx, y, `✓ ${label} +${old.tier}★`, style(kit, 24, 0x58ff9a)).setOrigin(0.5).setScale(0.4);
-        scene.tweens.add({ targets: t, scale: 1, duration: 300, ease: 'Back.Out' });
+        const t = scene.add.text(cx, y, `${label}  +${missionReward(old)}`, style(kit, 24, 0x58ff9a)).setOrigin(0.5);
+        const chk = scene.add.image(t.x - t.width / 2 - 20, y, 'dd-check-green').setDisplaySize(26, 26);
+        const star = drawCurrencyIcon(scene, t.x + t.width / 2 + 18, y, 24);
+        const grp = scene.add.container(0, 0, [t, chk, star]).setScale(0.4);
+        grp.setPosition(cx * 0.6, y * 0.6);
+        scene.tweens.add({ targets: grp, scale: 1, x: 0, y: 0, duration: 300, ease: 'Back.Out' });
       } else {
         const now = s.missions.state.active[i] ?? old;
-        scene.add.text(cx, y, missionLabel(kit.t(`mission.${now.id}`), now, now.progress), style(kit, 24, theme.text)).setOrigin(0.5);
+        const prior = now.done === true;
+        const t = scene.add.text(cx, y, missionLabel(kit.t(`mission.${now.id}`), now, now.progress), style(kit, 24, prior ? 0x58ff9a : theme.text)).setOrigin(0.5);
+        if (prior) scene.add.image(t.x - t.width / 2 - 20, y, 'dd-check-green').setDisplaySize(26, 26);
       }
     });
 
@@ -294,7 +305,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
             used = true;
             credit(coin.coins);
             if (!scene.sys.isActive()) return;
-            shown = coin.coins * 2;
+            shown = coin.coins * 2 + mCoins;
             liveCoins += coin.coins;
             balText.setText(String(liveCoins));
             setCoins(shown);

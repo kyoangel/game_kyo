@@ -23,8 +23,38 @@ export function emptyStats(): RunStats {
   return { nearMisses: 0, maxMultiplier: 1, seconds: 0, stars: 0, shieldBlocks: 0, score: 0, rushes: 0, runs: 0 };
 }
 
-export interface Mission { id: MissionId; tier: Tier; progress: number }
-export interface MissionState { active: Mission[]; stars: number; rank: number; completedCount: number }
+export interface Mission { id: MissionId; tier: Tier; progress: number; done?: boolean }
+export interface MissionState {
+  active: Mission[]; stars: number; rank: number; completedCount: number;
+  /** Local date `YYYY-MM-DD` the active set was drawn for. */
+  day: string;
+  /** Swaps already used today (the first is free). */
+  swapsUsed: number;
+}
+
+/** Star-coin reward for completing a mission: 20 x tier. */
+export function missionReward(m: Mission): number {
+  return 20 * m.tier;
+}
+export const SWAP_COST = 15;
+
+/** Local calendar day as `YYYY-MM-DD`. */
+export function localDay(now: Date): string {
+  const p = (n: number): string => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+/** Milliseconds until the next local midnight. */
+export function msUntilReset(now: Date): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return next.getTime() - now.getTime();
+}
+/** Stars toward the next rank (e.g. 2/5). */
+export function rankProgress(stars: number): { have: number; need: number } {
+  return { have: stars % 5, need: 5 };
+}
+export function allDone(state: MissionState): boolean {
+  return state.active.length > 0 && state.active.every((m) => m.done === true);
+}
 
 const def = (id: MissionId): MissionDef => MISSION_POOL.find((d) => d.id === id)!;
 const isId = (v: unknown): v is MissionId => MISSION_POOL.some((d) => d.id === v);
@@ -53,10 +83,20 @@ export function drawMission(exclude: readonly MissionId[], tier: Tier, rng: () =
   return { id: cands[idx]!.id, tier, progress: 0 };
 }
 
-export function initialMissions(rng: () => number): MissionState {
+function drawSet(rank: number, firstEver: boolean, rng: () => number): Mission[] {
   const active: Mission[] = [];
-  while (active.length < 3) active.push(drawMission(active.map((m) => m.id), 1, rng));
-  return { active, stars: 0, rank: 1, completedCount: 0 };
+  while (active.length < 3) active.push(drawMission(active.map((m) => m.id), firstEver ? 1 : pickTier(rank, rng), rng));
+  return active;
+}
+
+export function initialMissions(rng: () => number, today: string): MissionState {
+  return { active: drawSet(1, true, rng), stars: 0, rank: 1, completedCount: 0, day: today, swapsUsed: 0 };
+}
+
+/** If the saved day is not today, draw a fresh set of 3 (keeps stars/rank/completedCount). */
+export function rollDay(state: MissionState, today: string, rng: () => number): MissionState {
+  if (state.day === today) return state;
+  return { ...state, active: drawSet(state.rank, false, rng), day: today, swapsUsed: 0 };
 }
 
 export function runValue(id: MissionId, s: RunStats): number {
@@ -81,57 +121,55 @@ export function isComplete(m: Mission, s: RunStats): boolean {
   return liveProgress(m, s) >= missionTarget(m);
 }
 export function newlyCompleted(state: MissionState, s: RunStats, seen: ReadonlySet<MissionId>): Mission[] {
-  return state.active.filter((m) => !seen.has(m.id) && isComplete(m, s));
+  return state.active.filter((m) => !m.done && !seen.has(m.id) && isComplete(m, s));
 }
 
 export interface ApplyResult {
-  state: MissionState; completed: Mission[]; replacements: Mission[];
-  rankBefore: number; rankAfter: number; starsGained: number;
+  state: MissionState; completed: Mission[];
+  rankBefore: number; rankAfter: number; starsGained: number; coinsGained: number;
 }
 
-export function applyRun(state: MissionState, s: RunStats, rng: () => number): ApplyResult {
-  const completed = state.active.filter((m) => isComplete(m, s));
+export function applyRun(state: MissionState, s: RunStats): ApplyResult {
+  const completed = state.active.filter((m) => !m.done && isComplete(m, s));
   const starsGained = completed.reduce((a, m) => a + m.tier, 0);
+  const coinsGained = completed.reduce((a, m) => a + missionReward(m), 0);
   const stars = state.stars + starsGained;
   const rankBefore = state.rank;
   const rankAfter = rankFromStars(stars);
   const doneIds = completed.map((m) => m.id);
-  const kept = state.active.map((m) => (doneIds.includes(m.id) ? null : { ...m, progress: liveProgress(m, s) }));
-  const exclude: MissionId[] = [...kept.filter((m): m is Mission => m !== null).map((m) => m.id), ...doneIds];
-  const replacements: Mission[] = [];
-  const active = kept.map((m) => {
-    if (m) return m;
-    const r = drawMission(exclude, pickTier(rankAfter, rng), rng);
-    exclude.push(r.id);
-    replacements.push(r);
-    return r;
+  const active = state.active.map((m) => {
+    if (m.done) return { ...m };
+    if (doneIds.includes(m.id)) return { ...m, progress: missionTarget(m), done: true };
+    return { ...m, progress: liveProgress(m, s) };
   });
   return {
-    state: { active, stars, rank: rankAfter, completedCount: state.completedCount + completed.length },
-    completed, replacements, rankBefore, rankAfter, starsGained,
+    state: { ...state, active, stars, rank: rankAfter, completedCount: state.completedCount + completed.length },
+    completed, rankBefore, rankAfter, starsGained, coinsGained,
   };
 }
 
-export function skipCost(m: Mission): number {
-  return 40 * m.tier;
+/** Coin cost of the next swap: the first each day is free. */
+export function swapCost(state: MissionState): number {
+  return state.swapsUsed <= 0 ? 0 : SWAP_COST;
 }
 
-export function skipMission(
+export function swapMission(
   state: MissionState, index: number, coins: number, rng: () => number,
-): { ok: true; state: MissionState; coins: number } | { ok: false; reason: 'poor' | 'index' } {
+): { ok: true; state: MissionState; coins: number } | { ok: false; reason: 'poor' | 'index' | 'done' } {
   const m = state.active[index];
   if (!m) return { ok: false, reason: 'index' };
-  const cost = skipCost(m);
+  if (m.done) return { ok: false, reason: 'done' };
+  const cost = swapCost(state);
   if (coins < cost) return { ok: false, reason: 'poor' };
   const repl = drawMission(state.active.map((a) => a.id), m.tier, rng);
   const active = state.active.map((a, i) => (i === index ? repl : { ...a }));
-  return { ok: true, state: { ...state, active }, coins: coins - cost };
+  return { ok: true, state: { ...state, active, swapsUsed: state.swapsUsed + 1 }, coins: coins - cost };
 }
 
 const nonNegInt = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 
-export function sanitizeMissions(raw: unknown, rng: () => number): MissionState {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return initialMissions(rng);
+export function sanitizeMissions(raw: unknown, rng: () => number, today: string): MissionState {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return initialMissions(rng, today);
   const o = raw as Record<string, unknown>;
   const stars = nonNegInt(o.stars);
   const rank = rankFromStars(stars);
@@ -140,13 +178,17 @@ export function sanitizeMissions(raw: unknown, rng: () => number): MissionState 
     for (const e of o.active) {
       if (active.length >= 3) break;
       if (typeof e !== 'object' || e === null) continue;
-      const { id, tier, progress } = e as Record<string, unknown>;
+      const { id, tier, progress, done } = e as Record<string, unknown>;
       if (!isId(id) || active.some((m) => m.id === id)) continue;
       if (tier !== 1 && tier !== 2 && tier !== 3) continue;
       if (typeof progress !== 'number' || !Number.isFinite(progress)) continue;
-      active.push({ id, tier, progress: nonNegInt(progress) });
+      active.push(done === true ? { id, tier, progress: nonNegInt(progress), done: true } : { id, tier, progress: nonNegInt(progress) });
     }
   }
   while (active.length < 3) active.push(drawMission(active.map((m) => m.id), pickTier(rank, rng), rng));
-  return { active, stars, rank, completedCount: nonNegInt(o.completedCount) };
+  const state: MissionState = {
+    active, stars, rank, completedCount: nonNegInt(o.completedCount),
+    day: typeof o.day === 'string' ? o.day : '', swapsUsed: nonNegInt(o.swapsUsed),
+  };
+  return rollDay(state, today, rng);
 }
