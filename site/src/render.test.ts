@@ -51,7 +51,8 @@ describe('renderLobby', () => {
 
 describe('renderGamePage', () => {
   const html = renderGamePage(game(), opts);
-  it('embeds the game build in an iframe', () => expect(html).toContain('src="./game/index.html"'));
+  it('embeds the game build in an iframe, versioned so a release is never served from a stale cache', () =>
+    expect(html).toContain('src="./game/index.html?v=0.1.0"'));
   it('uses an orientation class for the frame', () => expect(html).toContain('class="frame portrait"'));
   it('links back to the lobby and the shared stylesheet', () => {
     expect(html).toContain('href="../"');
