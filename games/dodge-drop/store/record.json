@@ -1,0 +1,5 @@
+{
+  "initScript": "window.__dd = { god: true };",
+  "warmupMs": 1500,
+  "afterStartScript": "window.__dd.warp(40)"
+}
