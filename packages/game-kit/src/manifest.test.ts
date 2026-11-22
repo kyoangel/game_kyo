@@ -73,3 +73,21 @@ describe('validateManifest', () => {
     expect(errorsOf({ ...valid(), portalIds: { poki: 'x' } }).join()).toMatch(/portalIds\.poki: unknown portal/);
   });
 });
+
+describe('store metadata', () => {
+  const store = () => ({
+    controls: { en: '- Drag to move' },
+    crazygames: { category: 'Arcade', tags: ['Avoid', 'Speed'], progressSave: 'sdk' },
+  });
+  const withCg = (patch: Record<string, unknown>) => ({ ...valid(), store: { ...store(), crazygames: { ...store().crazygames, ...patch } } });
+  it('accepts a valid store block', () => expect(errorsOf({ ...valid(), store: store() })).toEqual([]));
+  it('is optional', () => expect(errorsOf(valid())).toEqual([]));
+  it('rejects an unknown CrazyGames category', () =>
+    expect(errorsOf(withCg({ category: 'Racing' }))).toContain('store.crazygames.category must be one of the CrazyGames categories'));
+  it('rejects more than 5 tags', () =>
+    expect(errorsOf(withCg({ tags: ['a', 'b', 'c', 'd', 'e', 'f'] }))).toContain('store.crazygames.tags must be 1-5 strings'));
+  it('rejects unknown progressSave', () =>
+    expect(errorsOf(withCg({ progressSave: 'cloud' }))).toContain('store.crazygames.progressSave must be one of none, sdk, localstorage'));
+  it('requires English controls text', () =>
+    expect(errorsOf({ ...valid(), store: { ...store(), controls: { 'zh-TW': 'x' } } })).toContain('store.controls.en is required'));
+});

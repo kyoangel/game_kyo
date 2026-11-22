@@ -15,6 +15,18 @@ export interface PortalIds {
   gamedistribution?: string;
 }
 
+export const CG_CATEGORIES = ['.io', 'Action', 'Adventure', 'Arcade', 'Beauty', 'Board', 'Card', 'Clicker', 'Driving', 'Puzzle', 'Shooting', 'Simulation', 'Sports', 'Strategy', 'Trivia', 'Word'] as const;
+export const PROGRESS_SAVES = ['none', 'sdk', 'localstorage'] as const;
+export type CgCategory = (typeof CG_CATEGORIES)[number];
+export type ProgressSave = (typeof PROGRESS_SAVES)[number];
+
+/** Portal listing metadata (store pages), not used by the game at runtime. */
+export interface StoreMeta {
+  /** Bullet list shown in a portal "Controls" field. */
+  controls: LocalizedText;
+  crazygames?: { category: CgCategory; tags: string[]; progressSave: ProgressSave };
+}
+
 export interface Release {
   status: ReleaseStatus;
   version: string;
@@ -36,6 +48,7 @@ export interface GameManifest {
   releases: Partial<Record<Target, Release>>;
   /** Ids issued by a portal dashboard; GameDistribution needs its gameId at build time. */
   portalIds?: PortalIds;
+  store?: StoreMeta;
 }
 
 export type ValidationResult = { ok: true; manifest: GameManifest } | { ok: false; errors: string[] };
@@ -101,6 +114,25 @@ function checkPortalIds(v: unknown, errors: string[]): void {
   }
 }
 
+function checkStore(v: unknown, errors: string[]): void {
+  if (v === undefined) return;
+  if (!isObject(v)) {
+    errors.push('store must be an object');
+    return;
+  }
+  checkLocalized(v.controls, 'store.controls', errors);
+  const cg = v.crazygames;
+  if (cg === undefined) return;
+  if (!isObject(cg)) {
+    errors.push('store.crazygames must be an object');
+    return;
+  }
+  if (!oneOf(CG_CATEGORIES, cg.category)) errors.push('store.crazygames.category must be one of the CrazyGames categories');
+  if (!isStringArray(cg.tags) || cg.tags.length < 1 || cg.tags.length > 5) errors.push('store.crazygames.tags must be 1-5 strings');
+  if (!oneOf(PROGRESS_SAVES, cg.progressSave))
+    errors.push(`store.crazygames.progressSave must be one of ${PROGRESS_SAVES.join(', ')}`);
+}
+
 export function validateManifest(raw: unknown): ValidationResult {
   if (!isObject(raw)) return { ok: false, errors: ['manifest must be a JSON object'] };
   const m = raw;
@@ -121,5 +153,6 @@ export function validateManifest(raw: unknown): ValidationResult {
     errors.push(`targets must be a non-empty subset of ${KNOWN_TARGETS.join(', ')}`);
   checkReleases(m.releases, errors);
   checkPortalIds(m.portalIds, errors);
+  checkStore(m.store, errors);
   return errors.length > 0 ? { ok: false, errors } : { ok: true, manifest: m as unknown as GameManifest };
 }
