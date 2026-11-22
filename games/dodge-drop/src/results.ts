@@ -274,9 +274,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
         scene.tweens.add({ targets: grp, scale: 1, x: 0, y: 0, duration: 300, ease: 'Back.Out' });
       } else {
         const now = s.missions.state.active[i] ?? old;
-        const prior = now.done === true;
-        const t = scene.add.text(cx, y, missionLabel(kit.t(`mission.${now.id}`), now, now.progress), style(kit, 24, prior ? 0x58ff9a : theme.text)).setOrigin(0.5);
-        if (prior) scene.add.image(t.x - t.width / 2 - 20, y, 'dd-check-green').setDisplaySize(26, 26);
+        scene.add.text(cx, y, missionLabel(kit.t(`mission.${now.id}`), now, now.progress), style(kit, 24, theme.text)).setOrigin(0.5);
       }
     });
 
