@@ -4,7 +4,9 @@ import { mulberry32 } from './rng.ts';
 import { SpawnScheduler } from './schedule.ts';
 
 const W = 720;
-const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1);
+// CI runs a lighter set (PROPERTY_SEEDS=100); the nightly workflow runs the full 300.
+const N = Number(process.env.PROPERTY_SEEDS ?? 300);
+const SEEDS = Array.from({ length: N }, (_, i) => i + 1);
 
 type Opts = { speedMul?: number; intervalMul?: number; startT?: number };
 
@@ -24,7 +26,7 @@ async function badSeeds(seeds: number[], opts: Opts, toT: number, validate = tru
 }
 
 describe('SpawnScheduler', () => {
-  it('leaves a survivable path through every field for seeds 1..300 up to 240 s', async () => {
+  it('leaves a survivable path through every field for every seed in 1..N up to 240 s', async () => {
     expect(await badSeeds(SEEDS, {}, 240)).toEqual([]);
   }, 120_000);
 
@@ -72,11 +74,11 @@ describe('SpawnScheduler difficulty options', () => {
     expect(Math.min(...all.map((s) => s.at))).toBeGreaterThanOrEqual(62);
   });
 
-  it('assist multipliers keep every field survivable for seeds 1..300 (validator uses the same speedMul)', async () => {
+  it('assist multipliers keep every field survivable for every seed in 1..N (validator uses the same speedMul)', async () => {
     expect(await badSeeds(SEEDS, ASSIST, 120)).toEqual([]);
   }, 120_000);
 
-  it('a tier start at 60 s keeps every field survivable for seeds 1..300', async () => {
+  it('a tier start at 60 s keeps every field survivable for every seed in 1..N', async () => {
     expect(await badSeeds(SEEDS, { startT: 60 }, 150)).toEqual([]);
   }, 120_000);
 
