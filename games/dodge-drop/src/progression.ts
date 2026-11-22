@@ -79,7 +79,8 @@ export function advanceStartTier(current: StartTier, runMedals: readonly string[
   return tierSeconds(best) > tierSeconds(current) ? best : current;
 }
 
-export const HEAD_START_SCORE: Record<'bronze' | 'silver' | 'gold', number> = { bronze: 44, silver: 149, gold: 342 };
+/** Round, readable head starts for tier starts (owner decision 2026-11-22); count for best, never for coins. */
+export const HEAD_START_SCORE: Record<'bronze' | 'silver' | 'gold', number> = { bronze: 100, silver: 200, gold: 300 };
 
 export function headStartScore(t: StartTier): number {
   return t === 'none' ? 0 : HEAD_START_SCORE[t];

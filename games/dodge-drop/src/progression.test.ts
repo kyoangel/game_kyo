@@ -3,8 +3,6 @@ import {
   advanceStartTier, availableTiers, DEFAULT_ASSIST, HEAD_START_SCORE, headStartScore, nextLossStreak, runCoins,
   rushesBefore, sanitizeAssist, sanitizeStartTier, START_TIERS, tierSeconds, updateAssist, type AssistState,
 } from './progression.ts';
-import { mulberry32 } from './rng.ts';
-import { SpawnScheduler } from './schedule.ts';
 
 describe('loss streak', () => {
   it('increments below 30 s, resets at 30 s or more', () => {
@@ -31,8 +29,8 @@ describe('runCoins', () => {
     expect(runCoins({ ...base, score: 25, stars: 0, lossStreak: 3, rankMultiplier: 1.1 })).toMatchObject({ coins: 7, floor: 6 });
   });
   it('head-start score earns no coins', () => {
-    expect(runCoins({ ...base, score: 304 + 50, headStart: 304, stars: 0 })).toMatchObject({ coins: 2 });
-    expect(runCoins({ ...base, score: 100, headStart: 304, stars: 0 })).toMatchObject({ coins: 0 });
+    expect(runCoins({ ...base, score: 300 + 50, headStart: 300, stars: 0 })).toMatchObject({ coins: 2 });
+    expect(runCoins({ ...base, score: 100, headStart: 300, stars: 0 })).toMatchObject({ coins: 0 });
   });
 });
 
@@ -112,15 +110,10 @@ describe('start tiers', () => {
 });
 
 describe('headStartScore', () => {
-  it('constants for 30/60/90 are 44/149/342', () => {
-    expect(HEAD_START_SCORE).toEqual({ bronze: 44, silver: 149, gold: 342 });
+  it('round, readable head starts: bronze 100, silver 200, gold 300 (owner decision 2026-11-22)', () => {
+    expect(HEAD_START_SCORE).toEqual({ bronze: 100, silver: 200, gold: 300 });
     expect(headStartScore('none')).toBe(0);
-    expect(headStartScore('silver')).toBe(149);
-  });
-  it('equal the blocks spawned before T by the standard seed-1 scheduler', () => {
-    for (const [tier, T] of [['bronze', 30], ['silver', 60], ['gold', 90]] as const) {
-      expect(new SpawnScheduler(mulberry32(1), 720).planUntil(T).length).toBe(HEAD_START_SCORE[tier]);
-    }
+    expect(headStartScore('silver')).toBe(200);
   });
 });
 

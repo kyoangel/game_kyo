@@ -92,7 +92,8 @@ Rules:
 - The title screen shows a start selector under Play: chips `0:00 / Bronze / Silver / Gold`, only earned tiers enabled. The selection persists (save key `startTier`) and **automatically moves up to the newest tier when a run earns a higher medal**, so by default the player starts where they last broke through. They can tap back to a lower tier anytime.
 - A tier start sets the game clock to T: difficulty, wave cycle, rush timing, and medal thresholds all use the clock, so the run plays exactly like the T-second mark of a normal run.
 - 2.0 s of grace at start: no blocks spawn, banner `Silver start` / `銀盃起跑`.
-- Score starts at a fixed head start `headStartScore(T)` = the number of blocks spawned before T by the standard scheduler with seed 1 (one point per block, as if each was dodged at ×1). Precomputed for 30/60/90 and asserted in a unit test (44 / 149 / 342 since the 2.2.0 Overdrive release, which raised spawn density after 32.5 s and ended rushes at 120 s; tiers still start at 30/60/90 s, before Overdrive, and `rushesBefore` now counts only the 45 s and 90 s rushes). The head start counts for `best` but not for coins (§2).
+- Score starts at a fixed, round head start: **Bronze 100, Silver 200, Gold 300** (owner decision 2026-11-22: non-round numbers like 342 made players wonder why). This is the casual track: tier starts and upgrades are allowed. The head start counts for `best` but not for coins (§2). `rushesBefore` counts only the 45 s and 90 s rushes (Overdrive replaces rushes from 120 s).
+- Future (not now): a separate **pure-skill leaderboard** — always from 0:00, no upgrades, no assist, no revive.
 - Shield timing restarts relative to the start (first shield at start + its usual delay). Medals below T are not re-awarded; missions with "survive N s" count seconds actually survived in this run, not the clock.
 
 ## 6. Automatic assist (for players who keep losing)

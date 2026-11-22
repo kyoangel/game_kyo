@@ -153,7 +153,7 @@ test('dodge-drop: silver tier start sets the game clock', async ({ page }) => {
   const s = await page.evaluate(() => (window as unknown as WD).__dd!.stats!());
   expect(s.t).toBeGreaterThanOrEqual(60);
   expect(s.t).toBeLessThan(63);
-  expect(s.score).toBeGreaterThanOrEqual(149);
+  expect(s.score).toBeGreaterThanOrEqual(200);
   expect(errors).toEqual([]);
 });
 
