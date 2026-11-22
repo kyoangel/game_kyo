@@ -5,6 +5,7 @@ import { cssColor } from '../theme.ts';
 import { titleLayout } from '../titleLayout.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
 import { topRightSlotX } from '../ui/topRight.ts';
+import { showSupportLink, SUPPORT_URL } from '../support.ts';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -71,6 +72,14 @@ export class TitleScene extends Phaser.Scene {
     kit.addMuteButton(this, topRightSlotX(width, 0), 60);
     kit.addFullscreenButton(this, topRightSlotX(width, 1), 60);
     kit.def.titleExtras?.(this, titleLayout(width, height, menu.length));
+
+    // Small support link at the very bottom, only where external links are allowed (own site, never portals).
+    if (showSupportLink(kit.platform.features)) {
+      addButton(this, width / 2, height - 40, kit.t('gk.support'), {
+        width: 280, height: 44, fill: 0x2a1a5e, textColor: theme.muted, fontSize: 20, strokeThickness: 3,
+        onClick: () => { window.open(SUPPORT_URL, '_blank', 'noopener'); },
+      });
+    }
 
     let started = false;
     const go = (): void => {

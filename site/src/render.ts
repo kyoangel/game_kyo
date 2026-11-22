@@ -1,4 +1,5 @@
 import type { GameManifest } from '../../packages/game-kit/src/manifest.ts';
+import { SUPPORT_URL } from '../../packages/game-kit/src/support.ts';
 
 export interface LegacyGame {
   href: string;
@@ -20,7 +21,10 @@ const UI: Record<string, Record<string, string>> = {
   best: { en: 'Best', 'zh-TW': '最高分' },
   howTo: { en: 'How to play', 'zh-TW': '玩法' },
   back: { en: '← All games', 'zh-TW': '← 所有遊戲' },
+  support: { en: '☕ Support the developer', 'zh-TW': '☕ 支持作者' },
 };
+
+export { SUPPORT_URL };
 
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
@@ -76,6 +80,7 @@ function shell(o: { title: string; description: string; canonical: string; root:
 <body>
 <div class="lang-switch"><button data-set-lang="en">EN</button><button data-set-lang="zh-TW">繁中</button></div>
 ${o.body}
+<footer class="site-footer"><a class="support" href="${SUPPORT_URL}" target="_blank" rel="noopener">${bilingual(UI.support!)}</a></footer>
 <script>${LANG_TOGGLE}${o.script ?? ''}</script>
 </body>
 </html>

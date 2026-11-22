@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameManifest } from '../../packages/game-kit/src/manifest.ts';
-import { escapeHtml, renderGamePage, renderLobby, type LegacyGame } from './render.ts';
+import { escapeHtml, renderGamePage, renderLobby, SUPPORT_URL, type LegacyGame } from './render.ts';
 
 const game = (over: Partial<GameManifest> = {}): GameManifest => ({
   slug: 'dodge-drop',
@@ -63,6 +63,12 @@ describe('renderGamePage', () => {
     expect(html).toContain('<link rel="canonical" href="https://example.test/root/dodge-drop/">');
   });
   it('shows instructions', () => expect(html).toContain('Move left and right.'));
+  it('links to the support page in a new tab, on the lobby too', () => {
+    for (const page of [html, renderLobby([game()], legacy, opts)]) {
+      expect(page).toContain(`<a class="support" href="${SUPPORT_URL}" target="_blank" rel="noopener">`);
+    }
+    expect(SUPPORT_URL).toBe('https://p.ecpay.com.tw/17369E9');
+  });
 });
 
 describe('mobile page chrome', () => {
