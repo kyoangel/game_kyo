@@ -5,22 +5,46 @@ on:
     branches: [master]
 
 permissions:
-  contents: write
+  contents: read
+
+# Superseded pushes cancel their still-running builds. The deploy job (below) has its own
+# non-cancelling `pages` group so a deploy is never aborted midway.
 
 jobs:
   changes:
     runs-on: ubuntu-latest
+    concurrency:
+      group: changes-${{ github.ref }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
+      releases: ${{ steps.filter.outputs.releases }}
       merge10: ${{ steps.filter.outputs.merge10 }}
       merge10x: ${{ steps.filter.outputs.merge10x }}
       pixel-squad: ${{ steps.filter.outputs.pixel-squad }}
       platform: ${{ steps.filter.outputs.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Diff against the last commit whose deploy succeeded (not just the previous push), so a
+      # cancelled/superseded run never leaves its changes undeployed.
+      - name: Find last successfully deployed commit
+        id: base
+        run: |
+          sha=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy.yml --branch master --status success --limit 1 --json headSha --jq '.[0].headSha // empty' || true)
+          if [ -n "$sha" ] && git cat-file -e "$sha^{commit}" 2>/dev/null; then echo "sha=$sha" >> "$GITHUB_OUTPUT"; fi
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: ${{ steps.base.outputs.sha }}
           filters: |
+            releases:
+              - 'games/*/game.json'
             merge10:
               - 'workspace/**'
             merge10x:
@@ -43,6 +67,9 @@ jobs:
 
   build-merge10:
     needs: changes
+    concurrency:
+      group: build-merge10-${{ github.ref }}
+      cancel-in-progress: true
     if: needs.changes.outputs.merge10 == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -69,6 +96,9 @@ jobs:
 
   build-merge10x:
     needs: changes
+    concurrency:
+      group: build-merge10x-${{ github.ref }}
+      cancel-in-progress: true
     if: needs.changes.outputs.merge10x == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -95,6 +125,9 @@ jobs:
 
   build-pixel-squad:
     needs: changes
+    concurrency:
+      group: build-pixel-squad-${{ github.ref }}
+      cancel-in-progress: true
     if: needs.changes.outputs.pixel-squad == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -121,6 +154,9 @@ jobs:
 
   build-platform:
     needs: changes
+    concurrency:
+      group: build-platform-${{ github.ref }}
+      cancel-in-progress: true
     if: needs.changes.outputs.platform == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -133,6 +169,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+        env:
+          PROPERTY_SEEDS: '100'
       - run: npx playwright install --with-deps chromium
       - run: npm run test:smoke
       - run: npm run build:site
@@ -143,7 +181,7 @@ jobs:
 
   release-portals:
     needs: [changes, build-platform]
-    if: needs.build-platform.result == 'success'
+    if: needs.build-platform.result == 'success' && needs.changes.outputs.releases == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -174,6 +212,16 @@ jobs:
         needs.build-platform.result == 'success'
       )
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -232,3 +280,19 @@ jobs:
           target-folder: .
           branch: gh-pages
           clean: false
+
+      # The gh-pages branch stays the accumulated site state (so games whose build was skipped
+      # are preserved); publish it through the Pages Actions deploy instead of the branch build.
+      - name: Check out accumulated site
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: _site
+      - run: rm -rf _site/.git
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
