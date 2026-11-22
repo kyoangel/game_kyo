@@ -240,6 +240,7 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
           busy = true;
           void kit.showRewarded().then((res) => {
             busy = false;
+            if (res !== 'rewarded' && !used && scene.sys.isActive()) kit.hintBelow(scene, cx, top + 190, kit.t('gk.adUnavailable'));
             if (res !== 'rewarded' || used) return;
             used = true;
             credit(coin.coins);

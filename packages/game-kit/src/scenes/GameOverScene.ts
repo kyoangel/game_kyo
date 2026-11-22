@@ -134,6 +134,14 @@ export class GameOverScene extends Phaser.Scene {
     this.counting = false;
     const ok = await getKit(this).acceptRevive();
     if (ok) return;
+    // No ad could play (no fill, ads disabled, ad blocker): say so instead of silently skipping to results.
+    const { width, height } = this.scale;
+    const note = this.add
+      .text(width / 2, height * 0.72, getKit(this).t('gk.adUnavailable'), this.style(30, getKit(this).theme.danger))
+      .setOrigin(0.5)
+      .setDepth(20);
+    await new Promise<void>((r) => this.time.delayedCall(1600, () => r()));
+    note.destroy();
     this.busy = false;
     await this.decline();
   }
