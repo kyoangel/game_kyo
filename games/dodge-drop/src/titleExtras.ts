@@ -136,6 +136,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
           control = 'drag';
           persist(() => kit.save.setJSON('control', 'drag'));
           render();
+          kit.hintBelow(scene, ctx.width - 212, 60, kit.t('tiltOff'));
           return;
         }
         // Must be called synchronously from this tap: iOS only shows its motion prompt from a user gesture.
@@ -144,6 +145,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
           if (ok) {
             control = 'tilt';
             persist(() => kit.save.setJSON('control', 'tilt'));
+            kit.hintBelow(scene, ctx.width - 212, 60, kit.t('tiltOn'));
           } else {
             control = 'drag';
             tiltAvail = false;

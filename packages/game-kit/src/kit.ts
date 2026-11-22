@@ -171,9 +171,34 @@ export class Kit {
     c.setInteractive({ useHandCursor: true });
     c.on('pointerdown', () => {
       markButtonTap(scene);
-      void this.audio.toggleMute().then(draw);
+      void this.audio.toggleMute().then(() => {
+        draw();
+        this.hintBelow(scene, c.x, c.y, this.t(this.audio.muted ? 'gk.soundOff' : 'gk.soundOn'));
+      });
     });
     return c;
+  }
+
+  /**
+   * Short state label under a round icon toggle (e.g. "Sound off"), fading out after ~1.2 s.
+   * A newer label at the same spot replaces the previous one.
+   */
+  hintBelow(scene: Phaser.Scene, x: number, y: number, text: string): Phaser.GameObjects.Text {
+    const key = `gk-hint-${Math.round(x)}-${Math.round(y)}`;
+    const prev = scene.data.get(key) as Phaser.GameObjects.Text | undefined;
+    if (prev?.active) prev.destroy();
+    const label = scene.add
+      .text(x, y + 46, text, {
+        fontFamily: this.theme.font, fontSize: '18px', fontStyle: 'bold', color: '#ffffff',
+        stroke: '#1a1033', strokeThickness: 5, align: 'center',
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(1000)
+      .setAlpha(0);
+    scene.data.set(key, label);
+    scene.tweens.add({ targets: label, alpha: 1, duration: 120 });
+    scene.tweens.add({ targets: label, alpha: 0, delay: 1200, duration: 300, onComplete: () => label.destroy() });
+    return label;
   }
 
   /** True when a fullscreen toggle should be shown (platform feature on and the browser allows it). */
