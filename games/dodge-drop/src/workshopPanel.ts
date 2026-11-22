@@ -42,7 +42,8 @@ export function renderUpgradesPanel(ctx: ShopCtx): void {
     bg.strokeRoundedRect(20, y - ROW_H / 2, 680, ROW_H, 22);
     drawIcon(bg, id, 80, y, theme.accent);
 
-    const desc = kit.t(`up.${id}.desc`).replace('{v}', String(effectValue(id, level)));
+    const maxMagnet = id === 'magnet' && level >= MAX_LEVEL;
+    const desc = kit.t(maxMagnet ? 'up.magnet.descMax' : `up.${id}.desc`).replace('{v}', String(effectValue(id, level)));
     ctx.add(scene.add.text(150, y - 27, kit.t(`up.${id}.name`), shopStyle(kit, 30, theme.text)).setOrigin(0, 0.5));
     ctx.add(scene.add.text(150, y + 3, desc, { ...shopStyle(kit, 22, theme.muted), strokeThickness: 3 }).setOrigin(0, 0.5));
     for (let k = 0; k < MAX_LEVEL; k++) {

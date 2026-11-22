@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buyUpgrade, comboTimeout, effectValue, emptyWorkshop, magnetRadius, nearMissWindow, nextCost, sanitizeWorkshop,
+  buyUpgrade, comboTimeout, effectValue, emptyWorkshop, magnetPulls, magnetRadius, nearMissWindow, nextCost, sanitizeWorkshop,
   shieldAfterPickup, shieldCapacity, shieldFirstAt, shieldInterval, startShieldChance, starInterval, UPGRADE_IDS, upgradeCost,
 } from './workshop.ts';
 
@@ -44,8 +44,18 @@ describe('workshop effects', () => {
   it('startShield chance 20/40/60/80/100 %', () => {
     expect([0, 1, 2, 3, 4, 5].map(startShieldChance)).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1]);
   });
-  it('magnet radius 40/70/100/130/160 px', () => {
-    expect([0, 1, 2, 3, 4, 5].map(magnetRadius)).toEqual([0, 40, 70, 100, 130, 160]);
+  it('magnet radius 0/80/140/220/320 px, unlimited (full screen) at L5', () => {
+    expect([0, 1, 2, 3, 4, 5].map(magnetRadius)).toEqual([0, 80, 140, 220, 320, Infinity]);
+  });
+  it('magnetPulls: stars within radius; shields only while another can be held; Infinity pulls everything', () => {
+    expect(magnetPulls('star', 79, 80, 3, 1)).toBe(true);
+    expect(magnetPulls('star', 81, 80, 0, 1)).toBe(false);
+    expect(magnetPulls('star', 5000, Infinity, 0, 1)).toBe(true);
+    expect(magnetPulls('shield', 5000, Infinity, 0, 1)).toBe(true);
+    expect(magnetPulls('shield', 5000, Infinity, 1, 1)).toBe(false);
+    expect(magnetPulls('shield', 100, 140, 1, 2)).toBe(true);
+    expect(magnetPulls('shield', 100, 140, 2, 2)).toBe(false);
+    expect(magnetPulls('star', 10, 0, 0, 1)).toBe(false);
   });
   it('near-miss window 28 -> 30/32/35/37/39 px', () => {
     expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([28, 30, 32, 35, 37, 39]);
@@ -67,7 +77,8 @@ describe('workshop effects', () => {
   it('effectValue gives the number shown per row', () => {
     expect(effectValue('shield', 2)).toBe(19);
     expect(effectValue('startShield', 3)).toBe(60);
-    expect(effectValue('magnet', 1)).toBe(40);
+    expect(effectValue('magnet', 1)).toBe(80);
+    expect(effectValue('magnet', 5)).toBe(Infinity);
     expect(effectValue('nearMiss', 3)).toBe(35);
     expect(effectValue('combo', 4)).toBeCloseTo(3.1, 9);
     expect(effectValue('luck', 5)).toBe(35);

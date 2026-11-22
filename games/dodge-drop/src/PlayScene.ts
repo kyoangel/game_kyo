@@ -5,7 +5,7 @@ import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
-import { emptyWorkshop, sanitizeWorkshop, shieldAfterPickup, shieldCapacity, shieldInterval, starInterval } from './workshop.ts';
+import { emptyWorkshop, magnetPulls, sanitizeWorkshop, shieldAfterPickup, shieldCapacity, shieldInterval, starInterval } from './workshop.ts';
 import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
 import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakTint, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
 import { SKINS, type Skin } from './economy.ts';
@@ -244,6 +244,8 @@ export class PlayScene extends Phaser.Scene {
         warp: (seconds: number) => { this.t += seconds; },
         /** Test hook: adds one held shield (capped like a pickup). */
         giveShield: () => this.addShield(),
+        /** Test hook: spawns a pickup at the top of the screen at column x. */
+        spawnPickup: (kind: 'star' | 'shield', x: number) => this.spawnPickup(kind, x),
       } as { god: boolean };
     }
 
@@ -827,7 +829,8 @@ export class PlayScene extends Phaser.Scene {
       const mdx = this.dead ? 0 : this.player.x - p.x;
       const mdy = this.dead ? 0 : PLAYER_Y - p.y;
       const md = Math.hypot(mdx, mdy);
-      if (p.kind === 'star' && radius > 0 && !this.dead && md <= radius && md > 0) {
+      const pulled = !this.dead && md > 0 && magnetPulls(p.kind, md, radius, this.shieldHits, this.cfg.shieldCapacity);
+      if (pulled) {
         const step = Math.min(md, MAGNET_SPEED * dt);
         p.x += (mdx / md) * step;
         p.y += (mdy / md) * step;
@@ -837,7 +840,8 @@ export class PlayScene extends Phaser.Scene {
       p.img.x = p.x;
       p.img.y = p.y;
       p.img.rotation += (p.kind === 'star' ? 3 : 1.2) * dt;
-      if (p.y > H + 40) {
+      // A pickup the magnet is pulling is never culled (full-screen pull can start far above the player).
+      if (!pulled && p.y > H + 40) {
         p.active = false;
         p.img.setVisible(false);
         continue;

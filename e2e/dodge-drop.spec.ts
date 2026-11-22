@@ -78,15 +78,10 @@ test('dodge-drop: Shop scene opens from the title and Back returns', async ({ pa
 });
 
 // ---- Meta-progression (Phase 1) ----
-type Dd = { god?: boolean; giveShield?: () => void; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { t: number; score: number; startTier: string; shieldHits: number; shieldHeld: boolean; clock: number } };
+type Dd = { god?: boolean; giveShield?: () => void; spawnPickup?: (kind: 'star' | 'shield', x: number) => boolean; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { stars: number; t: number; score: number; startTier: string; shieldHits: number; shieldHeld: boolean; clock: number } };
 type WD = { __dd?: Dd };
 
-const localToday = (): string => {
-  const d = new Date();
-  const p = (n: number): string => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-const MISSIONS_SEED = `{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0,"day":"${localToday()}","swapsUsed":0}`;
+const MISSIONS_SEED = `{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}`;
 
 async function seed(page: import('@playwright/test').Page, kv: Record<string, string>, god = false): Promise<void> {
   await page.addInitScript(([entries, g]) => {
@@ -174,9 +169,8 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   // First mission skip: menuBottom (957.6) + 12 + 26, x = 648.
   const skip = at(648, 996);
   await page.mouse.click(skip.x, skip.y);
-  // The first swap of the day is free; coins stay at 100.
-  await expect.poll(async () => JSON.parse((await ls(page, 'missions'))!).swapsUsed).toBe(1);
-  expect(await ls(page, 'coins')).toBe('100');
+  // A swap always costs a flat 5 star coins.
+  await expect.poll(() => ls(page, 'coins')).toBe('95');
   const saved = JSON.parse((await ls(page, 'missions'))!);
   expect(saved.active[0].id).not.toBe('score');
   expect(errors).toEqual([]);
@@ -230,7 +224,7 @@ test('dodge-drop: tapping a start-tier chip or a skip does not start the run; em
   expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).not.toBe('playing');
   const skip = at(648, 996);
   await page.mouse.click(skip.x, skip.y);
-  await expect.poll(async () => JSON.parse((await ls(page, 'missions'))!).swapsUsed).toBe(1);
+  await expect.poll(() => ls(page, 'coins')).toBe('95');
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => (window as unknown as W).__gk!.activeScenes)).toContain('GKTitle');
   const empty = at(360, 400);
@@ -303,5 +297,25 @@ test('dodge-drop: Shop boosts tab buys a shield and the tab choice is remembered
   await page.mouse.click(buy.x, buy.y);
   await expect.poll(async () => JSON.parse((await ls(page, 'boosts')) ?? '{}').shields).toBe(1);
   expect(await ls(page, 'coins')).toBe('90');
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: max-level magnet pulls a far star and shield to a stationary player', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { workshop: '{"magnet":5}' }, true);
+  const { box } = await openTitle(page);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
+  await page.waitForFunction(() => (window as unknown as WD).__dd?.stats !== undefined);
+  await page.waitForTimeout(500);
+  const before = await page.evaluate(() => (window as unknown as WD).__dd!.stats!());
+  await page.evaluate(() => {
+    const d = (window as unknown as WD).__dd!;
+    d.spawnPickup!('star', 60);
+    d.spawnPickup!('shield', 660);
+  });
+  await expect
+    .poll(async () => page.evaluate(() => { const s = (window as unknown as WD).__dd!.stats!(); return [s.stars, s.shieldHits]; }), { timeout: 8000 })
+    .toEqual([before.stars + 1, before.shieldHits + 1]);
   expect(errors).toEqual([]);
 });

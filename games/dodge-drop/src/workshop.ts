@@ -61,9 +61,15 @@ export function shieldAfterPickup(held: number, capacity: number): number {
 export function startShieldChance(level: number): number {
   return lvl(level) / 5;
 }
+const MAGNET_RADII: readonly number[] = [0, 80, 140, 220, 320, Infinity];
+/** Pull radius in px by level; `Infinity` at max level = the whole screen. */
 export function magnetRadius(level: number): number {
-  const l = lvl(level);
-  return l === 0 ? 0 : 40 + 30 * (l - 1);
+  return MAGNET_RADII[lvl(level)]!;
+}
+/** Whether the magnet pulls this pickup: stars always, shields only while another can still be held. */
+export function magnetPulls(kind: 'star' | 'shield', dist: number, radius: number, shieldHits: number, capacity: number): boolean {
+  if (radius <= 0 || dist > radius) return false;
+  return kind === 'star' || shieldHits < capacity;
 }
 export function nearMissWindow(level: number): number {
   return Math.round(28 * (1 + 0.08 * lvl(level)));

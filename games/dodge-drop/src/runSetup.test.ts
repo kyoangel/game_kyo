@@ -20,7 +20,7 @@ describe('buildRunConfig', () => {
   });
   it('workshop levels feed the getters; capacity comes from Shield Stack only', () => {
     const c = buildRunConfig({ ...base, workshop: ws({ shield: 5, magnet: 3, nearMiss: 4, combo: 2, luck: 1 }) });
-    expect(c).toMatchObject({ shieldCapacity: 1, magnetRadius: 100, nearMissWindow: 37, luckLevel: 1 });
+    expect(c).toMatchObject({ shieldCapacity: 1, magnetRadius: 220, nearMissWindow: 37, luckLevel: 1 });
     expect(c.comboTimeout).toBeCloseTo(2.8, 9);
     expect(c.firstShieldAt).toBe(10);
     expect(buildRunConfig({ ...base, workshop: ws({ shieldStack: 4 }) }).shieldCapacity).toBe(5);
