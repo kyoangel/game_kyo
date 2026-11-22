@@ -94,7 +94,6 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
 
     // Start chips
     const cy = ctx.below + 24;
-    txt(ctx.width / 2, cy - 38, kit.t('tierHeader'), 22, theme.muted);
     TIERS.forEach((tr, i) => {
       const on = enabled.includes(tr.id);
       const sel = on && tier === tr.id;
