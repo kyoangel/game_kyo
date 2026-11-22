@@ -30,6 +30,7 @@ const CHEV_POOL = 48;
 const PICKUP_POOL = 8;
 const DOT_COUNT = 26;
 const INVULN_REVIVE = 2;
+const HINT_SECONDS = 4;
 const INVULN_SHIELD = 0.5;
 const PRISM_STEPS = 72;
 
@@ -128,6 +129,8 @@ export class PlayScene extends Phaser.Scene {
   private comboBar!: Phaser.GameObjects.Graphics;
   private timerText!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
+  private hintDone = false;
+  private toastObjs = new Set<Phaser.GameObjects.Container>();
   private rushBanner!: Phaser.GameObjects.Text;
   private lastScoreShown = -1;
   private lastSecShown = -1;
@@ -343,7 +346,8 @@ export class PlayScene extends Phaser.Scene {
       .text(W / 2, 880, this.kit.t('dragHint'), this.textStyle(36, theme.muted))
       .setOrigin(0.5)
       .setDepth(100);
-    this.tweens.add({ targets: this.hint, alpha: 0, delay: 3000, duration: 600 });
+    this.hintDone = false;
+    this.toastObjs = new Set();
     this.rushBanner = this.add
       .text(W / 2, 330, this.kit.t('rush'), { ...this.textStyle(110, 0xffa14d), strokeThickness: 10 })
       .setOrigin(0.5)
@@ -368,6 +372,7 @@ export class PlayScene extends Phaser.Scene {
     const dt = raw * this.time.timeScale;
     const drag = this.gin.dragDx();
     if (this.fx.frozen || !this.ready) return;
+    this.updateHint(drag);
 
     this.updateBackdrop(dt);
     this.updateSpeedFx(dt);
@@ -392,6 +397,15 @@ export class PlayScene extends Phaser.Scene {
     this.updatePickups(dt);
     if (!this.dead) this.updatePlayerVisual(dt);
     this.updateHud(dt);
+  }
+
+  /** Fade the drag hint after the first input or 4 s of run time, whichever comes first. */
+  private updateHint(drag: number): void {
+    if (this.hintDone || this.dead) return;
+    if (drag !== 0 || this.gin.vector().x !== 0 || this.t - this.runStartT >= HINT_SECONDS) {
+      this.hintDone = true;
+      this.tweens.add({ targets: this.hint, alpha: 0, duration: 300 });
+    }
   }
 
   private updateBackdrop(dt: number): void {
@@ -801,6 +815,15 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  private trackToast(c: Phaser.GameObjects.Container): void {
+    this.toastObjs.add(c);
+  }
+
+  private dropToast(c: Phaser.GameObjects.Container): void {
+    this.toastObjs.delete(c);
+    c.destroy();
+  }
+
   private showMedalToast(id: MedalId): void {
     const m = MEDALS.find((q) => q.id === id)!;
     const c = this.add.container(W / 2, -60).setDepth(110);
@@ -814,9 +837,10 @@ export class PlayScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.5);
     g.fillCircle(-133, -7, 8);
     const label = this.add.text(-84, 0, this.kit.t(`medal.${id}`), this.textStyle(36, m.color)).setOrigin(0, 0.5);
+    this.trackToast(c);
     c.add([g, label]);
     this.tweens.add({ targets: c, y: 170, duration: 250, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: c, y: -80, delay: 1750, duration: 250, onComplete: () => c.destroy() });
+    this.tweens.add({ targets: c, y: -80, delay: 1750, duration: 250, onComplete: () => this.dropToast(c) });
   }
 
   private checkMissions(dt: number): void {
@@ -843,10 +867,11 @@ export class PlayScene extends Phaser.Scene {
     g.lineStyle(4, accent, 1);
     g.strokeRoundedRect(-200, -38, 400, 76, 38);
     const label = this.add.text(0, 0, this.kit.t('missionComplete'), this.textStyle(34, accent)).setOrigin(0.5);
+    this.trackToast(c);
     c.add([g, label]);
     this.kit.audio.sfx('medal');
     this.tweens.add({ targets: c, y: 250, duration: 250, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: c, y: -80, delay: 1250, duration: 250, onComplete: () => c.destroy() });
+    this.tweens.add({ targets: c, y: -80, delay: 1250, duration: 250, onComplete: () => this.dropToast(c) });
   }
 
   // ----------------------------------------------------------------- death
@@ -859,6 +884,14 @@ export class PlayScene extends Phaser.Scene {
     this.fx.shake(0.8);
     this.fx.flash(this.kit.theme.danger, 120);
     this.fx.burst(this.player.x, PLAYER_Y, { color: col, count: 40, speed: 560, lifespanMs: 700 });
+    this.hintDone = true;
+    this.tweens.killTweensOf(this.hint);
+    this.hint.setVisible(false);
+    this.fx.clearPops();
+    for (const c of [...this.toastObjs]) {
+      this.tweens.killTweensOf(c);
+      this.dropToast(c);
+    }
     this.player.setVisible(false);
     this.ring.setVisible(false);
     this.trail?.stop();

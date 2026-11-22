@@ -9,6 +9,8 @@ export interface Fx {
   hitStop(ms: number): Promise<void>;
   flash(color?: number, ms?: number): void;
   popText(x: number, y: number, text: string, opts?: { color?: number; size?: number }): void;
+  /** Destroy any pop texts still floating (e.g. before a results overlay is shown). */
+  clearPops(): void;
   trail(target: Phaser.GameObjects.Components.Transform, opts?: { color?: number }): { stop(): void };
   glow(obj: Phaser.GameObjects.GameObject, color: number, strength?: number): void;
   timeScale(scale: number, ms: number): Promise<void>;
@@ -26,6 +28,7 @@ export function createFx(scene: Phaser.Scene): Fx {
   const emitters = new Set<Phaser.GameObjects.Particles.ParticleEmitter>();
   let frozen = 0;
   let slowed = 0;
+  const pops = new Set<Phaser.GameObjects.Text>();
 
   const cam = (): Phaser.Cameras.Scene2D.Camera => scene.cameras.main;
 
@@ -143,7 +146,27 @@ export function createFx(scene: Phaser.Scene): Fx {
         .setOrigin(0.5)
         .setDepth(60)
         .setScale(1.3);
-      scene.tweens.add({ targets: t, y: y - 60, scale: 1, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
+      pops.add(t);
+      scene.tweens.add({
+        targets: t,
+        y: y - 60,
+        scale: 1,
+        alpha: 0,
+        duration: 700,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          pops.delete(t);
+          t.destroy();
+        },
+      });
+    },
+
+    clearPops() {
+      for (const t of pops) {
+        scene.tweens.killTweensOf(t);
+        t.destroy();
+      }
+      pops.clear();
     },
 
     trail(target, opts = {}) {
