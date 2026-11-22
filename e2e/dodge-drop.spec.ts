@@ -52,7 +52,7 @@ test('dodge-drop: plays with keys, survives or dies cleanly, overlay tap returns
   expect(errors).toEqual([]);
 });
 
-test('dodge-drop: Skins scene opens from the title and Back returns', async ({ page }) => {
+test('dodge-drop: Shop scene opens from the title and Back returns', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
@@ -63,16 +63,16 @@ test('dodge-drop: Skins scene opens from the title and Back returns', async ({ p
   const box = (await page.locator('canvas').boundingBox())!;
   const at = (gx: number, gy: number) => ({ x: box.x + (gx / 720) * box.width, y: box.y + (gy / 1280) * box.height });
 
-  const skins = at(360, 1280 * 0.72);
-  await page.mouse.click(skins.x, skins.y);
-  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Skins'));
+  const shop = at(360, 1280 * 0.72);
+  await page.mouse.click(shop.x, shop.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Shop'));
   expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).not.toBe('playing');
 
   const back = at(120, 80);
   await page.mouse.click(back.x, back.y);
   await page.waitForFunction(() => {
     const s = (window as unknown as W).__gk!.activeScenes;
-    return s.includes('GKTitle') && !s.includes('Skins');
+    return s.includes('GKTitle') && !s.includes('Shop');
   });
   expect(errors).toEqual([]);
 });
@@ -113,17 +113,17 @@ async function openTitle(page: import('@playwright/test').Page) {
   return { box, at };
 }
 
-test('dodge-drop: Workshop buy persists level and coins', async ({ page }) => {
+test('dodge-drop: Shop upgrades buy persists level and coins', async ({ page }) => {
   const errors = watch(page);
   await seed(page, { coins: '100' });
   const { at } = await openTitle(page);
-  // Upgrades button: titleLayout menu row 2 (y = 0.72H + 96).
-  const up = at(360, 1280 * 0.72 + 96);
+  // Shop button (titleLayout menu row 1); the Upgrades tab is the default.
+  const up = at(360, 1280 * 0.72);
   await page.mouse.click(up.x, up.y);
-  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Workshop'));
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Shop'));
   await page.waitForTimeout(500);
-  // First row cost button: WorkshopScene ROW_Y0 = 254, x = 600.
-  const buy = at(600, 254);
+  // First row cost button: workshopPanel ROW_Y0 = 300, x = 600.
+  const buy = at(600, 300);
   await page.mouse.click(buy.x, buy.y);
   await expect.poll(async () => JSON.parse((await ls(page, 'workshop')) ?? '{}').shield).toBe(1);
   expect(await ls(page, 'coins')).toBe('85');
@@ -171,8 +171,8 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   const chip = at(279, 854);
   await page.mouse.click(chip.x, chip.y);
   await expect.poll(() => ls(page, 'startTier')).toBe('"bronze"');
-  // First mission skip: menuBottom (1053.6) + 12 + 26, x = 640.
-  const skip = at(640, 1092);
+  // First mission skip: menuBottom (957.6) + 12 + 26, x = 648.
+  const skip = at(648, 996);
   await page.mouse.click(skip.x, skip.y);
   // The first swap of the day is free; coins stay at 100.
   await expect.poll(async () => JSON.parse((await ls(page, 'missions'))!).swapsUsed).toBe(1);
@@ -186,10 +186,15 @@ test('dodge-drop: Skins previews on tap, buys only on confirm, then Use equips',
   const errors = watch(page);
   await seed(page, { coins: '100' });
   const { at } = await openTitle(page);
-  const skins = at(360, 1280 * 0.72);
-  await page.mouse.click(skins.x, skins.y);
-  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Skins'));
+  const shop = at(360, 1280 * 0.72);
+  await page.mouse.click(shop.x, shop.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Shop'));
   await page.waitForTimeout(500);
+  // Skins tab (middle).
+  const skinsTab = at(360, 172);
+  await page.mouse.click(skinsTab.x, skinsTab.y);
+  await expect.poll(() => ls(page, 'shopTab')).toBe('"skins"');
+  await page.waitForTimeout(400);
   // Tap the locked lime card (col 2, row 1): preview only, nothing spent.
   const lime = at(530, 700);
   await page.mouse.click(lime.x, lime.y);
@@ -223,7 +228,7 @@ test('dodge-drop: tapping a start-tier chip or a skip does not start the run; em
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => (window as unknown as W).__gk!.activeScenes)).toContain('GKTitle');
   expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).not.toBe('playing');
-  const skip = at(640, 1092);
+  const skip = at(648, 996);
   await page.mouse.click(skip.x, skip.y);
   await expect.poll(async () => JSON.parse((await ls(page, 'missions'))!).swapsUsed).toBe(1);
   await page.waitForTimeout(400);
@@ -255,12 +260,12 @@ test('dodge-drop: Shield Stack (2nd workshop row) is bought and shields stack up
   const errors = watch(page);
   await seed(page, { coins: '100' });
   const { at } = await openTitle(page);
-  const up = at(360, 1280 * 0.72 + 96);
+  const up = at(360, 1280 * 0.72);
   await page.mouse.click(up.x, up.y);
-  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Workshop'));
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Shop'));
   await page.waitForTimeout(500);
-  // Second row: ROW_Y0 254 + ROW_STEP 134.
-  const buy = at(600, 254 + 134);
+  // Second row: ROW_Y0 300 + ROW_STEP 134.
+  const buy = at(600, 300 + 134);
   await page.mouse.click(buy.x, buy.y);
   await expect.poll(async () => JSON.parse((await ls(page, 'workshop')) ?? '{}').shieldStack).toBe(1);
   expect(await ls(page, 'coins')).toBe('85');
@@ -279,5 +284,24 @@ test('dodge-drop: pickups add one shield at a time up to the Shield Stack cap', 
   for (let i = 0; i < 6; i++) await page.evaluate(() => (window as unknown as WD).__dd!.giveShield!());
   expect(before).toBeLessThanOrEqual(1);
   expect(await hits()).toBe(3); // capacity 1 + 2
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: Shop boosts tab buys a shield and the tab choice is remembered', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '100' });
+  const { at } = await openTitle(page);
+  const shop = at(360, 1280 * 0.72);
+  await page.mouse.click(shop.x, shop.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Shop'));
+  await page.waitForTimeout(500);
+  const tab = at(360 + 224, 172);
+  await page.mouse.click(tab.x, tab.y);
+  await expect.poll(() => ls(page, 'shopTab')).toBe('"boosts"');
+  await page.waitForTimeout(400);
+  const buy = at(600, 300);
+  await page.mouse.click(buy.x, buy.y);
+  await expect.poll(async () => JSON.parse((await ls(page, 'boosts')) ?? '{}').shields).toBe(1);
+  expect(await ls(page, 'coins')).toBe('90');
   expect(errors).toEqual([]);
 });

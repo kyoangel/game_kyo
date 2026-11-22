@@ -3,10 +3,9 @@ import manifest from '../game.json';
 import { ddTitleBackdrop } from './backdrop.ts';
 import { PlayScene } from './PlayScene.ts';
 import { ddResults } from './results.ts';
-import { SkinsScene } from './SkinsScene.ts';
+import { ShopScene } from './ShopScene.ts';
 import { strings } from './strings.ts';
 import { ddTitleExtras } from './titleExtras.ts';
-import { WorkshopScene } from './WorkshopScene.ts';
 
 void defineGame({
   manifest,
@@ -15,11 +14,8 @@ void defineGame({
   strings,
   playScene: PlayScene,
   theme: {},
-  scenes: [SkinsScene, WorkshopScene],
-  titleMenu: [
-    { labelKey: 'skins', scene: 'Skins' },
-    { labelKey: 'upgrades', scene: 'Workshop' },
-  ],
+  scenes: [ShopScene],
+  titleMenu: [{ labelKey: 'shop', scene: 'Shop' }],
   titleExtras: ddTitleExtras,
   titleBackdrop: ddTitleBackdrop,
   results: ddResults,

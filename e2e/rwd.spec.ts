@@ -60,18 +60,17 @@ for (const [dev, ctxOpts] of Object.entries(DEVICES)) {
       };
       let g = await open();
       await shot('title');
-      const up = g.at(360, 1280 * 0.72 + 96);
-      await page.mouse.click(up.x, up.y);
-      await scene(page, 'Workshop');
+      const sh = g.at(360, 1280 * 0.72);
+      await page.mouse.click(sh.x, sh.y);
+      await scene(page, 'Shop');
       await page.waitForTimeout(500);
-      await shot('workshop');
-
-      g = await open();
-      const sk = g.at(360, 1280 * 0.72);
-      await page.mouse.click(sk.x, sk.y);
-      await scene(page, 'Skins');
-      await page.waitForTimeout(500);
-      await shot('skins');
+      await shot('shop-upgrades');
+      for (const [name, off] of [['skins', 0], ['boosts', 224]] as const) {
+        const tab = g.at(360 + off, 172);
+        await page.mouse.click(tab.x, tab.y);
+        await page.waitForTimeout(600);
+        await shot(`shop-${name}`);
+      }
 
       g = await open();
       const c = g.at(360, 640);
