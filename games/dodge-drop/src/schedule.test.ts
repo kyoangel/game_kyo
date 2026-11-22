@@ -6,22 +6,30 @@ import { SpawnScheduler } from './schedule.ts';
 const W = 720;
 const SEEDS = Array.from({ length: 300 }, (_, i) => i + 1);
 
-function failingSeeds(validate: boolean): number[] {
+type Opts = { speedMul?: number; intervalMul?: number; startT?: number };
+
+/**
+ * Seeds whose planned field has a dead end. Async and yields every few seeds so a long
+ * synchronous loop never starves the vitest worker's RPC (seen as "Timeout calling onTaskUpdate" in CI).
+ */
+async function badSeeds(seeds: number[], opts: Opts, toT: number, validate = true): Promise<number[]> {
   const bad: number[] = [];
-  for (const seed of SEEDS) {
-    const all = new SpawnScheduler(mulberry32(seed), W, validate).planUntil(180);
-    if (firstDeadEnd(all, W, 0, 180) !== null) bad.push(seed);
+  const fromT = opts.startT ?? 0;
+  for (const seed of seeds) {
+    const all = new SpawnScheduler(mulberry32(seed), W, validate, opts).planUntil(toT);
+    if (firstDeadEnd(all, W, fromT, toT, { speedMul: opts.speedMul ?? 1 }) !== null) bad.push(seed);
+    if (seed % 10 === 0) await new Promise((r) => setTimeout(r, 0));
   }
   return bad;
 }
 
 describe('SpawnScheduler', () => {
-  it('leaves a survivable path through every field for seeds 1..300', () => {
-    expect(failingSeeds(true)).toEqual([]);
+  it('leaves a survivable path through every field for seeds 1..300', async () => {
+    expect(await badSeeds(SEEDS, {}, 180)).toEqual([]);
   }, 120_000);
 
-  it('the property is meaningful: unvalidated planning is unsurvivable on some seeds', () => {
-    expect(failingSeeds(false).length).toBeGreaterThan(0);
+  it('the property is meaningful: unvalidated planning is unsurvivable on some seeds', async () => {
+    expect((await badSeeds(SEEDS, {}, 180, false)).length).toBeGreaterThan(0);
   }, 120_000);
 
   it('plans 180 s quickly and returns time-sorted spawns', () => {
@@ -64,30 +72,15 @@ describe('SpawnScheduler difficulty options', () => {
     expect(Math.min(...all.map((s) => s.at))).toBeGreaterThanOrEqual(62);
   });
 
-  it('assist multipliers keep every field survivable for seeds 1..300 (validator uses the same speedMul)', () => {
-    const bad: number[] = [];
-    for (const seed of SEEDS) {
-      const all = new SpawnScheduler(mulberry32(seed), W, true, ASSIST).planUntil(120);
-      if (firstDeadEnd(all, W, 0, 120, { speedMul: ASSIST.speedMul }) !== null) bad.push(seed);
-    }
-    expect(bad).toEqual([]);
+  it('assist multipliers keep every field survivable for seeds 1..300 (validator uses the same speedMul)', async () => {
+    expect(await badSeeds(SEEDS, ASSIST, 120)).toEqual([]);
   }, 120_000);
 
-  it('a tier start at 60 s keeps every field survivable for seeds 1..300', () => {
-    const bad: number[] = [];
-    for (const seed of SEEDS) {
-      const all = new SpawnScheduler(mulberry32(seed), W, true, { startT: 60 }).planUntil(150);
-      if (firstDeadEnd(all, W, 60, 150) !== null) bad.push(seed);
-    }
-    expect(bad).toEqual([]);
+  it('a tier start at 60 s keeps every field survivable for seeds 1..300', async () => {
+    expect(await badSeeds(SEEDS, { startT: 60 }, 150)).toEqual([]);
   }, 120_000);
 
-  it('assist + tier start together stay survivable (seeds 1..100)', () => {
-    const bad: number[] = [];
-    for (const seed of SEEDS.slice(0, 100)) {
-      const all = new SpawnScheduler(mulberry32(seed), W, true, { ...ASSIST, startT: 30 }).planUntil(110);
-      if (firstDeadEnd(all, W, 30, 110, { speedMul: ASSIST.speedMul }) !== null) bad.push(seed);
-    }
-    expect(bad).toEqual([]);
+  it('assist + tier start together stay survivable (seeds 1..100)', async () => {
+    expect(await badSeeds(SEEDS.slice(0, 100), { ...ASSIST, startT: 30 }, 110)).toEqual([]);
   }, 120_000);
 });

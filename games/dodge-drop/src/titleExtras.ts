@@ -62,6 +62,11 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
 
     // Missions
     const y0 = ctx.menuBottom + 12;
+    // Dark panel keeps the list readable over the falling backdrop blocks.
+    const panel = scene.add.graphics().setDepth(1);
+    panel.fillStyle(0x1a1033, 0.72);
+    panel.fillRoundedRect(12, y0, ctx.width - 24, 3 * 52, 18);
+    objs.push(panel);
     ms.active.forEach((m, i) => {
       const y = y0 + 26 + i * 52;
       txt(24, y, '★'.repeat(m.tier), 22, theme.accent, 0);
@@ -90,6 +95,8 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     });
 
     txt(ctx.width - 24, ctx.menuBottom - 4, kit.t('rank').replace('{n}', String(ms.rank)), 22, theme.muted, 1);
+    // Keep extras above the panel and the backdrop blocks that spawn later.
+    for (const o of objs) if (o !== panel) (o as unknown as Phaser.GameObjects.Components.Depth).setDepth(2);
   };
 
   void load(kit).then((s) => {
