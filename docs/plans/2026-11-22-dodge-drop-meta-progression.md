@@ -10,7 +10,7 @@
 
 **Spec (source of truth, numbers copied verbatim below):** `docs/specs/dodge-drop/meta-progression.md` (MP §n). Prior art: `docs/specs/dodge-drop/v2-design.md`, `docs/plans/2026-11-21-juice-layer-dodge-drop-v2.md`.
 
-**Status:** not started.
+**Status:** complete (Tasks 1-6 done; site-only 2.1.0, portal releases stay todo, no portal submission until the owner has played it). Verified: typecheck, 383 unit tests, test:smoke (8 e2e) pass; dist/site/dodge-drop 1.5 MB.
 
 ## Global Constraints
 
