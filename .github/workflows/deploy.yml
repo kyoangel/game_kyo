@@ -293,6 +293,16 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      # deploy-pages sometimes cannot see the artifact uploaded seconds earlier ("No artifacts named
+      # github-pages"). Re-running the failed job re-uploads and then trips "Multiple artifacts", so
+      # wait and retry inside this job instead.
+      - run: sleep 10
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy to GitHub Pages (retry)
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
