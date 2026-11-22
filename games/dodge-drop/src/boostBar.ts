@@ -9,6 +9,8 @@ export interface BoostBarOpts {
   boosts: RunBoosts;
   shieldCap: number;
   depth?: number;
+  /** Button height (default 54). */
+  height?: number;
   showLabel?: boolean;
   onBuy: (id: BoostId) => void;
 }
@@ -39,7 +41,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
   }
 
   const btnW = 208;
-  const btnH = 54;
+  const btnH = opts.height ?? 54;
   const step = 220;
 
   BOOST_IDS.forEach((id, i) => {

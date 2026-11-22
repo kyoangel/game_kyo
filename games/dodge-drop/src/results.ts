@@ -167,6 +167,10 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     drawSlots(new Set(s.medals));
 
     // Top-left live star coin balance so players can immediately see what they can spend on boosts.
+    // Dark pill so the paused play HUD (score) never shows through the balance.
+    const pill = scene.add.graphics().setDepth(2);
+    pill.fillStyle(0x1a1033, 0.92);
+    pill.fillRoundedRect(12, 32, 170, 56, 28);
     drawCurrencyIcon(scene, 42, 60, 38).setDepth(2);
     const balText = scene.add.text(70, 60, String(liveCoins), style(kit, 32, 0xffe14d)).setOrigin(0, 0.5).setDepth(2);
 
@@ -175,7 +179,9 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       for (const o of boostObjs) o.destroy();
       boostObjs = renderBoostBar(scene, kit, {
         cx,
-        y: Math.round(scene.scale.height * 0.865),
+        // Between the retry hint (0.82H) and Home (0.91H) without touching either.
+        y: Math.round(scene.scale.height * 0.858),
+        height: 44,
         coins: liveCoins,
         boosts: liveBoosts,
         shieldCap,
