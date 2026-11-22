@@ -4,6 +4,7 @@ import { addBackground, ensureTextures } from '../juice/textures.ts';
 import { cssColor } from '../theme.ts';
 import { titleLayout } from '../titleLayout.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
+import { topRightSlotX } from '../ui/topRight.ts';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -67,8 +68,8 @@ export class TitleScene extends Phaser.Scene {
         onClick: () => kit.goTo(item.scene),
       });
     });
-    kit.addMuteButton(this, width - 60, 60);
-    kit.addFullscreenButton(this, width - 136, 60);
+    kit.addMuteButton(this, topRightSlotX(width, 0), 60);
+    kit.addFullscreenButton(this, topRightSlotX(width, 1), 60);
     kit.def.titleExtras?.(this, titleLayout(width, height, menu.length));
 
     let started = false;

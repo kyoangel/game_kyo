@@ -9,6 +9,7 @@ import type { GameSession } from './session.ts';
 import { markButtonTap } from './ui/button.ts';
 import { RunFlow } from './runFlow.ts';
 import { fullscreenAvailable } from './ui/fullscreenSupport.ts';
+import { topRightSlotX } from './ui/topRight.ts';
 import { resolveTheme, type Theme } from './theme.ts';
 
 export const KIT_KEY = 'gk:kit';
@@ -204,6 +205,14 @@ export class Kit {
   /** True when a fullscreen toggle should be shown (platform feature on and the browser allows it). */
   get fullscreenAvailable(): boolean {
     return fullscreenAvailable(this.platform.features.fullscreenButton, typeof document === 'undefined' ? undefined : document);
+  }
+
+  /**
+   * X for the next free icon in the title's top-right row, right after the icons actually shown
+   * (mute, then fullscreen when available). Game extras (e.g. a tilt toggle) use this to sit flush.
+   */
+  nextTopRightX(width: number): number {
+    return topRightSlotX(width, this.fullscreenAvailable ? 2 : 1);
   }
 
   /** Fullscreen toggle button, or null when unavailable. Place it next to the mute button. */
