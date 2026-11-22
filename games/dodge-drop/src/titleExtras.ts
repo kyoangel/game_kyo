@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addButton, cssColor, getKit, type Kit, type TitleExtrasContext } from '@gf/game-kit';
+import { addButton, cssColor, getKit, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
 import { mergeMedals } from './medals.ts';
 import { missionLabel } from './missionLabel.ts';
 import { sanitizeMissions, skipCost, skipMission, type MissionState } from './missions.ts';
@@ -28,6 +28,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     const t = scene.add
       .text(x, y, s, { fontFamily: theme.font, fontSize: `${size}px`, fontStyle: 'bold', color: cssColor(color), stroke: '#1a1033', strokeThickness: 4 })
       .setOrigin(ox, 0.5);
+    t.setResolution(textResolution(scene));
     objs.push(t);
     return t;
   };
@@ -48,6 +49,8 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
         width: 150, height: 44, fontSize: 20,
         fill: sel ? theme.accent : on ? theme.primary : theme.muted,
         textColor: sel ? 0x1a1033 : 0xffffff,
+        // a dark stroke on dark text smears into a blurry blob: selected chips have no stroke
+        strokeThickness: sel ? 0 : 4,
         onClick: () => {
           if (!on || tier === tr.id) return;
           tier = tr.id;

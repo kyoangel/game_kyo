@@ -11,12 +11,19 @@ export function consumeButtonTap(scene: Phaser.Scene): boolean {
   return v;
 }
 
+/** Render text at the on-screen pixel density (canvas is FIT-scaled and devices are hi-dpi) so labels stay crisp. */
+export function textResolution(scene: Phaser.Scene): number {
+  const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+  const fit = scene.scale.displaySize.width / scene.scale.width || 1;
+  return Math.min(3, Math.max(1, Math.ceil(dpr * fit)));
+}
+
 export function addButton(
   scene: Phaser.Scene,
   x: number,
   y: number,
   label: string,
-  opts: { width?: number; height?: number; fill?: number; textColor?: number; fontSize?: number; onClick: () => void },
+  opts: { width?: number; height?: number; fill?: number; textColor?: number; fontSize?: number; strokeThickness?: number; onClick: () => void },
 ): Phaser.GameObjects.Container {
   const kit = getKit(scene);
   const { theme } = kit;
@@ -31,10 +38,11 @@ export function addButton(
       fontSize: `${opts.fontSize ?? 32}px`,
       color: cssColor(opts.textColor ?? 0xffffff),
       stroke: '#1a1033',
-      strokeThickness: 4,
+      strokeThickness: opts.strokeThickness ?? 4,
       fontStyle: 'bold',
     })
-    .setOrigin(0.5);
+    .setOrigin(0.5)
+    .setResolution(textResolution(scene));
   const c = scene.add.container(x, y, [g, text]);
   c.setSize(w, h);
   c.setInteractive({ useHandCursor: true });

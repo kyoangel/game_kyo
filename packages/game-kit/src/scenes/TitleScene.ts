@@ -80,6 +80,10 @@ export class TitleScene extends Phaser.Scene {
       if (consumeButtonTap(this)) return;
       go();
     });
-    this.input.keyboard?.once('keydown', go);
+    // Ignore modifier chords/keys (e.g. Cmd+Shift+4 screenshots) so they don't start the run.
+    this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || ['Shift', 'Meta', 'Control', 'Alt'].includes(e.key)) return;
+      go();
+    });
   }
 }

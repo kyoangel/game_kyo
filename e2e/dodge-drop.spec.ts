@@ -175,6 +175,58 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   expect(errors).toEqual([]);
 });
 
+test('dodge-drop: Skins previews on tap, buys only on confirm, then Use equips', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '100' });
+  const { at } = await openTitle(page);
+  const skins = at(360, 1280 * 0.72);
+  await page.mouse.click(skins.x, skins.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Skins'));
+  await page.waitForTimeout(500);
+  // Tap the locked lime card (col 2, row 1): preview only, nothing spent.
+  const lime = at(530, 700);
+  await page.mouse.click(lime.x, lime.y);
+  await page.waitForTimeout(400);
+  expect(await ls(page, 'coins')).toBe('100');
+  expect(await ls(page, 'skins')).toBeNull();
+  // Confirm with the Buy button.
+  const action = at(360, 525);
+  await page.mouse.click(action.x, action.y);
+  await expect.poll(() => ls(page, 'coins')).toBe('70');
+  expect(JSON.parse((await ls(page, 'skins'))!)).toContain('lime');
+  await expect.poll(() => ls(page, 'skin')).toBe('"lime"');
+  // Preview the owned default skin and equip it with Use.
+  const first = at(190, 700);
+  await page.mouse.click(first.x, first.y);
+  await page.waitForTimeout(300);
+  await page.mouse.click(action.x, action.y);
+  await expect.poll(() => ls(page, 'skin')).toBe('"cyan"');
+  expect(await ls(page, 'coins')).toBe('70');
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: tapping a start-tier chip or a skip does not start the run; empty space does', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { medals: '["bronze"]', coins: '100', missions: MISSIONS_SEED });
+  const { at } = await openTitle(page);
+  await page.waitForTimeout(500);
+  const chip = at(279, 854);
+  await page.mouse.click(chip.x, chip.y);
+  await expect.poll(() => ls(page, 'startTier')).toBe('"bronze"');
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => (window as unknown as W).__gk!.activeScenes)).toContain('GKTitle');
+  expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).not.toBe('playing');
+  const skip = at(640, 1092);
+  await page.mouse.click(skip.x, skip.y);
+  await expect.poll(() => ls(page, 'coins')).toBe('60');
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => (window as unknown as W).__gk!.activeScenes)).toContain('GKTitle');
+  const empty = at(360, 400);
+  await page.mouse.click(empty.x, empty.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
+  expect(errors).toEqual([]);
+});
+
 test('dodge-drop: Overdrive streaks appear after warping past 120 s and the run stays error-free', async ({ page }) => {
   const errors = watch(page);
   await seed(page, { medals: '["bronze","silver","gold"]', startTier: '"gold"' }, true);
