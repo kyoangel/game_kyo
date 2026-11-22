@@ -36,8 +36,9 @@ interface Plan {
   gapX?: number;
 }
 
-/** Density curve (2.3): row coverage grows Bronze -> Diamond, then stays flat (Legend is endurance). */
+/** Density curve: single-block rows through Bronze & Silver (wider single blocks), multi-block from Gold (90 s) -> Legend (240 s). */
 const DENSITY_T0 = 30;
+const DENSITY_MULTI_T = 90;
 const DENSITY_T1 = 120;
 const DENSITY_T2 = 180;
 const DENSITY_T3 = 240; // Legend: density stops rising
@@ -48,10 +49,11 @@ function lerp(t: number, t0: number, t1: number, a: number, b: number): number {
   return a + ((b - a) * (t - t0)) / (t1 - t0);
 }
 
-/** Expected blocks per rain row: 1 until 30 s, 1.6 at 120 s, 2.2 at 180 s, 2.8 from 240 s. */
+/** Expected blocks per rain row: 1 through Silver (<= 90 s), 1.4 at 120 s, 2.0 at 180 s, 2.6 from 240 s. */
 export function rainRowExpected(t: number): number {
-  if (t <= DENSITY_T1) return lerp(t, DENSITY_T0, DENSITY_T1, 1, 1.6);
-  return t <= DENSITY_T2 ? lerp(t, DENSITY_T1, DENSITY_T2, 1.6, 2.2) : lerp(t, DENSITY_T2, DENSITY_T3, 2.2, 2.8);
+  if (t <= DENSITY_MULTI_T) return 1;
+  if (t <= DENSITY_T1) return lerp(t, DENSITY_MULTI_T, DENSITY_T1, 1, 1.4);
+  return t <= DENSITY_T2 ? lerp(t, DENSITY_T1, DENSITY_T2, 1.4, 2.0) : lerp(t, DENSITY_T2, DENSITY_T3, 2.0, 2.6);
 }
 
 export function rainRowBlocks(t: number, rng: () => number): number {
@@ -62,7 +64,13 @@ export function rainRowBlocks(t: number, rng: () => number): number {
 }
 
 export function rainWidthRange(t: number): { min: number; max: number } {
-  return { min: lerp(t, DENSITY_T0, DENSITY_T3, 60, 80), max: lerp(t, DENSITY_T0, DENSITY_T3, 160, 180) };
+  if (t <= DENSITY_MULTI_T) {
+    return { min: lerp(t, DENSITY_T0, DENSITY_MULTI_T, 60, 110), max: lerp(t, DENSITY_T0, DENSITY_MULTI_T, 160, 250) };
+  }
+  if (t <= DENSITY_T1) {
+    return { min: lerp(t, DENSITY_MULTI_T, DENSITY_T1, 110, 80), max: lerp(t, DENSITY_MULTI_T, DENSITY_T1, 250, 180) };
+  }
+  return { min: 80, max: 180 };
 }
 
 export function stairsWidth(t: number, width: number): number {

@@ -35,4 +35,14 @@ describe('buildRunConfig', () => {
     const c = buildRunConfig({ ...base, assist: { ...DEFAULT_ASSIST, active: true }, workshop: ws({ startShield: 5, shieldStack: 3 }) });
     expect(c).toMatchObject({ assisted: true, speedMul: 0.85, intervalMul: 1.25, startShieldHits: 1 });
   });
+  it('boosts: add start shields up to capacity, enable shrink scale and chomp mode', () => {
+    const c = buildRunConfig({
+      ...base,
+      workshop: ws({ shieldStack: 2 }),
+      boosts: { shields: 4, shrink: true, chomp: true },
+    });
+    expect(c.startShieldHits).toBe(3); // clamped to shieldCapacity(2) = 3
+    expect(c.playerScale).toBeCloseTo(0.7, 9);
+    expect(c.chompArmed).toBe(true);
+  });
 });

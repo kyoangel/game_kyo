@@ -1,3 +1,4 @@
+import { emptyBoosts, SHRINK_SCALE, type RunBoosts } from './boosts.ts';
 import { headStartScore, rushesBefore, tierSeconds, ASSIST_INTERVAL_MUL, ASSIST_SPEED_MUL, type AssistState, type StartTier } from './progression.ts';
 import {
   comboTimeout, magnetRadius, nearMissWindow, shieldCapacity, shieldFirstAt, startShieldChance, type Workshop,
@@ -13,16 +14,20 @@ export interface RunConfig {
   firstShieldAt: number;
   magnetRadius: number; nearMissWindow: number; comboTimeout: number; luckLevel: number;
   rushIdx: number;
+  playerScale: number;
+  chompArmed: boolean;
 }
 
-export function buildRunConfig(i: { workshop: Workshop; assist: AssistState; tier: StartTier; rng: () => number }): RunConfig {
+export function buildRunConfig(i: { workshop: Workshop; assist: AssistState; tier: StartTier; rng: () => number; boosts?: RunBoosts }): RunConfig {
   const { workshop: w, assist, tier, rng } = i;
+  const boosts = i.boosts ?? emptyBoosts();
   const startT = tierSeconds(tier);
   const assisted = assist.active;
   const capacity = shieldCapacity(w.shieldStack);
   let startShieldHits = 0;
   if (assisted) startShieldHits = 1;
   else if (w.startShield > 0 && rng() < startShieldChance(w.startShield)) startShieldHits = 1;
+  startShieldHits = Math.min(capacity, startShieldHits + Math.max(0, Math.floor(boosts.shields)));
   return {
     tier, startT, grace: startT > 0 ? GRACE_SECONDS : 0, headStart: headStartScore(tier),
     assisted, speedMul: assisted ? ASSIST_SPEED_MUL : 1, intervalMul: assisted ? ASSIST_INTERVAL_MUL : 1,
@@ -30,5 +35,7 @@ export function buildRunConfig(i: { workshop: Workshop; assist: AssistState; tie
     firstShieldAt: startT + shieldFirstAt(w.shield),
     magnetRadius: magnetRadius(w.magnet), nearMissWindow: nearMissWindow(w.nearMiss), comboTimeout: comboTimeout(w.combo),
     luckLevel: w.luck, rushIdx: rushesBefore(startT),
+    playerScale: boosts.shrink ? SHRINK_SCALE : 1,
+    chompArmed: boosts.chomp,
   };
 }

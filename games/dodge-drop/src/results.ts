@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { addButton, cssColor, getKit, type Kit, type ResultsContext } from '@gf/game-kit';
+import { renderBoostBar } from './boostBar.ts';
+import { buyBoost, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { formatTime, sanitizeOwned } from './format.ts';
 import { MEDALS, mergeMedals } from './medals.ts';
 import { drawCurrencyIcon } from './playArt.ts';
@@ -8,7 +10,7 @@ import { emptyStats, missionTarget, sanitizeMissions, type Mission } from './mis
 import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { settleRun, type Goal, type Saved, type Settled } from './settle.ts';
-import { sanitizeWorkshop } from './workshop.ts';
+import { sanitizeWorkshop, shieldCapacity } from './workshop.ts';
 
 const EMPTY: RunState = { score: 0, seconds: 0, stars: 0, medals: [], headStart: 0, startTier: 'none', stats: emptyStats() };
 const BAR_W = 440;
@@ -112,8 +114,11 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     save.getJSON<unknown>('missions', null),
     save.getJSON<unknown>('workshop', {}),
     save.getJSON<unknown>('skins', []),
-  ]).then(([coins, streak, rawAssist, rawTier, rawMedals, rawMissions, rawWs, rawSkins]) => {
+    save.getJSON<unknown>('boosts', null),
+  ]).then(([coins, streak, rawAssist, rawTier, rawMedals, rawMissions, rawWs, rawSkins, rawBoosts]) => {
     const savedMedals = mergeMedals(rawMedals, []);
+    const workshop = sanitizeWorkshop(rawWs);
+    const shieldCap = shieldCapacity(workshop.shieldStack);
     const saved: Saved = {
       coins: Math.max(0, Math.floor(coins)),
       lossStreak: Math.max(0, Math.floor(streak)),
@@ -121,10 +126,11 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       startTier: sanitizeStartTier(rawTier, savedMedals),
       medals: savedMedals,
       missions: sanitizeMissions(rawMissions, Math.random),
-      workshop: sanitizeWorkshop(rawWs),
+      workshop,
       ownedSkins: sanitizeOwned(rawSkins),
     };
     const settled = settleRun(run, saved, Math.random);
+    const initialBoosts = sanitizeBoosts(rawBoosts, shieldCap);
 
     // Persist (coins via credit; medals already saved by PlayScene).
     credit(settled.coin.coins);
@@ -149,14 +155,51 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       };
     }
 
-    if (scene.sys.isActive()) render(settled, saved.missions.active);
+    if (scene.sys.isActive()) render(settled, saved.missions.active, initialBoosts, shieldCap);
   });
 
-  function render(s: Settled, before: Mission[]): void {
+  function render(s: Settled, before: Mission[], initialBoosts: RunBoosts, shieldCap: number): void {
     const coin = s.coin;
     let shown = coin.coins;
+    let liveCoins = s.coinsAfter;
+    let liveBoosts = initialBoosts;
     setCoins(shown);
     drawSlots(new Set(s.medals));
+
+    // Top-left live star coin balance so players can immediately see what they can spend on boosts.
+    drawCurrencyIcon(scene, 42, 60, 38).setDepth(2);
+    const balText = scene.add.text(70, 60, String(liveCoins), style(kit, 32, 0xffe14d)).setOrigin(0, 0.5).setDepth(2);
+
+    let boostObjs: Phaser.GameObjects.GameObject[] = [];
+    const paintBoostBar = (): void => {
+      for (const o of boostObjs) o.destroy();
+      boostObjs = renderBoostBar(scene, kit, {
+        cx,
+        y: Math.round(scene.scale.height * 0.865),
+        coins: liveCoins,
+        boosts: liveBoosts,
+        shieldCap,
+        depth: 4,
+        showLabel: false,
+        onBuy: (id) => {
+          const res = buyBoost({ coins: liveCoins, boosts: liveBoosts, shieldCap }, id);
+          if (!res.ok) return;
+          const delta = res.coins - liveCoins;
+          liveCoins = res.coins;
+          liveBoosts = res.boosts;
+          const nextBoosts = res.boosts;
+          balText.setText(String(liveCoins));
+          kit.audio.sfx('pickup');
+          chain = chain.then(async () => {
+            const cur = await save.getNumber('coins', 0);
+            await save.setNumber('coins', Math.max(0, cur + delta));
+            await save.setJSON('boosts', nextBoosts);
+          });
+          paintBoostBar();
+        },
+      });
+    };
+    paintBoostBar();
 
     if (coin.floorApplied || coin.multiplier > 1) {
       const txt = coin.floorApplied
@@ -246,8 +289,11 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
             credit(coin.coins);
             if (!scene.sys.isActive()) return;
             shown = coin.coins * 2;
+            liveCoins += coin.coins;
+            balText.setText(String(liveCoins));
             setCoins(shown);
             bonusHook?.(coin.coins);
+            paintBoostBar();
             kit.audio.sfx('pickup');
             btn.destroy();
           });

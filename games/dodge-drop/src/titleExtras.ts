@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
 import { addButton, cssColor, getKit, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
+import { renderBoostBar } from './boostBar.ts';
+import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { mergeMedals } from './medals.ts';
 import { missionLabel } from './missionLabel.ts';
 import { sanitizeMissions, skipCost, skipMission, type MissionState } from './missions.ts';
+import { drawCurrencyIcon } from './playArt.ts';
 import { browserTiltEnv, detectTilt, requestTilt } from './tiltSensor.ts';
 import { availableTiers, sanitizeStartTier, type StartTier } from './progression.ts';
+import { sanitizeWorkshop, shieldCapacity } from './workshop.ts';
 
 const TIERS: Array<{ id: StartTier; key: string }> = [
   { id: 'none', key: 'tier.none' },
@@ -22,6 +26,8 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
   let tier: StartTier = 'none';
   let missions: MissionState | null = null;
   let coins = 0;
+  let boosts: RunBoosts = emptyBoosts();
+  let shieldCap = 1;
   let control: 'drag' | 'tilt' = 'drag';
   let tiltAvail = false;
   let chain: Promise<void> = Promise.resolve();
@@ -51,6 +57,37 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     objs = [];
     const ms = missions;
     const enabled = availableTiers(medals);
+
+    // Top-left star coin balance (mirrors mute/fullscreen buttons at y = 60 on the right).
+    const balIcon = drawCurrencyIcon(scene, 42, 60, 38).setDepth(2);
+    objs.push(balIcon);
+    txt(70, 60, String(coins), 32, 0xffe14d, 0);
+
+    // Single-run quick-buy boost strip between Title (0.30) and Tap to Start (0.55).
+    const barObjs = renderBoostBar(scene, kit, {
+      cx: ctx.width / 2,
+      y: Math.round(ctx.height * 0.45),
+      coins,
+      boosts,
+      shieldCap,
+      depth: 2,
+      showLabel: true,
+      onBuy: (id) => {
+        const res = buyBoost({ coins, boosts, shieldCap }, id);
+        if (!res.ok) return;
+        coins = res.coins;
+        boosts = res.boosts;
+        const c = res.coins;
+        const b = res.boosts;
+        kit.audio.sfx('pickup');
+        persist(async () => {
+          await kit.save.setNumber('coins', c);
+          await kit.save.setJSON('boosts', b);
+        });
+        render();
+      },
+    });
+    objs.push(...barObjs);
 
     // Start chips
     const cy = ctx.below + 24;
@@ -158,6 +195,8 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     tier = s.tier;
     missions = s.missions;
     coins = s.coins;
+    boosts = s.boosts;
+    shieldCap = s.shieldCap;
     control = s.control;
     if (s.fresh) persist(() => kit.save.setJSON('missions', s.missions));
     render();
@@ -169,20 +208,28 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
   });
 }
 
-async function load(kit: Kit): Promise<{ medals: string[]; tier: StartTier; missions: MissionState; coins: number; fresh: boolean; control: 'drag' | 'tilt' }> {
-  const [rawMedals, rawTier, rawMissions, coins, rawControl] = await Promise.all([
+async function load(kit: Kit): Promise<{
+  medals: string[]; tier: StartTier; missions: MissionState; coins: number;
+  boosts: RunBoosts; shieldCap: number; fresh: boolean; control: 'drag' | 'tilt';
+}> {
+  const [rawMedals, rawTier, rawMissions, coins, rawControl, rawWs, rawBoosts] = await Promise.all([
     kit.save.getJSON<unknown>('medals', []),
     kit.save.getJSON<unknown>('startTier', 'none'),
     kit.save.getJSON<unknown>('missions', null),
     kit.save.getNumber('coins', 0),
     kit.save.getJSON<unknown>('control', 'drag'),
+    kit.save.getJSON<unknown>('workshop', {}),
+    kit.save.getJSON<unknown>('boosts', null),
   ]);
   const medals = mergeMedals(rawMedals, []);
+  const shieldCap = shieldCapacity(sanitizeWorkshop(rawWs).shieldStack);
   return {
     medals,
     tier: sanitizeStartTier(rawTier, medals),
     missions: sanitizeMissions(rawMissions, Math.random),
     coins: Math.max(0, Math.floor(coins)),
+    boosts: sanitizeBoosts(rawBoosts, shieldCap),
+    shieldCap,
     control: rawControl === 'tilt' ? 'tilt' : 'drag',
     fresh: rawMissions === null || rawMissions === undefined,
   };

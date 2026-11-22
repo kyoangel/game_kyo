@@ -14,8 +14,8 @@ export function isSurge(t: number): boolean {
 }
 
 export function spawnInterval(elapsedSec: number): number {
-  if (elapsedSec <= 32.5) return Math.max(0.25, 0.9 - elapsedSec * 0.02);
-  return Math.max(0.15, 0.25 - 0.0011 * (elapsedSec - 32.5));
+  if (elapsedSec <= 60) return Math.max(0.28, 0.9 - elapsedSec * (0.62 / 60));
+  return Math.max(0.15, 0.28 - (0.13 / 120) * (elapsedSec - 60));
 }
 
 export function fallSpeed(elapsedSec: number): number {

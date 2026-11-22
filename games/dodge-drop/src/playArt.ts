@@ -131,6 +131,36 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
     g.generateTexture('dd-ring', 96, 96);
     g.destroy();
   }
+  if (!tex.exists('dd-chomp-open')) {
+    const drawPac = (key: string, mouthRad: number): void => {
+      const g = gfx(scene);
+      g.fillStyle(0xffe14d, 0.25);
+      g.fillCircle(36, 36, 32);
+      g.fillStyle(0xffe14d, 1);
+      g.slice(36, 36, 28, -Math.PI / 2 + mouthRad, Math.PI * 1.5 - mouthRad, false);
+      g.fillPath();
+      g.lineStyle(3, 0xffffff, 0.95);
+      g.beginPath();
+      g.arc(36, 36, 28, -Math.PI / 2 + mouthRad, Math.PI * 1.5 - mouthRad, false);
+      g.strokePath();
+      // Cute arcade eye facing upward toward falling blocks
+      g.fillStyle(0x1a1033, 1);
+      g.fillCircle(24, 30, 4);
+      g.generateTexture(key, 72, 72);
+      g.destroy();
+    };
+    drawPac('dd-chomp-open', 0.52);
+    drawPac('dd-chomp-closed', 0.1);
+  }
+  if (!tex.exists('dd-chomp-ring')) {
+    const g = gfx(scene);
+    g.lineStyle(8, 0xffe14d, 0.28);
+    g.strokeCircle(48, 48, 42);
+    g.lineStyle(3, 0xffe14d, 0.95);
+    g.strokeCircle(48, 48, 40);
+    g.generateTexture('dd-chomp-ring', 96, 96);
+    g.destroy();
+  }
 }
 
 /** Currency icon: the same star as the in-game pickup, so collected stars visibly read as star coins. */

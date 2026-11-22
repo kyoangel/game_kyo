@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
+import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
-import { emptyWorkshop, sanitizeWorkshop, shieldAfterPickup, shieldInterval, starInterval } from './workshop.ts';
+import { emptyWorkshop, sanitizeWorkshop, shieldAfterPickup, shieldCapacity, shieldInterval, starInterval } from './workshop.ts';
 import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
 import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakTint, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
 import { SKINS, type Skin } from './economy.ts';
@@ -96,12 +97,17 @@ export class PlayScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
   private trail: { stop(): void } | null = null;
   private ring!: Phaser.GameObjects.Image;
+  private chompRing!: Phaser.GameObjects.Image;
+  private chompBanner!: Phaser.GameObjects.Text;
   private shieldBadge!: Phaser.GameObjects.Text;
   private shieldBadgeIcon!: Phaser.GameObjects.Image;
   private vel = 0;
   private tiltN = 0;
   private invuln = 0;
   private shieldHits = 0;
+  private chompArmed = false;
+  private chompTimer = 0;
+  private chompBannerUntil = 0;
   private prism: number[] = [];
 
   private blocks: Block[] = [];
@@ -183,6 +189,9 @@ export class PlayScene extends Phaser.Scene {
     this.tiltN = 0;
     this.invuln = 0;
     this.shieldHits = 0;
+    this.chompArmed = false;
+    this.chompTimer = 0;
+    this.chompBannerUntil = 0;
     this.pending = [];
     this.cfg = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: this.rng });
     this.runStartT = 0;
@@ -253,7 +262,8 @@ export class PlayScene extends Phaser.Scene {
       save.getJSON<unknown>('medals', []),
       save.getJSON<unknown>('missions', null),
       save.getJSON<unknown>('control', 'drag'),
-    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions, rawControl]) => {
+      save.getJSON<unknown>('boosts', null),
+    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions, rawControl, rawBoosts]) => {
       if (id !== this.runId || !this.sys.isActive()) return;
       if (rawControl === 'tilt') {
         this.useTilt = true;
@@ -261,7 +271,12 @@ export class PlayScene extends Phaser.Scene {
       }
       this.skin = SKINS.find((s) => s.id === sid) ?? SKINS[0]!;
       const tier = sanitizeStartTier(rawTier, mergeMedals(rawMedals, []));
-      const cfg = buildRunConfig({ workshop: sanitizeWorkshop(rawWs), assist: sanitizeAssist(rawAssist), tier, rng: this.rng });
+      const ws = sanitizeWorkshop(rawWs);
+      const boosts = sanitizeBoosts(rawBoosts, shieldCapacity(ws.shieldStack));
+      if (boosts.shields > 0 || boosts.shrink || boosts.chomp) {
+        void save.setJSON('boosts', emptyBoosts());
+      }
+      const cfg = buildRunConfig({ workshop: ws, assist: sanitizeAssist(rawAssist), tier, rng: this.rng, boosts });
       this.cfg = cfg;
       this.missionState = sanitizeMissions(rawMissions, this.rng);
       // Persist the drawn missions so results (and later runs) see exactly what in-run toasts referred to.
@@ -277,9 +292,11 @@ export class PlayScene extends Phaser.Scene {
       this.nextShield = cfg.firstShieldAt;
       this.nextStar = cfg.startT + starInterval(cfg.luckLevel, this.rng());
       this.shieldHits = cfg.startShieldHits;
+      this.chompArmed = cfg.chompArmed;
       this.combo = new Combo(cfg.comboTimeout);
       if (cfg.grace > 0) this.graceBanner.setText(this.kit.t(`tierStart.${cfg.tier}`));
       this.buildPlayer();
+      if (this.shieldHits >= 2) this.shieldBadge.setText(`×${this.shieldHits}`);
       this.ready = true;
       this.kit.audio.music.start();
       this.setLayers(true);
@@ -326,6 +343,7 @@ export class PlayScene extends Phaser.Scene {
     const key = skinTextureKey(this, this.skin);
     this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
     this.ring = this.add.image(W / 2, PLAYER_Y, 'dd-ring').setDepth(11).setVisible(false);
+    this.chompRing = this.add.image(W / 2, PLAYER_Y, 'dd-chomp-ring').setDepth(11).setVisible(false);
     this.shieldBadgeIcon = this.add.image(W / 2, PLAYER_Y, 'dd-shield').setScale(0.6).setDepth(12).setVisible(false);
     this.shieldBadge = this.add.text(W / 2, PLAYER_Y, '', { ...this.textStyle(30, 0x58ff9a), strokeThickness: 6 }).setOrigin(0.5).setDepth(12).setVisible(false);
     if (this.skin.color === 'cycle') {
@@ -405,6 +423,11 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
+    this.chompBanner = this.add
+      .text(W / 2, 260, this.kit.t('chompBanner'), { ...this.textStyle(82, 0xffe14d), strokeThickness: 10 })
+      .setOrigin(0.5)
+      .setDepth(100)
+      .setVisible(false);
   }
 
   // ---------------------------------------------------------------- loop
@@ -428,6 +451,14 @@ export class PlayScene extends Phaser.Scene {
       this.setLayers(false);
       this.combo.tick(dt);
       if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
+      if (this.chompTimer > 0) {
+        this.chompTimer = Math.max(0, this.chompTimer - dt);
+        if (this.chompTimer === 0) {
+          this.player.setTexture(skinTextureKey(this, this.skin));
+          this.invuln = Math.max(this.invuln, CHOMP_EXIT_INVULN);
+        }
+      }
+      this.chompBanner.setVisible(this.t < this.chompBannerUntil);
       this.updateMedals(prev, this.t);
       this.stats.seconds = Math.floor(this.t - this.runStartT);
       this.stats.score = this.score - this.cfg.headStart;
@@ -504,12 +535,22 @@ export class PlayScene extends Phaser.Scene {
 
   private updatePlayerVisual(dt: number): void {
     const n = Math.abs(this.tiltN);
+    const chomping = this.chompTimer > 0;
+    const baseScale = chomping ? 1.15 : this.cfg.playerScale;
     this.player.setAngle(this.tiltN * 12);
-    this.player.setScale(1 + 0.25 * n, 1 - 0.15 * n);
-    if (this.skin.color === 'cycle') this.player.setTint(this.skinColor());
-    const blink = this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0;
+    this.player.setScale(baseScale * (1 + 0.25 * n), baseScale * (1 - 0.15 * n));
+    if (chomping) {
+      const open = Math.floor(this.t * 12) % 2 === 0;
+      const want = open ? 'dd-chomp-open' : 'dd-chomp-closed';
+      if (this.player.texture.key !== want) this.player.setTexture(want);
+      this.player.clearTint();
+    } else if (this.skin.color === 'cycle') {
+      this.player.setTint(this.skinColor());
+    }
+    const blink = !chomping && this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0;
     this.player.setAlpha(blink ? 0.35 : 1);
     this.ring.setVisible(this.shieldHeld);
+    this.chompRing.setVisible(this.chompArmed && !chomping);
     this.shieldBadge.setVisible(this.shieldHits >= 2);
     this.shieldBadgeIcon.setVisible(this.shieldHits >= 2);
     if (this.shieldHits >= 2) {
@@ -518,8 +559,13 @@ export class PlayScene extends Phaser.Scene {
     }
     if (this.shieldHeld) {
       this.ring.setPosition(this.player.x, this.player.y);
-      this.ring.setScale(1 + Math.sin(this.t * 8) * 0.04);
+      this.ring.setScale(baseScale * (1 + Math.sin(this.t * 8) * 0.04));
       this.ring.rotation += dt * 1.5;
+    }
+    if (this.chompArmed && !chomping) {
+      this.chompRing.setPosition(this.player.x, this.player.y);
+      this.chompRing.setScale(baseScale * (1.08 + Math.sin(this.t * 6) * 0.05));
+      this.chompRing.rotation -= dt * 1.2;
     }
   }
 
@@ -746,12 +792,19 @@ export class PlayScene extends Phaser.Scene {
       b.y += base * b.speedMul * this.cfg.speedMul * dt;
       b.img.y = b.y;
       if (!this.dead) {
+        const hitW = PLAYER_HITBOX_W * (this.chompTimer > 0 ? 1.15 : this.cfg.playerScale);
         const dy = Math.abs(b.y - PLAYER_Y);
-        const reachY = (PLAYER_HITBOX_W + b.h * 0.9) / 2;
-        const gap = horizontalGap({ x: px, w: PLAYER_HITBOX_W }, { x: b.x, w: b.w * 0.9 });
-        if (dy < reachY && gap <= 0 && this.invuln <= 0) {
-          this.onHit(b);
-          continue;
+        const reachY = (hitW + b.h * 0.9) / 2;
+        const gap = horizontalGap({ x: px, w: hitW }, { x: b.x, w: b.w * 0.9 });
+        if (dy < reachY && gap <= 0) {
+          if (this.chompTimer > 0) {
+            this.eatBlock(b);
+            continue;
+          }
+          if (this.invuln <= 0) {
+            this.onHit(b);
+            continue;
+          }
         }
         if (!b.checked && b.y >= PLAYER_Y) {
           b.checked = true;
@@ -837,6 +890,17 @@ export class PlayScene extends Phaser.Scene {
     this.fx.burst(this.player.x + side * 24, PLAYER_Y, { color: 0xffffff, count: 8, speed: 260, lifespanMs: 300 });
   }
 
+  private eatBlock(b: Block): void {
+    b.active = false;
+    b.img.setVisible(false);
+    this.score += CHOMP_BLOCK_SCORE;
+    this.kit.audio.sfx('pickup');
+    this.fx.burst(b.x, b.y, { color: 0xffe14d, count: 18, speed: 420, lifespanMs: 420 });
+    this.fx.burst(b.x, b.y, { color: BLOCK_PINK, count: 12, speed: 360, lifespanMs: 380 });
+    this.fx.popText(b.x, b.y - 20, `+${CHOMP_BLOCK_SCORE}`, { color: 0xffe14d, size: 34 });
+    this.fx.shake(0.2);
+  }
+
   private onHit(b: Block): void {
     if (this.shieldHits > 0) {
       this.shieldHits -= 1;
@@ -852,6 +916,15 @@ export class PlayScene extends Phaser.Scene {
       this.fx.burst(b.x, b.y, { color: BLOCK_PINK, count: 28, speed: 480, lifespanMs: 500 });
       this.fx.burst(this.player.x, PLAYER_Y, { color: 0x58ff9a, count: 20, speed: 380, lifespanMs: 500 });
       void this.fx.hitStop(60);
+      return;
+    }
+    if (this.chompArmed) {
+      this.chompArmed = false;
+      this.chompTimer = CHOMP_DURATION;
+      this.chompBannerUntil = this.t + 1.5;
+      this.chompRing.setVisible(false);
+      this.kit.audio.sfx('rush');
+      this.eatBlock(b);
       return;
     }
     if (__GK_TEST_HOOKS__ && (window as unknown as { __dd?: { god: boolean } }).__dd?.god) {
@@ -954,6 +1027,8 @@ export class PlayScene extends Phaser.Scene {
     }
     this.player.setVisible(false);
     this.ring.setVisible(false);
+    this.chompRing.setVisible(false);
+    this.chompBanner.setVisible(false);
     this.shieldBadge.setVisible(false);
     this.shieldBadgeIcon.setVisible(false);
     this.trail?.stop();

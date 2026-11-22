@@ -117,29 +117,30 @@ describe('intervalMul', () => {
   });
 });
 
-describe('density curve (2.3)', () => {
-  it('expected blocks per row: 1 -> 1.6 at 120 -> 2.2 at 180 -> 2.8 at 240, flat after', () => {
-    const at = [0, 30, 75, 120, 150, 180, 300].map(rainRowExpected);
-    expect(rainRowExpected(210)).toBeCloseTo(2.5, 9);
-    expect(rainRowExpected(240)).toBeCloseTo(2.8, 9);
-    [1, 1, 1.3, 1.6, 1.9, 2.2, 2.8].forEach((v, i) => expect(at[i]).toBeCloseTo(v, 9));
+describe('density curve (tuned)', () => {
+  it('expected blocks per row: 1 through Silver (<= 90 s), 1.4 at 120 -> 2.0 at 180 -> 2.6 at 240, flat after', () => {
+    const at = [0, 30, 60, 90, 120, 150, 180, 300].map(rainRowExpected);
+    expect(rainRowExpected(210)).toBeCloseTo(2.3, 9);
+    expect(rainRowExpected(240)).toBeCloseTo(2.6, 9);
+    [1, 1, 1, 1, 1.4, 1.7, 2.0, 2.6].forEach((v, i) => expect(at[i]).toBeCloseTo(v, 9));
   });
-  it('rainRowBlocks is floor/ceil of the expectation, max 3', () => {
+  it('rainRowBlocks is strictly 1 through Silver and floor/ceil afterwards, max 3', () => {
     expect(rainRowBlocks(0, () => 0)).toBe(1);
-    expect(rainRowBlocks(30, () => 0.99)).toBe(1);
-    expect(rainRowBlocks(150, () => 0.0)).toBe(2); // e=1.9, rng<0.9 -> +1
-    expect(rainRowBlocks(150, () => 0.95)).toBe(1);
-    expect(rainRowBlocks(180, () => 0.0)).toBe(3);
-    expect(rainRowBlocks(180, () => 0.99)).toBe(2);
-    expect(rainRowBlocks(240, () => 0.79)).toBe(3);
-    expect(rainRowBlocks(240, () => 0.81)).toBe(2);
+    expect(rainRowBlocks(60, () => 0)).toBe(1);
+    expect(rainRowBlocks(90, () => 0)).toBe(1);
+    expect(rainRowBlocks(150, () => 0.0)).toBe(2); // e=1.7, rng<0.7 -> +1
+    expect(rainRowBlocks(150, () => 0.8)).toBe(1);
+    expect(rainRowBlocks(180, () => 0.0)).toBe(2);
+    expect(rainRowBlocks(240, () => 0.59)).toBe(3);
+    expect(rainRowBlocks(240, () => 0.61)).toBe(2);
     expect(rainRowBlocks(300, () => 0.0)).toBe(3);
   });
-  it('width ranges: 60-160 until 30 s, 80-180 from 240 s', () => {
+  it('width ranges: widens single blocks through Silver (110-250 at 90 s), then tapers to 80-180 from 120 s', () => {
     expect(rainWidthRange(0)).toEqual({ min: 60, max: 160 });
     expect(rainWidthRange(30)).toEqual({ min: 60, max: 160 });
-    expect(rainWidthRange(135)).toEqual({ min: 70, max: 170 });
-    expect(rainWidthRange(240)).toEqual({ min: 80, max: 180 });
+    expect(rainWidthRange(60)).toEqual({ min: 85, max: 205 });
+    expect(rainWidthRange(90)).toEqual({ min: 110, max: 250 });
+    expect(rainWidthRange(120)).toEqual({ min: 80, max: 180 });
     expect(rainWidthRange(300)).toEqual({ min: 80, max: 180 });
   });
   it('stairs and zigzag widths', () => {
@@ -153,11 +154,11 @@ describe('density curve (2.3)', () => {
     expect(zigzagWidthRange(300)).toEqual({ min: 120, max: 200 });
   });
   it('every rain row is non-overlapping, in bounds and leaves a >= 2.2 x hitbox gap', () => {
-    for (const t of [0, 30, 75, 120, 150, 180, 300]) {
+    for (const t of [0, 30, 60, 90, 120, 150, 180, 300]) {
       for (let seed = 1; seed <= 400; seed++) {
         const row = rainRow(t, mulberry32(seed), W);
         expect(row.length).toBeGreaterThanOrEqual(1);
-        expect(row.length).toBeLessThanOrEqual(3);
+        expect(row.length).toBeLessThanOrEqual(t <= 90 ? 1 : 3);
         expect(rowHasGap(row, W)).toBe(true);
         const sorted = [...row].sort((a, b) => a.x - b.x);
         for (let i = 0; i < sorted.length; i++) {
@@ -174,7 +175,7 @@ describe('density curve (2.3)', () => {
     for (const s of p.spawns) byAt.set(s.at, (byAt.get(s.at) ?? 0) + 1);
     expect(Math.max(...byAt.values())).toBeGreaterThanOrEqual(2);
   });
-  it('mean coverage is about 15% at 30 s, 25% at 120 s, rising to ~48% by 240 s', () => {
+  it('mean coverage grows cleanly from ~15% at 30 s, ~25% single-block at 90 s, to ~45% by 240 s', () => {
     const cov = (t: number) => {
       let sum = 0;
       for (let seed = 1; seed <= 2000; seed++) sum += rainRow(t, mulberry32(seed), W).reduce((a, b) => a + b.w, 0) / W;
@@ -182,11 +183,11 @@ describe('density curve (2.3)', () => {
     };
     expect(cov(30)).toBeGreaterThan(0.12);
     expect(cov(30)).toBeLessThan(0.18);
-    expect(cov(120)).toBeGreaterThan(0.2);
-    expect(cov(120)).toBeLessThan(0.3);
-    expect(cov(180)).toBeGreaterThan(0.33);
-    expect(cov(180)).toBeLessThan(0.45);
-    expect(cov(240)).toBeGreaterThan(0.42);
-    expect(cov(240)).toBeLessThan(0.55);
+    expect(cov(90)).toBeGreaterThan(0.22);
+    expect(cov(90)).toBeLessThan(0.28);
+    expect(cov(180)).toBeGreaterThan(0.32);
+    expect(cov(180)).toBeLessThan(0.42);
+    expect(cov(240)).toBeGreaterThan(0.40);
+    expect(cov(240)).toBeLessThan(0.52);
   });
 });
