@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SaveData } from '../save.ts';
-import { createGameAudio } from './audio.ts';
+import { createGameAudio, MUSIC_BUS, SFX_BUS } from './audio.ts';
+import { TRACKS } from './music.ts';
 
 function store() {
   const m = new Map<string, string>();
@@ -98,5 +99,29 @@ describe('createGameAudio', () => {
     expect(f.ctx.state).toBe('running');
     (f.ctx as unknown as { suspend: () => never }).suspend = () => { throw new Error('x'); };
     expect(() => a.setAdPaused(true)).not.toThrow();
+  });
+  it('rotates tracks and switches music modes cleanly', () => {
+    const f = fakeCtx();
+    const a = createGameAudio(store().save, () => f.ctx);
+    expect(a.music.trackIndex).toBe(0);
+    expect(a.music.mode).toBe('normal');
+    a.music.nextTrack();
+    expect(a.music.trackIndex).toBe(1);
+    a.music.setTrack(TRACKS.length);
+    expect(a.music.trackIndex).toBe(0);
+    a.music.setTrack(-1);
+    expect(a.music.trackIndex).toBe(TRACKS.length - 1);
+    a.music.setMode('rush');
+    expect(a.music.mode).toBe('rush');
+    a.music.setMode('chomp');
+    expect(a.music.mode).toBe('chomp');
+    a.music.setMode('overdrive');
+    expect(a.music.mode).toBe('overdrive');
+    a.music.setMode('normal');
+    expect(a.music.mode).toBe('normal');
+  });
+  it('balances music bus louder than sfx bus for mobile speakers', () => {
+    expect(MUSIC_BUS).toBeGreaterThan(SFX_BUS);
+    expect(MUSIC_BUS).toBeGreaterThanOrEqual(0.5);
   });
 });

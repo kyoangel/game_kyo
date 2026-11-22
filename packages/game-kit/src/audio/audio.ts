@@ -1,12 +1,31 @@
 import type { SaveData } from '../save.ts';
-import { BPM, LAYERS, STEPS, STEP_SEC, stepsToSchedule, type DrumHit } from './music.ts';
+import {
+  CHOMP_TRACK,
+  LAYERS,
+  RUSH_DRUMS,
+  TRACKS,
+  modeBpm,
+  stepsToSchedule,
+  type DrumHit,
+  type MusicMode,
+  type MusicTrack,
+} from './music.ts';
 import { noise, playSfx, tone, type SfxName } from './sfx.ts';
 
-export type { SfxName };
+export type { SfxName, MusicMode };
 
 export interface GameAudio {
   sfx(name: SfxName, opts?: { step?: number }): void;
-  music: { start(): void; stop(): void; setLayers(n: 1 | 2 | 3 | 4): void };
+  music: {
+    start(): void;
+    stop(): void;
+    setLayers(n: 1 | 2 | 3 | 4): void;
+    setMode(mode: MusicMode): void;
+    nextTrack(): void;
+    setTrack(index: number): void;
+    readonly trackIndex: number;
+    readonly mode: MusicMode;
+  };
   readonly muted: boolean;
   toggleMute(): Promise<void>;
   unlock(): void;
@@ -14,11 +33,11 @@ export interface GameAudio {
   loadMuted(): Promise<void>;
 }
 
-const SFX_BUS = 0.5;
-const MUSIC_BUS = 0.25;
+/** Balanced for mobile speakers as well as headphones (music audible at ~30-40% volume, SFX crisp on top). */
+export const SFX_BUS = 0.42;
+export const MUSIC_BUS = 0.58;
 const SCHEDULE_AHEAD = 0.1;
 const TICK_MS = 25;
-const BASS_HZ = 110;
 
 function defaultFactory(): AudioContext | null {
   const C = (globalThis as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
@@ -42,6 +61,8 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
   let musicBus: GainNode | null = null;
   const layerGains: GainNode[] = [];
   let layers = 1;
+  let mode: MusicMode = 'normal';
+  let trackIdx = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
   let nextTime = 0;
   let stepIdx = 0;
@@ -60,7 +81,16 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       for (let i = 0; i < LAYERS.length; i++) {
         const g = ctx.createGain();
         g.gain.value = i < layers ? 1 : 0;
-        g.connect(musicBus);
+        if (LAYERS[i]!.name === 'bass') {
+          // Warm low-pass on sawtooth bass so upper harmonics stay clearly audible on mobile speakers.
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.setValueAtTime(950, ctx.currentTime);
+          g.connect(lp);
+          lp.connect(musicBus);
+        } else {
+          g.connect(musicBus);
+        }
         layerGains.push(g);
       }
     } catch {
@@ -68,40 +98,74 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     }
   }
 
+  function activeTrack(): MusicTrack {
+    return mode === 'chomp' ? CHOMP_TRACK : TRACKS[trackIdx]!;
+  }
+
+  function effectiveLayers(): number {
+    return mode === 'normal' ? layers : 4;
+  }
+
   function applyMaster(): void {
     if (master) master.gain.value = muted || adPaused ? 0 : 1;
   }
 
-  function playLayerStep(li: number, step: number, t: number): void {
+  function applyLayerGains(fast: boolean): void {
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const activeCount = effectiveLayers();
+    const bpm = modeBpm(activeTrack(), mode);
+    layerGains.forEach((g, i) => {
+      const target = i < activeCount ? 1 : 0;
+      const rampSec = fast ? 0.15 : target > g.gain.value ? (60 / bpm) * 4 : 0.3;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(target, now + rampSec);
+    });
+  }
+
+  function playLayerStep(track: MusicTrack, stepSec: number, li: number, step: number, t: number): void {
     if (!ctx) return;
     const out = layerGains[li]!;
-    const v = LAYERS[li]!.steps[step];
+    const layer = track.layers[li]!;
+    const v =
+      layer.name === 'drums' && (mode === 'rush' || mode === 'overdrive')
+        ? RUSH_DRUMS[step % RUSH_DRUMS.length]
+        : layer.steps[step];
     if (v === null || v === undefined) return;
     if (typeof v === 'string') {
       const hit: DrumHit = v;
-      if (hit === 'k') tone(ctx, out, { type: 'sine', f0: 140, f1: 45, t, dur: 0.15, vol: 0.9 });
-      else if (hit === 's') noise(ctx, out, { t, dur: 0.12, vol: 0.5, hp: 1200 });
-      else noise(ctx, out, { t, dur: 0.04, vol: 0.25, hp: 6000 });
+      if (hit === 'k') tone(ctx, out, { type: 'sine', f0: 150, f1: 48, t, dur: 0.14, vol: 0.9 });
+      else if (hit === 's') noise(ctx, out, { t, dur: 0.12, vol: 0.55, hp: 1200 });
+      else noise(ctx, out, { t, dur: 0.04, vol: 0.28, hp: 6000 });
       return;
     }
-    const name = LAYERS[li]!.name;
-    const hz = BASS_HZ * 2 ** (v / 12);
-    if (name === 'bass') tone(ctx, out, { type: 'triangle', f0: hz, t, dur: STEP_SEC * 3, vol: 0.8 });
-    else if (name === 'arp') tone(ctx, out, { type: 'square', f0: hz * 4, t, dur: STEP_SEC * 0.9, vol: 0.2 });
-    else tone(ctx, out, { type: 'triangle', f0: hz * 4, t, dur: STEP_SEC * 1.8, vol: 0.4 });
+    const hz = track.baseHz * 2 ** (v / 12);
+    if (layer.name === 'bass') {
+      tone(ctx, out, { type: 'sawtooth', f0: hz, t, dur: stepSec * 2.2, vol: 0.48 });
+    } else if (layer.name === 'arp') {
+      tone(ctx, out, { type: 'square', f0: hz * 4, t, dur: stepSec * 0.85, vol: 0.24 });
+    } else if (mode === 'chomp') {
+      tone(ctx, out, { type: 'square', f0: hz * 4, t, dur: stepSec * 1.4, vol: 0.34 });
+    } else {
+      tone(ctx, out, { type: 'triangle', f0: hz * 4, t, dur: stepSec * 1.8, vol: 0.56 });
+    }
   }
 
   function tick(): void {
     if (!ctx) return;
+    const track = activeTrack();
+    const stepSec = 60 / modeBpm(track, mode) / 4;
+    const stepsCount = track.layers[0]!.steps.length;
     const now = ctx.currentTime;
     if (nextTime < now) nextTime = now;
-    for (const s of stepsToSchedule(now, now + SCHEDULE_AHEAD, nextTime, stepIdx)) {
-      for (let li = 0; li < LAYERS.length; li++) playLayerStep(li, s.step, s.time);
+    if (stepIdx >= stepsCount) stepIdx = 0;
+    for (const s of stepsToSchedule(now, now + SCHEDULE_AHEAD, nextTime, stepIdx, stepSec, stepsCount)) {
+      for (let li = 0; li < track.layers.length; li++) playLayerStep(track, stepSec, li, s.step, s.time);
     }
-    // advance cursor past everything scheduled
     while (nextTime < now + SCHEDULE_AHEAD) {
-      nextTime += STEP_SEC;
-      stepIdx = (stepIdx + 1) % STEPS;
+      nextTime += stepSec;
+      stepIdx = (stepIdx + 1) % stepsCount;
     }
   }
 
@@ -137,15 +201,28 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       },
       setLayers(n) {
         layers = n;
-        if (!ctx) return;
-        const now = ctx.currentTime;
-        layerGains.forEach((g, i) => {
-          const target = i < n ? 1 : 0;
-          const rampSec = target > g.gain.value ? 60 / BPM * 4 : 0.3;
-          g.gain.cancelScheduledValues(now);
-          g.gain.setValueAtTime(g.gain.value, now);
-          g.gain.linearRampToValueAtTime(target, now + rampSec);
-        });
+        applyLayerGains(false);
+      },
+      setMode(next) {
+        if (next === mode) return;
+        const chompBoundary = next === 'chomp' || mode === 'chomp';
+        mode = next;
+        if (chompBoundary) stepIdx = 0;
+        applyLayerGains(true);
+      },
+      nextTrack() {
+        trackIdx = (trackIdx + 1) % TRACKS.length;
+        stepIdx = 0;
+      },
+      setTrack(index) {
+        trackIdx = ((index % TRACKS.length) + TRACKS.length) % TRACKS.length;
+        stepIdx = 0;
+      },
+      get trackIndex() {
+        return trackIdx;
+      },
+      get mode() {
+        return mode;
       },
     },
     get muted() {

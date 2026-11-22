@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
+import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
@@ -138,6 +138,7 @@ export class PlayScene extends Phaser.Scene {
   private rushIdx = 0;
   private rushWarned = false;
   private lastLayers = 0;
+  private lastMode: MusicMode = 'normal';
 
   private grid!: Phaser.GameObjects.Graphics;
   private gridPhase = 0;
@@ -216,6 +217,7 @@ export class PlayScene extends Phaser.Scene {
     this.rushIdx = 0;
     this.rushWarned = false;
     this.lastLayers = 0;
+    this.lastMode = 'normal';
     this.rushBannerUntil = 0;
     this.odShown = false;
     this.streakAcc = 0;
@@ -308,6 +310,7 @@ export class PlayScene extends Phaser.Scene {
       this.buildPlayer();
       this.syncShieldHud();
       this.ready = true;
+      if (this.runId > 1) this.kit.audio.music.nextTrack();
       this.kit.audio.music.start();
       this.setLayers(true);
     });
@@ -728,7 +731,14 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private layerCount(): 1 | 2 | 3 | 4 {
-    return isRush(this.t) || this.t >= OVERDRIVE_T ? 4 : layersFor(this.t);
+    return this.chompTimer > 0 || isRush(this.t) || this.t >= OVERDRIVE_T ? 4 : layersFor(this.t);
+  }
+
+  private musicMode(): MusicMode {
+    if (this.chompTimer > 0) return 'chomp';
+    if (this.t >= OVERDRIVE_T) return 'overdrive';
+    if (isRush(this.t)) return 'rush';
+    return 'normal';
   }
 
   private updateOverdriveBanner(): void {
@@ -815,9 +825,15 @@ export class PlayScene extends Phaser.Scene {
 
   private setLayers(force: boolean): void {
     const n = this.layerCount();
-    if (n === this.lastLayers && !force) return;
-    this.lastLayers = n;
-    this.kit.audio.music.setLayers(n);
+    const mode = this.musicMode();
+    if (n !== this.lastLayers || force) {
+      this.lastLayers = n;
+      this.kit.audio.music.setLayers(n);
+    }
+    if (mode !== this.lastMode || force) {
+      this.lastMode = mode;
+      this.kit.audio.music.setMode(mode);
+    }
   }
 
   // ------------------------------------------------------------ simulation
@@ -971,6 +987,7 @@ export class PlayScene extends Phaser.Scene {
       this.chompBannerUntil = this.t + 1.5;
       this.chompRing.setVisible(false);
       this.kit.audio.sfx('rush');
+      this.setLayers(false);
       this.eatBlock(b);
       this.syncGhostBlocks();
       return;
