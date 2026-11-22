@@ -1,10 +1,12 @@
-export type MedalId = 'bronze' | 'silver' | 'gold' | 'neon';
+export type MedalId = 'bronze' | 'silver' | 'gold' | 'neon' | 'diamond' | 'legend';
 
 export const MEDALS: readonly { id: MedalId; seconds: number; color: number }[] = [
   { id: 'bronze', seconds: 30, color: 0xd08a4a },
   { id: 'silver', seconds: 60, color: 0xd8e0ff },
   { id: 'gold', seconds: 90, color: 0xffe14d },
   { id: 'neon', seconds: 120, color: 0x3ff0ff },
+  { id: 'diamond', seconds: 180, color: 0xc8f4ff },
+  { id: 'legend', seconds: 240, color: 0xff7ad9 },
 ];
 
 /** Medals newly crossed between two survival times. */

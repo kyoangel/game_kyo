@@ -64,7 +64,8 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
   scene.add.text(cx, top + 100, `${kit.t('survived')} ${formatTime(run.seconds)}`, style(kit, 30, theme.text)).setOrigin(0.5);
 
   const slots = scene.add.graphics();
-  const slotX = (i: number): number => cx + (i - 1.5) * 100;
+  // six medals in one row (smaller spacing keeps the layout below unchanged)
+  const slotX = (i: number): number => cx + (i - (MEDALS.length - 1) / 2) * 108;
   const slotY = top + 156;
   MEDALS.forEach((m, i) => {
     scene.add.text(slotX(i), top + 184, formatTime(m.seconds), style(kit, 18, theme.muted)).setOrigin(0.5);
