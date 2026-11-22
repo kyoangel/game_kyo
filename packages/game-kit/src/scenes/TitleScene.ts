@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { getKit } from '../kit.ts';
 import { addBackground, ensureTextures } from '../juice/textures.ts';
 import { cssColor } from '../theme.ts';
+import { titleLayout } from '../titleLayout.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
 
 export class TitleScene extends Phaser.Scene {
@@ -57,7 +58,8 @@ export class TitleScene extends Phaser.Scene {
         .setOrigin(0.5);
     }
 
-    (kit.def.titleMenu ?? []).forEach((item, i) => {
+    const menu = kit.def.titleMenu ?? [];
+    menu.forEach((item, i) => {
       addButton(this, width / 2, height * 0.72 + i * 96, kit.t(item.labelKey), {
         width: 280,
         height: 72,
@@ -66,6 +68,7 @@ export class TitleScene extends Phaser.Scene {
       });
     });
     kit.addMuteButton(this, width - 60, 60);
+    kit.def.titleExtras?.(this, titleLayout(width, height, menu.length));
 
     let started = false;
     const go = (): void => {

@@ -3,6 +3,7 @@ import { createPlatform } from '@platform/active';
 import { BUILTIN_STRINGS } from './builtinStrings.ts';
 import { sceneList as pureSceneList } from './sceneList.ts';
 import type { ResultsContext } from './results.ts';
+import type { TitleExtrasContext } from './titleLayout.ts';
 import type { Theme } from './theme.ts';
 import { createGameAudio } from './audio/audio.ts';
 import { SaveData } from './save.ts';
@@ -26,6 +27,8 @@ export interface GameDefinition {
   scenes?: Array<new () => Phaser.Scene>;
   titleMenu?: Array<{ labelKey: string; scene: string }>;
   titleBackdrop?: (scene: Phaser.Scene) => void;
+  /** Optional custom title content, drawn after the menu buttons. Use addButton so taps never start the game. */
+  titleExtras?: (scene: Phaser.Scene, ctx: TitleExtrasContext) => void;
   results?: (scene: Phaser.Scene, ctx: ResultsContext) => void;
 }
 
