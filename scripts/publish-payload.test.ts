@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameManifest } from '../packages/game-kit/src/manifest.ts';
-import { crazyGamesPayload } from './publish-payload.ts';
+import { crazyGamesPayload, preflightProblems } from './publish-payload.ts';
 
 const m = (): GameManifest => ({
   slug: 'neo',
@@ -48,4 +48,26 @@ describe('crazyGamesPayload', () => {
     expect(crazyGamesPayload({ ...m(), orientation: 'any' }, '/r').form.mobileOrientation).toBe('BOTH'));
   it('throws without store.crazygames', () =>
     expect(() => crazyGamesPayload({ ...m(), store: undefined }, '/r')).toThrow(/store\.crazygames/));
+});
+
+describe('preflightProblems', () => {
+  const p = crazyGamesPayload(m(), '/repo');
+  const all = () => true;
+  const size = (f: string): [number, number] =>
+    f.includes('1920x1080') ? [1920, 1080] : f.includes('800x1200') ? [800, 1200] : [800, 800];
+  it('passes when everything exists', () => expect(preflightProblems(p, m(), all, size)).toEqual([]));
+  it('lists missing files with the command that makes them', () =>
+    expect(preflightProblems(p, m(), (f) => !f.endsWith('.mp4'), size)).toEqual([
+      `missing ${p.videos.landscape} (run npm run store-video -- neo)`,
+      `missing ${p.videos.portrait} (run npm run store-video -- neo)`,
+    ]));
+  it('flags wrong cover sizes', () => expect(preflightProblems(p, m(), all, () => [100, 100])).toHaveLength(3));
+  it('refuses a version already submitted', () =>
+    expect(
+      preflightProblems(p, { ...m(), releases: { crazygames: { status: 'submitted', version: '1.2.3' } } }, all, size),
+    ).toEqual(['crazygames already submitted at 1.2.3; bump version first']));
+  it('allows resubmitting a rejected version', () =>
+    expect(
+      preflightProblems(p, { ...m(), releases: { crazygames: { status: 'rejected', version: '1.2.3', reason: 'x' } } }, all, size),
+    ).toEqual([]));
 });

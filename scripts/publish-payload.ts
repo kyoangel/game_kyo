@@ -44,3 +44,28 @@ export function crazyGamesPayload(g: GameManifest, root: string) {
   };
 }
 export type CrazyGamesPayload = ReturnType<typeof crazyGamesPayload>;
+
+/** Every blocker to fix before opening the portal; empty means ready. IO is injected for tests. */
+export function preflightProblems(
+  p: CrazyGamesPayload,
+  g: GameManifest,
+  exists: (file: string) => boolean,
+  pngSize: (file: string) => [number, number],
+): string[] {
+  const out: string[] = [];
+  const rel = g.releases.crazygames;
+  if (rel && rel.status !== 'todo' && rel.status !== 'rejected' && rel.version === g.version)
+    out.push(`crazygames already ${rel.status} at ${g.version}; bump version first`);
+  if (!exists(join(p.uploadDir, 'index.html'))) out.push(`missing ${p.uploadDir}/index.html (run npm run build:portals)`);
+  for (const [kind, file] of Object.entries(p.covers)) {
+    if (!exists(file)) {
+      out.push(`missing ${file} (run npm run covers -- ${p.slug})`);
+      continue;
+    }
+    const [w, h] = pngSize(file);
+    const [ew, eh] = (file.match(/(\d+)x(\d+)\.png$/) ?? []).slice(1).map(Number);
+    if (w !== ew || h !== eh) out.push(`${kind} cover is ${w}x${h}, expected ${ew}x${eh}`);
+  }
+  for (const file of Object.values(p.videos)) if (!exists(file)) out.push(`missing ${file} (run npm run store-video -- ${p.slug})`);
+  return out;
+}
