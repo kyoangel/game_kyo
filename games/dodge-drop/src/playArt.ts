@@ -163,8 +163,71 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
   }
 }
 
+/** Small UI textures (boost icons, check mark, tilt glyph), generated once at runtime. */
+export function ensureUiTextures(scene: Phaser.Scene): void {
+  ensurePlayTextures(scene);
+  const tex = scene.textures;
+  if (!tex.exists('dd-boost-shrink')) {
+    const g = gfx(scene);
+    const diamond = (r: number): Phaser.Types.Math.Vector2Like[] => [
+      { x: 32, y: 32 - r }, { x: 32 + r, y: 32 }, { x: 32, y: 32 + r }, { x: 32 - r, y: 32 },
+    ];
+    g.fillStyle(0x4dd8ff, 0.25);
+    g.fillPoints(diamond(30), true);
+    g.lineStyle(5, 0x4dd8ff, 1);
+    g.strokePoints(diamond(26), true);
+    g.fillStyle(0x4dd8ff, 1);
+    g.fillPoints(diamond(12), true);
+    g.lineStyle(3, 0xffffff, 0.95);
+    g.strokePoints(diamond(12), true);
+    g.generateTexture('dd-boost-shrink', 64, 64);
+    g.destroy();
+  }
+  if (!tex.exists('dd-check')) {
+    const g = gfx(scene);
+    g.lineStyle(9, 0x1a1033, 1);
+    g.beginPath();
+    g.moveTo(10, 34);
+    g.lineTo(26, 50);
+    g.lineTo(54, 16);
+    g.strokePath();
+    g.generateTexture('dd-check', 64, 64);
+    g.destroy();
+  }
+  if (!tex.exists('dd-check-green')) {
+    const g = gfx(scene);
+    g.lineStyle(9, 0x58ff9a, 1);
+    g.beginPath();
+    g.moveTo(10, 34);
+    g.lineTo(26, 50);
+    g.lineTo(54, 16);
+    g.strokePath();
+    g.generateTexture('dd-check-green', 64, 64);
+    g.destroy();
+  }
+  if (!tex.exists('dd-tilt')) {
+    // Phone outline tilted 25 degrees, white so it can be tinted (accent when on, dim when off).
+    const g = gfx(scene);
+    const rot = (x: number, y: number): Phaser.Types.Math.Vector2Like => {
+      const a = (25 * Math.PI) / 180;
+      return { x: 32 + x * Math.cos(a) - y * Math.sin(a), y: 32 + x * Math.sin(a) + y * Math.cos(a) };
+    };
+    const body = [rot(-11, -20), rot(11, -20), rot(11, 20), rot(-11, 20)];
+    g.lineStyle(5, 0xffffff, 1);
+    g.strokePoints(body, true);
+    g.lineBetween(rot(-4, 14).x, rot(-4, 14).y, rot(4, 14).x, rot(4, 14).y);
+    g.generateTexture('dd-tilt', 64, 64);
+    g.destroy();
+  }
+}
+
+/** Texture key for a boost icon. */
+export function boostIconKey(id: 'shield' | 'shrink' | 'chomp'): string {
+  return id === 'shield' ? 'dd-shield' : id === 'shrink' ? 'dd-boost-shrink' : 'dd-chomp-open';
+}
+
 /** Currency icon: the same star as the in-game pickup, so collected stars visibly read as star coins. */
 export function drawCurrencyIcon(scene: Phaser.Scene, x: number, y: number, size: number): Phaser.GameObjects.Image {
-  ensurePlayTextures(scene);
+  ensureUiTextures(scene);
   return scene.add.image(x, y, 'dd-star').setDisplaySize(size, size);
 }

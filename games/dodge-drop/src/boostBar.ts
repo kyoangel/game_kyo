@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { addButton, cssColor, textResolution, type Kit } from '@gf/game-kit';
+import { boostIconKey, ensureUiTextures } from './playArt.ts';
 import { BOOST_COSTS, BOOST_IDS, canBuyBoost, type BoostId, type RunBoosts } from './boosts.ts';
 
 export interface BoostBarOpts {
@@ -23,6 +24,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
   const { theme } = kit;
   const objs: Phaser.GameObjects.GameObject[] = [];
   const depth = opts.depth ?? 2;
+  ensureUiTextures(scene);
 
   if (opts.showLabel) {
     const lbl = scene.add
@@ -54,15 +56,9 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
       id === 'shield' ? opts.boosts.shields >= opts.shieldCap : equipped;
 
     const name = kit.t(`boost.${id}`);
-    let label: string;
-    if (id === 'shield') {
-      const countTag = opts.boosts.shields > 0 ? `×${opts.boosts.shields}` : '';
-      label = maxed ? `🛡 ${name}${countTag}` : `🛡 ${name}${countTag} ${cost}★`;
-    } else if (id === 'shrink') {
-      label = equipped ? `✓ ${name}` : `🔹 ${name} ${cost}★`;
-    } else {
-      label = equipped ? `✓ ${name}` : `🟡 ${name} ${cost}★`;
-    }
+    const countTag = id === 'shield' && opts.boosts.shields > 0 ? `×${opts.boosts.shields}` : '';
+    const showCost = !(id === 'shield' ? maxed : equipped);
+    const label = showCost ? `${name}${countTag} ${cost}` : `${name}${countTag}`;
 
     const fill = equipped ? theme.accent : canBuy ? theme.primary : theme.muted;
     const textColor = equipped ? 0x1a1033 : 0xffffff;
@@ -78,6 +74,16 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
         opts.onBuy(id);
       },
     });
+    // Drawn icons (no emoji: some Android fonts render them as boxes). Label shifts right to make room.
+    const text = btn.list[1] as Phaser.GameObjects.Text;
+    text.x += 14;
+    const icon = scene.add.image(-btnW / 2 + 28, 0, equipped && id !== 'shield' ? 'dd-check' : boostIconKey(id));
+    icon.setDisplaySize(btnH * 0.62, btnH * 0.62);
+    btn.add(icon);
+    if (showCost) {
+      const star = scene.add.image(text.x + text.width / 2 + 14, 0, 'dd-star').setDisplaySize(22, 22);
+      btn.add(star);
+    }
     if (!canBuy && !equipped) btn.setAlpha(0.55);
     btn.setDepth(depth);
     objs.push(btn);
