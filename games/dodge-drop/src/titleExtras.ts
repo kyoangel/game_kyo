@@ -94,12 +94,12 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
 
     // Start chips
     const cy = ctx.below + 24;
-    txt(ctx.width / 2, cy - 38, kit.t('tierHeader'), 20, theme.muted);
+    txt(ctx.width / 2, cy - 38, kit.t('tierHeader'), 22, theme.muted);
     TIERS.forEach((tr, i) => {
       const on = enabled.includes(tr.id);
       const sel = on && tier === tr.id;
       const btn = addButton(scene, ctx.width / 2 + (i - 1.5) * 162, cy, kit.t(tr.key), {
-        width: 150, height: 44, fontSize: 19,
+        width: 150, height: 46, fontSize: 21,
         fill: sel ? theme.accent : on ? theme.primary : theme.muted,
         textColor: sel ? 0x1a1033 : 0xffffff,
         // a dark stroke on dark text smears into a blurry blob: selected chips have no stroke
@@ -181,13 +181,13 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
         panel.fillStyle(theme.accent, 1);
         panel.fillCircle(30 + k * 14, y, 5);
       }
-      txt(98, y, missionLabel(kit.t(`mission.${m.id}`), m, m.progress), 21, theme.text, 0);
+      txt(98, y, missionLabel(kit.t(`mission.${m.id}`), m, m.progress), 24, theme.text, 0);
       // Reward in star coins.
-      const rw = txt(548, y, `+${missionReward(m)}`, 22, 0xffe14d, 1);
+      const rw = txt(548, y, `+${missionReward(m)}`, 24, 0xffe14d, 1);
       objs.push(drawCurrencyIcon(scene, rw.x + 17, y, 24));
       const afford = coins >= cost;
       const btn = addButton(scene, 648, y, kit.t('skip') + ' ' + cost, {
-        width: 124, height: 40, fontSize: 20,
+        width: 128, height: 42, fontSize: 22,
         fill: afford ? theme.primary : theme.muted,
         textColor: 0xffffff,
         strokeThickness: 4,

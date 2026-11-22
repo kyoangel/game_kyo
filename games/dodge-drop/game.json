@@ -1,17 +1,17 @@
 {
   "slug": "dodge-drop",
-  "version": "2.7.2",
+  "version": "2.8.0",
   "title": {
     "en": "Neon Rush",
     "zh-TW": "霓虹極速"
   },
   "description": {
-    "en": "Neon blocks rain down. Dodge them, graze near misses for combos, grab stars for coins and unlock new skins.",
-    "zh-TW": "霓虹方塊從天而降，閃避它們、擦邊連擊、收集星星換金幣，解鎖全新造型。"
+    "en": "Neon blocks rain down faster and faster. Dodge them, graze near misses for combo multipliers, grab stars and stack shields, and push from Bronze to Legend. Spend stars in the Shop on upgrades, skins and boosts, and clear rotating missions to rank up.",
+    "zh-TW": "霓虹方塊越落越快！閃過它們、擦邊累積連擊倍率、收集星星與護盾，從銅盃一路挑戰到傳奇。用星星在商店購買升級、造型與道具，完成輪替任務提升等級。"
   },
   "instructions": {
-    "en": "Drag anywhere to move (arrow keys work too). Slip close to a block for a near-miss combo, grab stars for coins to unlock skins, and pick up a shield to survive one hit.",
-    "zh-TW": "在畫面任意處拖曳移動（也可用方向鍵）。貼近方塊閃過可累積擦邊連擊，收集星星換金幣解鎖造型，拾取護盾可抵擋一次撞擊。"
+    "en": "Drag anywhere to move left and right (arrow keys work too; on phones you can turn on tilt control). Slip close past blocks for near-miss combos, collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Survive the speed rushes and hold on through Overdrive.",
+    "zh-TW": "在畫面任意處拖曳左右移動（也可用方向鍵；手機可開啟陀螺儀操作）。貼近方塊閃過可累積擦邊連擊，收集星星到商店消費，拾取護盾可抵擋一次撞擊，升級「護盾堆疊」可同時持有更多護盾。撐過一波波加速，挑戰極速模式。"
   },
   "tags": [
     "arcade",

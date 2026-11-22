@@ -4,7 +4,7 @@ import { BUILTIN_STRINGS } from './builtinStrings.ts';
 import { sceneList as pureSceneList } from './sceneList.ts';
 import type { ResultsContext } from './results.ts';
 import type { TitleExtrasContext } from './titleLayout.ts';
-import type { Theme } from './theme.ts';
+import { pageBackground, resolveTheme, type Theme } from './theme.ts';
 import { createGameAudio } from './audio/audio.ts';
 import { SaveData } from './save.ts';
 import { createI18n, mergeStrings, type Strings } from './i18n.ts';
@@ -52,6 +52,9 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
   const save = new SaveData(platform.storage, def.manifest.slug);
   const audio = createGameAudio(save);
   await audio.loadMuted();
+
+  // Letterbox bars (portrait game in a 16:9 portal iframe) show the game's own gradient instead of black.
+  if (typeof document !== 'undefined') document.body.style.background = pageBackground(resolveTheme(def.theme));
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,

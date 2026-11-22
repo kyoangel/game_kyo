@@ -24,6 +24,11 @@ export function resolveTheme(partial?: Partial<Theme>): Theme {
   return { ...DEFAULT_THEME, ...partial };
 }
 
+/** CSS background for the page around the canvas (letterbox bars on 16:9 portals): the game gradient, dimmed. */
+export function pageBackground(theme: Theme): string {
+  return `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), linear-gradient(${cssColor(theme.bgTop)}, ${cssColor(theme.bgBottom)})`;
+}
+
 export function cssColor(color: number): string {
   return `#${(color & 0xffffff).toString(16).padStart(6, '0')}`;
 }

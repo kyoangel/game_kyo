@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GAMES_DIR, loadGames } from './lib/games.ts';
@@ -9,9 +9,32 @@ export const COVER_SIZES = [
   { name: 'square-800x800.png', width: 800, height: 800 },
 ] as const;
 
-/** Background colour of a cover SVG: fill of its first <rect>, else #111111. */
+/** Background CSS value of a cover SVG: fill of its first <rect> (resolving url(#grad) to a seamless stop gradient), else #111111. */
 export function extractBackground(svg: string): string {
-  return /<rect\b[^>]*\bfill="(#[0-9a-fA-F]{3,8})"/.exec(svg)?.[1] ?? '#111111';
+  const firstRect = /<rect\b[^>]*\bfill="([^"]+)"/.exec(svg)?.[1];
+  if (!firstRect) return '#111111';
+  if (/^#[0-9a-fA-F]{3,8}$/.test(firstRect)) return firstRect;
+  const gradId = /^url\(#([^)]+)\)$/.exec(firstRect)?.[1];
+  if (gradId) {
+    const gradRe = new RegExp(`<linearGradient\\b[^>]*\\bid="${gradId}"[^>]*>([\\s\\S]*?)</linearGradient>`);
+    const body = gradRe.exec(svg)?.[1];
+    if (body) {
+      const stops = [...body.matchAll(/\bstop-color="(#[0-9a-fA-F]{3,8})"/g)].map((m) => m[1]!);
+      if (stops.length >= 2) return `linear-gradient(to bottom, ${stops[0]} 50%, ${stops[stops.length - 1]} 50%)`;
+      if (stops.length === 1) return stops[0]!;
+    }
+  }
+  return '#111111';
+}
+
+/**
+ * Source SVG for one store size: `store/src/<variant>.svg` (variant = landscape | portrait | square) when the game
+ * provides a composition for that shape, else the shared `public/<cover>` (letterboxed).
+ */
+export function coverSourceFor(gameDir: string, cover: string, sizeName: string, exists: (p: string) => boolean = existsSync): string {
+  const variant = sizeName.split('-')[0]!;
+  const own = join(gameDir, 'store', 'src', `${variant}.svg`);
+  return exists(own) ? own : join(gameDir, 'public', cover);
 }
 
 export function coverHtml(svg: string, width: number, height: number, bg: string): string {
@@ -34,8 +57,7 @@ export async function renderCovers(slug: string, gamesDir: string = GAMES_DIR): 
   const manifest = loadGames(gamesDir).find((g) => g.slug === slug);
   if (!manifest) throw new Error(`Unknown game "${slug}"`);
   if (!manifest.cover.toLowerCase().endsWith('.svg')) throw new Error(`cover "${manifest.cover}" must be an .svg to render store covers`);
-  const svg = readFileSync(join(gamesDir, slug, 'public', manifest.cover), 'utf8');
-  const bg = extractBackground(svg);
+  const gameDir = join(gamesDir, slug);
   const outDir = join(gamesDir, slug, 'store');
   mkdirSync(outDir, { recursive: true });
 
@@ -45,7 +67,8 @@ export async function renderCovers(slug: string, gamesDir: string = GAMES_DIR): 
     const written: string[] = [];
     for (const size of COVER_SIZES) {
       const page = await browser.newPage({ viewport: { width: size.width, height: size.height } });
-      await page.setContent(coverHtml(svg, size.width, size.height, bg));
+      const svg = readFileSync(coverSourceFor(gameDir, manifest.cover, size.name), 'utf8');
+      await page.setContent(coverHtml(svg, size.width, size.height, extractBackground(svg)));
       const file = join(outDir, size.name);
       writeFileSync(file, await page.screenshot({ type: 'png' }));
       await page.close();

@@ -9,4 +9,8 @@ describe('missionLabel', () => {
     expect(missionLabel('Play {t} runs', { id: 'runs', tier: 1, progress: 0 }, 9)).toBe('Play 3 runs  3/3');
     expect(missionLabel('Play {t} runs', { id: 'runs', tier: 1, progress: 0 }, -2)).toBe('Play 3 runs  0/3');
   });
+  it('{es} pluralises: empty for a target of 1', () => {
+    expect(missionLabel('Survive {t} rush{es}', { id: 'rush', tier: 1, progress: 0 }, 0)).toBe('Survive 1 rush  0/1');
+    expect(missionLabel('Survive {t} rush{es}', { id: 'rush', tier: 2, progress: 0 }, 0)).toMatch(/^Survive \d+ rushes {2}0\/\d+$/);
+  });
 });

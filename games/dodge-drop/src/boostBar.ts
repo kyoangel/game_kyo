@@ -30,7 +30,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     const lbl = scene.add
       .text(opts.cx, opts.y - 44, kit.t('boostsLabel'), {
         fontFamily: theme.font,
-        fontSize: '20px',
+        fontSize: '22px',
         fontStyle: 'bold',
         color: cssColor(theme.muted),
         stroke: '#1a1033',
@@ -65,7 +65,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     const btn = addButton(scene, bx, opts.y, label, {
       width: btnW,
       height: btnH,
-      fontSize: 18,
+      fontSize: 20,
       fill,
       textColor,
       strokeThickness: equipped ? 0 : 4,

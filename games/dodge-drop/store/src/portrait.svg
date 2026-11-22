@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a1699"/>
+      <stop offset="0.55" stop-color="#1e0d5c"/>
+      <stop offset="1" stop-color="#0d062b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3ff0ff" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#3ff0ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sparkGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffe14d" stop-opacity="1"/>
+      <stop offset="1" stop-color="#ffe14d" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <linearGradient id="pinkTrail" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ff4fa3" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#ff4fa3" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="orangeTrail" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ffa14d" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#ffa14d" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="streakCyan" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3ff0ff" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#3ff0ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.8"/>
+    </linearGradient>
+    <linearGradient id="streakPink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff4fa3" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#ff4fa3" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffd0ea" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="dodgeTrail" x1="1" y1="0.5" x2="0" y2="0.5">
+      <stop offset="0" stop-color="#3ff0ff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#3ff0ff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="600" fill="url(#bg)"/>
+  <g stroke="#9ee9ff" stroke-opacity="0.12" stroke-width="1.5"><line x1="200" y1="0" x2="-120" y2="600"/><line x1="200" y1="0" x2="20" y2="600"/><line x1="200" y1="0" x2="200" y2="600"/><line x1="200" y1="0" x2="380" y2="600"/><line x1="200" y1="0" x2="520" y2="600"/><line x1="0" y1="180" x2="400" y2="180" stroke-opacity="0.08"/><line x1="0" y1="330" x2="400" y2="330" stroke-opacity="0.1"/><line x1="0" y1="480" x2="400" y2="480" stroke-opacity="0.14"/></g>
+  <rect x="14" y="30" width="4" height="180" rx="2" fill="url(#streakCyan)"/><rect x="36" y="210" width="3" height="210" rx="2" fill="url(#streakPink)"/><rect x="360" y="72" width="3" height="180" rx="2" fill="url(#streakCyan)"/><rect x="382" y="270" width="4" height="192" rx="2" fill="url(#streakPink)"/>
+  <rect x="46" y="0" width="112" height="82" fill="url(#pinkTrail)"/>
+  <rect x="46" y="78" width="112" height="32" rx="9" fill="#ff4fa3" filter="url(#blur)" opacity="0.85"/>
+  <rect x="46" y="78" width="112" height="32" rx="9" fill="#ff4fa3" stroke="#ffd0ea" stroke-width="3"/>
+  <rect x="246" y="0" width="118" height="50" fill="url(#orangeTrail)"/>
+  <rect x="246" y="46" width="118" height="32" rx="9" fill="#ffa14d" filter="url(#blur)" opacity="0.85"/>
+  <rect x="246" y="46" width="118" height="32" rx="9" fill="#ffa14d" stroke="#ffe0bd" stroke-width="3"/>
+  <rect x="270" y="272" width="92" height="82" fill="url(#pinkTrail)"/>
+  <rect x="270" y="350" width="92" height="30" rx="9" fill="#ff4fa3" filter="url(#blur)" opacity="0.85"/>
+  <rect x="270" y="350" width="92" height="30" rx="9" fill="#ff4fa3" stroke="#ffd0ea" stroke-width="3"/>
+  <rect x="62" y="330" width="132" height="92" fill="url(#pinkTrail)"/>
+  <rect x="62" y="418" width="132" height="34" rx="9" fill="#ff4fa3" filter="url(#blur)" opacity="0.85"/>
+  <rect x="62" y="418" width="132" height="34" rx="9" fill="#ff4fa3" stroke="#ffd0ea" stroke-width="3"/>
+  <path d="M 120 560 Q 176 526 230 500 L 230 468 Q 176 492 110 540 Z" fill="url(#dodgeTrail)"/>
+  <circle cx="232" cy="486" r="56" fill="url(#glow)"/>
+  <g transform="translate(232, 486) rotate(11)">
+    <rect x="-26" y="-26" width="52" height="52" rx="13" fill="#3ff0ff" stroke="#ffffff" stroke-width="3.5"/>
+    <circle cx="-9" cy="-10" r="6.5" fill="#ffffff" opacity="0.55"/>
+  </g>
+  <circle cx="206" cy="458" r="26" fill="url(#sparkGlow)" opacity="0.75"/>
+  <g stroke="#ffe14d" stroke-width="3.5" stroke-linecap="round">
+    <line x1="206" y1="458" x2="186" y2="440"/><line x1="206" y1="458" x2="228" y2="436"/>
+    <line x1="206" y1="458" x2="190" y2="480"/><line x1="206" y1="458" x2="220" y2="486"/>
+  </g>
+  <circle cx="206" cy="458" r="5" fill="#ffffff"/>
+  <polygon points="322.0,518.0 327.8,532.0 342.9,533.2 331.4,543.1 334.9,557.8 322.0,549.9 309.1,557.8 312.6,543.1 301.1,533.2 316.2,532.0" fill="#ffe14d" stroke="#ffffff" stroke-width="2"/>
+  <g transform="skewX(-10) translate(41, 0)">
+  <text x="196" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="98" font-weight="900" fill="#ff4fa3" opacity="0.75" text-anchor="middle">NEON</text>
+  <text x="204" y="230" font-family="system-ui, -apple-system, sans-serif" font-size="98" font-weight="900" fill="#3ff0ff" opacity="0.75" text-anchor="middle">NEON</text>
+  <text x="200" y="232" font-family="system-ui, -apple-system, sans-serif" font-size="98" font-weight="900" fill="#ffffff" stroke="#1a1033" stroke-width="10" paint-order="stroke" text-anchor="middle">NEON</text>
+  <text x="196" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="98" font-weight="900" fill="#ff4fa3" opacity="0.75" text-anchor="middle">RUSH</text>
+  <text x="204" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="98" font-weight="900" fill="#3ff0ff" opacity="0.75" text-anchor="middle">RUSH</text>
+  <text x="200" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="98" font-weight="900" fill="#ffffff" stroke="#1a1033" stroke-width="10" paint-order="stroke" text-anchor="middle">RUSH</text>
+  </g>
+</svg>

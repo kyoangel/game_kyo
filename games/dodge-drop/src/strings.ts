@@ -87,7 +87,7 @@ export const strings: Strings = {
     'mission.starsRun': 'Get {t} stars in one run',
     'mission.shieldBreak': 'Shield blocks: {t}',
     'mission.score': 'Score {t} in one run',
-    'mission.rush': 'Survive {t} rushes',
+    'mission.rush': 'Survive {t} rush{es}',
     'mission.runs': 'Play {t} runs',
     'upgrade.shield': 'Shield Core',
     'upgrade.shieldStack': 'Shield Stack',
