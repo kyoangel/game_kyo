@@ -1,5 +1,5 @@
-export type UpgradeId = 'shield' | 'startShield' | 'magnet' | 'nearMiss' | 'combo' | 'luck';
-export const UPGRADE_IDS: readonly UpgradeId[] = ['shield', 'startShield', 'magnet', 'nearMiss', 'combo', 'luck'];
+export type UpgradeId = 'shield' | 'shieldStack' | 'startShield' | 'magnet' | 'nearMiss' | 'combo' | 'luck';
+export const UPGRADE_IDS: readonly UpgradeId[] = ['shield', 'shieldStack', 'startShield', 'magnet', 'nearMiss', 'combo', 'luck'];
 export const MAX_LEVEL = 5;
 export type Workshop = Record<UpgradeId, number>;
 
@@ -9,7 +9,7 @@ function lvl(level: number): number {
 }
 
 export function emptyWorkshop(): Workshop {
-  return { shield: 0, startShield: 0, magnet: 0, nearMiss: 0, combo: 0, luck: 0 };
+  return { shield: 0, shieldStack: 0, startShield: 0, magnet: 0, nearMiss: 0, combo: 0, luck: 0 };
 }
 
 export function sanitizeWorkshop(raw: unknown): Workshop {
@@ -50,8 +50,13 @@ export function shieldFirstAt(level: number): number {
 export function shieldInterval(level: number, r: number): number {
   return (30 + 10 * r) * 0.92 ** lvl(level);
 }
-export function shieldCapacity(level: number): 1 | 2 {
-  return lvl(level) >= MAX_LEVEL ? 2 : 1;
+/** Max shields held at once: 1 + Shield Stack level (the argument is the shieldStack level). */
+export function shieldCapacity(stackLevel: number): number {
+  return 1 + lvl(stackLevel);
+}
+/** A shield pickup adds exactly one held shield, never above capacity. */
+export function shieldAfterPickup(held: number, capacity: number): number {
+  return Math.min(capacity, held + 1);
 }
 export function startShieldChance(level: number): number {
   return lvl(level) / 5;
@@ -73,6 +78,7 @@ export function starInterval(level: number, r: number): number {
 export function effectValue(id: UpgradeId, level: number): number {
   switch (id) {
     case 'shield': return shieldFirstAt(level);
+    case 'shieldStack': return shieldCapacity(level);
     case 'startShield': return Math.round(startShieldChance(level) * 100);
     case 'magnet': return magnetRadius(level);
     case 'nearMiss': return nearMissWindow(level);

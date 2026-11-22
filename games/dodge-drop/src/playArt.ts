@@ -107,19 +107,6 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
     g.generateTexture('dd-ring', 96, 96);
     g.destroy();
   }
-  if (!tex.exists('dd-ring2')) {
-    const g = gfx(scene);
-    g.lineStyle(10, 0x58ff9a, 0.25);
-    g.strokeCircle(48, 48, 44);
-    g.lineStyle(4, 0x58ff9a, 1);
-    g.strokeCircle(48, 48, 42);
-    g.lineStyle(4, 0x58ff9a, 1);
-    g.strokeCircle(48, 48, 32);
-    g.fillStyle(0x58ff9a, 0.12);
-    g.fillCircle(48, 48, 42);
-    g.generateTexture('dd-ring2', 96, 96);
-    g.destroy();
-  }
 }
 
 /** Currency icon: the same star as the in-game pickup, so collected stars visibly read as star coins. */

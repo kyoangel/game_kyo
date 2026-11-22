@@ -4,7 +4,7 @@ import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
-import { emptyWorkshop, sanitizeWorkshop, shieldInterval, starInterval } from './workshop.ts';
+import { emptyWorkshop, sanitizeWorkshop, shieldAfterPickup, shieldInterval, starInterval } from './workshop.ts';
 import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
 import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakTint, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
 import { SKINS, type Skin } from './economy.ts';
@@ -93,6 +93,7 @@ export class PlayScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
   private trail: { stop(): void } | null = null;
   private ring!: Phaser.GameObjects.Image;
+  private shieldBadge!: Phaser.GameObjects.Text;
   private vel = 0;
   private tiltN = 0;
   private invuln = 0;
@@ -218,6 +219,8 @@ export class PlayScene extends Phaser.Scene {
           streaks: this.streaks.filter((s) => s.active).length,
         }),
         warp: (seconds: number) => { this.t += seconds; },
+        /** Test hook: adds one held shield (capped like a pickup). */
+        giveShield: () => this.addShield(),
       } as { god: boolean };
     }
 
@@ -304,6 +307,7 @@ export class PlayScene extends Phaser.Scene {
     const key = skinTextureKey(this, this.skin);
     this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
     this.ring = this.add.image(W / 2, PLAYER_Y, 'dd-ring').setDepth(11).setVisible(false);
+    this.shieldBadge = this.add.text(W / 2, PLAYER_Y, '', { ...this.textStyle(30, 0x58ff9a), strokeThickness: 6 }).setOrigin(0.5).setDepth(12).setVisible(false);
     if (this.skin.color === 'cycle') {
       this.prism = [];
       for (let i = 0; i < PRISM_STEPS; i++) {
@@ -463,8 +467,9 @@ export class PlayScene extends Phaser.Scene {
     const blink = this.invuln > 0 && Math.floor(this.invuln * 12) % 2 === 0;
     this.player.setAlpha(blink ? 0.35 : 1);
     this.ring.setVisible(this.shieldHeld);
+    this.shieldBadge.setVisible(this.shieldHits >= 2);
+    if (this.shieldHits >= 2) this.shieldBadge.setPosition(this.player.x + 40, this.player.y - 44);
     if (this.shieldHeld) {
-      this.ring.setTexture(this.shieldHits >= 2 ? 'dd-ring2' : 'dd-ring');
       this.ring.setPosition(this.player.x, this.player.y);
       this.ring.setScale(1 + Math.sin(this.t * 8) * 0.04);
       this.ring.rotation += dt * 1.5;
@@ -756,10 +761,16 @@ export class PlayScene extends Phaser.Scene {
       this.fx.burst(p.x, p.y, { color: 0xffe14d, count: 16, speed: 300, lifespanMs: 450 });
       this.fx.popText(p.x, p.y - 20, '+10', { color: 0xffe14d, size: 30 });
     } else {
-      this.shieldHits = this.cfg.shieldCapacity;
+      this.addShield();
       this.kit.audio.sfx('shield');
       this.fx.burst(p.x, p.y, { color: 0x58ff9a, count: 18, speed: 320, lifespanMs: 500 });
     }
+  }
+
+  /** +1 held shield up to the Shield Stack capacity; keeps the count badge in sync. */
+  private addShield(): void {
+    this.shieldHits = shieldAfterPickup(this.shieldHits, this.cfg.shieldCapacity);
+    this.shieldBadge.setText(`×${this.shieldHits}`);
   }
 
   private onNearMiss(b: Block): void {
@@ -779,6 +790,7 @@ export class PlayScene extends Phaser.Scene {
       this.shieldHits -= 1;
       this.stats.shieldBlocks++;
       this.ring.setVisible(this.shieldHits > 0);
+      this.shieldBadge.setText(`×${this.shieldHits}`).setVisible(this.shieldHits >= 2);
       this.invuln = INVULN_SHIELD;
       this.combo.reset();
       b.active = false;
@@ -890,6 +902,7 @@ export class PlayScene extends Phaser.Scene {
     }
     this.player.setVisible(false);
     this.ring.setVisible(false);
+    this.shieldBadge.setVisible(false);
     this.trail?.stop();
     this.trail = null;
     this.kit.audio.sfx('death');

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   buyUpgrade, comboTimeout, effectValue, emptyWorkshop, magnetRadius, nearMissWindow, nextCost, sanitizeWorkshop,
-  shieldCapacity, shieldFirstAt, shieldInterval, startShieldChance, starInterval, UPGRADE_IDS, upgradeCost,
+  shieldAfterPickup, shieldCapacity, shieldFirstAt, shieldInterval, startShieldChance, starInterval, UPGRADE_IDS, upgradeCost,
 } from './workshop.ts';
 
 describe('workshop table', () => {
-  it('lists the six upgrades in row order', () => {
-    expect(UPGRADE_IDS).toEqual(['shield', 'startShield', 'magnet', 'nearMiss', 'combo', 'luck']);
+  it('lists the seven upgrades in row order (Shield Stack second)', () => {
+    expect(UPGRADE_IDS).toEqual(['shield', 'shieldStack', 'startShield', 'magnet', 'nearMiss', 'combo', 'luck']);
   });
-  it('costs 15/24/38/61/98 per level, 236 per upgrade, 1416 total', () => {
+  it('costs 15/24/38/61/98 per level, 236 per upgrade, 1652 total', () => {
     expect([1, 2, 3, 4, 5].map(upgradeCost)).toEqual([15, 24, 38, 61, 98]);
     const per = [1, 2, 3, 4, 5].reduce((s, n) => s + upgradeCost(n), 0);
     expect(per).toBe(236);
-    expect(per * UPGRADE_IDS.length).toBe(1416);
+    expect(per * UPGRADE_IDS.length).toBe(1652);
     expect(upgradeCost(0)).toBe(Infinity);
     expect(upgradeCost(6)).toBe(Infinity);
   });
@@ -24,12 +24,22 @@ describe('workshop table', () => {
 });
 
 describe('workshop effects', () => {
-  it('shield: first at 25-3L, interval (30..40)*0.92^L, capacity 2 only at L5', () => {
+  it('shield core: first at 25-3L, interval (30..40)*0.92^L (timing only)', () => {
     expect([0, 1, 2, 3, 4, 5].map(shieldFirstAt)).toEqual([25, 22, 19, 16, 13, 10]);
     expect(shieldInterval(0, 0)).toBe(30);
     expect(shieldInterval(0, 0.9999)).toBeCloseTo(40, 2);
     expect(shieldInterval(2, 0)).toBeCloseTo(30 * 0.92 ** 2, 6);
-    expect([0, 1, 2, 3, 4, 5].map(shieldCapacity)).toEqual([1, 1, 1, 1, 1, 2]);
+  });
+  it('shield stack: capacity is 1 + L (1..6), from the shieldStack level', () => {
+    expect([0, 1, 2, 3, 4, 5].map(shieldCapacity)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(effectValue('shieldStack', 3)).toBe(4);
+    expect(effectValue('shield', 5)).toBe(10);
+  });
+  it('a pickup adds +1 held shield, capped at capacity', () => {
+    expect(shieldAfterPickup(1, 1)).toBe(1);
+    expect(shieldAfterPickup(0, 1)).toBe(1);
+    expect(shieldAfterPickup(1, 3)).toBe(2);
+    expect(shieldAfterPickup(3, 3)).toBe(3);
   });
   it('startShield chance 20/40/60/80/100 %', () => {
     expect([0, 1, 2, 3, 4, 5].map(startShieldChance)).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1]);
@@ -52,7 +62,7 @@ describe('workshop effects', () => {
   it('clamps out-of-range levels', () => {
     expect(shieldFirstAt(-3)).toBe(25);
     expect(nearMissWindow(99)).toBe(39);
-    expect(shieldCapacity(99)).toBe(2);
+    expect(shieldCapacity(99)).toBe(6);
   });
   it('effectValue gives the number shown per row', () => {
     expect(effectValue('shield', 2)).toBe(19);
@@ -65,9 +75,12 @@ describe('workshop effects', () => {
 });
 
 describe('sanitize / buy', () => {
+  it('missing shieldStack sanitizes to 0', () => {
+    expect(sanitizeWorkshop({ shield: 2 }).shieldStack).toBe(0);
+  });
   it('sanitizes unknown ids and out-of-range levels to 0..5', () => {
     expect(sanitizeWorkshop({ shield: 3, bogus: 2, magnet: 9, luck: -1, combo: '2', nearMiss: 2.7 })).toEqual({
-      shield: 3, startShield: 0, magnet: 5, nearMiss: 2, combo: 0, luck: 0,
+      shield: 3, shieldStack: 0, startShield: 0, magnet: 5, nearMiss: 2, combo: 0, luck: 0,
     });
     expect(sanitizeWorkshop(null)).toEqual(emptyWorkshop());
     expect(sanitizeWorkshop([1, 2])).toEqual(emptyWorkshop());
@@ -78,6 +91,11 @@ describe('sanitize / buy', () => {
     expect(buyUpgrade({ coins: 23, levels }, 'shield')).toEqual({ ok: false, reason: 'poor' });
     expect(buyUpgrade({ coins: 999, levels: { ...levels, shield: 5 } }, 'shield')).toEqual({ ok: false, reason: 'max' });
     expect(buyUpgrade({ coins: 999, levels }, 'dash')).toEqual({ ok: false, reason: 'unknown' });
+  });
+  it('shieldStack uses the same cost curve', () => {
+    expect(buyUpgrade({ coins: 15, levels: emptyWorkshop() }, 'shieldStack')).toEqual({
+      ok: true, coins: 0, levels: { ...emptyWorkshop(), shieldStack: 1 },
+    });
   });
   it('buyUpgrade does not mutate its input', () => {
     const levels = emptyWorkshop();

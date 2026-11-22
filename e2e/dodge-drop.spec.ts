@@ -78,7 +78,7 @@ test('dodge-drop: Skins scene opens from the title and Back returns', async ({ p
 });
 
 // ---- Meta-progression (Phase 1) ----
-type Dd = { god?: boolean; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { t: number; score: number; startTier: string } };
+type Dd = { god?: boolean; giveShield?: () => void; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { t: number; score: number; startTier: string; shieldHits: number; shieldHeld: boolean; clock: number } };
 type WD = { __dd?: Dd };
 
 const MISSIONS_SEED = '{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}';
@@ -117,8 +117,8 @@ test('dodge-drop: Workshop buy persists level and coins', async ({ page }) => {
   await page.mouse.click(up.x, up.y);
   await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Workshop'));
   await page.waitForTimeout(500);
-  // First row cost button: WorkshopScene ROW_Y0 = 270, x = 600.
-  const buy = at(600, 270);
+  // First row cost button: WorkshopScene ROW_Y0 = 254, x = 600.
+  const buy = at(600, 254);
   await page.mouse.click(buy.x, buy.y);
   await expect.poll(async () => JSON.parse((await ls(page, 'workshop')) ?? '{}').shield).toBe(1);
   expect(await ls(page, 'coins')).toBe('85');
@@ -241,5 +241,36 @@ test('dodge-drop: Overdrive streaks appear after warping past 120 s and the run 
   expect(s.overdrive).toBe(1);
   expect(s.streaks).toBeGreaterThan(0);
   expect(s.layers).toBe(4);
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: Shield Stack (2nd workshop row) is bought and shields stack up to 1 + L', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '100' });
+  const { at } = await openTitle(page);
+  const up = at(360, 1280 * 0.72 + 96);
+  await page.mouse.click(up.x, up.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('Workshop'));
+  await page.waitForTimeout(500);
+  // Second row: ROW_Y0 254 + ROW_STEP 134.
+  const buy = at(600, 254 + 134);
+  await page.mouse.click(buy.x, buy.y);
+  await expect.poll(async () => JSON.parse((await ls(page, 'workshop')) ?? '{}').shieldStack).toBe(1);
+  expect(await ls(page, 'coins')).toBe('85');
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: pickups add one shield at a time up to the Shield Stack cap', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { workshop: '{"shieldStack":2}' }, true);
+  const { box } = await openTitle(page);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
+  await page.waitForFunction(() => (window as unknown as WD).__dd?.giveShield !== undefined && (window as unknown as WD).__dd?.stats?.().t! > 0.5);
+  const hits = async () => page.evaluate(() => (window as unknown as WD).__dd!.stats!().shieldHits);
+  const before = await hits();
+  for (let i = 0; i < 6; i++) await page.evaluate(() => (window as unknown as WD).__dd!.giveShield!());
+  expect(before).toBeLessThanOrEqual(1);
+  expect(await hits()).toBe(3); // capacity 1 + 2
   expect(errors).toEqual([]);
 });

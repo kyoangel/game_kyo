@@ -120,3 +120,13 @@ Owner decision 2026-11-22: no opt-in prompt; it switches on by itself and is onl
 ## Out of scope for Phase 1
 
 In-run perks, zones and new block types, ability characters, daily challenge, leaderboards, rewarded-ad mission skips.
+
+## 2.3 stacking shields
+
+- New workshop upgrade `shieldStack` ("Shield Stack" / 「護盾堆疊」, `Hold up to {v} shields` / `最多累積 {v} 個護盾`) as the 2nd row (after Shield Core); same cost curve 15/24/38/61/98. Max held shields = `1 + L` (L0 = 1 ... L5 = 6). The workshop now has 7 rows; total cost 1652.
+- **Pickup rule:** each shield pickup adds +1 held shield up to the maximum (it no longer refills to capacity). Without the upgrade, holding 1 and picking up another stays 1. Shield pickups only spawn while held < max.
+- **Shield Core** keeps only the timing effect (first shield at `25 - 3L` s, interval `(30..40) x 0.92^L`); its L5 "absorbs 2 hits" special is removed.
+- The `startShield` roll and assist each start the run with exactly 1 shield.
+- HUD: the ring around the player stays; when held >= 2 a count badge (`x3`) shows beside the player, updated on pickup/break. Each absorbed hit keeps the existing break effect and invulnerability, then held -1.
+- `sanitizeWorkshop` treats a missing `shieldStack` as 0; the near-goal bar includes it.
+- Start tiers stay Bronze/Silver/Gold (head starts 100/200/300); Diamond and Legend are medals only.

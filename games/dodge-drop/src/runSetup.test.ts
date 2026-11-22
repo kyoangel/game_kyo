@@ -18,20 +18,21 @@ describe('buildRunConfig', () => {
     const c = buildRunConfig({ ...base, tier: 'silver', workshop: ws({ shield: 2 }) });
     expect(c).toMatchObject({ startT: 60, grace: 2, headStart: 200, firstShieldAt: 60 + 19, rushIdx: 1 });
   });
-  it('workshop levels feed the getters; L5 shield holds 2 hits', () => {
+  it('workshop levels feed the getters; capacity comes from Shield Stack only', () => {
     const c = buildRunConfig({ ...base, workshop: ws({ shield: 5, magnet: 3, nearMiss: 4, combo: 2, luck: 1 }) });
-    expect(c).toMatchObject({ shieldCapacity: 2, magnetRadius: 100, nearMissWindow: 37, luckLevel: 1 });
+    expect(c).toMatchObject({ shieldCapacity: 1, magnetRadius: 100, nearMissWindow: 37, luckLevel: 1 });
     expect(c.comboTimeout).toBeCloseTo(2.8, 9);
     expect(c.firstShieldAt).toBe(10);
+    expect(buildRunConfig({ ...base, workshop: ws({ shieldStack: 4 }) }).shieldCapacity).toBe(5);
   });
-  it('start shield is a chance roll against the rng; L5 shield start grants full capacity', () => {
+  it('start shield is a chance roll against the rng and grants exactly 1 shield', () => {
     const lv2 = ws({ startShield: 2 });
     expect(buildRunConfig({ ...base, workshop: lv2, rng: () => 0.39 }).startShieldHits).toBe(1);
     expect(buildRunConfig({ ...base, workshop: lv2, rng: () => 0.4 }).startShieldHits).toBe(0);
-    expect(buildRunConfig({ ...base, workshop: ws({ startShield: 5, shield: 5 }), rng: () => 0.99 }).startShieldHits).toBe(2);
+    expect(buildRunConfig({ ...base, workshop: ws({ startShield: 5, shieldStack: 5 }), rng: () => 0.99 }).startShieldHits).toBe(1);
   });
   it('assist: shield held at start (no stacking), 0.85x speed, 1.25x interval', () => {
-    const c = buildRunConfig({ ...base, assist: { ...DEFAULT_ASSIST, active: true }, workshop: ws({ startShield: 5 }) });
+    const c = buildRunConfig({ ...base, assist: { ...DEFAULT_ASSIST, active: true }, workshop: ws({ startShield: 5, shieldStack: 3 }) });
     expect(c).toMatchObject({ assisted: true, speedMul: 0.85, intervalMul: 1.25, startShieldHits: 1 });
   });
 });

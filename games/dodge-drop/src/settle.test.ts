@@ -6,7 +6,7 @@ import type { RunState } from './runState.ts';
 import { nearGoal, settleRun, type Saved } from './settle.ts';
 
 const rng = () => 0.5;
-const maxed = (): Workshop => ({ shield: 5, startShield: 5, magnet: 5, nearMiss: 5, combo: 5, luck: 5 });
+const maxed = (): Workshop => ({ shield: 5, shieldStack: 5, startShield: 5, magnet: 5, nearMiss: 5, combo: 5, luck: 5 });
 const ms = (o: Partial<MissionState> = {}): MissionState => ({
   active: [
     { id: 'runs', tier: 1, progress: 0 },
@@ -30,7 +30,8 @@ describe('nearGoal', () => {
   });
   it('picks the cheapest row, ties by order', () => {
     const w = { ...emptyWorkshop(), shield: 2 };
-    expect(nearGoal(w, ['cyan'])).toEqual({ kind: 'workshop', id: 'startShield', level: 1, cost: 15 });
+    expect(nearGoal(w, ['cyan'])).toEqual({ kind: 'workshop', id: 'shieldStack', level: 1, cost: 15 });
+    expect(nearGoal({ ...w, shieldStack: 1 }, ['cyan'])).toEqual({ kind: 'workshop', id: 'startShield', level: 1, cost: 15 });
   });
   it('all maxed -> cheapest locked skin', () => {
     expect(nearGoal(maxed(), ['cyan'])).toEqual({ kind: 'skin', id: 'lime', level: 0, cost: 30 });
