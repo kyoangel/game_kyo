@@ -4,6 +4,9 @@ import type { Strings } from '@gf/game-kit';
 export const strings: Strings = {
   en: {
     dragHint: 'Drag anywhere ←→',
+    'control.drag': 'Drag',
+    'control.tilt': 'Tilt',
+    tiltFailed: 'Tilt unavailable — using drag',
     rush: 'RUSH!',
     overdrive: 'OVERDRIVE!',
     missionComplete: 'Mission complete!',
@@ -79,6 +82,9 @@ export const strings: Strings = {
   },
   'zh-TW': {
     dragHint: '在任意處左右拖曳',
+    'control.drag': '拖曳',
+    'control.tilt': '傾斜',
+    tiltFailed: '無法使用傾斜，改用拖曳',
     rush: '加速！',
     overdrive: '極速模式！',
     missionComplete: '任務完成！',

@@ -3,6 +3,7 @@ import { addButton, cssColor, getKit, textResolution, type Kit, type TitleExtras
 import { mergeMedals } from './medals.ts';
 import { missionLabel } from './missionLabel.ts';
 import { sanitizeMissions, skipCost, skipMission, type MissionState } from './missions.ts';
+import { browserTiltEnv, detectTilt, requestTilt } from './tiltSensor.ts';
 import { availableTiers, sanitizeStartTier, type StartTier } from './progression.ts';
 
 const TIERS: Array<{ id: StartTier; key: string }> = [
@@ -21,6 +22,8 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
   let tier: StartTier = 'none';
   let missions: MissionState | null = null;
   let coins = 0;
+  let control: 'drag' | 'tilt' = 'drag';
+  let tiltAvail = false;
   let chain: Promise<void> = Promise.resolve();
   const persist = (fn: () => Promise<void>): void => { chain = chain.then(fn); };
 
@@ -31,6 +34,15 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     t.setResolution(textResolution(scene));
     objs.push(t);
     return t;
+  };
+
+  const toast = (msg: string): void => {
+    const t = scene.add
+      .text(ctx.width / 2, ctx.below - 70, msg, { fontFamily: theme.font, fontSize: '24px', fontStyle: 'bold', color: cssColor(theme.danger), stroke: '#1a1033', strokeThickness: 5 })
+      .setOrigin(0.5)
+      .setDepth(5);
+    t.setResolution(textResolution(scene));
+    scene.tweens.add({ targets: t, alpha: 0, delay: 1800, duration: 400, onComplete: () => t.destroy() });
   };
 
   const render = (): void => {
@@ -62,6 +74,44 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       if (!on) btn.setAlpha(0.4);
       objs.push(btn);
     });
+
+    // Control chips (Drag / Tilt): only on devices that can really deliver tilt readings.
+    if (__GK_TEST_HOOKS__) (window as unknown as { __ddTitle?: object }).__ddTitle = { tiltChip: tiltAvail, control };
+    if (tiltAvail) {
+      (['drag', 'tilt'] as const).forEach((id, i) => {
+        const sel = control === id;
+        const btn = addButton(scene, ctx.width / 2 + (i - 0.5) * 136, ctx.below - 22, kit.t(`control.${id}`), {
+          width: 126, height: 40, fontSize: 20,
+          fill: sel ? theme.accent : theme.primary,
+          textColor: sel ? 0x1a1033 : 0xffffff,
+          strokeThickness: sel ? 0 : 4,
+          onClick: () => {
+            if (id === 'drag') {
+              if (control === 'drag') return;
+              control = 'drag';
+              persist(() => kit.save.setJSON('control', 'drag'));
+              render();
+              return;
+            }
+            // Must be called synchronously from this tap: iOS only shows its motion prompt from a user gesture.
+            void requestTilt(browserTiltEnv()).then((ok) => {
+              if (!scene.sys.isActive()) return;
+              if (ok) {
+                control = 'tilt';
+                persist(() => kit.save.setJSON('control', 'tilt'));
+              } else {
+                control = 'drag';
+                tiltAvail = false;
+                persist(() => kit.save.setJSON('control', 'drag'));
+                toast(kit.t('tiltFailed'));
+              }
+              render();
+            });
+          },
+        });
+        objs.push(btn);
+      });
+    }
 
     // Missions
     const y0 = ctx.menuBottom + 12;
@@ -108,17 +158,24 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     tier = s.tier;
     missions = s.missions;
     coins = s.coins;
+    control = s.control;
     if (s.fresh) persist(() => kit.save.setJSON('missions', s.missions));
     render();
+    void detectTilt(browserTiltEnv()).then((d) => {
+      if (!scene.sys.isActive() || !d.available) return;
+      tiltAvail = true;
+      render();
+    });
   });
 }
 
-async function load(kit: Kit): Promise<{ medals: string[]; tier: StartTier; missions: MissionState; coins: number; fresh: boolean }> {
-  const [rawMedals, rawTier, rawMissions, coins] = await Promise.all([
+async function load(kit: Kit): Promise<{ medals: string[]; tier: StartTier; missions: MissionState; coins: number; fresh: boolean; control: 'drag' | 'tilt' }> {
+  const [rawMedals, rawTier, rawMissions, coins, rawControl] = await Promise.all([
     kit.save.getJSON<unknown>('medals', []),
     kit.save.getJSON<unknown>('startTier', 'none'),
     kit.save.getJSON<unknown>('missions', null),
     kit.save.getNumber('coins', 0),
+    kit.save.getJSON<unknown>('control', 'drag'),
   ]);
   const medals = mergeMedals(rawMedals, []);
   return {
@@ -126,6 +183,7 @@ async function load(kit: Kit): Promise<{ medals: string[]; tier: StartTier; miss
     tier: sanitizeStartTier(rawTier, medals),
     missions: sanitizeMissions(rawMissions, Math.random),
     coins: Math.max(0, Math.floor(coins)),
+    control: rawControl === 'tilt' ? 'tilt' : 'drag',
     fresh: rawMissions === null || rawMissions === undefined,
   };
 }

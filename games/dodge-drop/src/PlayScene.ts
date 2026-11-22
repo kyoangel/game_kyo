@@ -16,6 +16,8 @@ import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
 import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
+import { tiltToVelocity } from './tilt.ts';
+import { TiltReader } from './tiltSensor.ts';
 import { nextToastSlot } from './toastSlot.ts';
 import { BLOCK_H, isRush, PLAYER_HITBOX_W } from './waves.ts';
 
@@ -114,6 +116,9 @@ export class PlayScene extends Phaser.Scene {
   private stats: RunStats = emptyStats();
   private missionState: MissionState = { active: [], stars: 0, rank: 1, completedCount: 0 };
   private toasted = new Set<MissionId>();
+  private tilt = new TiltReader();
+  private tiltNeutral: number | null = null;
+  private useTilt = false;
   private toastFreeAt = 0;
   private lastNearPopT = -1;
   private toastCheck = 0;
@@ -183,6 +188,10 @@ export class PlayScene extends Phaser.Scene {
     this.runStartT = 0;
     this.stats = emptyStats();
     this.toasted = new Set();
+    this.tilt.stop();
+    this.useTilt = false;
+    this.tiltNeutral = null;
+    this.events.once('shutdown', () => this.tilt.stop());
     this.toastFreeAt = 0;
     this.lastNearPopT = -1;
     this.fx?.clearPops();
@@ -243,8 +252,13 @@ export class PlayScene extends Phaser.Scene {
       save.getJSON<unknown>('startTier', 'none'),
       save.getJSON<unknown>('medals', []),
       save.getJSON<unknown>('missions', null),
-    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions]) => {
+      save.getJSON<unknown>('control', 'drag'),
+    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions, rawControl]) => {
       if (id !== this.runId || !this.sys.isActive()) return;
+      if (rawControl === 'tilt') {
+        this.useTilt = true;
+        this.tilt.start();
+      }
       this.skin = SKINS.find((s) => s.id === sid) ?? SKINS[0]!;
       const tier = sanitizeStartTier(rawTier, mergeMedals(rawMedals, []));
       const cfg = buildRunConfig({ workshop: sanitizeWorkshop(rawWs), assist: sanitizeAssist(rawAssist), tier, rng: this.rng });
@@ -476,6 +490,11 @@ export class PlayScene extends Phaser.Scene {
       this.vel = Math.abs(this.vel) <= dv ? 0 : this.vel - Math.sign(this.vel) * dv;
     }
     x += this.vel * dt;
+    if (this.useTilt && this.tilt.latest !== null) {
+      // Neutral = how the phone is held when the run starts (re-captured after a revive).
+      this.tiltNeutral ??= this.tilt.latest;
+      x += tiltToVelocity(this.tilt.latest, this.tiltNeutral) * dt;
+    }
     x = Phaser.Math.Clamp(x, PLAYER_HALF, W - PLAYER_HALF);
     if (x === PLAYER_HALF || x === W - PLAYER_HALF) this.vel = 0;
     this.player.x = x;
@@ -965,6 +984,7 @@ export class PlayScene extends Phaser.Scene {
       }
     }
     this.dead = false;
+    this.tiltNeutral = null;
     this.clearStreaks();
     this.combo.reset();
     this.invuln = INVULN_REVIVE;
