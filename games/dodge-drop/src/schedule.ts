@@ -1,5 +1,6 @@
-import { firstDeadEnd, type Scheduled } from './fairness.ts';
-import { planWave, waveKindAt, type WaveKind } from './waves.ts';
+import { fallSpeed, speedBoost } from './difficulty.ts';
+import { firstDeadEnd, PLAYER_Y, type Scheduled } from './fairness.ts';
+import { planWave, SPAWN_Y, waveKindAt, type WaveKind } from './waves.ts';
 
 export type { Scheduled };
 
@@ -16,6 +17,8 @@ const LOOKAHEAD = 5;
 /** Validation window: history simulated before the first new spawn, and after the last. */
 const LOOKBACK = 8;
 const LOOKFORWARD = 8;
+/** Single-removal candidates tried per prune step; keeps dense rows fast. */
+const MAX_TRIES = 8;
 
 interface Entry extends Scheduled {
   wall: boolean;
@@ -88,7 +91,12 @@ export class SpawnScheduler {
       const cands = this.buffer.filter((e) => !e.wall).sort((a, b) => b.at - a.at);
       if (cands.length === 0) return; // only walls left; nothing legal to drop
       let removed: Entry | null = null;
-      for (const c of cands) {
+      // Blocks that reach the player's row around the dead end are the likely culprits: try those first.
+      const speed = fallSpeed(d) * speedBoost(d) * (this.opts.speedMul ?? 1);
+      const hitAt = (e: Entry): number => e.at + (PLAYER_Y - SPAWN_Y) / (speed * e.speedMul);
+      const near = cands.filter((e) => e.at <= d!).sort((a, b) => Math.abs(hitAt(a) - d!) - Math.abs(hitAt(b) - d!));
+      const order = (near.length > 0 ? near : cands).slice(0, MAX_TRIES);
+      for (const c of order) {
         this.buffer.splice(this.buffer.indexOf(c), 1);
         const nd = dead();
         if (nd === null || nd > d) {
@@ -99,8 +107,8 @@ export class SpawnScheduler {
         this.buffer.push(c);
       }
       if (!removed) {
-        // no single removal helps yet: drop the latest block spawned before the dead end
-        const c = cands.find((e) => e.at <= d!) ?? cands[0]!;
+        // no single removal helps yet: drop the likeliest culprit and re-check
+        const c = order[0]!;
         this.buffer.splice(this.buffer.indexOf(c), 1);
         d = dead();
       }

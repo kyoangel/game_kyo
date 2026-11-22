@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   advanceStartTier, availableTiers, DEFAULT_ASSIST, HEAD_START_SCORE, headStartScore, nextLossStreak, runCoins,
-  rushesBefore, sanitizeAssist, sanitizeStartTier, START_TIERS, tierSeconds, updateAssist, type AssistState,
+  rushesBefore, rushStartAt, sanitizeAssist, sanitizeStartTier, START_TIERS, tierSeconds, updateAssist, type AssistState,
 } from './progression.ts';
 
 describe('loss streak', () => {
@@ -86,13 +86,14 @@ describe('assist state machine', () => {
 });
 
 describe('start tiers', () => {
-  it('Bronze 0:30, Silver 1:00, Gold 1:30', () => {
+  it('Bronze 0:30, Silver 1:00, Gold 1:30 (max start is Gold)', () => {
     expect(START_TIERS.map((t) => [t.id, t.seconds])).toEqual([['none', 0], ['bronze', 30], ['silver', 60], ['gold', 90]]);
     expect(tierSeconds('gold')).toBe(90);
   });
-  it('only earned medals are available; neon is not a start point', () => {
+  it('only earned medals are available; neon/diamond/legend are not start points', () => {
     expect(availableTiers([])).toEqual(['none']);
-    expect(availableTiers(['bronze', 'silver', 'neon', 'bogus'])).toEqual(['none', 'bronze', 'silver']);
+    expect(availableTiers(['bronze', 'silver', 'neon', 'legend', 'bogus'])).toEqual(['none', 'bronze', 'silver']);
+    expect(availableTiers(['diamond', 'neon'])).toEqual(['none']);
   });
   it('sanitizeStartTier falls back to none when not earned or invalid', () => {
     expect(sanitizeStartTier('silver', ['bronze', 'silver'])).toBe('silver');
@@ -106,6 +107,8 @@ describe('start tiers', () => {
     expect(advanceStartTier('gold', ['bronze'])).toBe('gold');
     expect(advanceStartTier('bronze', [])).toBe('bronze');
     expect(advanceStartTier('none', ['neon'])).toBe('none');
+    expect(advanceStartTier('gold', ['gold', 'neon', 'diamond', 'legend'])).toBe('gold');
+    expect(advanceStartTier('none', ['diamond', 'legend'])).toBe('none');
   });
 });
 
@@ -117,8 +120,15 @@ describe('headStartScore', () => {
   });
 });
 
+describe('rushStartAt', () => {
+  it('45 s, 90 s, then every 30 s from 180 s', () => {
+    expect([0, 1, 2, 3, 4, 10].map(rushStartAt)).toEqual([45, 90, 180, 210, 240, 420]);
+  });
+});
+
 describe('rushesBefore', () => {
   it('counts rushes (45 s and 90 s only, 4 s long; none from 120 s) fully ended before the clock', () => {
     expect([0, 30, 48.9, 49, 60, 90, 93.9, 94, 139].map(rushesBefore)).toEqual([0, 0, 0, 1, 1, 1, 1, 2, 2]);
+    expect([120, 180, 183.9, 184, 213.9, 214, 600].map(rushesBefore)).toEqual([2, 2, 2, 3, 3, 4, 2 + Math.floor((600 - 184) / 30) + 1]);
   });
 });

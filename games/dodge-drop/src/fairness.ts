@@ -17,6 +17,22 @@ const CELL = 4;
 const SAFETY = 6;
 const HIT_SCALE = 0.9;
 
+/** Cumulative fall distance per frame at speed multiplier 1; grown on demand and shared across calls. */
+let distCache = new Float64Array(1);
+let distFilled = 1;
+function distanceTable(len: number): Float64Array {
+  if (len > distCache.length) {
+    const grown = new Float64Array(Math.max(len, distCache.length * 2));
+    grown.set(distCache.subarray(0, distFilled));
+    distCache = grown;
+  }
+  for (; distFilled < len; distFilled++) {
+    const t = (distFilled - 1) * DT;
+    distCache[distFilled] = distCache[distFilled - 1]! + fallSpeed(t) * speedBoost(t) * DT;
+  }
+  return distCache;
+}
+
 /**
  * Simulates the real motion model (per-frame integration of fallSpeed * speedBoost * speedMul) and
  * a player moving at most SAFE_PLAYER_SPEED. Returns the time at which no x position is
@@ -34,11 +50,7 @@ export function firstDeadEnd(
   const kStart = Math.max(0, Math.floor(fromT / DT));
   const kEnd = Math.floor(toT / DT);
   if (kEnd < kStart) return null;
-  const D = new Float64Array(kEnd + 2);
-  for (let k = 0; k <= kEnd; k++) {
-    const t = k * DT;
-    D[k + 1] = D[k]! + fallSpeed(t) * speedBoost(t) * sm * DT;
-  }
+  const D = distanceTable(kEnd + 2);
 
   const n = Math.floor((width - PLAYER_HITBOX_W) / CELL) + 1;
   const x0 = PLAYER_HITBOX_W / 2;
@@ -53,7 +65,7 @@ export function firstDeadEnd(
     const reach = (PLAYER_HITBOX_W + s.h * HIT_SCALE) / 2;
     const half = (s.w * HIT_SCALE) / 2 + PLAYER_HITBOX_W / 2 + SAFETY;
     // y(k) = SPAWN_Y + speedMul * (D[k] - D[ks]); monotonic in k, find the band [first, last].
-    const yAt = (k: number): number => SPAWN_Y + s.speedMul * (D[k]! - D[ks]!);
+    const yAt = (k: number): number => SPAWN_Y + s.speedMul * sm * (D[k]! - D[ks]!);
     let a = ks;
     let b = kEnd + 1;
     while (a < b) {

@@ -1,3 +1,4 @@
+import { SURGE_EVERY, SURGE_LEN, SURGE_T } from './difficulty.ts';
 import { coinsForRun } from './economy.ts';
 
 export const LOSS_SECONDS = 30;
@@ -86,7 +87,14 @@ export function headStartScore(t: StartTier): number {
   return t === 'none' ? 0 : HEAD_START_SCORE[t];
 }
 
+/** Start time of the i-th rush (0-based): 45 s, 90 s, then a surge every 30 s from 180 s. */
+export function rushStartAt(i: number): number {
+  return i === 0 ? 45 : i === 1 ? 90 : SURGE_T + SURGE_EVERY * (i - 2);
+}
+
 export function rushesBefore(clock: number): number {
-  // rushes exist only at 45 s and 90 s (none from OVERDRIVE_T)
-  return clock < 49 ? 0 : clock < 94 ? 1 : 2;
+  // rushes at 45 s and 90 s (4 s long), none 120..180, then a surge every 30 s from 180 s
+  const early = clock < 49 ? 0 : clock < 94 ? 1 : 2;
+  const surges = clock < SURGE_T + SURGE_LEN ? 0 : Math.floor((clock - SURGE_T - SURGE_LEN) / SURGE_EVERY) + 1;
+  return early + surges;
 }

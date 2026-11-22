@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
-import { sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
+import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
 import { emptyWorkshop, sanitizeWorkshop, shieldInterval, starInterval } from './workshop.ts';
 import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
@@ -564,11 +564,7 @@ export class PlayScene extends Phaser.Scene {
   // ------------------------------------------------------------- rush/music
 
   private updateRush(): void {
-    const next = 45 + 45 * this.rushIdx;
-    if (next >= OVERDRIVE_T) {
-      this.rushBanner.setVisible(false);
-      return;
-    }
+    const next = rushStartAt(this.rushIdx);
     if (!this.rushWarned && this.t >= next - 1) {
       this.rushWarned = true;
       this.rushBannerUntil = next + 0.8;

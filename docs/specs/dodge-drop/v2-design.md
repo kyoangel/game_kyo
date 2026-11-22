@@ -201,3 +201,15 @@ Kit-generic ones (`revive`, `noThanks`, `newBest`, `tapRetry`, `home`, `double`)
 ## Out of scope (1.1+)
 
 Daily challenge (#11), leaderboard, haptics, and additional power-ups.
+
+## 2.3 density / tiers / shields
+
+Owner decisions 2026-11-22 (after play-testing 2.2; revised the same day).
+
+- **Density = row coverage** (fraction of a horizontal row covered by blocks), not blocks per second and not fall speed. Each rain spawn time is now a *row* of k blocks, k = floor(e) + (rng < frac(e)), max 3, with expected blocks per row `e(t)`: 1 until 30 s, linear to 1.6 at 120 s (Neon), to 2.2 at 180 s (Diamond), to 2.8 at 240 s (Legend), flat after. Rain width range 60-160 -> 80-180, stairs width 120 -> 160, zigzag width 100-180 -> 120-200, all ramping 30 -> 240 s then flat. Every row keeps a horizontal gap of at least 2.2 x hitbox (about 99 px), re-placed up to 12 times, else the last block is dropped. Walls, `spawnInterval` and the wave cycle are unchanged. Helpers (`rainRowExpected`, `rainRowBlocks`, `rainWidthRange`, `stairsWidth`, `zigzagWidthRange`, `rainRow`) live in `waves.ts`.
+- **Speed:** top speed is reached at Neon: `OVERDRIVE_RAMP` 30 -> 10 s (1150 x 1.3 = 1495 px/s from 2:10). Nothing else changes; base speed never increases after that.
+- **Surges:** from Diamond (180 s) on, every 30 s (180, 210, 240, ...; forever, also after Legend) a 4 s surge multiplies speed by 1.2 (`speedBoost` = 1.56 during a surge, then back to 1.3). Surges reuse the RUSH banner and sfx, count for the `rush` mission and `rushesBefore`/`rushStartAt`. Single source of truth: `speedBoost` / `isSurge` in `difficulty.ts` (the fairness validator uses it).
+- **Legend is endurance:** after 240 s density and base speed stay flat; only the surges continue.
+- **Medals:** `diamond` 180 s (`0xc8f4ff`) and `legend` 240 s (`0xff7ad9`); results show six medals with time labels in one row. Start tiers are unchanged (maximum Gold, head starts 100/200/300): Diamond and Legend are medals only.
+- **Stacking shields:** see meta-progression.md (Shield Stack upgrade, +1 per pickup, count badge).
+- **Validator:** the scheduler prunes non-wall blocks, trying the blocks that reach the player row near the dead end first (at most 8 single-removal tries, then drop the likeliest culprit). The property tests plan 240 s per seed.
