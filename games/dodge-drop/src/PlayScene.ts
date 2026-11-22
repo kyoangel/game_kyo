@@ -15,12 +15,12 @@ import { mulberry32 } from './rng.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
 import { SpawnScheduler } from './schedule.ts';
+import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
 import { nextToastSlot } from './toastSlot.ts';
 import { BLOCK_H, isRush, PLAYER_HITBOX_W } from './waves.ts';
 
 const W = 720;
 const H = 1280;
-const PLAYER_Y = 1100;
 const PLAYER_HALF = 28;
 const KEY_ACCEL = 5000;
 const KEY_DECEL = 7000;
@@ -345,15 +345,32 @@ export class PlayScene extends Phaser.Scene {
     };
   }
 
+  /** Faint thumb strip below the player: track line plus "<- drag ->" chevrons. Dragging works anywhere. */
+  private buildStrip(): void {
+    const g = this.add.graphics().setDepth(2);
+    const mid = (STRIP_TOP + STRIP_BOTTOM) / 2;
+    g.fillStyle(0xffffff, 0.04);
+    g.fillRect(0, STRIP_TOP, W, STRIP_BOTTOM - STRIP_TOP);
+    g.lineStyle(2, 0x9ee9ff, 0.18);
+    g.lineBetween(0, STRIP_TOP, W, STRIP_TOP);
+    g.lineStyle(4, 0x9ee9ff, 0.22);
+    g.lineBetween(120, mid, W - 120, mid);
+    g.fillStyle(0x9ee9ff, 0.28);
+    g.fillTriangle(70, mid, 106, mid - 22, 106, mid + 22);
+    g.fillTriangle(W - 70, mid, W - 106, mid - 22, W - 106, mid + 22);
+    g.fillCircle(W / 2, mid, 14);
+  }
+
   private buildHud(): void {
     const { theme } = this.kit;
     this.scoreText = this.add.text(24, 18, '0', this.textStyle(48, theme.text)).setDepth(100);
     this.comboText = this.add.text(24, 76, '', this.textStyle(40, theme.accent)).setDepth(100).setVisible(false);
     this.comboBar = this.add.graphics().setDepth(100);
+    this.buildStrip();
     this.timerText = this.add.text(W - 100, 24, '0:00', this.textStyle(40, theme.text)).setOrigin(1, 0).setDepth(100);
     this.kit.addMuteButton(this, W - 48, 48).setDepth(100);
     this.hint = this.add
-      .text(W / 2, 880, this.kit.t('dragHint'), this.textStyle(36, theme.muted))
+      .text(W / 2, 800, this.kit.t('dragHint'), this.textStyle(36, theme.muted))
       .setOrigin(0.5)
       .setDepth(100);
     this.hintDone = false;
@@ -380,7 +397,7 @@ export class PlayScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     const raw = Math.min(deltaMs, 50) / 1000;
     const dt = raw * this.time.timeScale;
-    const drag = this.gin.dragDx();
+    const drag = dragToDx(this.gin.dragDx());
     if (this.fx.frozen || !this.ready) return;
     this.updateHint(drag);
 

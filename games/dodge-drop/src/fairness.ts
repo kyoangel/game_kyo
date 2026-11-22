@@ -1,4 +1,5 @@
 import { fallSpeed, speedBoost } from './difficulty.ts';
+import { PLAYER_Y } from './layout.ts';
 import type { Spawn } from './waves.ts';
 import { PLAYER_HITBOX_W, SPAWN_Y } from './waves.ts';
 
@@ -9,7 +10,7 @@ export interface FieldOptions {
   speedMul?: number;
 }
 
-export const PLAYER_Y = 1100;
+export { PLAYER_Y };
 /** Conservative player speed (keyboard max is 640). */
 export const SAFE_PLAYER_SPEED = 520;
 const DT = 1 / 60;
