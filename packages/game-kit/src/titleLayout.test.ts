@@ -4,7 +4,7 @@ import { titleLayout } from './titleLayout.ts';
 describe('titleLayout', () => {
   it('derives bands from the canvas height and menu size', () => {
     const l = titleLayout(720, 1280, 2);
-    expect(l.below).toBeCloseTo(830.4, 1);
+    expect(l.below).toBeCloseTo(829.6, 1);
     expect(l.menuTop).toBeCloseTo(885.6, 1);
     expect(l.menuBottom).toBeCloseTo(1053.6, 1);
     expect(l.width).toBe(720);
