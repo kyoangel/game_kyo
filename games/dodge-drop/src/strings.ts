@@ -52,7 +52,7 @@ export const strings: Strings = {
     'mission.survive': 'Survive {t}s in one run',
     'mission.starsTotal': 'Collect {t} stars',
     'mission.starsRun': 'Get {t} stars in one run',
-    'mission.shieldBreak': 'Block {t} hits with shields',
+    'mission.shieldBreak': 'Shield blocks: {t}',
     'mission.score': 'Score {t} in one run',
     'mission.rush': 'Survive {t} rushes',
     'mission.runs': 'Play {t} runs',

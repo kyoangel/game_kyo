@@ -65,7 +65,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     // Dark panel keeps the list readable over the falling backdrop blocks.
     const panel = scene.add.graphics().setDepth(1);
     panel.fillStyle(0x1a1033, 0.72);
-    panel.fillRoundedRect(12, y0, ctx.width - 24, 3 * 52, 18);
+    panel.fillRoundedRect(6, y0, ctx.width - 12, 3 * 52, 18);
     objs.push(panel);
     ms.active.forEach((m, i) => {
       const y = y0 + 26 + i * 52;
