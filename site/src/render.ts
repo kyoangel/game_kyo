@@ -46,8 +46,11 @@ const LANG_BOOT =
   'document.documentElement.setAttribute(\'data-lang\',l);document.documentElement.lang=l;})();';
 
 const LANG_TOGGLE =
+  // Game links carry the chosen language (?lang=) so the choice survives sharing and any stale storage.
+  "function gkLinks(l){document.querySelectorAll('a.card[data-slug]').forEach(function(a){a.href='./'+a.getAttribute('data-slug')+'/?lang='+l;});}" +
+  "gkLinks(document.documentElement.getAttribute('data-lang')||'en');" +
   "document.querySelectorAll('[data-set-lang]').forEach(function(b){b.addEventListener('click',function(){" +
-  "var l=b.getAttribute('data-set-lang');document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;" +
+  "var l=b.getAttribute('data-set-lang');document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l;gkLinks(l);" +
   "try{localStorage.setItem('gk:lang',l)}catch(e){}" +
   // The embedded game reads the language at boot: reload it so it follows the switch.
   "var f=document.querySelector('.frame iframe');if(f){try{f.contentWindow.location.reload()}catch(e){f.src=f.src}}});});";

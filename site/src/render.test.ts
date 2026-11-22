@@ -38,6 +38,10 @@ describe('renderLobby', () => {
     expect(html).toContain('<span lang="zh-TW" data-l="zh-TW">Dodge &lt;blocks&gt; &amp; win</span>');
   });
   it('escapes manifest text', () => expect(html).not.toContain('<blocks>'));
+  it('game links follow the language switch with ?lang=', () => {
+    expect(html).toContain("'/?lang='+l");
+    expect(html).toContain('gkLinks(l)');
+  });
   it('includes legacy cards and tag filters', () => {
     expect(html).toContain('href="./merge10/"');
     expect(html).toContain('data-filter="arcade"');
