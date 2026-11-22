@@ -18,4 +18,3 @@ export { createInput, type GameInput } from './input/input.ts';
 export { addButton, consumeButtonTap, markButtonTap, textResolution } from './ui/button.ts';
 export type { ResultsContext } from './results.ts';
 export type { TitleExtrasContext } from './titleLayout.ts';
-export { SUPPORT_URL, showSupportLink } from './support.ts';

@@ -3,6 +3,7 @@ import { createIntervalGate } from '../intervalGate.ts';
 import { detectLocale } from '../locale.ts';
 import { createSafeLocalStorage } from '../storage.ts';
 import type { AdResult, Platform } from '../types.ts';
+import { SUPPORT_URL } from '../support.ts';
 
 /** 'play' = an ad plays (interstitial → shown, rewarded → rewarded). */
 export type LocalAdMode = 'play' | 'skipped' | 'unavailable' | 'throw';
@@ -51,6 +52,7 @@ export function createPlatform(opts: LocalOptions = {}): Platform {
   return {
     id: 'local',
     features: { externalLinks: true, leaderboard: true, rewardedAds: true, fullscreenButton: true },
+    supportUrl: SUPPORT_URL,
     async init() {},
     loadingProgress() {},
     loadingDone() {},

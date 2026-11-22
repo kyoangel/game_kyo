@@ -21,6 +21,8 @@ export interface PlatformStorage {
 export interface Platform {
   readonly id: PlatformId;
   readonly features: PlatformFeatures;
+  /** Donation page shown on the title screen; only set where external links are allowed (own site). */
+  readonly supportUrl?: string;
   init(): Promise<void>;
   loadingProgress(ratio: number): void;
   loadingDone(): void;

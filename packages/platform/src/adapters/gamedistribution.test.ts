@@ -68,6 +68,7 @@ describe('gamedistribution adapter specifics', () => {
     const { platform } = make();
     expect(platform.id).toBe('gamedistribution');
     expect(platform.features).toEqual({ externalLinks: false, leaderboard: false, rewardedAds: true, fullscreenButton: false });
+    expect(platform.supportUrl).toBeUndefined();
   });
 
   it('sets GD_OPTIONS (gameId + onEvent) BEFORE loading the SDK script', async () => {

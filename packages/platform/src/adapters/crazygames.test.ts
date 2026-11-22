@@ -88,6 +88,7 @@ describe('crazygames adapter specifics', () => {
     const { platform } = make();
     expect(platform.id).toBe('crazygames');
     expect(platform.features).toEqual({ externalLinks: false, leaderboard: false, rewardedAds: true, fullscreenButton: false });
+    expect(platform.supportUrl).toBeUndefined();
   });
 
   it('loads the SDK script once and inits the SDK once even if init is called twice', async () => {

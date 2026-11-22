@@ -1,5 +1,5 @@
 import type { GameManifest } from '../../packages/game-kit/src/manifest.ts';
-import { SUPPORT_URL } from '../../packages/game-kit/src/support.ts';
+import { SUPPORT_URL } from '../../packages/platform/src/support.ts';
 
 export interface LegacyGame {
   href: string;

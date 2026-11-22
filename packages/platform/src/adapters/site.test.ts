@@ -10,6 +10,7 @@ describe('site adapter (phase 1)', () => {
     const p = createPlatform();
     expect(p.id).toBe('site');
     expect(p.features).toEqual({ externalLinks: true, leaderboard: false, rewardedAds: false, fullscreenButton: true });
+    expect(p.supportUrl).toBe('https://p.ecpay.com.tw/17369E9');
     expect(await p.showInterstitial()).toBe('unavailable');
     expect(await p.showRewarded()).toBe('unavailable');
   });
