@@ -226,6 +226,10 @@ export class PlayScene extends Phaser.Scene {
       const cfg = buildRunConfig({ workshop: sanitizeWorkshop(rawWs), assist: sanitizeAssist(rawAssist), tier, rng: this.rng });
       this.cfg = cfg;
       this.missionState = sanitizeMissions(rawMissions, this.rng);
+      // Persist the drawn missions so results (and later runs) see exactly what in-run toasts referred to.
+      if (rawMissions === null || JSON.stringify(rawMissions) !== JSON.stringify(this.missionState)) {
+        void save.setJSON('missions', this.missionState);
+      }
       this.scheduler = new SpawnScheduler(this.rng, W, true, { speedMul: cfg.speedMul, intervalMul: cfg.intervalMul, startT: cfg.startT });
       this.t = cfg.startT;
       this.runStartT = cfg.startT;
