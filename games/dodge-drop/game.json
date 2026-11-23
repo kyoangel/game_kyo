@@ -47,9 +47,10 @@
   ],
   "releases": {
     "crazygames": {
-      "status": "submitted",
+      "status": "rejected",
       "version": "2.8.4",
-      "submittedAt": "2026-11-22"
+      "submittedAt": "2026-11-22",
+      "reason": "The overall quality of the game does not yet meet the expectations of our platform"
     },
     "gamedistribution": {
       "status": "todo",
