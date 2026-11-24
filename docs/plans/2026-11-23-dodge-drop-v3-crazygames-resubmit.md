@@ -5,11 +5,11 @@
 > **Commit trailer:** every commit message ends with the attribution line from the session system reminder (`Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`).
 > **Repo rules that apply:** never review via a background reviewer subagent (reviewer = inline, see `docs/STATUS.md` landmines); pre-push hook runs `npm run typecheck && npm test && npm run test:smoke` (`docs/ci.md`); push in batches; deploy is live (GitHub Pages) so confirm the game is playable before pushing; stop before the CrazyGames Submit button (user approves).
 
-**Goal:** Ship Neon Rush v3.0.0 with clearly visible improvements over the rejected v2.8.4 (adaptive portrait/landscape layout legible at 800x450, authored CC0 art and audio, personal-best progress cue) and prepare, but not submit, the CrazyGames resubmission.
-**Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, personal best, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. The personal-best cue reads `GameSession.best` (already persisted through the existing save mechanism).
+**Goal:** Ship Neon Rush v3.0.0 with clearly visible improvements over the rejected v2.8.4 (adaptive portrait/landscape layout legible at 800x450, authored CC0 art and audio, first-run visual onboarding plus a persistent next-medal goal bar) and prepare, but not submit, the CrazyGames resubmission.
+**Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, goal bar, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. A first-run tutorial model (`onboarding.ts`, persisted through the existing `SaveData` key-value store) and a goal-bar model (`goalBar.ts`, built on the existing `MEDALS` tiers and optionally `GameSession.best`) drive a visual control tutorial inside gameplay and a next-medal progress bar in the HUD (left panel in landscape).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** In progress (batches 1-3 done 2026-11-24: Phase 0 and Phase 1 complete; next Phase 2). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
+**Status:** In progress (batches 1-3 done 2026-11-24: Phase 0 and Phase 1 complete; next Phase 2). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed; 2026-11-24 PB cue replaced by onboarding + goal bar). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
 
 ---
 
@@ -44,33 +44,34 @@
 
 ## Requirements
 
-Goal in one sentence: make the resubmission a visibly different, higher-quality game than v2.8.4 along the axes the user chose (adaptive layout, CC0 art/audio, in-run personal-best feedback), because CrazyGames FAQ says small tweaks "will most likely produce the same result".
+Goal in one sentence: make the resubmission a visibly different, higher-quality game than v2.8.4 along the axes the user chose (adaptive layout, CC0 art/audio, first-run visual onboarding and a visible in-run goal), because CrazyGames FAQ says small tweaks "will most likely produce the same result".
 
 ### User Stories
 - As a desktop player in a 16:9 CrazyGames iframe, I want the game to use the width of the frame, with the HUD text in side panels large enough to read even at 800x450, so that it looks and feels made for the portal rather than a phone game with black bars.
 - As a phone player in portrait, I want the existing tall play field and thumb controls unchanged, so that the game still feels right in my hand.
 - As a new player, I want a coherent, bright, authored visual style with music and good sound effects, so that the first minutes feel polished (CrazyGames quality criteria: one coherent style, music complements visuals, consistent audio levels).
-- As a player mid-run, I want to see how close I am to my personal best, so that dying feels "almost there" and I retry.
+- As a first-time player, I want to see how to control the game (a ghost finger drag on touch, arrow keys on desktop) right inside the game, so that I understand it in seconds without reading text.
+- As a player mid-run, I want a visible next goal ("Bronze 30 s") with a progress bar, so that I always know what I am playing for and want to retry.
 - As the developer/seller of this template, I want every asset's source and license recorded and machine-checked, so that the template stays extractable and legally clean.
 - As the reviewer on CrazyGames, I want the build to pass the portal technical rules (size, no external URLs, no custom fullscreen button), so that the game is not rejected for something avoidable.
 
 ### Acceptance Criteria
-- Given a 16:9 iframe from 800x450 to 1920x1080, when the game loads, then the landscape layout is used: the full portrait play field is centred (about 253 css px wide at 800x450), and every piece of HUD text (score, timer, combo, personal best, missions, shields, mute) is in a side panel and renders at >= 14 css px at 800x450 (target 20+); any text left inside the field (hint, rush/overdrive banners, pop text) is a large minimal cue that also renders at >= 14 css px.
+- Given a 16:9 iframe from 800x450 to 1920x1080, when the game loads, then the landscape layout is used: the full portrait play field is centred (about 253 css px wide at 800x450), and every piece of HUD text (score, timer, combo, goal bar, missions, shields, mute) is in a side panel and renders at >= 14 css px at 800x450 (target 20+); any text left inside the field (hint, rush/overdrive banners, pop text) is a large minimal cue that also renders at >= 14 css px.
 - Given a portrait phone viewport (for example 375x667), when the game loads, then the layout is identical to v2.8.4 (720x1280 canvas, thumb strip, HUD in the field).
 - Given a window that changes orientation, when no run is in progress, then the layout switches; when a run is in progress, then the layout switches only after the run ends and the player is never moved mid-run.
 - Given landscape mode, when a run is played, then gameplay geometry is identical to portrait (logic field 720x1280, `playerY` 1000, same spawn speeds); `fairness.ts`/`schedule.ts` are untouched and their property tests still pass. Dragging in landscape moves the player by the same on-screen proportion as in portrait (drag gain compensates for the camera zoom).
-- Given the player has a personal best B > 0, when a run is at score S, then the HUD shows `S/B` percent and the best value, and at S > B it switches to a "NEW BEST" state exactly once per run.
-- Given a CrazyGames build with progress save through the SDK, when the player reloads, then the stored best is read back through the existing `GameSession.best` path so the personal-best cue is correct after reload (existing behaviour, verified once in `e2e/portals.spec.ts` with the fake CrazyGames SDK).
+- Given a fresh profile, when the first run starts, then an animated visual control tutorial is shown inside gameplay (ghost finger sweeping the thumb strip on touch, arrow-key caps on desktop, portrait and landscape, en and zh-TW), and it disappears on the first real input or after 6 s; once the player has used the controls during it, it is never shown again (stored in `SaveData` key `onboarding`; runs where the player ignored it show it at most twice).
+- Given any run, when it is in progress, then the HUD shows the next medal target (e.g. "Bronze · 30 s") with a progress bar that fills toward it and advances to the next tier when the medal is earned; after the top medal it shows percent of the personal best (`GameSession.best`) or nothing; in landscape it is in the left side panel at >= 14 css px at 800x450, in portrait it is a compact line that does not cover the player.
 - Given the production build, when `npm run build:portals` runs, then `scripts/check-artifact.ts` passes: total <= 10 MB, no external URLs, relative paths only.
 - Given any file under `games/dodge-drop/public/assets/`, when `npm test` runs, then `scripts/check-assets.test.ts` fails unless the file has a manifest entry with license `CC0-1.0`, author, source URL, retrieval date and sha256.
 - Given the final build, when `npm run publish:prep -- dodge-drop` runs, then it exits 0 with version 3.0.0, covers and videos present, and the plan stops before Submit.
 
 ### Assumptions, Constraints, and Scope Boundaries
-- Scope is fixed by the user: (1) adaptive portrait+landscape layout showing the full portrait field in landscape, (2) CC0-only art/audio upgrade with manifest, (3) personal-best progress cue during the run. Daily reward and login streak were REMOVED by the user on 2026-11-24 ("quality review has nothing to do with daily rewards"). Out of scope: new modes/worlds, onboarding rework, leaderboards, retention hooks, results-screen redesign beyond landscape adaptation.
-- Source of the reasoning: `docs/specs/dodge-drop/crazygames-gap-analysis.md` (gaps 1, 3, 5, 6, 10 addressed here; gaps 2, 4, 7 deliberately not). The gap analysis marks root cause as inference; a rejection is not guaranteed to flip. Success is measured by the criteria below plus the user's own judgment, not by the portal.
-- No database modification: persistence uses key-value `SaveData` only (no new keys needed; the personal best already persists as `best` through `GameSession`); no schema/DB involved. If the executor finds any DB need, STOP and ask.
+- Scope is fixed by the user: (1) adaptive portrait+landscape layout showing the full portrait field in landscape, (2) CC0-only art/audio upgrade with manifest, (3) first-run visual onboarding and a persistent next-medal goal bar (replaced the personal-best cue on 2026-11-24). Daily reward and login streak were REMOVED by the user on 2026-11-24 ("quality review has nothing to do with daily rewards"). The personal-best progress cue was dropped by the user on 2026-11-24 (no `pbCue.ts`). A scripted gentler opening is deferred (Phase 2 intro). Out of scope: new modes/worlds, leaderboards, retention hooks, results-screen redesign beyond landscape adaptation.
+- Source of the reasoning: `docs/specs/dodge-drop/crazygames-gap-analysis.md` (gaps 1, 2, 3, 5, 6, 10 addressed here; gaps 4, 7 deliberately not). The gap analysis marks root cause as inference; a rejection is not guaranteed to flip. Success is measured by the criteria below plus the user's own judgment, not by the portal.
+- No database modification: persistence uses key-value `SaveData` only (one new JSON key `onboarding` via `SaveData`; the personal best already persists as `best` through `GameSession`); no schema/DB involved. If the executor finds any DB need, STOP and ask.
 - In-flight work check (`.superpowers/sdd/meta/progress.md`): 2.3 (density/shield), mobile 2.4.0, shop/daily missions 2.5.0, rotate/magnet 2.5.1, UX fixes 2.5.2, skins FX 2.6.0 are all recorded complete; `git status` shows only an unrelated `workspace-pixel-squad/run_aoa_tests.sh` change and untracked `docs/STATUS.md`. `docs/STATUS.md` ("next: 2.3, mobile") is stale (version is 2.8.4) and is refreshed in Task 0.2. Open items recorded in progress.md that overlap this plan and are FOLDED IN: "small-phone tap targets (chips/skip ~22 css px on SE)" -> Task 1.7; "results screen redesign: owner will brainstorm later" -> NOT done here (only landscape adaptation), listed as an open question.
-- Sequencing: layout (Phase 1) -> personal-best cue (Phase 2, small) -> art/audio (Phase 3) -> release (Phase 4). Reason: art and audio replace procedural drawing inside the same HUD/title/backdrop code that Phase 1 re-anchors; doing art first would be redone. The PB cue goes right after the HUD side-panel work because it lives in the same HUD code.
+- Sequencing: layout (Phase 1) -> onboarding + goal bar (Phase 2) -> art/audio (Phase 3) -> release (Phase 4). Reason: art and audio replace procedural drawing inside the same HUD/title/backdrop code that Phase 1 re-anchors; doing art first would be redone. The tutorial and goal bar go right after the HUD side-panel work because they live in the same HUD code (the goal bar uses the left panel space that is empty today).
 - Portal rules that constrain design: no custom fullscreen button on CrazyGames (`kit.ts` gates it on `platform.features`; re-verified in Task 1.6), no external links, 16:9 legibility 800x450 to 1920x1080, devicePixelRatio 1 legibility, consistent behaviour at 144/165 Hz (verify dt-based motion in Task 1.4 - existing code is dt-based, confirm only), English present.
 - `docs/specs/game-platform/juice-layer.md` states "No binary assets / Non-goal: no asset pipeline". This plan intentionally supersedes that for the dodge-drop game only; Task 0.2 amends the spec so docs match reality. game-kit must keep working with zero assets (Neon Swarm and the template stay procedural-capable).
 - Asset licensing: CC0 only. Candidates (UNVERIFIED from memory, must be re-verified from each pack's own page at download time; the manifest records the verification): Kenney.nl packs (all Kenney assets are published CC0; look at the UI, space/simple-shape, particle, and the Interface/Impact/Digital/Sci-fi audio packs), OpenGameArt items filtered to "CC0" for music loops, Freesound items individually marked CC0. NOT acceptable: CC-BY, CC-BY-SA, "free for commercial use" custom licenses (Pixabay/Mixkit/itch "free" without CC0), anything needing attribution. The template will be sold later, so CC0 is the safe floor.
@@ -79,8 +80,9 @@ Goal in one sentence: make the resubmission a visibly different, higher-quality 
 ### Decisions taken (user, 2026-11-24)
 1. Landscape shows the FULL portrait field (720x1280 logic unchanged), scaled to the landscape height, with side panels for HUD/missions/decoration. Consequence: no fairness/scheduler/difficulty work; HUD text moves to panels.
 2. TDD exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3 is approved.
-3. Daily reward and login streak are removed from the plan entirely; only the in-run personal-best cue stays.
+3. Daily reward and login streak are removed from the plan entirely.
 4. Results-screen redesign stays excluded; landscape adaptation of the existing results is enough.
+5. (2026-11-24) The personal-best progress cue (old Tasks 2.1 `pbCue` model and 2.2 PB line in the HUD) is dropped entirely. Phase 2 becomes onboarding + persistent visible goal (gap #2): first-run visual control tutorial, next-medal goal bar in the HUD, and an evaluated-but-deferred gentler opening (scripted opening not done because it would touch `schedule.ts`/`waves.ts` invariants; optional free first-run shield in Task 2.5).
 
 ### Open Questions (still open)
 1. Whether `releases.crazygames` should be reset from `rejected` to `todo` in `game.json` before `publish:prep` (checked in Task 4.2/4.3 by reading `scripts/publish-payload.ts` and `scripts/mark-released.ts`).
@@ -89,9 +91,10 @@ Goal in one sentence: make the resubmission a visibly different, higher-quality 
 ## Architecture Review
 
 ### Reusable components and similar implementations
-- `packages/game-kit/src/save.ts` `SaveData` (`getJSON/setJSON/getNumber/setNumber`, slug-prefixed) - available if any new persisted value is ever needed (none planned; PB uses existing `GameSession.best`).
-- `packages/game-kit/src/session.ts` `GameSession.best` - source of the personal best for the PB cue (already persisted, already SDK-backed).
-- `games/dodge-drop/src/missions.ts` / `progression.ts` / `economy.ts` - pure, unit-tested modules; `pbCue.ts` copies this style.
+- `packages/game-kit/src/save.ts` `SaveData` (`getJSON/setJSON/getNumber/setNumber`, slug-prefixed) - used for the one new persisted value, `onboarding` (first-run tutorial state, JSON).
+- `packages/game-kit/src/session.ts` `GameSession.best` - optional post-Legend percent-of-best goal (already persisted, already SDK-backed).
+- `games/dodge-drop/src/medals.ts` `MEDALS` (bronze 30 s ... legend 240 s) - the tiers the goal bar targets; `PlayScene.ts` `this.hint`/`updateHint` - the existing 4 s text hint the tutorial replaces on first runs.
+- `games/dodge-drop/src/missions.ts` / `progression.ts` / `economy.ts` - pure, unit-tested modules; `onboarding.ts` and `goalBar.ts` copy this style.
 - `games/dodge-drop/src/titleExtras.ts` + `packages/game-kit/src/titleLayout.ts` (+ `titleLayout.test.ts`) - pattern for pure layout math tested without Phaser; new `frame.ts` and `hudLayout.ts` copy it.
 - `games/dodge-drop/src/layout.ts` (`PLAYER_Y`, `STRIP_*`, shared by `PlayScene.ts` and `fairness.ts`) - the single-source-of-truth pattern to extend.
 - `packages/game-kit/src/audio/audio.ts` (`createGameAudio` with injectable `ctxFactory`, fake AudioContext tests in `audio.test.ts`) - extension point for sample playback.
@@ -102,7 +105,7 @@ Goal in one sentence: make the resubmission a visibly different, higher-quality 
 ### Affected layers and key data flow
 1. Boot: `main.ts` -> `defineGame` (game-kit) now asks a `frame` provider for canvas size from `window.innerWidth/innerHeight` (+ `?layout=` override for tests) -> `Phaser.Game({width,height})`; `Kit.frame` exposes the active `Frame` to scenes.
 2. `PlayScene` keeps its 720x1280 logic and gets a zoomed field camera plus a UI camera for panels (landscape only). `TitleScene`/`titleExtras.ts`, `ShopScene`, `results.ts`, `GameOverScene` lay out against the real canvas (1440x810) in landscape with a larger minimum font.
-3. Personal-best cue: `pbCue.ts` (pure) reads `kit.session.best` (SDK-backed through `platform.storage`) and drives one HUD text (left panel in landscape, in-field strip in portrait).
+3. Onboarding and goal: `onboarding.ts` (pure) decides tutorial visibility from the `onboarding` key read through `kit.save` and the last input type; `PlayScene` draws the ghost finger / arrow caps over the thumb strip (field camera). `goalBar.ts` (pure) maps `this.t` and `MEDALS` (and optionally `kit.session.best`) to the next-medal label and progress; `PlayScene` draws it in the HUD (left panel in landscape via the UI camera, compact line in portrait).
 4. Assets: `games/dodge-drop/assets/manifest.json` (NOT in `public/`, so the URL scan in `check-artifact` never sees source URLs) -> `scripts/check-assets.ts` validates against files in `games/dodge-drop/public/assets/` -> Phaser loader (`def.preload`) loads images; `GameAudio.loadSamples()` fetches/decodes audio -> `playSfx`/music prefer samples, fall back to synth.
 5. Release: `game.json` (version, orientation `any`, description, `releases`) -> `npm run build:portals` -> `check-artifact` -> `npm run publish:prep`.
 
@@ -118,8 +121,9 @@ journey
     section Play
       Tap to start, drag or arrow keys: 5: Player
       Music plays, SFX on near miss and pickups: 5: Player
-      HUD in side panels, PB line shows 62% of best: 5: Player
-      Pass personal best, NEW BEST cue: 5: Player
+      Ghost finger / arrow keys show how to move, gone on first input: 5: Player
+      HUD in side panels, goal bar fills toward Bronze 30 s: 5: Player
+      Earn the medal, goal advances to Silver: 5: Player
     section Retry loop
       Die, results with best score: 4: Player
       Instant retry or Shop: 5: Player
@@ -127,14 +131,16 @@ journey
       Rotate phone, layout switches after the run: 4: Player
       Portrait play unchanged: 5: Player
     section Chase
-      Retry chasing the personal best: 5: Player
+      Retry to reach the next medal: 5: Player
 ```
 
 ### Exact file paths that will likely change
 New:
 - `games/dodge-drop/src/frame.ts`, `frame.test.ts`
 - `games/dodge-drop/src/hudLayout.ts`, `hudLayout.test.ts`
-- `games/dodge-drop/src/pbCue.ts`, `pbCue.test.ts`
+- `games/dodge-drop/src/onboarding.ts`, `onboarding.test.ts`
+- `games/dodge-drop/src/goalBar.ts`, `goalBar.test.ts`
+- (optional, Task 2.2 refactor) `games/dodge-drop/src/tutorialView.ts`; `e2e/fixtures/onboarding.ts`
 - `games/dodge-drop/src/art.ts` (asset key map + preload), `art.test.ts`
 - `packages/game-kit/src/audio/samples.ts`, `samples.test.ts`
 - `scripts/check-assets.ts`, `scripts/check-assets.test.ts`
@@ -144,7 +150,7 @@ New:
 - `docs/specs/dodge-drop/v3-resubmit-notes.md` (changelog + portal notes, Phase 4)
 
 Modified:
-- `games/dodge-drop/src/main.ts`, `layout.ts` (drag gain takes zoom), `PlayScene.ts`, `titleExtras.ts`, `ShopScene.ts`, `results.ts`, `backdrop.ts`, `playArt.ts`, `skinArt.ts`, `strings.ts`, `strings.test.ts`
+- `games/dodge-drop/src/main.ts`, `layout.ts` (drag gain takes zoom), `hudLayout.ts` (`best` anchor becomes `goal`), `runSetup.ts` (optional Task 2.5), `PlayScene.ts`, `titleExtras.ts`, `ShopScene.ts`, `results.ts`, `backdrop.ts`, `playArt.ts`, `skinArt.ts`, `strings.ts`, `strings.test.ts`
 - `packages/game-kit/src/defineGame.ts`, `kit.ts`, `scenes/PreloadScene.ts`, `scenes/TitleScene.ts`, `scenes/GameOverScene.ts`, `titleLayout.ts`, `audio/audio.ts`, `audio/sfx.ts`, `index.ts`, `manifest.ts` only if needed
 - `games/dodge-drop/game.json` (version 3.0.0, orientation `any`, description, instructions, `releases`)
 - `e2e/dodge-drop.spec.ts`, `e2e/smoke.spec.ts`, `e2e/results.spec.ts`, `e2e/dodge-drop-mobile.spec.ts`, `e2e/rwd.spec.ts`, `e2e/portals.spec.ts` (portrait pin via `?layout=portrait`; landscape additions)
@@ -919,51 +925,94 @@ Confirm:
 Run:
 `git commit -am "chore(dodge-drop): 🔧 declare portrait and landscape support"`
 
-### Phase 2: Personal-best progress cue (small)
+### Phase 2: Onboarding and a persistent visible goal (replaces the personal-best cue, decision 5)
 
-Retention hooks (daily reward, login streak) were removed by the user on 2026-11-24. Only the in-session personal-best cue remains because a reviewer sees it while playing.
+Source: gap #2 in `docs/specs/dodge-drop/crazygames-gap-analysis.md` ("Thin first 30 s: text-only hint, no visual onboarding, no clear early goal"). CrazyGames quality guideline 1 asks for skippable onboarding built into gameplay, visuals over text, controls shown by overlay/gestures; the FAQ asks for a clear goal and fast intuitive onboarding. The earlier personal-best cue (`pbCue.ts`, PB line in the HUD) was dropped by the user on 2026-11-24; do not build it. Three deliverables: (1) first-run visual control tutorial (Tasks 2.1, 2.2), (2) always-visible next-medal goal bar (Tasks 2.3, 2.4), (3) gentler first 10 s - evaluated, scripted opening DEFERRED (see the decision below), optional low-risk substitute in Task 2.5.
 
-#### Task 2.1: Personal-best cue model
-**Goal:** Pure percent/label/state function for the in-run PB line.
+Existing facts the tasks build on (verified 2026-11-24): the 4 s text hint is `PlayScene.ts` `this.hint` built in `buildHud` (about line 530, `kit.t('dragHint')`, depth 100, field text via `textStyleFor('field', 36, ...)`) and faded by `updateHint(drag)` (about line 602; ends on `drag !== 0 || this.gin.vector().x !== 0 || t - runStartT >= HINT_SECONDS`, `HINT_SECONDS = 4` at line 45). `gin = kit.input(this, { joystick: false })` handles pointer drag and arrow keys. Medal tiers live in `games/dodge-drop/src/medals.ts` `MEDALS` (bronze 30 s, silver 60, gold 90, neon 120, diamond 180, legend 240; `medalsReached`, `mergeMedals`), strings `medal.<id>` in `strings.ts` (en and zh-TW). Persistence is `kit.save` (`SaveData.getJSON/setJSON`, key prefixed `dodge-drop:`) read in the `Promise.all` in `PlayScene.create` (about line 285). HUD anchors are in `hudLayout.ts` (`hudAnchors(frame)`; landscape left panel today: score y 40, combo y 140 plus its 12 px bar at y 204, an unused `best` anchor at y 250 that Phase 2 repurposes as `goal`); test hook `__dd.hud()` is `hudReport()` (about line 420) and is asserted at >= 14 css px in `e2e/crazygames-viewport.spec.ts`.
+
+Easy-opening decision (Task 2.5 explains): a scripted gentler opening is NOT done. The first 10 s is already single-block `rain` (`waves.ts:24-27` `waveKindAt` returns `rain` below 10 s; `waves.ts:53-56` `rainRowExpected` is 1 until 90 s), preceded by a 0.4 s start offset (`schedule.ts:7` `START = 0.4`). Making it gentler means a time-varying interval/speed inside `schedule.ts`/`waves.ts` (today `speedMul`/`intervalMul` are constant per run, `schedule.ts:10-14`, `:70`) and the fairness validator replays the same speed (`schedule.ts:73-75`, property tests `schedule.test.ts:29,77,81,85`), so any change risks the "survivable for every seed" invariant. Deferred.
+
+#### Task 2.1: Onboarding model (pure)
+**Goal:** One tested module decides whether the first-run tutorial shows, which control scheme to show (touch ghost-finger vs arrow-key caps), when it ends, and where the animated ghost finger is. No Phaser, no storage.
 
 **Files:**
-- Create: `games/dodge-drop/src/pbCue.ts`
-- Test: `games/dodge-drop/src/pbCue.test.ts`
+- Create: `games/dodge-drop/src/onboarding.ts`
+- Test: `games/dodge-drop/src/onboarding.test.ts`
 
 **RED - Write Failing Test**
 ```ts
-// games/dodge-drop/src/pbCue.test.ts
+// games/dodge-drop/src/onboarding.test.ts
 import { describe, expect, it } from 'vitest';
-import { pbCue } from './pbCue.ts';
+import {
+  controlKind, ghostX, onTutorialInput, onTutorialShown, sanitizeOnboarding, shouldShowTutorial,
+  tutorialEnded, TUTORIAL_MAX_RUNS, TUTORIAL_SECONDS,
+} from './onboarding.ts';
 
-describe('pbCue', () => {
-  it('shows nothing when there is no best yet', () => {
-    expect(pbCue(50, 0)).toEqual({ state: 'none', percent: 0 });
+describe('sanitizeOnboarding', () => {
+  it('defaults for missing or corrupt data', () => {
+    for (const raw of [undefined, null, 5, 'x', [], { shown: 'a' }, { shown: -3, completed: 'yes' }]) {
+      expect(sanitizeOnboarding(raw)).toEqual({ shown: 0, completed: false });
+    }
   });
-  it('reports whole percent of best while below it', () => {
-    expect(pbCue(310, 500)).toEqual({ state: 'chasing', percent: 62 });
-    expect(pbCue(0, 500)).toEqual({ state: 'chasing', percent: 0 });
+  it('keeps valid data', () => {
+    expect(sanitizeOnboarding({ shown: 1, completed: true })).toEqual({ shown: 1, completed: true });
   });
-  it('flags close to best at >= 90%', () => {
-    expect(pbCue(450, 500)).toEqual({ state: 'close', percent: 90 });
-    expect(pbCue(499, 500)).toEqual({ state: 'close', percent: 99 });
+});
+
+describe('shouldShowTutorial', () => {
+  it('shows on a fresh install', () => {
+    expect(shouldShowTutorial({ shown: 0, completed: false })).toBe(true);
   });
-  it('switches to beating at or above best and caps the percent display at 100', () => {
-    expect(pbCue(500, 500)).toEqual({ state: 'beating', percent: 100 });
-    expect(pbCue(900, 500)).toEqual({ state: 'beating', percent: 100 });
+  it('never shows again once the player used the controls during it', () => {
+    expect(shouldShowTutorial(onTutorialInput({ shown: 1, completed: false }))).toBe(false);
   });
-  it('is safe on NaN and negatives', () => {
-    expect(pbCue(Number.NaN, 500)).toEqual({ state: 'chasing', percent: 0 });
-    expect(pbCue(-5, 500)).toEqual({ state: 'chasing', percent: 0 });
+  it('gives up after TUTORIAL_MAX_RUNS shows even if the player never moved', () => {
+    let s = sanitizeOnboarding(undefined);
+    for (let i = 0; i < TUTORIAL_MAX_RUNS; i++) s = onTutorialShown(s);
+    expect(shouldShowTutorial(s)).toBe(false);
+  });
+});
+
+describe('controlKind', () => {
+  it('last input wins', () => {
+    expect(controlKind('key', true)).toBe('keys');
+    expect(controlKind('touch', false)).toBe('touch');
+  });
+  it('before any input a coarse pointer means touch, otherwise keys (mouse users get the arrow keys; drag also works)', () => {
+    expect(controlKind(null, true)).toBe('touch');
+    expect(controlKind(null, false)).toBe('keys');
+    expect(controlKind('mouse', false)).toBe('keys');
+  });
+});
+
+describe('tutorialEnded', () => {
+  it('ends on the first real input or after TUTORIAL_SECONDS', () => {
+    expect(tutorialEnded(0.5, false)).toBe(false);
+    expect(tutorialEnded(0.5, true)).toBe(true);
+    expect(tutorialEnded(TUTORIAL_SECONDS, false)).toBe(true);
+  });
+});
+
+describe('ghostX', () => {
+  it('sweeps left and right around the centre, bounded by the amplitude, and is NaN-safe', () => {
+    const xs = Array.from({ length: 49 }, (_, i) => ghostX(i * 0.05, 360, 200));
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(160 - 1e-6);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(560 + 1e-6);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(300);
+    expect(ghostX(Number.NaN, 360, 200)).toBe(360);
   });
 });
 ```
 
+**Requirements:**
+- One behaviour per `it`; no mocks.
+
 **Verify RED - Watch It Fail**
-Run: `npx vitest run games/dodge-drop/src/pbCue.test.ts`
+Run: `npx vitest run games/dodge-drop/src/onboarding.test.ts`
 
 Confirm:
-- Fails with unresolved import `./pbCue.ts`.
+- Fails with unresolved import `./onboarding.ts`, not a syntax error.
 
 **Test passes?** You're testing existing behavior. Fix test.
 
@@ -971,27 +1020,59 @@ Confirm:
 
 **GREEN - Minimal Code**
 ```ts
-// games/dodge-drop/src/pbCue.ts
-export type PbState = 'none' | 'chasing' | 'close' | 'beating';
-export interface PbCue { state: PbState; percent: number }
+// games/dodge-drop/src/onboarding.ts
+/** First-run control tutorial model. Persisted by the scene under the SaveData key `onboarding` (key-value, no DB). */
+export interface Onboarding { shown: number; completed: boolean }
+export type LastInput = 'touch' | 'mouse' | 'key' | null;
+export type ControlKind = 'touch' | 'keys';
 
-export function pbCue(score: number, best: number): PbCue {
-  if (!(best > 0)) return { state: 'none', percent: 0 };
-  const s = Number.isFinite(score) && score > 0 ? score : 0;
-  if (s >= best) return { state: 'beating', percent: 100 };
-  const percent = Math.floor((s / best) * 100);
-  return { state: percent >= 90 ? 'close' : 'chasing', percent };
+/** Shown at most this many runs when the player ignores it; a real input during it ends it for good. */
+export const TUTORIAL_MAX_RUNS = 2;
+export const TUTORIAL_SECONDS = 6;
+const SWEEP_PERIOD = 2.4;
+
+export function sanitizeOnboarding(raw: unknown): Onboarding {
+  const o = (raw ?? {}) as { shown?: unknown; completed?: unknown };
+  const shown = typeof o.shown === 'number' && Number.isFinite(o.shown) && o.shown > 0 ? Math.floor(o.shown) : 0;
+  return { shown, completed: o.completed === true };
+}
+
+export function shouldShowTutorial(s: Onboarding): boolean {
+  return !s.completed && s.shown < TUTORIAL_MAX_RUNS;
+}
+export function onTutorialShown(s: Onboarding): Onboarding {
+  return { ...s, shown: s.shown + 1 };
+}
+export function onTutorialInput(s: Onboarding): Onboarding {
+  return { ...s, completed: true };
+}
+
+export function controlKind(last: LastInput, coarsePointer: boolean): ControlKind {
+  if (last === 'key') return 'keys';
+  if (last === 'touch') return 'touch';
+  if (last === 'mouse') return 'keys';
+  return coarsePointer ? 'touch' : 'keys';
+}
+
+export function tutorialEnded(elapsed: number, gotInput: boolean): boolean {
+  return gotInput || elapsed >= TUTORIAL_SECONDS;
+}
+
+/** Ghost finger x (field px) at `elapsed` s: smooth left-right sweep around `centre`. */
+export function ghostX(elapsed: number, centre: number, amplitude: number): number {
+  if (!Number.isFinite(elapsed)) return centre;
+  return centre + amplitude * Math.sin((elapsed / SWEEP_PERIOD) * Math.PI * 2);
 }
 ```
 
 **Verify GREEN - Watch It Pass**
-Run: `npx vitest run games/dodge-drop/src/pbCue.test.ts`
+Run: `npx vitest run games/dodge-drop/src/onboarding.test.ts`
 
 Confirm:
-- Pass; pristine.
+- All pass; output pristine.
 
 **REFACTOR - Clean Up**
-- None needed (keep DRY; threshold 90 as `CLOSE_AT` const).
+- None expected; keep constants named and exported only if the scene needs them.
 
 **Verify GREEN - Stay Green After Refactor**
 Run: `npx vitest run games/dodge-drop && npm run typecheck`
@@ -1001,62 +1082,308 @@ Confirm:
 
 **COMMIT**
 Run:
-`git add games/dodge-drop/src/pbCue.ts games/dodge-drop/src/pbCue.test.ts && git commit -m "feat(dodge-drop): ✨ personal-best cue model"`
+`git add games/dodge-drop/src/onboarding.ts games/dodge-drop/src/onboarding.test.ts && git commit -m "feat(dodge-drop): ✨ first-run onboarding model"`
 
-#### Task 2.2: Personal-best line in the HUD (left panel in landscape)
-**Goal:** HUD shows `62% of best` (chasing/close styles) and flips to "NEW BEST" once. In landscape the line sits in the left side panel; in portrait it keeps the in-field strip.
+#### Task 2.2: First-run visual control tutorial in PlayScene (touch ghost finger and arrow-key caps)
+**Goal:** On the first run(s) the player sees, inside gameplay, an animated ghost finger sweeping along the thumb strip (touch) or two pulsing arrow-key caps (desktop), in portrait and landscape. It disappears (fade 300 ms) on the first real input or after `TUTORIAL_SECONDS`, is skippable by simply playing, and is not shown again once the player used the controls. It replaces the 4 s text hint on tutorial runs (the hint object is kept as the short caption); runs without a tutorial keep today's hint unchanged. Do NOT add DB or new storage: the state is one `SaveData` JSON key `onboarding`.
 
 **Files:**
-- Modify: `games/dodge-drop/src/PlayScene.ts` (`buildHud` add `bestText` at `hudAnchors().best`; `updateHud` near line 1141 updates it from `pbCue(score, kit.session.best)`), `games/dodge-drop/src/strings.ts`
-- Test: `e2e/crazygames-viewport.spec.ts` or `e2e/dodge-drop.spec.ts`
+- Modify: `games/dodge-drop/src/PlayScene.ts` (`create` `Promise.all` reads `save.getJSON('onboarding', null)` next to `skin`/`workshop`, about line 285; new `buildTutorial()` called from `buildHud` after the hint, new `updateTutorial(drag)` called next to `updateHint(drag)` in `update`, `hudReport()` adds a `tutorial` entry, `__dd` hook adds `tutorial: () => ({ visible, kind })`; last-input tracking via `this.input.on('pointerdown'|'pointermove', p => lastInput = p.wasTouch ? 'touch' : 'mouse')` and `this.input.keyboard?.on('keydown', () => lastInput = 'key')`), `games/dodge-drop/src/strings.ts` (`tutorial.touch`, `tutorial.keys` captions, en and zh-TW), `docs/STATUS.md` only if it lists the hint
+- Test: `e2e/crazygames-viewport.spec.ts` (landscape and zh-TW legs), `e2e/dodge-drop.spec.ts` (portrait tutorial lifecycle), `e2e/dodge-drop-mobile.spec.ts` (touch kind)
 
 **RED - Write Failing Test**
 ```ts
-test('HUD shows the personal-best cue during a run', async ({ page }) => {
-  await page.goto('http://localhost:5180/dodge-drop/?layout=portrait');
-  await page.addInitScript(() => localStorage.setItem('dodge-drop:best', '500'));
+// e2e/dodge-drop.spec.ts (portrait; the file already pins ?layout=portrait via its GAME url, reuse its helpers)
+type DDTut = { visible: boolean; kind: 'touch' | 'keys' };
+const tut = (page: Page) => page.evaluate(() => (window as unknown as { __dd: { tutorial(): DDTut } }).__dd.tutorial());
+
+test('first run shows the visual control tutorial; first input dismisses it; second run does not show it', async ({ page }) => {
+  await page.goto(GAME); // fresh context: empty localStorage
+  await startRun(page); // existing helper: click title, wait for 'Play'
+  expect(await tut(page)).toEqual({ visible: true, kind: 'keys' });
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(500);
+  await page.keyboard.up('ArrowLeft');
+  await expect.poll(async () => (await tut(page)).visible).toBe(false);
+  // second run in the same browser profile: the stored onboarding state says completed
   await page.reload();
-  await page.waitForFunction(() => (window as unknown as { __gk?: { activeScenes: string[] } }).__gk?.activeScenes.includes('GKTitle'));
-  await page.mouse.click(200, 400);
-  await page.waitForFunction(() => (window as unknown as { __gk: { activeScenes: string[] } }).__gk.activeScenes.includes('Play'));
-  const cue = await page.evaluate(() => (window as unknown as { __dd: { pb(): { state: string; text: string } } }).__dd.pb());
-  expect(cue.state).toBe('chasing');
-  expect(cue.text).toMatch(/0%|%/);
+  await startRun(page);
+  expect((await tut(page)).visible).toBe(false);
+});
+
+test('tutorial times out by itself when the player does nothing', async ({ page }) => {
+  await page.goto(GAME);
+  await startRun(page);
+  await page.evaluate(() => { (window as unknown as { __dd: { god: boolean } }).__dd.god = true; });
+  await expect.poll(async () => (await tut(page)).visible, { timeout: 9000 }).toBe(false);
 });
 ```
-(`__dd.pb()` is the new hook; the local adapter stores under the `dodge-drop:` prefix - confirm key format by `grep -n "localStorage" packages/platform/src/adapters/local.ts`.)
+```ts
+// e2e/crazygames-viewport.spec.ts: add to the existing 800x450 HUD legibility test, after the Play scene is up
+const hudT = await page.evaluate(() => (window as unknown as { __dd: { hud(): DDHud } }).__dd.hud());
+const tutorialRow = hudT.find((h) => h.name === 'tutorial');
+expect(tutorialRow, 'first-run tutorial is visible in landscape').toBeTruthy();
+expect(tutorialRow!.fontPx * scale, 'tutorial caption font in CSS px').toBeGreaterThanOrEqual(14);
+```
+```ts
+// e2e/dodge-drop-mobile.spec.ts (hasTouch context): the touch scheme is chosen without any prior input
+expect(await tut(page)).toEqual({ visible: true, kind: 'touch' });
+```
+(Use the helpers each spec already has; confirm names with `grep -n "async function\|const .* = async" e2e/dodge-drop.spec.ts e2e/dodge-drop-mobile.spec.ts`. If `god` is not reachable before `__dd` exists, set it after the Play scene is up, as other specs do.)
 
 **Verify RED - Watch It Fail**
-Run: `npm run build:local && npx playwright test e2e/dodge-drop.spec.ts -g "personal-best cue"`
+Run: `npm run build:local && npx playwright test e2e/dodge-drop.spec.ts -g "control tutorial|times out by itself"`
 
 Confirm:
-- Fails because `__dd.pb` is undefined.
+- Fails because `__dd.tutorial` is not a function (not because of timeouts in unrelated helpers).
 
 **Test passes?** You're testing existing behavior. Fix test.
 
 **Test errors?** Fix error, re-run until it fails correctly.
 
 **GREEN - Minimal Code**
-In `buildHud`: `this.bestText = this.add.text(a.best.x, a.best.y, '', this.textStyle(30, theme.muted)).setOrigin(a.best.originX ?? 0, 0).setDepth(100);` In `updateHud`: compute `const cue = pbCue(this.score, this.kit.session.best)`; set text via `this.kit.t('pb.chasing')`-style templates (`strings.ts`: `pb.chasing: '{n}% of your best'`, `pb.best: 'Best {n}'`, `pb.new: 'NEW BEST!'`, zh-TW equivalents), colour accent when `close`, pop text + `audio.sfx('newBest')` once when state first becomes `beating` (guard with `this.pbCelebrated`). Hide the line when `state === 'none'`. Register in `__dd` hook: `pb: () => ({ state, text: this.bestText.text })`. In landscape the text is created inside the `buildingHud` window (Task 1.4) at `hudAnchors(frame).best` with `MIN_PANEL_FONT`; in portrait it keeps `textStyle(30, ...)`. The persisted best itself needs no new code (`GameSession.best`).
+- State: `private onboarding: Onboarding`, `private tutorialOn = false`, `private tutorialStartT = 0`, `private lastInput: LastInput = null`, `private tutorialObjs: Phaser.GameObjects.GameObject[] = []`. In the `Promise.all` result: `this.onboarding = sanitizeOnboarding(rawOnboarding)`; `this.tutorialOn = shouldShowTutorial(this.onboarding)`; if on, `this.onboarding = onTutorialShown(...)`, `void save.setJSON('onboarding', this.onboarding)` (counts the show immediately so a reload mid-run still counts), then `buildTutorial()`.
+- `buildTutorial()`: `kind = controlKind(this.lastInput, this.sys.game.device.input.touch && !this.sys.game.device.os.desktop)`. All objects are field objects (main camera in landscape, so no `inPanel`), depth 99, drawn over the thumb strip (`STRIP_TOP..STRIP_BOTTOM`, y about 1170): touch = a graphics circle (fingertip, radius 34, white alpha 0.55, with a short fading trail of 3 smaller circles) tweened/updated each frame to `ghostX(elapsed, W / 2, 200)` at `y = (STRIP_TOP + STRIP_BOTTOM) / 2`; keys = two rounded 96x96 key caps with `←` and `→` glyph texts (`textStyleFor('field', 60, theme.text)`, so >= 40 logic px in landscape) at `W / 2 -/+ 90`, alpha pulsing 0.5 to 1 via a looping tween. Caption: reuse `this.hint` with `kit.t('tutorial.touch')` / `kit.t('tutorial.keys')` moved to y 1110 (still `textStyleFor('field', 36, ...)`, so clamped to 40 logic px in landscape) instead of the old 800 position, only while `tutorialOn`.
+- `updateTutorial(drag)`: if `!tutorialOn || dead` return; `got = drag !== 0 || this.gin.vector().x !== 0`; update the ghost x; `if (tutorialEnded(this.t - this.tutorialStartT, got))`: tween all objects alpha 0 over 300 ms then destroy, `tutorialOn = false`, and `if (got) { this.onboarding = onTutorialInput(this.onboarding); void save.setJSON('onboarding', this.onboarding); }`. `updateHint` must skip the hint when `tutorialOn` (the caption fades with the tutorial) and otherwise behave as today. `tutorialStartT = this.t` when the run actually starts (after the `Promise.all` resolves and `ready` is set).
+- `strings.ts` (en / zh-TW): `'tutorial.touch': 'Drag to move'` / `'左右拖曳移動'`, `'tutorial.keys': 'Arrow keys or drag'` / `'方向鍵或拖曳移動'`; keep both short enough for one line inside the 720 px field (check zh-TW leg). `strings.test.ts` parity test must stay green.
+- `hudReport()`: add `add('tutorial', this.tutorialOn ? this.hint : null, true)` (caption text, in-field, so the existing legibility test covers it); `__dd.tutorial: () => ({ visible: this.tutorialOn, kind: this.tutorialKind })`.
+- Seed isolation: existing specs that need an untouched first run (screenshot-variance tests, results overlay opacity) must not start with the tutorial on screen; add a small `e2e/fixtures/onboarding.ts` helper `skipOnboarding(page)` using `page.addInitScript(() => localStorage.setItem('dodge-drop:onboarding', JSON.stringify({ shown: 2, completed: true })))` (confirm the local adapter key format with `grep -n "localStorage" packages/platform/src/adapters/local.ts`) and call it from those tests only after the new tests pass.
 
 **Verify GREEN - Watch It Pass**
-Run: `npx vitest run games/dodge-drop && npm run build:local && npx playwright test e2e/dodge-drop.spec.ts e2e/results.spec.ts e2e/crazygames-viewport.spec.ts`
+Run: `npx vitest run games/dodge-drop && npm run build:local && npx playwright test e2e/dodge-drop.spec.ts e2e/dodge-drop-mobile.spec.ts e2e/crazygames-viewport.spec.ts`
 
 Confirm:
-- Pass; the line is in the left panel in landscape (`hud()` legibility test still passes since `best` is part of the hook output).
+- New tests pass in en and zh-TW (viewport spec runs both locales); take one portrait and one 800x450 screenshot with the tutorial up and view them: the ghost/keys must not cover the player (`PLAYER_Y` 1000) or hide falling blocks.
 
 **REFACTOR - Clean Up**
-- Move text formatting to `pbCue.ts` `pbLabel(cue, best, t)` with a unit test if more than trivial.
+- If `PlayScene.ts` grew noticeably, move drawing into `games/dodge-drop/src/tutorialView.ts` (factory taking the scene, kind and theme; returns `{ update(elapsed), dismiss(): void }`), keeping the pure decisions in `onboarding.ts`.
 
 **Verify GREEN - Stay Green After Refactor**
-Run: `PROPERTY_SEEDS=100 npm test && npm run test:smoke`
+Run: `npm run typecheck && PROPERTY_SEEDS=100 npm test && npm run test:smoke`
+
+Confirm:
+- Green; `fairness.ts`/`schedule.ts` untouched (`git diff --stat` shows neither).
+
+**COMMIT**
+Run:
+`git add games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ first-run visual control tutorial"`
+
+#### Task 2.3: Goal bar model (pure)
+**Goal:** One tested function returns the next medal target with a progress fraction from the previous tier threshold, and after the top medal optionally a percent of the personal best score (`kit.session.best`).
+
+**Files:**
+- Create: `games/dodge-drop/src/goalBar.ts`
+- Test: `games/dodge-drop/src/goalBar.test.ts`
+
+**RED - Write Failing Test**
+```ts
+// games/dodge-drop/src/goalBar.test.ts
+import { describe, expect, it } from 'vitest';
+import { nextGoal } from './goalBar.ts';
+
+describe('nextGoal (seconds survived, score, best score)', () => {
+  it('starts at Bronze 30 s with an empty bar', () => {
+    expect(nextGoal(0, 0, 0)).toEqual({ kind: 'medal', id: 'bronze', targetSec: 30, fromSec: 0, frac: 0, remainingSec: 30 });
+  });
+  it('fills linearly toward the target', () => {
+    const g = nextGoal(15, 0, 0);
+    expect(g).toMatchObject({ kind: 'medal', id: 'bronze', frac: 0.5, remainingSec: 15 });
+  });
+  it('advances at the threshold and restarts the bar from the previous tier', () => {
+    expect(nextGoal(30, 0, 0)).toMatchObject({ id: 'silver', fromSec: 30, targetSec: 60, frac: 0, remainingSec: 30 });
+    expect(nextGoal(75, 0, 0)).toMatchObject({ id: 'gold', fromSec: 60, targetSec: 90, frac: 0.5 });
+  });
+  it('a tier start (t = 60) goes straight to Gold', () => {
+    expect(nextGoal(60, 0, 0)).toMatchObject({ id: 'gold', fromSec: 60, frac: 0 });
+  });
+  it('after the top medal it shows percent of the personal best, capped at 100', () => {
+    expect(nextGoal(240, 250, 500)).toEqual({ kind: 'best', percent: 50, frac: 0.5, best: 500 });
+    expect(nextGoal(300, 900, 500)).toEqual({ kind: 'best', percent: 100, frac: 1, best: 500 });
+  });
+  it('after the top medal with no best there is no goal', () => {
+    expect(nextGoal(240, 250, 0)).toEqual({ kind: 'none' });
+  });
+  it('is safe on NaN and negatives', () => {
+    expect(nextGoal(Number.NaN, Number.NaN, 0)).toMatchObject({ id: 'bronze', frac: 0 });
+    expect(nextGoal(-4, 0, 0)).toMatchObject({ id: 'bronze', frac: 0 });
+  });
+});
+```
+
+**Verify RED - Watch It Fail**
+Run: `npx vitest run games/dodge-drop/src/goalBar.test.ts`
+
+Confirm:
+- Fails with unresolved import `./goalBar.ts`.
+
+**Test passes?** You're testing existing behavior. Fix test.
+
+**Test errors?** Fix error, re-run until it fails correctly.
+
+**GREEN - Minimal Code**
+```ts
+// games/dodge-drop/src/goalBar.ts
+import { MEDALS, type MedalId } from './medals.ts';
+
+export type Goal =
+  | { kind: 'medal'; id: MedalId; targetSec: number; fromSec: number; frac: number; remainingSec: number }
+  | { kind: 'best'; percent: number; frac: number; best: number }
+  | { kind: 'none' };
+
+/** Next visible goal. `seconds` uses the same clock as `medalsReached` (PlayScene `this.t`). */
+export function nextGoal(seconds: number, score: number, best: number): Goal {
+  const t = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+  const i = MEDALS.findIndex((m) => m.seconds > t);
+  if (i >= 0) {
+    const targetSec = MEDALS[i].seconds;
+    const fromSec = i === 0 ? 0 : MEDALS[i - 1].seconds;
+    const frac = Math.min(1, Math.max(0, (t - fromSec) / (targetSec - fromSec)));
+    return { kind: 'medal', id: MEDALS[i].id, targetSec, fromSec, frac, remainingSec: Math.ceil(targetSec - t) };
+  }
+  if (!(best > 0)) return { kind: 'none' };
+  const s = Number.isFinite(score) && score > 0 ? score : 0;
+  const frac = Math.min(1, s / best);
+  return { kind: 'best', percent: Math.floor(frac * 100), frac, best };
+}
+```
+(Check `remainingSec` for fractional input in the test: `nextGoal(15, ...)` gives 15; `Math.ceil` keeps the countdown from showing 0 before the medal fires.)
+
+**Verify GREEN - Watch It Pass**
+Run: `npx vitest run games/dodge-drop/src/goalBar.test.ts`
+
+Confirm:
+- Pass; pristine.
+
+**REFACTOR - Clean Up**
+- None needed (reuses `MEDALS`, no duplicate thresholds).
+
+**Verify GREEN - Stay Green After Refactor**
+Run: `npx vitest run games/dodge-drop && npm run typecheck`
 
 Confirm:
 - Green.
 
 **COMMIT**
 Run:
-`git add games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ personal-best HUD cue in the HUD"`
+`git add games/dodge-drop/src/goalBar.ts games/dodge-drop/src/goalBar.test.ts && git commit -m "feat(dodge-drop): ✨ next-medal goal model"`
+
+#### Task 2.4: Goal bar in the HUD (left panel in landscape, compact in portrait)
+**Goal:** During a run the HUD always shows the next medal target as a short label plus a progress bar ("Bronze · 30 s", bar fills as the run proceeds), in the left side panel in landscape and as a compact line under the score row in portrait; after Legend it shows percent of best (or nothing). It must stay legible at 800x450 and must not cover the play field in landscape or hide blocks in portrait.
+
+**Files:**
+- Modify: `games/dodge-drop/src/hudLayout.ts` (replace the unused `best` anchor with `goal`: landscape `{ x: 32, y: 270, originX: 0, panel: true }`, portrait `{ x: 24, y: 120, originX: 0, panel: false }`; export `GOAL_PANEL_FONT = 30` like `MISSION_PANEL_FONT`), `games/dodge-drop/src/hudLayout.test.ts` (rename `best` to `goal` in the two existing anchor tests), `games/dodge-drop/src/PlayScene.ts` (`buildHud` adds `goalText` and `goalBar` graphics inside `panelHud` so landscape routes them to the UI camera; `updateHud` recomputes `nextGoal(this.t, this.score - this.cfg.headStart, this.kit.session.best)` and redraws only when the text or a 1 % bar step changes; `hudReport()` adds `goal`; `__dd` hook adds `goal: () => ({ text, frac, id })`), `games/dodge-drop/src/strings.ts` (`goal.medal: '{medal} · {n} s'`, `goal.best: '{n}% of best'`, zh-TW `'{medal} · {n} 秒'`, `'最高分 {n}%'`; medal names reuse `medal.<id>`; `kit.t(key)` takes no params, so fill with `.replace`)
+- Test: `e2e/crazygames-viewport.spec.ts`, `e2e/dodge-drop.spec.ts`
+
+**RED - Write Failing Test**
+```ts
+// e2e/crazygames-viewport.spec.ts: inside the existing 800x450 HUD legibility test (and the zh-TW leg of the LOCALES loop at ~line 127)
+const goal = hud.find((h) => h.name === 'goal');
+expect(goal, 'goal bar text is in the HUD report').toBeTruthy();
+expect(goal!.inField, 'goal bar lives in the left side panel').toBe(false);
+expect(goal!.x).toBeLessThan(frame.fieldX);
+expect(goal!.fontPx * scale, 'goal font in CSS px').toBeGreaterThanOrEqual(14);
+```
+```ts
+// e2e/dodge-drop.spec.ts (portrait)
+test('goal bar shows the next medal and fills as the run proceeds', async ({ page }) => {
+  await page.goto(GAME);
+  await startRun(page);
+  const g0 = await page.evaluate(() => (window as unknown as { __dd: { goal(): { text: string; frac: number; id: string } } }).__dd.goal());
+  expect(g0.id).toBe('bronze');
+  expect(g0.text).toMatch(/Bronze/);
+  await page.evaluate(() => { const d = (window as unknown as { __dd: { god: boolean; warp(s: number): void } }).__dd; d.god = true; d.warp(15); });
+  await expect.poll(async () => (await page.evaluate(() => (window as unknown as { __dd: { goal(): { frac: number } } }).__dd.goal())).frac).toBeGreaterThan(0.4);
+  await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(20));
+  await expect.poll(async () => (await page.evaluate(() => (window as unknown as { __dd: { goal(): { id: string } } }).__dd.goal())).id).toBe('silver');
+});
+```
+
+**Verify RED - Watch It Fail**
+Run: `npm run build:local && npx playwright test e2e/dodge-drop.spec.ts -g "goal bar" && npx playwright test e2e/crazygames-viewport.spec.ts -g "HUD text is in side panels"`
+
+Confirm:
+- Fails because `__dd.goal` is not a function / no `goal` row in `hud()`.
+
+**Test passes?** You're testing existing behavior. Fix test.
+
+**Test errors?** Fix error, re-run until it fails correctly.
+
+**GREEN - Minimal Code**
+- `hudLayout.ts`: `goal` anchors as above (landscape y 270 sits below combo at 140 plus its bar at 204-216, above the 14 css px floor requirement; portrait y 120 is the row below score/combo, where `missions` was never drawn in portrait). Label font in landscape `GOAL_PANEL_FONT` (30 canvas px = 16.7 css px at 800x450, the longest label "Diamond · 180 s" must fit the ~428 px usable panel width on one line; confirm with a text width check in the e2e or reduce to a two-line label/bar layout); portrait font 26 field px, bar 6 px high, width 220, alpha 0.85, depth 100.
+- Bar: a `Phaser.GameObjects.Graphics` under the label (track `0x1a1033` alpha 0.6, fill in the medal colour from `MEDALS[...].color`, accent colour for `best`), landscape width 380 x 14, portrait 220 x 6.
+- `updateHud`: compute the goal once per frame; skip redraw when `(id, remainingSec, Math.round(frac * 100))` is unchanged (same pattern as `lastMissionsShown`). When `kind === 'none'` hide both objects. When `this.dead` leave them as is.
+- `hudReport()`: `add('goal', this.goalText, false)`. Hook `goal` returns `{ text: goalText.text, frac, id }`.
+- Do not add anything to the results screen (stays out of scope).
+
+**Verify GREEN - Watch It Pass**
+Run: `npx vitest run games/dodge-drop && npm run build:local && npx playwright test e2e/dodge-drop.spec.ts e2e/crazygames-viewport.spec.ts e2e/results.spec.ts`
+
+Confirm:
+- Pass in en and zh-TW; view a screenshot at 800x450 (left panel: score, combo, goal bar, nothing clipped) and one portrait screenshot (bar does not collide with the score/combo rows or the mute button).
+
+**REFACTOR - Clean Up**
+- Move label formatting to `goalBar.ts` `goalLabel(goal, t)` with a unit test if more than trivial (en/zh-TW strings, plural-free).
+
+**Verify GREEN - Stay Green After Refactor**
+Run: `npm run typecheck && PROPERTY_SEEDS=100 npm test && npm run test:smoke && npx playwright test e2e/crazygames-viewport.spec.ts`
+
+Confirm:
+- Green.
+
+**COMMIT**
+Run:
+`git add games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ persistent next-medal goal bar in the HUD"`
+
+#### Task 2.5: Gentler first run without touching the scheduler (optional, needs user OK) and the deferral record
+**Goal:** Record why a scripted easy opening is deferred (above) and, only if the user agrees, give the first tutorial run one free start shield through the existing `startShieldHits` path (`runSetup.ts` `buildRunConfig`, already used for assist, `runSetup.ts:25-30`) so a brand-new player survives the first mistake. No change to `fairness.ts`, `schedule.ts`, `waves.ts`, `rng.ts`.
+
+**Files:**
+- Modify: `games/dodge-drop/src/runSetup.ts` (`buildRunConfig` input gets `firstRun?: boolean`; `freeStartShield = 1` when `firstRun`), `games/dodge-drop/src/PlayScene.ts` (pass `firstRun: this.tutorialOn` at the `buildRunConfig` call about line 305)
+- Test: `games/dodge-drop/src/runSetup.test.ts`
+
+**RED - Write Failing Test**
+```ts
+it('firstRun grants one free start shield and nothing else changes', () => {
+  const base = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: () => 0.99 });
+  const first = buildRunConfig({ workshop: emptyWorkshop(), assist: DEFAULT_ASSIST, tier: 'none', rng: () => 0.99, firstRun: true });
+  expect(base.startShieldHits).toBe(0);
+  expect(first.startShieldHits).toBe(1);
+  expect({ ...first, startShieldHits: 0 }).toEqual({ ...base, startShieldHits: 0 });
+});
+```
+
+**Verify RED - Watch It Fail**
+Run: `npx vitest run games/dodge-drop/src/runSetup.test.ts`
+
+Confirm:
+- Fails: `first.startShieldHits` is 0 (the `firstRun` input is ignored / type error on the unknown property).
+
+**Test passes?** You're testing existing behavior. Fix test.
+
+**Test errors?** Fix error, re-run until it fails correctly.
+
+**GREEN - Minimal Code**
+In `buildRunConfig`: `if (assisted || i.firstRun) freeStartShield = 1; else if (...)` keeping the existing workshop roll for the non-first case; pass `firstRun` from the scene.
+
+**Verify GREEN - Watch It Pass**
+Run: `npx vitest run games/dodge-drop && npm run build:local && npx playwright test e2e/dodge-drop.spec.ts e2e/results.spec.ts`
+
+Confirm:
+- Green; e2e tests that assert `startShieldHits`/shield counts on a fresh profile use `skipOnboarding(page)` from Task 2.2.
+
+**REFACTOR - Clean Up**
+- None.
+
+**Verify GREEN - Stay Green After Refactor**
+Run: `npm run typecheck && PROPERTY_SEEDS=100 npm test && npm run test:smoke`
+
+Confirm:
+- Green; `git diff --stat` shows no change to `fairness.ts`, `schedule.ts`, `waves.ts`, `rng.ts`.
+
+**COMMIT**
+Run:
+`git add games/dodge-drop && git commit -m "feat(dodge-drop): ✨ free start shield on the tutorial run"`
+(If the user declines, skip this task and write "Task 2.5 dropped by user" in the Execution Log; the deferral of the scripted opening stays documented here.)
 
 ### Phase 3: CC0 art and audio
 
@@ -1656,10 +1983,10 @@ If any command fails: STOP, fix the failing task, do not proceed.
 **Exception Type:** Configuration-only
 **User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
-- Modify: `games/dodge-drop/game.json` (`version` "2.8.4" -> "3.0.0"; description/instructions mention landscape/portrait, new art and music, personal-best cue; `store.controls` unchanged), `docs/specs/dodge-drop/v3-resubmit-notes.md` (Create: changelog + portal "what changed since v2.8.4" text)
+- Modify: `games/dodge-drop/game.json` (`version` "2.8.4" -> "3.0.0"; description/instructions mention landscape/portrait, new art and music, first-run visual tutorial and next-medal goal bar; `store.controls` unchanged), `docs/specs/dodge-drop/v3-resubmit-notes.md` (Create: changelog + portal "what changed since v2.8.4" text)
 
 **Implementation**
-`publish-payload.ts` refuses a version already submitted, so the version must change. Keep the old `releases.crazygames` rejection record for history (do not delete the reason). Changelog text for the portal notes (copy into the submission): "v3.0.0 - adaptive landscape/portrait layout for the 16:9 player (full play field plus readable side-panel HUD), new authored art, music and sound effects, personal-best progress cue, bigger touch targets." This addresses the FAQ requirement of "clear improvements".
+`publish-payload.ts` refuses a version already submitted, so the version must change. Keep the old `releases.crazygames` rejection record for history (do not delete the reason). Changelog text for the portal notes (copy into the submission): "v3.0.0 - adaptive landscape/portrait layout for the 16:9 player (full play field plus readable side-panel HUD), new authored art, music and sound effects, a visual first-run control tutorial, a persistent next-medal goal bar, bigger touch targets." This addresses the FAQ requirement of "clear improvements".
 
 **Verification**
 Run: `npm run typecheck && npm test && npm run publish:prep -- dodge-drop` (it may exit 1 only for covers/videos not yet rebuilt; the version/orientation lines must be correct)
@@ -1720,9 +2047,9 @@ Run:
 `git commit -am "docs: 📝 v3 resubmission checklist and status"`
 
 ## Testing Strategy
-- Unit tests (vitest, `npm test`): `frame.test.ts`, `hudLayout.test.ts`, `pbCue.test.ts`, `art.test.ts`, `samples.test.ts`, `audio.test.ts`, `frameProvider.test.ts`, `titleLayout.test.ts`, `check-assets.test.ts`, `check-artifact.test.ts`, strings en/zh parity, existing fairness/schedule property tests unchanged (`PROPERTY_SEEDS=100` in CI, 300 nightly and in Task 4.1).
-- Integration tests: portal build + fake SDK (`npm run test:portals`, `e2e/portals.spec.ts`) for the SDK-backed best score read-back; `npm run build:portals` runs `check-artifact`.
-- E2E (Playwright): `e2e/crazygames-viewport.spec.ts` (frame modes at CrazyGames sizes, HUD legibility >= 14 css px at 800x450, orientation switch between runs, landscape journey, authored-art presence), existing specs pinned to `?layout=portrait`, `test:rwd` device sweep including 1280x720 and 1920x1080 desktops, tap-target test on iPhone SE size.
+- Unit tests (vitest, `npm test`): `frame.test.ts`, `hudLayout.test.ts`, `onboarding.test.ts`, `goalBar.test.ts`, `art.test.ts`, `samples.test.ts`, `audio.test.ts`, `frameProvider.test.ts`, `titleLayout.test.ts`, `check-assets.test.ts`, `check-artifact.test.ts`, strings en/zh parity, existing fairness/schedule property tests unchanged (`PROPERTY_SEEDS=100` in CI, 300 nightly and in Task 4.1).
+- Integration tests: portal build + fake SDK (`npm run test:portals`, `e2e/portals.spec.ts`) for the SDK-backed save (best score and `onboarding` key still read back; optional one-line assert); `npm run build:portals` runs `check-artifact`.
+- E2E (Playwright): `e2e/crazygames-viewport.spec.ts` (frame modes at CrazyGames sizes, HUD and tutorial/goal-bar legibility >= 14 css px at 800x450 in en and zh-TW, tutorial shown on first run and gone after first input and on the second run, orientation switch between runs, landscape journey, authored-art presence), existing specs pinned to `?layout=portrait`, `test:rwd` device sweep including 1280x720 and 1920x1080 desktops, tap-target test on iPhone SE size.
 - Manual (cannot be automated; user): CrazyGames Preview tool, real phone via QR, listening check for audio mix, 3-5 unseen playtesters.
 
 ## Risks & Mitigations
@@ -1736,7 +2063,10 @@ Run:
 - **Risk**: Source URLs inside shipped JSON trip the portal URL scan -> Mitigation: manifest lives in `games/dodge-drop/assets/`, not `public/`; test documents the rule (Task 3.8).
 - **Risk**: Audio decode/format issues on Safari/iOS (autoplay unlock, mp3 support) -> Mitigation: mp3 only (universal), decode failures fall back to synth, unlock logic in `audio.ts` unchanged; test on a real iPhone via the portal QR.
 - **Risk**: Load time grows with assets (CrazyGames wants < 10 s, < 20 MB) -> Mitigation: budgets 2 MB art / 4 MB audio, `check-artifact` budget guard, sample load capped by a 4 s timeout before showing the title.
-- **Risk**: Rejection reason is generic; v3 may still fail -> Mitigation: the plan targets the gap analysis blockers (portrait-in-16:9, prototype art/audio) plus the in-run personal-best cue; also do the Preview-tool review and unseen-player playtest in Task 4.1, and treat gap items 2, 4, 7 (onboarding, content spine, menu weight) as the next candidates if rejected again.
+- **Risk**: Rejection reason is generic; v3 may still fail -> Mitigation: the plan targets the gap analysis blockers (portrait-in-16:9, prototype art/audio) plus first-run onboarding and a visible goal (gap 2); also do the Preview-tool review and unseen-player playtest in Task 4.1 (watch whether an unseen player understands the controls without help), and treat gap items 4, 7 (content spine, menu weight) as the next candidates if rejected again.
+- **Risk**: The tutorial and goal bar add HUD objects and first-run state that break existing e2e (fresh profile now always sees the tutorial; a free shield changes shield counts if Task 2.5 is accepted; the landscape left panel fills up) -> Mitigation: `skipOnboarding(page)` init-script fixture for tests that need a clean run, legibility asserted through `__dd.hud()` in en and zh-TW, goal label checked for one-line fit at 800x450, screenshots reviewed in portrait and landscape.
+- **Risk**: Tutorial covers the thumb strip or distracts from the first blocks -> Mitigation: drawn only over the strip area below `PLAYER_Y`, ends on first input or after 6 s, shown at most twice if ignored.
+- **Risk**: A scripted gentler opening would need time-varying difficulty inside `schedule.ts`/`waves.ts` and re-proving the survivability property -> Mitigation: deferred (see Phase 2 intro); optional first-run free shield is the only softening, applied through `runSetup.ts`.
 - **Risk**: Pushing to master deploys live to GitHub Pages mid-work -> Mitigation: push only at Task 4.4 (or after Phase 1 passes smoke+rwd); never between 1.4 and 1.6.
 
 ## Success Criteria
@@ -1747,7 +2077,7 @@ Run:
 - [ ] Authored CC0 art on player/blocks/pickups/backdrop/UI/title, music and sample SFX in game; game still boots and plays if assets fail to load.
 - [ ] `games/dodge-drop/assets/manifest.json` lists every shipped asset with CC0-1.0, author, source URL, retrieval date and sha256; `scripts/check-assets.test.ts` passes.
 - [ ] Build artifact < 10 MB (target < 6 MB), no external URLs, relative paths only, no custom fullscreen button on CrazyGames.
-- [ ] Personal-best cue visible in-run (left panel in landscape), shows percent of best, flips to NEW BEST exactly once per run, and is correct after reload (including the fake CrazyGames SDK run).
+- [ ] First run shows a visual control tutorial (ghost finger on touch, arrow-key caps on desktop; portrait, landscape, en, zh-TW) that ends on first input or after 6 s and is not shown on the next run; goal bar shows the next medal with a filling progress bar in the left panel (landscape, >= 14 css px at 800x450) or a compact line (portrait); scripted gentler opening deferred and recorded; `fairness.ts`/`schedule.ts`/`waves.ts`/`rng.ts` untouched.
 - [ ] Small-phone tap targets >= 44 css px.
 - [ ] `game.json` version 3.0.0, orientation `any`, updated description; covers and videos regenerated from the new art; `npm run publish:prep -- dodge-drop` exits 0.
 - [ ] User has the resubmission checklist and the Submit button is untouched until the user approves.
