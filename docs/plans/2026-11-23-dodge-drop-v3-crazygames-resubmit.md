@@ -5,64 +5,64 @@
 > **Commit trailer:** every commit message ends with the attribution line from the session system reminder (`Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`).
 > **Repo rules that apply:** never review via a background reviewer subagent (reviewer = inline, see `docs/STATUS.md` landmines); pre-push hook runs `npm run typecheck && npm test && npm run test:smoke` (`docs/ci.md`); push in batches; deploy is live (GitHub Pages) so confirm the game is playable before pushing; stop before the CrazyGames Submit button (user approves).
 
-**Goal:** Ship Neon Rush v3.0.0 with clearly visible improvements over the rejected v2.8.4 (adaptive portrait/landscape layout legible at 800x450, authored CC0 art and audio, daily reward/streak/personal-best retention) and prepare, but not submit, the CrazyGames resubmission.
-**Architecture:** A pure `frame` module chooses a logical canvas per viewport (portrait 720x1280 unchanged; landscape 1440x810 with the 720-wide play field centred and HUD/missions/decoration in 360 px side panels drawn by a second camera). Retention logic is pure TypeScript persisted through the existing `SaveData` (-> `platform.storage` -> CrazyGames Data Module because `progressSave: sdk`). Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker.
+**Goal:** Ship Neon Rush v3.0.0 with clearly visible improvements over the rejected v2.8.4 (adaptive portrait/landscape layout legible at 800x450, authored CC0 art and audio, personal-best progress cue) and prepare, but not submit, the CrazyGames resubmission.
+**Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, personal best, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. The personal-best cue reads `GameSession.best` (already persisted through the existing save mechanism).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** Draft (awaiting user confirmation of delivery path and TDD-exception approval)
+**Status:** Draft, decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed); ready to execute
 
 ---
 
 ## Requirements
 
-Goal in one sentence: make the resubmission a visibly different, higher-quality game than v2.8.4 along the three axes the user chose (layout, art/audio, retention), because CrazyGames FAQ says small tweaks "will most likely produce the same result".
+Goal in one sentence: make the resubmission a visibly different, higher-quality game than v2.8.4 along the axes the user chose (adaptive layout, CC0 art/audio, in-run personal-best feedback), because CrazyGames FAQ says small tweaks "will most likely produce the same result".
 
 ### User Stories
-- As a desktop player in a 16:9 CrazyGames iframe, I want the game to use the width of the frame with a readable HUD, so that it looks and feels made for the portal rather than a phone game with black bars.
+- As a desktop player in a 16:9 CrazyGames iframe, I want the game to use the width of the frame, with the HUD text in side panels large enough to read even at 800x450, so that it looks and feels made for the portal rather than a phone game with black bars.
 - As a phone player in portrait, I want the existing tall play field and thumb controls unchanged, so that the game still feels right in my hand.
 - As a new player, I want a coherent, bright, authored visual style with music and good sound effects, so that the first minutes feel polished (CrazyGames quality criteria: one coherent style, music complements visuals, consistent audio levels).
-- As a returning player, I want a daily reward and a login streak, so that I have a reason to come back tomorrow.
 - As a player mid-run, I want to see how close I am to my personal best, so that dying feels "almost there" and I retry.
 - As the developer/seller of this template, I want every asset's source and license recorded and machine-checked, so that the template stays extractable and legally clean.
 - As the reviewer on CrazyGames, I want the build to pass the portal technical rules (size, no external URLs, no custom fullscreen button), so that the game is not rejected for something avoidable.
 
 ### Acceptance Criteria
-- Given a 16:9 iframe from 800x450 to 1920x1080, when the game loads, then the landscape layout is used, the play field and HUD fill the frame without tiny text (every HUD/label text renders at >= 14 CSS px at 800x450; side panels hold score, timer, missions, shields, personal-best line, mute button).
+- Given a 16:9 iframe from 800x450 to 1920x1080, when the game loads, then the landscape layout is used: the full portrait play field is centred (about 253 css px wide at 800x450), and every piece of HUD text (score, timer, combo, personal best, missions, shields, mute) is in a side panel and renders at >= 14 css px at 800x450 (target 20+); any text left inside the field (hint, rush/overdrive banners, pop text) is a large minimal cue that also renders at >= 14 css px.
 - Given a portrait phone viewport (for example 375x667), when the game loads, then the layout is identical to v2.8.4 (720x1280 canvas, thumb strip, HUD in the field).
 - Given a window that changes orientation, when no run is in progress, then the layout switches; when a run is in progress, then the layout switches only after the run ends and the player is never moved mid-run.
-- Given landscape mode at any difficulty up to 240 s, when the scheduler plans spawns, then `firstDeadEnd` returns null for all property seeds (fairness preserved with the shorter field).
-- Given the title scene, when the player has not claimed today's reward, then a daily-reward panel offers the claim; claiming grants coins once per local calendar day and advances the streak.
-- Given the player missed one or more whole days, when they claim, then the streak resets to day 1; given they claim on consecutive days, then the streak increments and the reward follows the 7-day table.
+- Given landscape mode, when a run is played, then gameplay geometry is identical to portrait (logic field 720x1280, `playerY` 1000, same spawn speeds); `fairness.ts`/`schedule.ts` are untouched and their property tests still pass. Dragging in landscape moves the player by the same on-screen proportion as in portrait (drag gain compensates for the camera zoom).
 - Given the player has a personal best B > 0, when a run is at score S, then the HUD shows `S/B` percent and the best value, and at S > B it switches to a "NEW BEST" state exactly once per run.
-- Given a CrazyGames build with progress save through the SDK, when the player reloads, then streak, last-claim day and best persist (verified in `e2e/portals.spec.ts` with the fake CrazyGames SDK).
+- Given a CrazyGames build with progress save through the SDK, when the player reloads, then the stored best is read back through the existing `GameSession.best` path so the personal-best cue is correct after reload (existing behaviour, verified once in `e2e/portals.spec.ts` with the fake CrazyGames SDK).
 - Given the production build, when `npm run build:portals` runs, then `scripts/check-artifact.ts` passes: total <= 10 MB, no external URLs, relative paths only.
 - Given any file under `games/dodge-drop/public/assets/`, when `npm test` runs, then `scripts/check-assets.test.ts` fails unless the file has a manifest entry with license `CC0-1.0`, author, source URL, retrieval date and sha256.
 - Given the final build, when `npm run publish:prep -- dodge-drop` runs, then it exits 0 with version 3.0.0, covers and videos present, and the plan stops before Submit.
 
 ### Assumptions, Constraints, and Scope Boundaries
-- Scope is fixed by the user: (1) adaptive portrait+landscape layout, (2) CC0-only art/audio upgrade with manifest, (3) daily reward + streak + personal-best cue. Out of scope: new modes/worlds, onboarding rework, leaderboards, results-screen redesign beyond landscape adaptation.
+- Scope is fixed by the user: (1) adaptive portrait+landscape layout showing the full portrait field in landscape, (2) CC0-only art/audio upgrade with manifest, (3) personal-best progress cue during the run. Daily reward and login streak were REMOVED by the user on 2026-11-24 ("quality review has nothing to do with daily rewards"). Out of scope: new modes/worlds, onboarding rework, leaderboards, retention hooks, results-screen redesign beyond landscape adaptation.
 - Source of the reasoning: `docs/specs/dodge-drop/crazygames-gap-analysis.md` (gaps 1, 3, 5, 6, 10 addressed here; gaps 2, 4, 7 deliberately not). The gap analysis marks root cause as inference; a rejection is not guaranteed to flip. Success is measured by the criteria below plus the user's own judgment, not by the portal.
-- No database modification: persistence uses key-value `SaveData` only (new keys `daily`, `pbSeen`); no schema/DB involved. If the executor finds any DB need, STOP and ask.
-- In-flight work check (`.superpowers/sdd/meta/progress.md`): 2.3 (density/shield), mobile 2.4.0, shop/daily missions 2.5.0, rotate/magnet 2.5.1, UX fixes 2.5.2, skins FX 2.6.0 are all recorded complete; `git status` shows only an unrelated `workspace-pixel-squad/run_aoa_tests.sh` change and untracked `docs/STATUS.md`. `docs/STATUS.md` ("next: 2.3, mobile") is stale (version is 2.8.4) and is refreshed in Task 0.2. Open items recorded in progress.md that overlap this plan and are FOLDED IN: "small-phone tap targets (chips/skip ~22 css px on SE)" -> Task 1.7; "results screen redesign: owner will brainstorm later" -> NOT done here (only landscape adaptation), listed as an open question. "Daily missions" already exist (rotating missions, `missions.ts`); the new daily reward is a separate login reward and must not be confused with missions in UI copy.
-- Sequencing: layout (Phase 1) -> retention (Phase 2) -> art/audio (Phase 3) -> release (Phase 4). Reason: art and audio replace procedural drawing inside the same HUD/title/backdrop code that Phase 1 re-anchors; doing art first would be redone.
+- No database modification: persistence uses key-value `SaveData` only (no new keys needed; the personal best already persists as `best` through `GameSession`); no schema/DB involved. If the executor finds any DB need, STOP and ask.
+- In-flight work check (`.superpowers/sdd/meta/progress.md`): 2.3 (density/shield), mobile 2.4.0, shop/daily missions 2.5.0, rotate/magnet 2.5.1, UX fixes 2.5.2, skins FX 2.6.0 are all recorded complete; `git status` shows only an unrelated `workspace-pixel-squad/run_aoa_tests.sh` change and untracked `docs/STATUS.md`. `docs/STATUS.md` ("next: 2.3, mobile") is stale (version is 2.8.4) and is refreshed in Task 0.2. Open items recorded in progress.md that overlap this plan and are FOLDED IN: "small-phone tap targets (chips/skip ~22 css px on SE)" -> Task 1.7; "results screen redesign: owner will brainstorm later" -> NOT done here (only landscape adaptation), listed as an open question.
+- Sequencing: layout (Phase 1) -> personal-best cue (Phase 2, small) -> art/audio (Phase 3) -> release (Phase 4). Reason: art and audio replace procedural drawing inside the same HUD/title/backdrop code that Phase 1 re-anchors; doing art first would be redone. The PB cue goes right after the HUD side-panel work because it lives in the same HUD code.
 - Portal rules that constrain design: no custom fullscreen button on CrazyGames (`kit.ts` gates it on `platform.features`; re-verified in Task 1.6), no external links, 16:9 legibility 800x450 to 1920x1080, devicePixelRatio 1 legibility, consistent behaviour at 144/165 Hz (verify dt-based motion in Task 1.4 - existing code is dt-based, confirm only), English present.
 - `docs/specs/game-platform/juice-layer.md` states "No binary assets / Non-goal: no asset pipeline". This plan intentionally supersedes that for the dodge-drop game only; Task 0.2 amends the spec so docs match reality. game-kit must keep working with zero assets (Neon Swarm and the template stay procedural-capable).
 - Asset licensing: CC0 only. Candidates (UNVERIFIED from memory, must be re-verified from each pack's own page at download time; the manifest records the verification): Kenney.nl packs (all Kenney assets are published CC0; look at the UI, space/simple-shape, particle, and the Interface/Impact/Digital/Sci-fi audio packs), OpenGameArt items filtered to "CC0" for music loops, Freesound items individually marked CC0. NOT acceptable: CC-BY, CC-BY-SA, "free for commercial use" custom licenses (Pixabay/Mixkit/itch "free" without CC0), anything needing attribution. The template will be sold later, so CC0 is the safe floor.
 - Size: current build is small (procedural). Budget for v3: art <= 2 MB, audio <= 4 MB (mp3, 2-3 music loops of 30-60 s at 96-128 kbps plus short SFX), total build stays well under the project cap of 10 MB (`MAX_ARTIFACT_BYTES` in `scripts/check-artifact.ts`); CrazyGames Basic Launch benchmark is load < 10 s and < 20 MB.
 
-### Open Questions (recorded, not asked; subagent run)
-1. Field height in landscape: plan uses 720x810 field (playerY 650) and tunes `speedScale` by fairness property tests. If the user prefers the exact portrait field zoomed into the centre (field only ~253 px wide at 800x450), say so; Task 1.4 would then use camera zoom and skip Task 1.2.
-2. Daily reward table (coins per streak day) and whether the streak should have a one-day grace: defaults in Task 2.1 are coins [30, 40, 50, 60, 80, 100, 200] for days 1..7 and no grace. Needs the user's balance judgment (check `economy.ts` coin scale).
-3. Results-screen redesign (progress.md: "owner will brainstorm later") is excluded; confirm that landscape adaptation of the existing results is enough.
-4. Whether `releases.crazygames` should be reset from `rejected` to `todo` in `game.json` before `publish:prep` (see Task 4.3; script behaviour verified there).
-5. Listing reuse vs new submission on the CrazyGames portal and any cooldown period are UNVERIFIED (gap analysis section (e)); check in the developer portal before the final step, do not wait on it to start work.
+### Decisions taken (user, 2026-11-24)
+1. Landscape shows the FULL portrait field (720x1280 logic unchanged), scaled to the landscape height, with side panels for HUD/missions/decoration. Consequence: no fairness/scheduler/difficulty work; HUD text moves to panels.
+2. TDD exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3 is approved.
+3. Daily reward and login streak are removed from the plan entirely; only the in-run personal-best cue stays.
+4. Results-screen redesign stays excluded; landscape adaptation of the existing results is enough.
+
+### Open Questions (still open)
+1. Whether `releases.crazygames` should be reset from `rejected` to `todo` in `game.json` before `publish:prep` (checked in Task 4.2/4.3 by reading `scripts/publish-payload.ts` and `scripts/mark-released.ts`).
+2. Listing reuse vs new submission on the CrazyGames portal and any cooldown period are UNVERIFIED (gap analysis section (e)); check in the developer portal before the final step, do not wait on it to start work.
 
 ## Architecture Review
 
 ### Reusable components and similar implementations
-- `packages/game-kit/src/save.ts` `SaveData` (`getJSON/setJSON/getNumber/setNumber`, slug-prefixed) - all new persistence goes through it (same pattern as `missions`, `medals`, `coins`).
+- `packages/game-kit/src/save.ts` `SaveData` (`getJSON/setJSON/getNumber/setNumber`, slug-prefixed) - available if any new persisted value is ever needed (none planned; PB uses existing `GameSession.best`).
 - `packages/game-kit/src/session.ts` `GameSession.best` - source of the personal best for the PB cue (already persisted, already SDK-backed).
-- `games/dodge-drop/src/missions.ts` / `progression.ts` / `economy.ts` - pure, unit-tested modules with `sanitize*` functions for untrusted saved data; new `retention.ts` copies this style.
+- `games/dodge-drop/src/missions.ts` / `progression.ts` / `economy.ts` - pure, unit-tested modules; `pbCue.ts` copies this style.
 - `games/dodge-drop/src/titleExtras.ts` + `packages/game-kit/src/titleLayout.ts` (+ `titleLayout.test.ts`) - pattern for pure layout math tested without Phaser; new `frame.ts` and `hudLayout.ts` copy it.
 - `games/dodge-drop/src/layout.ts` (`PLAYER_Y`, `STRIP_*`, shared by `PlayScene.ts` and `fairness.ts`) - the single-source-of-truth pattern to extend.
 - `packages/game-kit/src/audio/audio.ts` (`createGameAudio` with injectable `ctxFactory`, fake AudioContext tests in `audio.test.ts`) - extension point for sample playback.
@@ -72,8 +72,8 @@ Goal in one sentence: make the resubmission a visibly different, higher-quality 
 
 ### Affected layers and key data flow
 1. Boot: `main.ts` -> `defineGame` (game-kit) now asks a `frame` provider for canvas size from `window.innerWidth/innerHeight` (+ `?layout=` override for tests) -> `Phaser.Game({width,height})`; `Kit.frame` exposes the active `Frame` to scenes.
-2. Scenes read `kit.frame` instead of constants: `PlayScene` (field camera + UI camera), `TitleScene`/`titleExtras.ts`, `ShopScene`, `results.ts`, `GameOverScene`.
-3. Retention: `retention.ts` (pure) <-> `SaveData` key `daily` <-> `platform.storage` (CrazyGames Data Module with `gk:` prefix). UI in `dailyPanel.ts` (title) and a streak line in `results.ts`; PB cue from `pbCue.ts` in `PlayScene` HUD.
+2. `PlayScene` keeps its 720x1280 logic and gets a zoomed field camera plus a UI camera for panels (landscape only). `TitleScene`/`titleExtras.ts`, `ShopScene`, `results.ts`, `GameOverScene` lay out against the real canvas (1440x810) in landscape with a larger minimum font.
+3. Personal-best cue: `pbCue.ts` (pure) reads `kit.session.best` (SDK-backed through `platform.storage`) and drives one HUD text (left panel in landscape, in-field strip in portrait).
 4. Assets: `games/dodge-drop/assets/manifest.json` (NOT in `public/`, so the URL scan in `check-artifact` never sees source URLs) -> `scripts/check-assets.ts` validates against files in `games/dodge-drop/public/assets/` -> Phaser loader (`def.preload`) loads images; `GameAudio.loadSamples()` fetches/decodes audio -> `playSfx`/music prefer samples, fall back to synth.
 5. Release: `game.json` (version, orientation `any`, description, `releases`) -> `npm run build:portals` -> `check-artifact` -> `npm run publish:prep`.
 
@@ -85,31 +85,27 @@ journey
       Open game in 16:9 iframe (800x450): 4: Player
       Load shows authored art and logo (fast, <10 s): 4: Player
       Title scene with side-panel art: 5: Player
-    section Daily hook
-      Daily reward panel appears (streak day 3): 5: Player
-      Claim coins, streak shown: 5: Player
+      Landscape HUD text readable in side panels at 800x450: 4: Player
     section Play
       Tap to start, drag or arrow keys: 5: Player
       Music plays, SFX on near miss and pickups: 5: Player
       HUD in side panels, PB line shows 62% of best: 5: Player
       Pass personal best, NEW BEST cue: 5: Player
     section Retry loop
-      Die, results with streak and PB line: 4: Player
+      Die, results with best score: 4: Player
       Instant retry or Shop: 5: Player
     section Phone
       Rotate phone, layout switches after the run: 4: Player
       Portrait play unchanged: 5: Player
-    section Return
-      Come back next day, streak continues: 5: Player
+    section Chase
+      Retry chasing the personal best: 5: Player
 ```
 
 ### Exact file paths that will likely change
 New:
 - `games/dodge-drop/src/frame.ts`, `frame.test.ts`
 - `games/dodge-drop/src/hudLayout.ts`, `hudLayout.test.ts`
-- `games/dodge-drop/src/retention.ts`, `retention.test.ts`
 - `games/dodge-drop/src/pbCue.ts`, `pbCue.test.ts`
-- `games/dodge-drop/src/dailyPanel.ts`
 - `games/dodge-drop/src/art.ts` (asset key map + preload), `art.test.ts`
 - `packages/game-kit/src/audio/samples.ts`, `samples.test.ts`
 - `scripts/check-assets.ts`, `scripts/check-assets.test.ts`
@@ -119,18 +115,16 @@ New:
 - `docs/specs/dodge-drop/v3-resubmit-notes.md` (changelog + portal notes, Phase 4)
 
 Modified:
-- `games/dodge-drop/src/main.ts`, `layout.ts`, `fairness.ts`, `schedule.ts`, `PlayScene.ts`, `titleExtras.ts`, `ShopScene.ts`, `results.ts`, `backdrop.ts`, `playArt.ts`, `skinArt.ts`, `strings.ts`, `strings.test.ts`
+- `games/dodge-drop/src/main.ts`, `layout.ts` (drag gain takes zoom), `PlayScene.ts`, `titleExtras.ts`, `ShopScene.ts`, `results.ts`, `backdrop.ts`, `playArt.ts`, `skinArt.ts`, `strings.ts`, `strings.test.ts`
 - `packages/game-kit/src/defineGame.ts`, `kit.ts`, `scenes/PreloadScene.ts`, `scenes/TitleScene.ts`, `scenes/GameOverScene.ts`, `titleLayout.ts`, `audio/audio.ts`, `audio/sfx.ts`, `index.ts`, `manifest.ts` only if needed
 - `games/dodge-drop/game.json` (version 3.0.0, orientation `any`, description, instructions, `releases`)
 - `e2e/dodge-drop.spec.ts`, `e2e/smoke.spec.ts`, `e2e/results.spec.ts`, `e2e/dodge-drop-mobile.spec.ts`, `e2e/rwd.spec.ts`, `e2e/portals.spec.ts` (portrait pin via `?layout=portrait`; landscape additions)
 - `package.json` (`check:assets` script), `docs/STATUS.md`, `docs/specs/game-platform/juice-layer.md`, `docs/specs/game-platform/checklists/crazygames.md`
 - `games/dodge-drop/store/*.png`, `store/record.json` (regenerated)
 
-## TDD Exception Candidates (needs user approval)
+## TDD Exception (APPROVED by the user, 2026-11-24)
 
-Per the plan skill, throwaway/generated/configuration-only work must not get fake RED/GREEN steps; it needs explicit approval first. Candidate tasks: **1.8 (config: manifest orientation), 3.2 (asset sourcing: art), 3.3 (asset sourcing: music/SFX), 3.9 (generated: audio normalisation output), 4.2 (config: version/description bump), 4.3 (generated: covers/videos)**. Every behavioural consequence of those files IS test-first elsewhere (manifest checker in 3.1, texture override in 3.4, audio engine in 3.6, build checks in 4.1).
-
-**Proposed exception contract (NEEDS USER APPROVAL - not yet approved, so those tasks below are written in the exception format but are blocked until the user approves):** For Configuration-only, Generated and asset-only tasks, the executor replaces RED/GREEN with: (a) the exact change, (b) a machine verification command that fails before the change and passes after, where one exists (the checker from Task 3.1 gives asset tasks a real failing-first gate), (c) `npm run typecheck && npm test` stays green, (d) commit. If the user declines the exception, the executor must instead add a test per task (for example a vitest that reads `game.json` and asserts version/orientation) - sketched inline for 1.8 and 4.2 as "fallback if exception declined".
+Tasks **1.8 (config: manifest orientation), 3.2 (asset sourcing: art), 3.3 (asset sourcing: music/SFX), 3.9 (generated: audio normalisation output), 4.2 (config: version/description bump), 4.3 (generated: covers/videos)** use the Approved Exception Contract from the plan skill (Implementation, Verification, COMMIT; no fake RED/GREEN). Every behavioural consequence of those files IS test-first elsewhere (manifest checker in 3.1, texture override in 3.4, audio engine in 3.6, build checks in 4.1). Where a machine gate exists it must fail before the change and pass after (the Task 3.1 checker gives the asset tasks a real failing-first gate).
 
 ## Implementation Steps
 
@@ -153,8 +147,9 @@ import { expect, test, type Page } from '@playwright/test';
 const GAME = 'http://localhost:5180/dodge-drop/';
 const OUT = '.superpowers/sdd/meta/v3';
 
-type GK = { frame?: { mode: 'portrait' | 'landscape'; width: number; height: number; fieldX: number; fieldW: number }; activeScenes: string[] };
-type DDHud = { name: string; x: number; y: number; fontPx: number }[];
+type GK = { frame?: { mode: 'portrait' | 'landscape'; width: number; height: number; fieldX: number; fieldW: number; dispW: number; zoom: number }; activeScenes: string[] };
+/** fontPx is the EFFECTIVE canvas px (font size times camera zoom for in-field text). inField marks text drawn inside the play field. */
+type DDHud = { name: string; x: number; y: number; fontPx: number; inField: boolean }[];
 
 async function ready(page: Page): Promise<void> {
   await page.waitForFunction(() => (window as unknown as { __gk?: GK }).__gk?.activeScenes.includes('GKTitle'));
@@ -173,6 +168,7 @@ for (const s of SIZES) {
     await ready(page);
     const frame = await page.evaluate(() => (window as unknown as { __gk: GK }).__gk.frame);
     expect(frame?.mode).toBe('landscape');
+    expect(frame!.zoom).toBeCloseTo(810 / 1280, 4);
     const box = (await page.locator('canvas').boundingBox())!;
     expect(Math.abs(box.width / box.height - 16 / 9)).toBeLessThan(0.02);
     await page.screenshot({ path: `${OUT}/title-${s.name}.png` });
@@ -184,7 +180,7 @@ test('portrait frame on a phone-sized viewport is unchanged', async ({ page }) =
   await page.goto(GAME);
   await ready(page);
   const frame = await page.evaluate(() => (window as unknown as { __gk: GK }).__gk.frame);
-  expect(frame).toMatchObject({ mode: 'portrait', width: 720, height: 1280, fieldX: 0, fieldW: 720 });
+  expect(frame).toMatchObject({ mode: 'portrait', width: 720, height: 1280, fieldX: 0, fieldW: 720, dispW: 720, zoom: 1 });
 });
 
 test('?layout=portrait forces the portrait frame even on a wide window', async ({ page }) => {
@@ -195,7 +191,7 @@ test('?layout=portrait forces the portrait frame even on a wide window', async (
   expect(frame?.mode).toBe('portrait');
 });
 
-test('landscape HUD text is legible at 800x450 and sits outside the play field', async ({ page }) => {
+test('landscape: HUD text is in side panels and every text is legible (>= 14 css px) at 800x450', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 450 });
   await page.goto(GAME);
   await ready(page);
@@ -208,8 +204,9 @@ test('landscape HUD text is legible at 800x450 and sits outside the play field',
   });
   for (const h of hud) {
     expect(h.fontPx * scale, `${h.name} font in CSS px`).toBeGreaterThanOrEqual(14);
-    const insideField = h.x >= frame.fieldX && h.x <= frame.fieldX + frame.fieldW;
-    expect(insideField, `${h.name} must be in a side panel`).toBe(false);
+    const insideField = h.x >= frame.fieldX && h.x <= frame.fieldX + frame.dispW;
+    // readable HUD (score, timer, combo, best, missions, shields) must be in a panel; only large cues may be in the field
+    if (!h.inField) expect(insideField, `${h.name} must be in a side panel`).toBe(false);
   }
   await page.screenshot({ path: `${OUT}/play-800x450.png` });
 });
@@ -276,10 +273,10 @@ Run:
 
 ### Phase 1: Adaptive portrait + landscape layout
 
-Design recap: portrait frame = today's 720x1280. Landscape frame = 1440x810 canvas, play field 720x810 at `fieldX = 360`, `playerY = 650`, side panels 360 px wide each. All field objects keep field-local coordinates 0..720 (a main camera viewport of x=360,w=720 maps them), so the 1171-line `PlayScene.ts` keeps its `W = 720` maths; HUD/panel objects live in canvas coordinates on a second camera. Shake/hit-stop act on the field camera only (HUD stays steady - an improvement in readability).
+Design recap: portrait frame = today's 720x1280, unchanged. Landscape frame = 1440x810 canvas. The full 720x1280 logic field is shown by the main camera with `setViewport(fieldX, 0, dispW, 810)`, `setZoom(810/1280 = 0.6328)` and `centerOn(360, 640)`, so it is about 456 canvas px wide, centred, and every existing world coordinate, `PLAYER_Y`, speed, wave and fairness constant stays valid. A second camera covers the full canvas and draws the side panels (about 492 px each) with all readable HUD text. At 800x450 the canvas scale is 0.556, so the field is about 253 css px wide; panel text of 40 canvas px renders at about 22 css px; in-field text is clamped to >= 40 logic px (= 14 css px). Shake/hit-stop act on the field camera only, so the HUD stays steady.
 
 #### Task 1.1: Pure frame model
-**Goal:** One tested function decides mode and geometry from the viewport.
+**Goal:** One tested function decides mode and geometry from the viewport; gameplay geometry is identical in both modes.
 
 **Files:**
 - Create: `games/dodge-drop/src/frame.ts`
@@ -315,22 +312,29 @@ describe('pickMode', () => {
 describe('frameFor', () => {
   it('portrait matches the v2.8.4 constants exactly', () => {
     expect(frameFor('portrait')).toEqual({
-      mode: 'portrait', width: 720, height: 1280, fieldX: 0, fieldW: 720, fieldH: 1280,
-      playerY: 1000, stripTop: 1060, stripBottom: 1280, speedScale: 1,
+      mode: 'portrait', width: 720, height: 1280, fieldX: 0, fieldY: 0, zoom: 1,
+      fieldW: 720, fieldH: 1280, dispW: 720, dispH: 1280,
+      playerY: 1000, stripTop: 1060, stripBottom: 1280,
     });
   });
-  it('landscape centres a 720-wide field with equal side panels', () => {
+  it('landscape shows the full portrait field scaled to the canvas height and centred', () => {
     const f = frameFor('landscape');
     expect(f.width).toBe(1440);
     expect(f.height).toBe(810);
-    expect(f.fieldW).toBe(FIELD_W);
-    expect(f.fieldX * 2 + f.fieldW).toBe(f.width);
-    expect(f.playerY).toBeLessThan(f.fieldH);
-    expect(f.stripTop).toBe(f.stripBottom); // no thumb strip in landscape
+    expect(f.zoom).toBeCloseTo(810 / 1280, 6);
+    expect(f.dispH).toBeCloseTo(810, 6);
+    expect(f.dispW).toBeCloseTo(FIELD_W * f.zoom, 6);
+    expect(f.fieldX * 2 + f.dispW).toBeCloseTo(f.width, 6);
   });
-  it('landscape aspect is 16:9', () => {
+  it('gameplay geometry is identical in both modes (no fairness impact)', () => {
+    const p = frameFor('portrait');
+    const l = frameFor('landscape');
+    expect([l.fieldW, l.fieldH, l.playerY, l.stripTop, l.stripBottom]).toEqual([p.fieldW, p.fieldH, p.playerY, p.stripTop, p.stripBottom]);
+  });
+  it('landscape aspect is 16:9 and panels are wide enough for HUD text', () => {
     const f = frameFor('landscape');
     expect(f.width / f.height).toBeCloseTo(16 / 9, 5);
+    expect(f.fieldX).toBeGreaterThanOrEqual(440);
   });
 });
 
@@ -362,6 +366,7 @@ Confirm:
 // games/dodge-drop/src/frame.ts
 /** Pure viewport -> logical frame model. Field-local coordinates are always 0..FIELD_W. */
 export const FIELD_W = 720;
+export const FIELD_H = 1280;
 export type FrameMode = 'portrait' | 'landscape';
 
 export interface Frame {
@@ -369,27 +374,35 @@ export interface Frame {
   /** Logical canvas size. */
   width: number;
   height: number;
-  /** Play-field rectangle inside the canvas (field-local x 0 maps to canvas fieldX). */
-  fieldX: number;
+  /** Logic play field (always 720x1280; all gameplay maths and fairness use this). */
   fieldW: number;
   fieldH: number;
+  /** Camera zoom applied to the field and the on-canvas rectangle it occupies (dispW = fieldW * zoom). */
+  zoom: number;
+  fieldX: number;
+  fieldY: number;
+  dispW: number;
+  dispH: number;
   playerY: number;
   stripTop: number;
   stripBottom: number;
-  /** Multiplier on block fall speed; tuned in Task 1.2 so the fairness property holds. */
-  speedScale: number;
 }
 
 /** Windows wider than this (w/h) get the landscape frame. */
 export const LANDSCAPE_MIN_RATIO = 1.15;
 
 const PORTRAIT: Frame = {
-  mode: 'portrait', width: 720, height: 1280, fieldX: 0, fieldW: FIELD_W, fieldH: 1280,
-  playerY: 1000, stripTop: 1060, stripBottom: 1280, speedScale: 1,
+  mode: 'portrait', width: 720, height: 1280, fieldX: 0, fieldY: 0, zoom: 1,
+  fieldW: FIELD_W, fieldH: FIELD_H, dispW: FIELD_W, dispH: FIELD_H,
+  playerY: 1000, stripTop: 1060, stripBottom: 1280,
 };
+const L_W = 1440;
+const L_H = 810;
+const L_ZOOM = L_H / FIELD_H;
 const LANDSCAPE: Frame = {
-  mode: 'landscape', width: 1440, height: 810, fieldX: 360, fieldW: FIELD_W, fieldH: 810,
-  playerY: 650, stripTop: 810, stripBottom: 810, speedScale: 1,
+  mode: 'landscape', width: L_W, height: L_H, fieldX: (L_W - FIELD_W * L_ZOOM) / 2, fieldY: 0, zoom: L_ZOOM,
+  fieldW: FIELD_W, fieldH: FIELD_H, dispW: FIELD_W * L_ZOOM, dispH: L_H,
+  playerY: 1000, stripTop: 1060, stripBottom: 1280,
 };
 
 export function pickMode(viewW: number, viewH: number, override?: FrameMode): FrameMode {
@@ -415,7 +428,7 @@ Confirm:
 - All tests pass; other tests still pass; output pristine.
 
 **REFACTOR - Clean Up**
-- Make `layout.ts` derive its legacy exports from `frameFor('portrait')` (`PLAYER_Y`, `STRIP_TOP`, `STRIP_BOTTOM` stay exported with unchanged values to keep imports valid).
+- Make `layout.ts` derive its legacy exports from `frameFor('portrait')` (`PLAYER_Y`, `STRIP_TOP`, `STRIP_BOTTOM` stay exported with unchanged values to keep imports valid). Do NOT change `PLAYER_Y` consumers (`fairness.ts`, `schedule.ts`).
 
 **Verify GREEN - Stay Green After Refactor**
 Run: `npx vitest run games/dodge-drop && npm run typecheck`
@@ -427,101 +440,8 @@ Confirm:
 Run:
 `git add games/dodge-drop/src/frame.ts games/dodge-drop/src/frame.test.ts games/dodge-drop/src/layout.ts && git commit -m "feat(dodge-drop): ✨ pure portrait/landscape frame model"`
 
-#### Task 1.2: Fairness and scheduler take the frame's player row and speed scale (highest-risk task)
-**Goal:** Prove spawn planning stays survivable in landscape (`playerY` 650, shorter look-ahead), tuning `speedScale`.
-
-**Files:**
-- Modify: `games/dodge-drop/src/fairness.ts` (add `playerY` to `FieldOptions`, use it in the two `PLAYER_Y` comparisons around lines 74 and 82), `games/dodge-drop/src/schedule.ts` (add `playerY` to `DifficultyOptions`, pass to `firstDeadEnd`, use in `hitAt` at line 96), `games/dodge-drop/src/frame.ts` (final `speedScale`)
-- Test: `games/dodge-drop/src/schedule.test.ts`
-
-**RED - Write Failing Test**
-Add to `games/dodge-drop/src/schedule.test.ts` (reuse its `badSeeds` helper; extend `Opts` with `playerY?: number` and forward it to both `SpawnScheduler` opts and the `firstDeadEnd` options):
-```ts
-import { frameFor } from './frame.ts';
-
-describe('SpawnScheduler in the landscape frame', () => {
-  const land = frameFor('landscape');
-  const opts = { speedMul: land.speedScale, playerY: land.playerY };
-
-  it('leaves a survivable path for every seed up to 240 s with the landscape player row', async () => {
-    expect(await badSeeds(SEEDS, opts, 240)).toEqual([]);
-  }, 300_000);
-
-  it('portrait default (no playerY) behaves exactly as before', async () => {
-    expect(await badSeeds(SEEDS.slice(0, 20), {}, 60)).toEqual([]);
-  }, 120_000);
-});
-```
-Update the `Opts` type and `badSeeds` body accordingly:
-```ts
-type Opts = { speedMul?: number; intervalMul?: number; startT?: number; playerY?: number };
-// inside badSeeds:
-if (firstDeadEnd(all, W, fromT, toT, { speedMul: opts.speedMul ?? 1, playerY: opts.playerY }) !== null) bad.push(seed);
-```
-
-**Requirements:**
-- One behaviour; real scheduler, no mocks.
-
-**Verify RED - Watch It Fail**
-Run: `PROPERTY_SEEDS=100 npx vitest run games/dodge-drop/src/schedule.test.ts`
-
-Confirm:
-- Typecheck-level failure is not enough: vitest does not typecheck, so `playerY` is silently ignored and the landscape test would pass for the WRONG reason. To make RED real, add one extra assertion that proves the option is wired: `expect(firstDeadEnd(fixedSpawns, W, 0, 20, { playerY: 400 })).not.toEqual(firstDeadEnd(fixedSpawns, W, 0, 20, { playerY: 1000 }))` using a hand-built `fixedSpawns` array (take one failing seed's unvalidated plan from `new SpawnScheduler(mulberry32(1), W, false).planUntil(20)`). This fails now (option ignored -> equal).
-- Failure message shows the two results equal.
-
-**Test passes?** You're testing existing behavior. Fix test.
-
-**Test errors?** Fix error, re-run until it fails correctly.
-
-**GREEN - Minimal Code**
-```ts
-// fairness.ts
-export interface FieldOptions {
-  speedMul?: number;
-  /** Player row in field px (default: portrait PLAYER_Y). */
-  playerY?: number;
-}
-// in firstDeadEnd, near the top:
-const py = opts?.playerY ?? PLAYER_Y;
-// replace the two PLAYER_Y uses in the band search with py:
-//   if (yAt(m) > py - reach) b = m;
-//   if (yAt(m) >= py + reach) b = m;
-
-// schedule.ts
-export interface DifficultyOptions {
-  speedMul?: number;
-  intervalMul?: number;
-  startT?: number;
-  playerY?: number;
-}
-// in the validation call:
-const dead = (): number | null => firstDeadEnd([...history, ...this.buffer], this.width, fromT, toT, {
-  speedMul: this.opts.speedMul ?? 1,
-  playerY: this.opts.playerY,
-});
-// in hitAt:
-const hitAt = (e: Entry): number => e.at + ((this.opts.playerY ?? PLAYER_Y) - SPAWN_Y) / (speed * e.speedMul);
-```
-Then run the landscape property test. If it fails (some seeds dead-end because look-ahead is 35% shorter at top speed), lower `LANDSCAPE.speedScale` in `frame.ts` in steps of 0.05 (start 0.9, then 0.85, 0.8) until `badSeeds` is empty at `PROPERTY_SEEDS=300`; keep the largest passing value. Also run the unvalidated-control test (already present) to confirm the property is meaningful.
-
-**Verify GREEN - Watch It Pass**
-Run: `PROPERTY_SEEDS=300 npx vitest run games/dodge-drop/src/schedule.test.ts games/dodge-drop/src/fairness.test.ts`
-
-Confirm:
-- Landscape and portrait property tests pass; existing fairness tests pass; output pristine; runtime within the existing 300 s timeouts (CI uses 100 seeds: also run once with `PROPERTY_SEEDS=100`).
-
-**REFACTOR - Clean Up**
-- Remove duplicated `?? PLAYER_Y` by a tiny local `const py = ...` in schedule.ts; document the chosen `speedScale` with a one-line comment citing this test.
-
-**Verify GREEN - Stay Green After Refactor**
-Run: `PROPERTY_SEEDS=100 npm test && npm run typecheck`
-
-Confirm:
-- Whole suite green; output pristine.
-
-**COMMIT**
-Run:
-`git add games/dodge-drop/src && git commit -m "feat(dodge-drop): ✨ fairness and scheduler honour the frame player row"`
+#### Task 1.2: REMOVED (decision 2026-11-24)
+The fairness/scheduler `playerY` + `speedScale` retune is dropped because landscape now shows the full, unchanged 720x1280 field. No code, no commit. The guard that replaces it is the "gameplay geometry is identical in both modes" test in Task 1.1 plus the unchanged existing property tests (`PROPERTY_SEEDS=100 npm test` stays in every later verification step).
 
 #### Task 1.3: defineGame picks the frame, Kit exposes it, test hook
 **Goal:** Boot with the right canvas size per viewport, expose `kit.frame` and `__gk.frame`.
@@ -614,20 +534,22 @@ Confirm:
 Run:
 `git add packages/game-kit games/dodge-drop/src && git commit -m "feat(game-kit): ✨ viewport-driven canvas size and frame registry hook"`
 
-#### Task 1.4: PlayScene field camera, UI camera, HUD in side panels
-**Goal:** In landscape, the field renders in the centre 720 px, HUD/missions/shields/mute live in side panels at readable size; portrait is pixel-identical to before.
+#### Task 1.4: PlayScene field camera, UI camera, HUD text in side panels
+**Goal:** In landscape, the unchanged 720x1280 field renders zoomed in the centre, every readable HUD text lives in a side panel at >= 14 css px (800x450), in-field text is a large minimal cue, and drag feel is preserved; portrait is pixel-identical to before.
 
 **Files:**
 - Create: `games/dodge-drop/src/hudLayout.ts`, `games/dodge-drop/src/hudLayout.test.ts`
-- Modify: `games/dodge-drop/src/PlayScene.ts` (`W`/`H` constants at lines 26-27 become frame-derived `this.fieldW/fieldH`; `buildHud` at line 408; `buildStrip` at 393; `PLAYER_Y` uses at lines 359-361, 860-913, 953-982, 1086, 1122; every `fallSpeed(this.t) * speedBoost(this.t)` site at lines 506, 645, 802, 852, 887 becomes `this.baseSpeed()` which multiplies by `frame.speedScale`; `H` uses at 330, 514-520, 525, 786-787, 806, 878, 906), `games/dodge-drop/src/backdrop.ts`
-- Test: `games/dodge-drop/src/hudLayout.test.ts`, `e2e/crazygames-viewport.spec.ts` (HUD legibility test)
+- Modify: `games/dodge-drop/src/layout.ts` (`dragToDx(fingerDx, zoom = 1)`), `games/dodge-drop/src/layout.test.ts`, `games/dodge-drop/src/PlayScene.ts` (`buildHud` at line 408, `buildStrip` at 393 stays, camera setup in `create()` at line 175, drag handler that calls `dragToDx`; `W`/`H`/`PLAYER_Y`/speed code is NOT touched), `games/dodge-drop/src/backdrop.ts`
+- Test: `games/dodge-drop/src/hudLayout.test.ts`, `games/dodge-drop/src/layout.test.ts`, `e2e/crazygames-viewport.spec.ts` (HUD legibility test from Task 0.1)
 
 **RED - Write Failing Test**
 ```ts
 // games/dodge-drop/src/hudLayout.test.ts
 import { describe, expect, it } from 'vitest';
 import { frameFor } from './frame.ts';
-import { hudAnchors, MIN_HUD_FONT } from './hudLayout.ts';
+import { fieldFont, hudAnchors, MIN_FIELD_FONT, MIN_PANEL_FONT } from './hudLayout.ts';
+
+const CSS_800 = 450 / 810; // canvas -> css scale at an 800x450 iframe
 
 describe('hudAnchors', () => {
   it('portrait keeps the v2.8.4 anchors', () => {
@@ -636,37 +558,52 @@ describe('hudAnchors', () => {
     expect(a.timer.originX).toBe(1);
     expect(a.mute).toEqual({ x: 672, y: 48 });
   });
-  it('landscape puts every HUD anchor outside the field rectangle', () => {
+  it('landscape puts every readable HUD anchor in a side panel, clear of the field rectangle', () => {
     const f = frameFor('landscape');
     const a = hudAnchors(f);
+    const fieldL = f.fieldX;
+    const fieldR = f.fieldX + f.dispW;
     for (const [name, p] of Object.entries({ score: a.score, combo: a.combo, timer: a.timer, shields: a.shields, best: a.best, mute: a.mute, missions: a.missions })) {
-      const inside = p.x >= f.fieldX && p.x <= f.fieldX + f.fieldW;
-      expect(inside, `${name} x=${p.x}`).toBe(false);
+      expect(p.x <= fieldL || p.x >= fieldR, `${name} x=${p.x}`).toBe(true);
     }
   });
-  it('landscape HUD fonts stay legible after 800x450 scaling (0.556)', () => {
-    const a = hudAnchors(frameFor('landscape'));
-    expect(a.fontScale * MIN_HUD_FONT * (450 / 810)).toBeGreaterThanOrEqual(14);
-  });
-  it('landscape panels are symmetric: left holds score/combo/PB, right holds timer/shields/missions/mute', () => {
+  it('left panel holds score/combo/best, right panel holds timer/shields/missions/mute', () => {
     const f = frameFor('landscape');
     const a = hudAnchors(f);
-    expect(a.score.x).toBeLessThan(f.fieldX);
-    expect(a.best.x).toBeLessThan(f.fieldX);
-    expect(a.timer.x).toBeGreaterThan(f.fieldX + f.fieldW);
-    expect(a.mute.x).toBeGreaterThan(f.fieldX + f.fieldW);
+    for (const p of [a.score, a.combo, a.best]) expect(p.x).toBeLessThan(f.fieldX);
+    for (const p of [a.timer, a.shields, a.missions, a.mute]) expect(p.x).toBeGreaterThan(f.fieldX + f.dispW);
+  });
+  it('panel text stays legible at 800x450 (>= 14 css px, target 20+)', () => {
+    expect(MIN_PANEL_FONT * CSS_800).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('fieldFont', () => {
+  it('portrait never changes the size', () => {
+    expect(fieldFont(frameFor('portrait'), 34)).toBe(34);
+  });
+  it('landscape clamps in-field text so it renders >= 14 css px at 800x450', () => {
+    const f = frameFor('landscape');
+    expect(fieldFont(f, 30)).toBe(MIN_FIELD_FONT);
+    expect(fieldFont(f, 110)).toBe(110);
+    expect(MIN_FIELD_FONT * f.zoom * CSS_800).toBeGreaterThanOrEqual(14);
   });
 });
 ```
-
-**Requirements:**
-- Pure anchors computed once; PlayScene only consumes them.
+Add to `layout.test.ts`:
+```ts
+it('dragToDx compensates for the camera zoom so on-screen follow ratio is constant', () => {
+  expect(dragToDx(100)).toBe(150);
+  expect(dragToDx(100, 0.5)).toBe(300);
+  expect(dragToDx(100, 0)).toBe(150); // guard against a zero zoom
+});
+```
 
 **Verify RED - Watch It Fail**
-Run: `npx vitest run games/dodge-drop/src/hudLayout.test.ts`
+Run: `npx vitest run games/dodge-drop/src/hudLayout.test.ts games/dodge-drop/src/layout.test.ts`
 
 Confirm:
-- Fails with unresolved import `./hudLayout.ts`.
+- Fails with unresolved import `./hudLayout.ts` and the zoom drag assertion failing (`dragToDx` ignores the second argument).
 
 **Test passes?** You're testing existing behavior. Fix test.
 
@@ -677,13 +614,19 @@ Confirm:
 // games/dodge-drop/src/hudLayout.ts
 import type { Frame } from './frame.ts';
 
-export const MIN_HUD_FONT = 40; // game px; 40 * 450/810 = 22 css px at 800x450
+/** Panel text in canvas px: 40 * (450/810) = 22 css px at an 800x450 iframe. */
+export const MIN_PANEL_FONT = 40;
+/** In-field text in logic px: 40 * zoom 0.633 * 0.556 = 14 css px at 800x450. */
+export const MIN_FIELD_FONT = 40;
 
 export interface Anchor { x: number; y: number; originX?: number; panel?: boolean }
 export interface HudAnchors {
   score: Anchor; combo: Anchor; timer: Anchor; shields: Anchor; best: Anchor; missions: Anchor;
   mute: { x: number; y: number };
-  fontScale: number;
+}
+
+export function fieldFont(f: Frame, size: number): number {
+  return f.mode === 'landscape' ? Math.max(size, MIN_FIELD_FONT) : size;
 }
 
 export function hudAnchors(f: Frame): HudAnchors {
@@ -696,89 +639,97 @@ export function hudAnchors(f: Frame): HudAnchors {
       best: { x: 24, y: 120, originX: 0, panel: false },
       missions: { x: f.width / 2, y: 120, originX: 0.5, panel: false },
       mute: { x: f.width - 48, y: 48 },
-      fontScale: 1,
     };
   }
-  const left = 24;
-  const right = f.width - 24;
+  const left = 32;
+  const rightPanelX = f.fieldX + f.dispW + 32;
   return {
     score: { x: left, y: 40, originX: 0, panel: true },
-    combo: { x: left, y: 120, originX: 0, panel: true },
-    best: { x: left, y: 210, originX: 0, panel: true },
-    timer: { x: right, y: 40, originX: 1, panel: true },
-    shields: { x: f.fieldX + f.fieldW + 40, y: 130, originX: 0, panel: true },
-    missions: { x: f.fieldX + f.fieldW + 40, y: 260, originX: 0, panel: true },
-    mute: { x: right - 24, y: f.height - 48 },
-    fontScale: 1,
+    combo: { x: left, y: 140, originX: 0, panel: true },
+    best: { x: left, y: 250, originX: 0, panel: true },
+    timer: { x: f.width - 32, y: 40, originX: 1, panel: true },
+    shields: { x: rightPanelX, y: 150, originX: 0, panel: true },
+    missions: { x: rightPanelX, y: 280, originX: 0, panel: true },
+    mute: { x: f.width - 56, y: f.height - 56 },
   };
 }
 ```
-Then wire PlayScene (exact steps, in this order, each keeping `npm run build:local` green):
-1. `create()`: `const frame = getFrame(this); this.frame = frame;` replace `const W = 720; const H = 1280;` module constants by instance getters `get W() { return this.frame.fieldW } get H() { return this.frame.fieldH }` and update usages (mechanical, 30-odd sites; use `grep -n "\bW\b\|\bH\b" games/dodge-drop/src/PlayScene.ts`).
-2. Landscape cameras: `this.cameras.main.setViewport(frame.fieldX, 0, frame.fieldW, frame.fieldH).setBounds(0, 0, frame.fieldW, frame.fieldH)` (main camera = field; its scroll origin is field-local so every existing world coordinate is untouched), then `this.uiCam = this.cameras.add(0, 0, frame.width, frame.height)`; HUD objects are added to `this.uiObjs` and `this.cameras.main.ignore(this.uiObjs)`; field objects are ignored by `uiCam` through a helper `this.field<T>(obj: T): T { this.uiCam?.ignore(obj); return obj }` applied to `add.*` calls in `buildBackdrop/buildPools/buildPlayer/buildSpeedFx/spawn`. Portrait: no uiCam; HUD on main camera (unchanged).
-3. Panel decorations: in landscape draw a panel background (`dd-panel` texture or gradient rectangles) behind each side panel at depth -100 on the UI camera.
-4. `buildHud` reads `hudAnchors(frame)` for score/combo/timer/shields/mute; mission progress chips (existing toasts at `PlayScene.ts` ~1012/1056) get a persistent mission list in the right panel (read-only, uses `missionLabel.ts`).
-5. `baseSpeed()` helper: `return fallSpeed(this.t) * speedBoost(this.t) * this.frame.speedScale;` replace the five call sites listed above; `PLAYER_Y` -> `this.frame.playerY` (also pass `playerY: frame.playerY` into `SpawnScheduler` opts at line 298).
-6. `buildStrip` returns early when `frame.stripTop === frame.stripBottom`.
-7. Test hook: inside the existing `__GK_TEST_HOOKS__` block (line ~230) add `hud: () => this.hudProbe()` returning `[{name, x, y, fontPx}]` for score/combo/timer/best/missions text objects, `x` in canvas coordinates (add `frame.fieldX` for field-camera objects).
-8. 144/165 Hz check: confirm every movement uses `dt` (grep `delta` use in `update`); add nothing if already true.
+```ts
+// layout.ts
+export function dragToDx(fingerDx: number, zoom = 1): number {
+  return (fingerDx * DRAG_GAIN) / (zoom > 0 ? zoom : 1);
+}
+```
+Then wire PlayScene (each step followed by `npm run build:local`; nothing in `W`/`H`/`PLAYER_Y`/spawn/speed code changes):
+1. `create()`: `this.frame = getFrame(this)` (accessor from Task 1.3). When `frame.mode === 'landscape'`: `const cam = this.cameras.main; cam.setViewport(frame.fieldX, 0, frame.dispW, frame.dispH); cam.setZoom(frame.zoom); cam.centerOn(W / 2, H / 2); this.uiCam = this.cameras.add(0, 0, frame.width, frame.height);`. Portrait: no uiCam.
+2. Object routing without touching every `add.*` call: a `private buildingHud = false` flag; `this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, (o) => { if (!this.uiCam) return; if (this.buildingHud) this.cameras.main.ignore(o); else this.uiCam.ignore(o); })`. `buildHud()` and the panel decoration run inside `this.buildingHud = true ... false`. Objects created later at runtime (pop text, bursts, blocks) are field objects and are ignored by the UI camera automatically. Phaser skips ignored objects in input hit-testing per camera; verify in the e2e by clicking the mute button in a panel.
+3. `buildHud`: positions from `hudAnchors(frame)`; text sizes in landscape use `Math.max(size, MIN_PANEL_FONT)` for panel text; in-field cues (`hint` at line ~428, rush/overdrive/grace banners, `popText` calls) pass sizes through `fieldFont(frame, size)`. Combo text/bar and shield icon row move to the panel anchors in landscape; mute button (`kit.addMuteButton`) and fullscreen button (only if the platform feature allows it) at `a.mute`.
+4. Panel decoration: dark gradient panels at depth -100 in canvas coordinates (art arrives in Task 3.5). The persistent mission list in the right panel uses `missionLabel.ts` (read-only).
+5. Drag: replace `dragToDx(dx)` call with `dragToDx(dx, this.frame.zoom)` (pointer deltas are in canvas px).
+6. 144/165 Hz check: confirm every movement uses `dt` (grep `delta` use in `update`); add nothing if already true.
+7. Test hook (inside the existing `__GK_TEST_HOOKS__` block, line ~230): `hud: () => [...]` returning `{name, x, y, fontPx, inField}` for score, combo, timer, best, missions, hint and visible banners; `fontPx` = font size times `frame.zoom` for in-field text, `x` in canvas coordinates (add `frame.fieldX + objX * zoom` for field objects).
 
 **Verify GREEN - Watch It Pass**
 Run: `npx vitest run games/dodge-drop && npm run typecheck && npm run build:local && npx playwright test e2e/crazygames-viewport.spec.ts`
 
 Confirm:
-- hudLayout tests pass; all of `crazygames-viewport.spec.ts` passes including the 14 css px legibility test; look at `.superpowers/sdd/meta/v3/play-800x450.png` and confirm field centred with panels (inline visual check by the executor, not by a subagent reviewer).
+- hudLayout/layout tests pass; all of `crazygames-viewport.spec.ts` passes including the 14 css px legibility test at 800x450; inspect `.superpowers/sdd/meta/v3/play-800x450.png` inline (field centred and complete, panels hold all HUD text, nothing clipped).
 
 **REFACTOR - Clean Up**
-- Collapse the repeated `this.uiCam?.ignore` calls into the `field()` helper; delete unused `H` constants.
+- Collapse repeated panel/field font logic into one `textStyleFor(kind, size)` in PlayScene; delete dead code.
 
 **Verify GREEN - Stay Green After Refactor**
 Run: `PROPERTY_SEEDS=100 npm test && npm run typecheck && npm run test:smoke`
 
 Confirm:
-- Existing smoke specs still green IF they run in portrait: they use Playwright's default 1280x720 viewport, which now selects landscape. Task 1.6 pins them; until then run `test:smoke` with `?layout=portrait` locally or do Task 1.6 immediately after 1.4 before pushing. Do not push between 1.4 and 1.6.
+- Existing smoke specs still green IF they run in portrait: they use Playwright's default 1280x720 viewport, which now selects landscape. Task 1.6 pins them; until then run `test:smoke` with `?layout=portrait` locally or do Task 1.6 immediately after 1.4/1.5 before pushing. Do not push between 1.4 and 1.6.
 
 **COMMIT**
 Run:
-`git add games/dodge-drop packages/game-kit e2e && git commit -m "feat(dodge-drop): ✨ landscape play field with side-panel HUD"`
+`git add games/dodge-drop packages/game-kit e2e && git commit -m "feat(dodge-drop): ✨ landscape frame with zoomed full field and side-panel HUD"`
 
-#### Task 1.5: Title, Shop, Results and GameOver adapt to the frame
-**Goal:** Every scene is usable at 1440x810 and unchanged at 720x1280.
+#### Task 1.5: Title, Shop, Results and GameOver lay out on the real landscape canvas
+**Goal:** These scenes are usable and legible (>= 14 css px at 800x450, target 20) on the 1440x810 canvas and unchanged at 720x1280. Unlike PlayScene they are NOT zoomed portrait columns, because a 1280-tall column zoomed to 810 would shrink their text below the legibility floor.
 
 **Files:**
-- Modify: `packages/game-kit/src/titleLayout.ts`, `packages/game-kit/src/scenes/TitleScene.ts`, `packages/game-kit/src/scenes/GameOverScene.ts`, `games/dodge-drop/src/titleExtras.ts`, `games/dodge-drop/src/ShopScene.ts` (uses `this.scale.width/height`, check hard-coded y values such as `TAB_Y` and `1280 * 0.72`), `games/dodge-drop/src/results.ts` (line 205 `scene.scale.height * 0.745`), `games/dodge-drop/src/backdrop.ts`
+- Modify: `packages/game-kit/src/titleLayout.ts`, `packages/game-kit/src/scenes/TitleScene.ts`, `packages/game-kit/src/scenes/GameOverScene.ts`, `games/dodge-drop/src/titleExtras.ts`, `games/dodge-drop/src/ShopScene.ts` (uses `this.scale.width/height`; hard-coded y values such as `TAB_Y` and `1280 * 0.72`), `games/dodge-drop/src/results.ts` (line 205 `scene.scale.height * 0.745`), `games/dodge-drop/src/backdrop.ts`
 - Test: `packages/game-kit/src/titleLayout.test.ts`, `e2e/crazygames-viewport.spec.ts`
 
 **RED - Write Failing Test**
-Extend `packages/game-kit/src/titleLayout.test.ts` with a landscape case (read the existing exports first with `sed -n 1,60p packages/game-kit/src/titleLayout.ts` and mirror their parameter names). The test asserts that for `{width:1440,height:810}` the title block, the menu button column and the extras fit inside `[0,height]` with >= 24 px margins and that the portrait case output is deep-equal to the pre-change snapshot (store the v2.8.4 numbers as the expected literal values taken by running the current function once). Add to `e2e/crazygames-viewport.spec.ts`:
+Extend `packages/game-kit/src/titleLayout.test.ts` with a landscape case (read the existing exports first with `sed -n 1,60p packages/game-kit/src/titleLayout.ts` and mirror their parameter names). The test asserts that for `{width:1440,height:810}` the title block, the menu button column and the extras fit inside `[0,height]` with >= 24 px margins, button heights are >= 88 canvas px (= 49 css px at 800x450), and that the portrait output is deep-equal to the pre-change snapshot (store the v2.8.4 numbers as literals by running the current function once). Add to `e2e/crazygames-viewport.spec.ts`:
 ```ts
-test('title, shop and results fit the landscape canvas at 800x450', async ({ page }) => {
+test('title, shop and results fit the landscape canvas and are legible at 800x450', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 450 });
   await page.goto(GAME);
   await ready(page);
-  const overflow = await page.evaluate(() => (window as unknown as { __dd?: { bounds?: () => { name: string; top: number; bottom: number }[] }; __gk: GK & { frame: { height: number } } }).__dd?.bounds?.().filter((b) => b.top < 0 || b.bottom > (window as unknown as { __gk: { frame: { height: number } } }).__gk.frame.height) ?? ['no-hook']);
-  expect(overflow).toEqual([]);
+  const rows = await page.evaluate(() => {
+    const w = window as unknown as { __dd?: { bounds?: () => { name: string; top: number; bottom: number; fontPx: number }[] }; __gk: { frame: { height: number } } };
+    return { items: w.__dd?.bounds?.() ?? null, h: w.__gk.frame.height };
+  });
+  expect(rows.items, 'bounds hook present').not.toBeNull();
+  const bad = rows.items!.filter((b) => b.top < 0 || b.bottom > rows.h || b.fontPx * (450 / rows.h) < 14);
+  expect(bad).toEqual([]);
 });
 ```
-with a test hook `__dd.bounds()` added by each scene in `__GK_TEST_HOOKS__` returning its interactive objects' vertical bounds (title, shop, results, game over scenes register theirs when created).
+with a test hook `__dd.bounds()` registered by each scene (title, shop, results, game over) in `__GK_TEST_HOOKS__`, returning its text/button objects' vertical bounds and effective font px.
 
 **Requirements:**
-- Pure layout functions take `Frame`-like `{width,height}`; scenes stop assuming 720x1280.
+- Pure layout functions take `{width,height}`; scenes stop assuming 720x1280.
 
 **Verify RED - Watch It Fail**
-Run: `npx vitest run packages/game-kit/src/titleLayout.test.ts && npx playwright test e2e/crazygames-viewport.spec.ts -g "fit the landscape"`
+Run: `npx vitest run packages/game-kit/src/titleLayout.test.ts && npm run build:local && npx playwright test e2e/crazygames-viewport.spec.ts -g "fit the landscape"`
 
 Confirm:
-- Both fail for the expected reason ("no-hook" / layout overflow), not selector typos.
+- Both fail for the expected reason ("bounds hook present" / layout overflow), not selector typos.
 
 **Test passes?** You're testing existing behavior. Fix test.
 
 **Test errors?** Fix error, re-run until it fails correctly.
 
 **GREEN - Minimal Code**
-- `titleLayout.ts`: derive vertical positions from `height` fractions instead of absolute 1280-based numbers; in landscape place the logo/menu in the centre column (x = 720) and put decoration art (`dd-panel-art`, Phase 3) in the side panels.
-- `ShopScene.ts`: use `this.scale.width/height`; tabs and cards laid out with `Math.min(width, 720)` content column centred (shop is a column UI; side panels show backdrop). Replace hard-coded coordinates with frame-relative ones.
-- `results.ts`: same content-column approach (`cx = scene.scale.width / 2` already centred; verify the 0.745 y fraction still lands inside 810).
+- `titleLayout.ts`: derive vertical positions from `height` fractions instead of absolute 1280-based numbers; in landscape centre logo/menu in the middle column with the title decoration art (Phase 3) in the side areas.
+- `ShopScene.ts`: in landscape arrange tabs on top and cards in a two-column grid on the 1440 width; panel fonts >= 36 canvas px. This is the heaviest relayout of Phase 1; if it overruns, the minimum acceptable fallback is a single column with larger cards and scrolling, recorded in the notes file.
+- `results.ts` / `GameOverScene.ts`: score summary left, buttons right in landscape (existing content, new anchors); verify `0.745` fraction.
 - Each scene registers `__dd.bounds` in the test-hook block.
 
 **Verify GREEN - Watch It Pass**
@@ -788,7 +739,7 @@ Confirm:
 - Pass; screenshots of title, shop, results at 800x450 and 1920x1080 inspected inline (`.superpowers/sdd/meta/v3/`), text readable, no clipping.
 
 **REFACTOR - Clean Up**
-- Share a `contentColumn(frame)` helper between Shop and Results (DRY).
+- Share a `isLandscape(frame)`/anchor helper between Shop and Results (DRY).
 
 **Verify GREEN - Stay Green After Refactor**
 Run: `npm run typecheck && PROPERTY_SEEDS=100 npm test`
@@ -798,7 +749,7 @@ Confirm:
 
 **COMMIT**
 Run:
-`git add packages/game-kit games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ adapt title, shop and results to landscape frame"`
+`git add packages/game-kit games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ adapt title, shop and results to landscape canvas"`
 
 #### Task 1.6: Pin existing e2e specs to portrait, add landscape journey, runtime orientation switch
 **Goal:** Existing specs keep their 720x1280 coordinates; landscape has its own end-to-end journey; layout switches only between runs.
@@ -920,7 +871,7 @@ Run:
 
 #### Task 1.8: Manifest orientation `any` and portal form check
 **Exception Type:** Configuration-only
-**User Approval:** NEEDS USER APPROVAL (proposed; not yet granted). If declined, use the fallback test below instead.
+**User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
 - Modify: `games/dodge-drop/game.json` (`"orientation": "portrait"` -> `"any"`; extend `instructions.en` with "Landscape and portrait both supported")
 
@@ -934,183 +885,16 @@ Confirm:
 - `manifest.ts` accepts `any` (it is in `ORIENTATIONS`); payload test passes; `npm run publish:prep -- dodge-drop` prints `mobileOrientation: 'BOTH'` (it may still exit 1 for version/covers; only check that field).
 - Output pristine.
 
-Fallback if exception declined (test-first): add to `scripts/publish-payload.test.ts` a case "dodge-drop payload reports BOTH orientation" reading the real `games/dodge-drop/game.json`, watch it fail, then change the JSON.
 
 **COMMIT**
 Run:
 `git commit -am "chore(dodge-drop): 🔧 declare portrait and landscape support"`
 
-### Phase 2: Retention (daily reward, streak, personal-best cue)
+### Phase 2: Personal-best progress cue (small)
 
-#### Task 2.1: Pure daily reward and streak model
-**Goal:** A tested state machine for claim eligibility, streak, and reward.
+Retention hooks (daily reward, login streak) were removed by the user on 2026-11-24. Only the in-session personal-best cue remains because a reviewer sees it while playing.
 
-**Files:**
-- Create: `games/dodge-drop/src/retention.ts`
-- Test: `games/dodge-drop/src/retention.test.ts`
-
-**RED - Write Failing Test**
-```ts
-// games/dodge-drop/src/retention.test.ts
-import { describe, expect, it } from 'vitest';
-import { canClaim, claim, dayKey, DAILY_REWARDS, emptyDaily, sanitizeDaily, streakAfterMiss } from './retention.ts';
-
-const d = (s: string): Date => new Date(`${s}T12:00:00`);
-
-describe('dayKey', () => {
-  it('uses the local calendar date', () => {
-    expect(dayKey(new Date(2026, 10, 23, 23, 59))).toBe('2026-11-23');
-    expect(dayKey(new Date(2026, 10, 24, 0, 1))).toBe('2026-11-24');
-  });
-});
-
-describe('claim flow', () => {
-  it('first ever claim gives day 1 reward and streak 1', () => {
-    const r = claim(emptyDaily(), d('2026-11-23'));
-    expect(r.state).toEqual({ lastClaim: '2026-11-23', streak: 1, longest: 1, total: 1 });
-    expect(r.coins).toBe(DAILY_REWARDS[0]);
-  });
-  it('cannot claim twice on the same day', () => {
-    const s = claim(emptyDaily(), d('2026-11-23')).state;
-    expect(canClaim(s, d('2026-11-23'))).toBe(false);
-    expect(claim(s, d('2026-11-23')).coins).toBe(0);
-    expect(claim(s, d('2026-11-23')).state).toEqual(s);
-  });
-  it('consecutive days advance the streak and the reward', () => {
-    let s = emptyDaily();
-    for (let i = 0; i < 3; i++) s = claim(s, d(`2026-11-${23 + i}`)).state;
-    expect(s.streak).toBe(3);
-    expect(claim(s, d('2026-11-26')).coins).toBe(DAILY_REWARDS[3]);
-  });
-  it('a missed day resets the streak to 1 but keeps longest', () => {
-    let s = emptyDaily();
-    for (let i = 0; i < 4; i++) s = claim(s, d(`2026-11-${23 + i}`)).state;
-    const r = claim(s, d('2026-12-01'));
-    expect(r.state.streak).toBe(1);
-    expect(r.state.longest).toBe(4);
-    expect(r.coins).toBe(DAILY_REWARDS[0]);
-  });
-  it('after day 7 the reward table cycles but the streak keeps counting', () => {
-    let s = emptyDaily();
-    for (let i = 0; i < 7; i++) s = claim(s, d(`2026-11-${10 + i}`)).state;
-    const r = claim(s, d('2026-11-17'));
-    expect(r.state.streak).toBe(8);
-    expect(r.coins).toBe(DAILY_REWARDS[0]);
-  });
-  it('handles month and year boundaries', () => {
-    const s = claim(emptyDaily(), d('2026-12-31')).state;
-    expect(claim(s, d('2027-01-01')).state.streak).toBe(2);
-  });
-  it('a clock set backwards does not grant or break anything', () => {
-    const s = claim(emptyDaily(), d('2026-11-23')).state;
-    expect(canClaim(s, d('2026-11-20'))).toBe(false);
-  });
-});
-
-describe('streakAfterMiss', () => {
-  it('shows the streak at risk when today is not claimed yet and yesterday was', () => {
-    const s = claim(emptyDaily(), d('2026-11-23')).state;
-    expect(streakAfterMiss(s, d('2026-11-24'))).toBe('alive');
-    expect(streakAfterMiss(s, d('2026-11-26'))).toBe('lost');
-  });
-});
-
-describe('sanitizeDaily', () => {
-  it('survives garbage saves', () => {
-    expect(sanitizeDaily(null)).toEqual(emptyDaily());
-    expect(sanitizeDaily({ lastClaim: 5, streak: -2, longest: 'x', total: NaN })).toEqual(emptyDaily());
-    expect(sanitizeDaily({ lastClaim: '2026-11-23', streak: 3, longest: 5, total: 9 })).toEqual({ lastClaim: '2026-11-23', streak: 3, longest: 5, total: 9 });
-  });
-});
-```
-
-**Requirements:**
-- Pure; time injected as a `Date` argument.
-
-**Verify RED - Watch It Fail**
-Run: `npx vitest run games/dodge-drop/src/retention.test.ts`
-
-Confirm:
-- Fails with unresolved import `./retention.ts`.
-
-**Test passes?** You're testing existing behavior. Fix test.
-
-**Test errors?** Fix error, re-run until it fails correctly.
-
-**GREEN - Minimal Code**
-```ts
-// games/dodge-drop/src/retention.ts
-export interface DailyState { lastClaim: string; streak: number; longest: number; total: number }
-
-/** Coins for streak day 1..7; the table cycles (day 8 = day 1 reward). Balance values: see plan open question 2. */
-export const DAILY_REWARDS: readonly number[] = [30, 40, 50, 60, 80, 100, 200];
-
-export const emptyDaily = (): DailyState => ({ lastClaim: '', streak: 0, longest: 0, total: 0 });
-
-const pad = (n: number): string => String(n).padStart(2, '0');
-export function dayKey(now: Date): string {
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-/** Whole-day difference between two local day keys (b - a); NaN if either is empty. */
-function dayDiff(a: string, b: string): number {
-  if (!a || !b) return Number.NaN;
-  const [ya, ma, da] = a.split('-').map(Number);
-  const [yb, mb, db] = b.split('-').map(Number);
-  const ua = Date.UTC(ya!, ma! - 1, da!);
-  const ub = Date.UTC(yb!, mb! - 1, db!);
-  return Math.round((ub - ua) / 86_400_000);
-}
-
-export function canClaim(s: DailyState, now: Date): boolean {
-  const diff = dayDiff(s.lastClaim, dayKey(now));
-  return s.lastClaim === '' || diff >= 1;
-}
-
-export function claim(s: DailyState, now: Date): { state: DailyState; coins: number } {
-  if (!canClaim(s, now)) return { state: s, coins: 0 };
-  const diff = dayDiff(s.lastClaim, dayKey(now));
-  const streak = s.lastClaim !== '' && diff === 1 ? s.streak + 1 : 1;
-  const state: DailyState = { lastClaim: dayKey(now), streak, longest: Math.max(s.longest, streak), total: s.total + 1 };
-  return { state, coins: DAILY_REWARDS[(streak - 1) % DAILY_REWARDS.length]! };
-}
-
-export function streakAfterMiss(s: DailyState, now: Date): 'alive' | 'lost' {
-  if (s.lastClaim === '') return 'lost';
-  return dayDiff(s.lastClaim, dayKey(now)) <= 1 ? 'alive' : 'lost';
-}
-
-const nonNeg = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
-export function sanitizeDaily(raw: unknown): DailyState {
-  if (!raw || typeof raw !== 'object') return emptyDaily();
-  const r = raw as Record<string, unknown>;
-  const lastClaim = typeof r.lastClaim === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.lastClaim) ? r.lastClaim : '';
-  if (lastClaim === '') return emptyDaily();
-  return { lastClaim, streak: nonNeg(r.streak), longest: nonNeg(r.longest), total: nonNeg(r.total) };
-}
-```
-(`sanitizeDaily` of the garbage case returns `emptyDaily()` because `lastClaim` is not a string; the valid case round-trips.)
-
-**Verify GREEN - Watch It Pass**
-Run: `npx vitest run games/dodge-drop/src/retention.test.ts`
-
-Confirm:
-- All pass; output pristine.
-
-**REFACTOR - Clean Up**
-- Nothing structural; ensure `DAILY_REWARDS` has a doc comment tying to coin scale in `economy.ts`.
-
-**Verify GREEN - Stay Green After Refactor**
-Run: `npx vitest run games/dodge-drop && npm run typecheck`
-
-Confirm:
-- Green.
-
-**COMMIT**
-Run:
-`git add games/dodge-drop/src/retention.ts games/dodge-drop/src/retention.test.ts && git commit -m "feat(dodge-drop): ✨ daily reward and streak model"`
-
-#### Task 2.2: Personal-best cue model
+#### Task 2.1: Personal-best cue model
 **Goal:** Pure percent/label/state function for the in-run PB line.
 
 **Files:**
@@ -1190,93 +974,11 @@ Confirm:
 Run:
 `git add games/dodge-drop/src/pbCue.ts games/dodge-drop/src/pbCue.test.ts && git commit -m "feat(dodge-drop): ✨ personal-best cue model"`
 
-#### Task 2.3: Daily panel on the title scene with persisted claim
-**Goal:** Title offers the claim once per day, grants coins through the existing `coins` key, persists `daily`.
+#### Task 2.2: Personal-best line in the HUD (left panel in landscape)
+**Goal:** HUD shows `62% of best` (chasing/close styles) and flips to "NEW BEST" once. In landscape the line sits in the left side panel; in portrait it keeps the in-field strip.
 
 **Files:**
-- Create: `games/dodge-drop/src/dailyPanel.ts`
-- Modify: `games/dodge-drop/src/titleExtras.ts`, `games/dodge-drop/src/strings.ts` (+ `strings.test.ts` enforces en/zh parity), `games/dodge-drop/src/economy.ts` only if a `addCoins` helper is cleaner (otherwise reuse `kit.save.getNumber/setNumber('coins')` as `results.ts:57` does)
-- Test: `e2e/dodge-drop.spec.ts`, `e2e/portals.spec.ts`, `games/dodge-drop/src/strings.test.ts`
-
-**RED - Write Failing Test**
-In `e2e/dodge-drop.spec.ts` (portrait pinned):
-```ts
-test('daily reward can be claimed once and persists', async ({ page }) => {
-  await page.goto('http://localhost:5180/dodge-drop/?layout=portrait');
-  await page.waitForFunction(() => (window as unknown as { __gk?: { activeScenes: string[] } }).__gk?.activeScenes.includes('GKTitle'));
-  const first = await page.evaluate(() => (window as unknown as { __ddTitle: { daily?: { claimable: boolean; streak: number; claim(): Promise<number> } } }).__ddTitle.daily);
-  expect(first?.claimable).toBe(true);
-  const coins = await page.evaluate(() => (window as unknown as { __ddTitle: { daily: { claim(): Promise<number> } } }).__ddTitle.daily.claim());
-  expect(coins).toBeGreaterThan(0);
-  await page.reload();
-  await page.waitForFunction(() => (window as unknown as { __gk?: { activeScenes: string[] } }).__gk?.activeScenes.includes('GKTitle'));
-  const after = await page.evaluate(() => (window as unknown as { __ddTitle: { daily: { claimable: boolean; streak: number } } }).__ddTitle.daily);
-  expect(after).toMatchObject({ claimable: false, streak: 1 });
-});
-```
-In `e2e/portals.spec.ts` (fake CrazyGames SDK) add the same claim then `reload` and assert the fake SDK data module holds `gk:dodge-drop:daily` (check how the fixture stores items: `sed -n 1,60p e2e/fixtures/fake-crazygames-sdk.js` and assert on its in-memory store). Add `daily.*` string keys to `strings.ts` in en and zh-TW (`daily.title`, `daily.claim`, `daily.streak`, `daily.day`, `daily.comeBack`, `daily.lost`); `strings.test.ts` fails until both locales have them.
-
-**Verify RED - Watch It Fail**
-Run: `npm run build:local && npx playwright test e2e/dodge-drop.spec.ts -g "daily reward" && npm run test:portals`
-
-Confirm:
-- Fails because `__ddTitle.daily` is undefined (feature missing).
-
-**Test passes?** You're testing existing behavior. Fix test.
-
-**Test errors?** Fix error, re-run until it fails correctly.
-
-**GREEN - Minimal Code**
-```ts
-// games/dodge-drop/src/dailyPanel.ts (shape; use addButton from @gf/game-kit, theme colours from kit.theme)
-import type Phaser from 'phaser';
-import { addButton, getKit } from '@gf/game-kit';
-import { canClaim, claim, DAILY_REWARDS, sanitizeDaily, streakAfterMiss, type DailyState } from './retention.ts';
-
-export async function loadDaily(scene: Phaser.Scene): Promise<DailyState> {
-  return sanitizeDaily(await getKit(scene).save.getJSON<unknown>('daily', null));
-}
-
-export async function claimDaily(scene: Phaser.Scene, now = new Date()): Promise<{ coins: number; state: DailyState }> {
-  const kit = getKit(scene);
-  const cur = await loadDaily(scene);
-  const r = claim(cur, now);
-  if (r.coins > 0) {
-    await kit.save.setJSON('daily', r.state);
-    await kit.save.setNumber('coins', (await kit.save.getNumber('coins', 0)) + r.coins);
-  }
-  return r;
-}
-
-/** Draws the 7-day strip + Claim button; returns a handle for tests. */
-export function drawDailyPanel(scene: Phaser.Scene, cx: number, cy: number, state: DailyState, now = new Date()): { destroy(): void } { /* 7 cells from DAILY_REWARDS, current streak highlighted, Claim button via addButton, closes on claim with popText */ }
-```
-In `titleExtras.ts`: on create, `void loadDaily(scene).then((s) => { if (canClaim(s, now)) drawDailyPanel(...); })`; extend the `__GK_TEST_HOOKS__` object (`window.__ddTitle`, line ~124) with `daily: { claimable, streak, claim: () => claimDaily(scene).then(r => r.coins) }`. Never block starting a run: the panel is dismissible and "tap anywhere to start" still works (CrazyGames: new users land in gameplay within one click; panel must not appear for a player's very first session, so skip it when `total === 0 && best === 0`, i.e. first-run players see it only after their first run).
-
-**Verify GREEN - Watch It Pass**
-Run: `npx vitest run games/dodge-drop && npm run build:local && npx playwright test e2e/dodge-drop.spec.ts && npm run test:portals`
-
-Confirm:
-- Pass, including persistence through the fake SDK; strings parity test passes; screenshot of the panel in portrait and landscape inspected inline.
-
-**REFACTOR - Clean Up**
-- Share `addCoins(kit, n)` between `results.ts` and `dailyPanel.ts` (DRY) in `economy.ts` if a second duplicate exists.
-
-**Verify GREEN - Stay Green After Refactor**
-Run: `PROPERTY_SEEDS=100 npm test && npm run test:smoke`
-
-Confirm:
-- Green; output pristine.
-
-**COMMIT**
-Run:
-`git add games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ daily reward panel with persisted streak"`
-
-#### Task 2.4: PB line in the HUD and streak line on results
-**Goal:** HUD shows `62% of best` (chasing/close styles) and flips to "NEW BEST" once; results shows streak and PB.
-
-**Files:**
-- Modify: `games/dodge-drop/src/PlayScene.ts` (`buildHud` add `bestText` at `hudAnchors().best`; `updateHud` near line 1141 updates it from `pbCue(score, kit.session.best)`), `games/dodge-drop/src/results.ts` (one streak line), `games/dodge-drop/src/strings.ts`
+- Modify: `games/dodge-drop/src/PlayScene.ts` (`buildHud` add `bestText` at `hudAnchors().best`; `updateHud` near line 1141 updates it from `pbCue(score, kit.session.best)`), `games/dodge-drop/src/strings.ts`
 - Test: `e2e/crazygames-viewport.spec.ts` or `e2e/dodge-drop.spec.ts`
 
 **RED - Write Failing Test**
@@ -1306,7 +1008,7 @@ Confirm:
 **Test errors?** Fix error, re-run until it fails correctly.
 
 **GREEN - Minimal Code**
-In `buildHud`: `this.bestText = this.add.text(a.best.x, a.best.y, '', this.textStyle(30, theme.muted)).setOrigin(a.best.originX ?? 0, 0).setDepth(100);` In `updateHud`: compute `const cue = pbCue(this.score, this.kit.session.best)`; set text via `this.kit.t('pb.chasing')`-style templates (`strings.ts`: `pb.chasing: '{n}% of your best'`, `pb.best: 'Best {n}'`, `pb.new: 'NEW BEST!'`, zh-TW equivalents), colour accent when `close`, pop text + `audio.sfx('newBest')` once when state first becomes `beating` (guard with `this.pbCelebrated`). Hide the line when `state === 'none'`. Register in `__dd` hook: `pb: () => ({ state, text: this.bestText.text })`. Add `results.ts` line `daily.streak` using `loadDaily` (read-only).
+In `buildHud`: `this.bestText = this.add.text(a.best.x, a.best.y, '', this.textStyle(30, theme.muted)).setOrigin(a.best.originX ?? 0, 0).setDepth(100);` In `updateHud`: compute `const cue = pbCue(this.score, this.kit.session.best)`; set text via `this.kit.t('pb.chasing')`-style templates (`strings.ts`: `pb.chasing: '{n}% of your best'`, `pb.best: 'Best {n}'`, `pb.new: 'NEW BEST!'`, zh-TW equivalents), colour accent when `close`, pop text + `audio.sfx('newBest')` once when state first becomes `beating` (guard with `this.pbCelebrated`). Hide the line when `state === 'none'`. Register in `__dd` hook: `pb: () => ({ state, text: this.bestText.text })`. In landscape the text is created inside the `buildingHud` window (Task 1.4) at `hudAnchors(frame).best` with `MIN_PANEL_FONT`; in portrait it keeps `textStyle(30, ...)`. The persisted best itself needs no new code (`GameSession.best`).
 
 **Verify GREEN - Watch It Pass**
 Run: `npx vitest run games/dodge-drop && npm run build:local && npx playwright test e2e/dodge-drop.spec.ts e2e/results.spec.ts e2e/crazygames-viewport.spec.ts`
@@ -1325,7 +1027,7 @@ Confirm:
 
 **COMMIT**
 Run:
-`git add games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ personal-best HUD cue and streak on results"`
+`git add games/dodge-drop e2e && git commit -m "feat(dodge-drop): ✨ personal-best HUD cue in the HUD"`
 
 ### Phase 3: CC0 art and audio
 
@@ -1483,7 +1185,7 @@ Run:
 
 #### Task 3.2: Source and import CC0 art
 **Exception Type:** Generated code / Configuration-only (asset-only; downloading third-party files cannot be test-first)
-**User Approval:** NEEDS USER APPROVAL (proposed; blocked until approved). Real gate that still applies: Task 3.1 checker must fail before the manifest entries are added and pass after.
+**User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
 - Create: `games/dodge-drop/public/assets/art/*.png` (player ship/orb frames, block variants, star, shield, ring, backdrop layers, panel art, logo, UI frame/buttons), `games/dodge-drop/assets/manifest.json` entries
 - Modify: `games/dodge-drop/assets/README.md` (record chosen packs and style rationale)
@@ -1508,14 +1210,14 @@ Run:
 
 #### Task 3.3: Source and import CC0 music and SFX
 **Exception Type:** Generated code / Configuration-only (asset-only)
-**User Approval:** NEEDS USER APPROVAL (proposed; blocked until approved). The Task 3.1 checker gates it.
+**User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
 - Create: `games/dodge-drop/public/assets/audio/music-*.mp3`, `games/dodge-drop/public/assets/audio/sfx-*.mp3`, manifest entries
 - Modify: `games/dodge-drop/assets/README.md`
 
 **Implementation**
 1. Music: 2-3 seamless loops (calm/normal, rush, overdrive) 30-60 s, 96-128 kbps mono-or-joint-stereo mp3 each, from CC0 sources (OpenGameArt CC0 filter; Kenney music/jingle packs). Verify the individual item page says CC0 (many OGA tracks are CC-BY: reject those). Candidate names are not trusted from memory; the executor records the page URL for each.
-2. SFX (one file each, <= 100 KB): `nearMiss` (short rising tick, played with pitch steps via `playbackRate`), `pickup`, `shield`, `shieldBreak`, `death`, `medal`, `click`, `rush`, `newBest` (matches `SfxName` in `packages/game-kit/src/audio/sfx.ts`), plus `daily-claim` jingle.
+2. SFX (one file each, <= 100 KB): `nearMiss` (short rising tick, played with pitch steps via `playbackRate`), `pickup`, `shield`, `shieldBreak`, `death`, `medal`, `click`, `rush`, `newBest` (matches `SfxName` in `packages/game-kit/src/audio/sfx.ts`).
 3. Name files `sfx-<SfxName>.mp3` and `music-<normal|rush|overdrive|chomp>.mp3` so the loader (Task 3.6) derives keys mechanically; add manifest entries with sha256.
 4. Convert with ffmpeg (installed at `/opt/homebrew/bin/ffmpeg`) only to trim/encode; loudness is handled in Task 3.9.
 
@@ -1795,28 +1497,28 @@ Confirm:
 Run:
 `git add packages/game-kit games/dodge-drop && git commit -m "feat(game-kit): ✨ sample-based SFX and music with synth fallback"`
 
-#### Task 3.7: Wire dodge-drop audio manifest, daily jingle, and mix
+#### Task 3.7: Wire dodge-drop audio manifest and mix
 **Goal:** The game passes its sample list, and sound levels are consistent.
 
 **Files:**
-- Modify: `games/dodge-drop/src/main.ts` (`audioManifest`), `packages/game-kit/src/audio/audio.ts` (`SFX_BUS`/`MUSIC_BUS` constants, line ~40), `packages/game-kit/src/audio/sfx.ts` (add `dailyClaim` to `SfxName`), `games/dodge-drop/src/dailyPanel.ts` (play it)
+- Modify: `games/dodge-drop/src/main.ts` (`audioManifest`), `packages/game-kit/src/audio/audio.ts` (`SFX_BUS`/`MUSIC_BUS` constants, line ~40)
 - Test: `packages/game-kit/src/audio/audio.test.ts`
 
 **RED - Write Failing Test**
-In `audio.test.ts`: `it('SfxName includes dailyClaim and plays without throwing')`, and a mix test: `expect(SFX_BUS + MUSIC_BUS).toBeLessThanOrEqual(1.1)` is NOT meaningful; instead assert that with a loaded music sample the music bus gain value equals `MUSIC_BUS` and mute sets both to 0 (use the fake context's gain recorder). 
+In `audio.test.ts`: a manifest test (`loadSamples` is called with every name in `games/dodge-drop`'s `audioManifest` and each name is a valid `SfxName` or `music-<mode>`), and a mix test: `expect(SFX_BUS + MUSIC_BUS).toBeLessThanOrEqual(1.1)` is NOT meaningful; instead assert that with a loaded music sample the music bus gain value equals `MUSIC_BUS` and mute sets both to 0 (use the fake context's gain recorder). 
 
 **Verify RED - Watch It Fail**
 Run: `npx vitest run packages/game-kit/src/audio/audio.test.ts`
 
 Confirm:
-- Fails: `dailyClaim` not a valid name / gain assertions not met.
+- Fails: manifest names not wired / gain assertions not met.
 
 **Test passes?** You're testing existing behavior. Fix test.
 
 **Test errors?** Fix error, re-run until it fails correctly.
 
 **GREEN - Minimal Code**
-Add the name and the manifest wiring; keep bus constants unless the manual listening check in Task 3.9 shows music masks SFX (then change only the constants and update the test).
+Add the manifest wiring; keep bus constants unless the manual listening check in Task 3.9 shows music masks SFX (then change only the constants and update the test).
 
 **Verify GREEN - Watch It Pass**
 Run: `npx vitest run packages/game-kit games/dodge-drop && npm run typecheck`
@@ -1835,7 +1537,7 @@ Confirm:
 
 **COMMIT**
 Run:
-`git commit -am "feat(dodge-drop): 🎵 wire CC0 audio manifest and daily jingle"`
+`git commit -am "feat(dodge-drop): 🎵 wire CC0 audio manifest"`
 
 #### Task 3.8: Size and artifact budget guard
 **Goal:** Make the art/audio budget a failing test rather than a promise.
@@ -1881,7 +1583,7 @@ Run:
 
 #### Task 3.9: Normalise audio loudness and listening check
 **Exception Type:** Generated code (processed audio output)
-**User Approval:** NEEDS USER APPROVAL (proposed; blocked until approved).
+**User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
 - Modify: `games/dodge-drop/public/assets/audio/*.mp3`, `games/dodge-drop/assets/manifest.json` (sha256 values change; keep `notes: "loudnorm -16 LUFS"`)
 
@@ -1923,12 +1625,12 @@ If any command fails: STOP, fix the failing task, do not proceed.
 
 #### Task 4.2: Version bump, description and changelog
 **Exception Type:** Configuration-only
-**User Approval:** NEEDS USER APPROVAL (proposed; blocked until approved). Fallback if declined: add a vitest in `scripts/publish-payload.test.ts` reading `games/dodge-drop/game.json` asserting `version === '3.0.0'` and `releases.crazygames.status !== 'submitted'` first (watch fail), then edit.
+**User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
-- Modify: `games/dodge-drop/game.json` (`version` "2.8.4" -> "3.0.0"; description/instructions mention landscape/portrait, daily reward and streak, new art and music; `store.controls` unchanged), `docs/specs/dodge-drop/v3-resubmit-notes.md` (Create: changelog + portal "what changed since v2.8.4" text)
+- Modify: `games/dodge-drop/game.json` (`version` "2.8.4" -> "3.0.0"; description/instructions mention landscape/portrait, new art and music, personal-best cue; `store.controls` unchanged), `docs/specs/dodge-drop/v3-resubmit-notes.md` (Create: changelog + portal "what changed since v2.8.4" text)
 
 **Implementation**
-`publish-payload.ts` refuses a version already submitted, so the version must change. Keep the old `releases.crazygames` rejection record for history (do not delete the reason). Changelog text for the portal notes (copy into the submission): "v3.0.0 - adaptive landscape/portrait layout for the 16:9 player, new authored art, music and sound effects, daily reward with login streak, personal-best progress cue, bigger touch targets." This addresses the FAQ requirement of "clear improvements".
+`publish-payload.ts` refuses a version already submitted, so the version must change. Keep the old `releases.crazygames` rejection record for history (do not delete the reason). Changelog text for the portal notes (copy into the submission): "v3.0.0 - adaptive landscape/portrait layout for the 16:9 player (full play field plus readable side-panel HUD), new authored art, music and sound effects, personal-best progress cue, bigger touch targets." This addresses the FAQ requirement of "clear improvements".
 
 **Verification**
 Run: `npm run typecheck && npm test && npm run publish:prep -- dodge-drop` (it may exit 1 only for covers/videos not yet rebuilt; the version/orientation lines must be correct)
@@ -1942,7 +1644,7 @@ Run:
 
 #### Task 4.3: Rebuild covers and preview videos from the new art
 **Exception Type:** Generated code (store art/videos)
-**User Approval:** NEEDS USER APPROVAL (proposed; blocked until approved).
+**User Approval:** Approved by the user on 2026-11-24 (TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3).
 **Files:**
 - Modify (regenerate): `games/dodge-drop/store/landscape-1920x1080.png`, `portrait-800x1200.png`, `square-800x800.png`, `games/dodge-drop/store/record.json` (retune `warmupMs`/`afterStartScript` to a visually busy moment; add a landscape recording pass if `store-video.ts` supports a per-orientation `record.json`: check `scripts/store-video.ts` options first), `games/dodge-drop/public/cover.svg` only if still referenced by `game.json` `cover`
 
@@ -1989,36 +1691,35 @@ Run:
 `git commit -am "docs: 📝 v3 resubmission checklist and status"`
 
 ## Testing Strategy
-- Unit tests (vitest, `npm test`): `frame.test.ts`, `hudLayout.test.ts`, `retention.test.ts`, `pbCue.test.ts`, `art.test.ts`, `samples.test.ts`, `audio.test.ts`, `frameProvider.test.ts`, `titleLayout.test.ts`, `check-assets.test.ts`, `check-artifact.test.ts`, strings en/zh parity, fairness/schedule property tests in both frames (`PROPERTY_SEEDS=100` in CI, 300 nightly/locally in Task 1.2 and 4.1).
-- Integration tests: portal build + fake SDK (`npm run test:portals`, `e2e/portals.spec.ts`) for SDK-backed persistence of `daily`; `npm run build:portals` runs `check-artifact`.
+- Unit tests (vitest, `npm test`): `frame.test.ts`, `hudLayout.test.ts`, `pbCue.test.ts`, `art.test.ts`, `samples.test.ts`, `audio.test.ts`, `frameProvider.test.ts`, `titleLayout.test.ts`, `check-assets.test.ts`, `check-artifact.test.ts`, strings en/zh parity, existing fairness/schedule property tests unchanged (`PROPERTY_SEEDS=100` in CI, 300 nightly and in Task 4.1).
+- Integration tests: portal build + fake SDK (`npm run test:portals`, `e2e/portals.spec.ts`) for the SDK-backed best score read-back; `npm run build:portals` runs `check-artifact`.
 - E2E (Playwright): `e2e/crazygames-viewport.spec.ts` (frame modes at CrazyGames sizes, HUD legibility >= 14 css px at 800x450, orientation switch between runs, landscape journey, authored-art presence), existing specs pinned to `?layout=portrait`, `test:rwd` device sweep including 1280x720 and 1920x1080 desktops, tap-target test on iPhone SE size.
 - Manual (cannot be automated; user): CrazyGames Preview tool, real phone via QR, listening check for audio mix, 3-5 unseen playtesters.
 
 ## Risks & Mitigations
-- **Risk**: Landscape look-ahead is shorter (playerY 650) and the fairness validator rejects dense waves, thinning the late game -> Mitigation: Task 1.2 tunes `speedScale` against property tests; if the game feels too slow/sparse at the required scale, fall back to open question 1 (camera zoom of the full portrait field) which needs no fairness changes.
-- **Risk**: Rewrite of `PlayScene.ts` (1171 lines, 30+ `W`/`H`/`PLAYER_Y` sites) introduces regressions in portrait -> Mitigation: portrait frame equals today's constants (tested in `frame.test.ts`), existing specs pinned to portrait, step-wise edits each followed by `npm run build:local`, and Task 1.6 e2e before any push.
-- **Risk**: Two-camera approach leaks field objects into the UI camera (double drawing) -> Mitigation: `field()` helper plus a screenshot assertion in Task 1.4; hit-stop/shake touch the main (field) camera only.
+- **Risk**: With the full portrait field, the field is only about 253 css px wide at 800x450 (blocks about 14 css px tall), so play precision and first impression on small iframes are weaker than on large ones -> Mitigation: all readable HUD text is in panels at 20+ css px; in-field text is limited to large cues clamped to >= 14 css px (`fieldFont`); legibility asserted in e2e at 800x450; most players see 907x510 and larger where the field is 287+ css px; confirm in the Preview tool and record the user judgment in the notes file. If still judged too small, the escape hatch (decided against for now) is a shortened field, which would need the fairness work that was removed from this plan.
+- **Risk**: HUD rewrite in `PlayScene.ts` (1171 lines) regresses portrait -> Mitigation: portrait frame equals today's constants (tested in `frame.test.ts`), `W`/`H`/`PLAYER_Y`/speeds are not touched, existing specs pinned to portrait, step-wise edits each followed by `npm run build:local`, and Task 1.6 e2e before any push.
+- **Risk**: Two-camera approach leaks field objects into the UI camera (double drawing) -> Mitigation: the `ADDED_TO_SCENE` routing (Task 1.4) plus a screenshot assertion; hit-stop/shake touch the main (field) camera only.
 - **Risk**: Existing e2e uses default 1280x720 viewport -> now landscape -> mass failures -> Mitigation: Task 1.6 pins `?layout=portrait`; do not push between Tasks 1.4 and 1.6.
+- **Risk**: Shop and Results relayout for landscape (Task 1.5) is the largest unknown effort in Phase 1 -> Mitigation: timebox; minimum acceptable fallback is a single large-card column, recorded in the notes; Title and Results are prioritised over Shop because reviewers see them first.
+- **Risk**: Drag feel changes under camera zoom -> Mitigation: `dragToDx(dx, zoom)` unit-tested; verify by hand in landscape.
 - **Risk**: A non-CC0 asset slips in (license pages can differ per item, e.g. OpenGameArt) -> Mitigation: manifest checker (Task 3.1) requires CC0-1.0 + per-item source URL + sha256; only Kenney packs by default; user reviews the manifest before the release task.
 - **Risk**: Source URLs inside shipped JSON trip the portal URL scan -> Mitigation: manifest lives in `games/dodge-drop/assets/`, not `public/`; test documents the rule (Task 3.8).
 - **Risk**: Audio decode/format issues on Safari/iOS (autoplay unlock, mp3 support) -> Mitigation: mp3 only (universal), decode failures fall back to synth, unlock logic in `audio.ts` unchanged; test on a real iPhone via the portal QR.
 - **Risk**: Load time grows with assets (CrazyGames wants < 10 s, < 20 MB) -> Mitigation: budgets 2 MB art / 4 MB audio, `check-artifact` budget guard, sample load capped by a 4 s timeout before showing the title.
-- **Risk**: A daily-reward modal contradicts CrazyGames "land in gameplay with at most one click" -> Mitigation: panel skipped for first-ever session, dismissible, tap-anywhere-to-start still works.
-- **Risk**: Clock manipulation inflates the streak -> Mitigation: acceptable for a single-player coin reward (no leaderboard); a backwards clock never grants (tested).
-- **Risk**: Rejection reason is generic; v3 may still fail -> Mitigation: the plan targets the gap analysis blockers (portrait-in-16:9, prototype art/audio, retention); also do the Preview-tool review and unseen-player playtest in Task 4.1, and treat gap items 2, 4, 7 (onboarding, content spine, menu weight) as the next candidates if rejected again.
+- **Risk**: Rejection reason is generic; v3 may still fail -> Mitigation: the plan targets the gap analysis blockers (portrait-in-16:9, prototype art/audio) plus the in-run personal-best cue; also do the Preview-tool review and unseen-player playtest in Task 4.1, and treat gap items 2, 4, 7 (onboarding, content spine, menu weight) as the next candidates if rejected again.
 - **Risk**: Pushing to master deploys live to GitHub Pages mid-work -> Mitigation: push only at Task 4.4 (or after Phase 1 passes smoke+rwd); never between 1.4 and 1.6.
-- **Risk**: TDD exception unapproved -> asset/config/generated tasks stay blocked -> Mitigation: fallback tests described in Tasks 1.8 and 4.2; for 3.2/3.3/3.9/4.3 the manifest checker is the real automated gate and the rest is manual review.
 
 ## Success Criteria
 - [ ] `npm run typecheck`, `PROPERTY_SEEDS=300 npm test`, `npm run test:smoke`, `npm run test:rwd`, `npm run test:portals`, `npm run build:portals` all pass on the release commit.
-- [ ] 800x450, 907x510, 1920x1080 (16:9) show the landscape layout with all HUD text >= 14 css px and nothing in the field except gameplay; 375x667 portrait is unchanged.
+- [ ] 800x450, 907x510, 1920x1080 (16:9) show the landscape layout with the full unchanged play field centred; every HUD text is in a side panel at >= 14 css px (target 20+) at 800x450 and in-field text is limited to large cues >= 14 css px; 375x667 portrait is unchanged.
 - [ ] Orientation changes never alter the layout mid-run; they apply right after.
-- [ ] Fairness property holds in both frames for all seeds up to 240 s.
+- [ ] Gameplay geometry is identical in portrait and landscape; fairness/schedule code untouched and its property tests (300 seeds) still pass; landscape drag feel matches portrait.
 - [ ] Authored CC0 art on player/blocks/pickups/backdrop/UI/title, music and sample SFX in game; game still boots and plays if assets fail to load.
 - [ ] `games/dodge-drop/assets/manifest.json` lists every shipped asset with CC0-1.0, author, source URL, retrieval date and sha256; `scripts/check-assets.test.ts` passes.
 - [ ] Build artifact < 10 MB (target < 6 MB), no external URLs, relative paths only, no custom fullscreen button on CrazyGames.
-- [ ] Daily reward claimable once per local day, streak increments/resets correctly, persisted through the CrazyGames Data Module (fake SDK e2e), PB line visible in-run and NEW BEST cue fires once.
+- [ ] Personal-best cue visible in-run (left panel in landscape), shows percent of best, flips to NEW BEST exactly once per run, and is correct after reload (including the fake CrazyGames SDK run).
 - [ ] Small-phone tap targets >= 44 css px.
 - [ ] `game.json` version 3.0.0, orientation `any`, updated description; covers and videos regenerated from the new art; `npm run publish:prep -- dodge-drop` exits 0.
 - [ ] User has the resubmission checklist and the Submit button is untouched until the user approves.
-- [ ] User approved (or declined with fallback tests) the TDD-exception contract for tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3.
+- [ ] TDD-exception tasks 1.8, 3.2, 3.3, 3.9, 4.2, 4.3 were executed under the approved contract (approved 2026-11-24).
