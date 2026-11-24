@@ -50,6 +50,8 @@ Produced by `npm run publish:prep -- <slug>` (writes `dist/publish/<slug>-crazyg
 - [ ] On approval run `npm run mark-released -- <slug> crazygames basic` (Basic Launch, no revenue share) or `full`; on rejection `npm run mark-released -- <slug> crazygames rejected --reason "<text>"`.
 - [ ] Basic Launch has no ads or monetisation; Full Launch (selected games) requires the SDK integration above. Payout is monthly once the balance reaches EUR 100 (CrazyGames FAQ).
 
+- [ ] Rejection history: v2.8.4 rejected 2026-11-23 ('overall quality'); resubmission needs clear improvements (FAQ).
+
 ## Unverified facts (do not rely on them)
 
 - Whether the SDK may be bundled instead of CDN-loaded (we load it from the CDN).

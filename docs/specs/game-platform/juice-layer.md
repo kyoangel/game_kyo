@@ -15,6 +15,7 @@ Research basis: `docs/specs/game-design/research-arcade-dodge.md` (items #1 inst
 - No asset pipeline, sprite atlases, or audio files.
 - No leaderboard, daily challenge, or analytics (dodge-drop 1.1 at the earliest).
 - No changes to portal adapters beyond the new feature flag.
+- Superseded for dodge-drop v3 (2026-11): optional CC0 image/audio assets are allowed; game-kit still works with none. See plan 2026-11-23.
 
 ## 1. Platform: `features.rewardedAds`
 
