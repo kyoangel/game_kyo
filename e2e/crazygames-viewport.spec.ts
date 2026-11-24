@@ -1,6 +1,7 @@
 // e2e/crazygames-viewport.spec.ts
 // CrazyGames requires legibility in 16:9 iframes from 800x450 to 1920x1080 and on phones.
 import { expect, test, type Page } from '@playwright/test';
+import { skipOnboarding } from './fixtures/onboarding.ts';
 
 const GAME = 'http://localhost:5180/dodge-drop/';
 const OUT = '.superpowers/sdd/meta/v3';
@@ -66,6 +67,9 @@ test('landscape: HUD text is in side panels and every text is legible (>= 14 css
     // readable HUD (score, timer, combo, best, missions, shields) must be in a panel; only large cues may be in the field
     if (!h.inField) expect(insideField, `${h.name} must be in a side panel`).toBe(false);
   }
+  const tutorialRow = hud.find((h) => h.name === 'tutorial');
+  expect(tutorialRow, 'first-run tutorial is visible in landscape').toBeTruthy();
+  expect(tutorialRow!.fontPx * scale, 'tutorial caption font in CSS px').toBeGreaterThanOrEqual(14);
   await page.screenshot({ path: `${OUT}/play-800x450.png` });
 });
 
@@ -141,6 +145,7 @@ for (const L of LOCALES) for (const s of [SIZES[0], SIZES[2]]) {
 }
 
 test('landscape results overlay is fully opaque: the paused Play HUD does not show through', async ({ page }) => {
+  await skipOnboarding(page); // a clean results band, no tutorial
   await page.setViewportSize({ width: 800, height: 450 });
   await page.goto(GAME);
   await ready(page);

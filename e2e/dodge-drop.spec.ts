@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { skipOnboarding } from './fixtures/onboarding.ts';
 
 type GkHooks = {
   state: string;
@@ -336,4 +337,44 @@ test('dodge-drop: max-level magnet pulls a far star and shield to a stationary p
     .poll(async () => page.evaluate(() => { const s = (window as unknown as WD).__dd!.stats!(); return [s.stars, s.shieldHits]; }), { timeout: 22000 })
     .toEqual([before.stars + 1, before.shieldHits + 1]);
   expect(errors).toEqual([]);
+});
+
+type DDTut = { visible: boolean; kind: 'touch' | 'keys' };
+const tut = (page: Page) => page.evaluate(() => (window as unknown as { __dd: { tutorial(): DDTut } }).__dd.tutorial());
+
+async function startRun(page: Page): Promise<void> {
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
+  const box = (await page.locator('canvas').boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => { const g = (window as unknown as W).__gk!; return g.state === 'playing' && g.activeScenes.includes('Play'); });
+  await page.waitForFunction(() => (window as unknown as { __dd?: unknown }).__dd !== undefined);
+}
+
+test('dodge-drop: first run shows the visual control tutorial; first input dismisses it; second run does not show it', async ({ page }) => {
+  await page.goto('/dodge-drop/?layout=portrait'); // fresh context: empty localStorage
+  await startRun(page);
+  expect(await tut(page)).toEqual({ visible: true, kind: 'keys' });
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(500);
+  await page.keyboard.up('ArrowLeft');
+  await expect.poll(async () => (await tut(page)).visible).toBe(false);
+  // same browser profile (localStorage persists across reload): stored onboarding says completed
+  await page.reload();
+  await startRun(page);
+  expect((await tut(page)).visible).toBe(false);
+});
+
+test('dodge-drop: tutorial times out by itself when the player does nothing', async ({ page }) => {
+  await page.goto('/dodge-drop/?layout=portrait');
+  await startRun(page);
+  await page.evaluate(() => { (window as unknown as { __dd: { god: boolean } }).__dd.god = true; });
+  expect((await tut(page)).visible).toBe(true);
+  await expect.poll(async () => (await tut(page)).visible, { timeout: 12000 }).toBe(false);
+});
+
+test('dodge-drop: skipOnboarding fixture suppresses the tutorial', async ({ page }) => {
+  await skipOnboarding(page);
+  await page.goto('/dodge-drop/?layout=portrait');
+  await startRun(page);
+  expect((await tut(page)).visible).toBe(false);
 });

@@ -22,6 +22,8 @@ import type { Frame } from './frame.ts';
 import { getFrame } from './frameAccess.ts';
 import { fieldFont, hudAnchors, MIN_PANEL_FONT, MISSION_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
 import { missionPanelText } from './missionLabel.ts';
+import { controlKind, onTutorialInput, onTutorialShown, sanitizeOnboarding, shouldShowTutorial, tutorialEnded, type ControlKind, type LastInput, type Onboarding } from './onboarding.ts';
+import { createTutorialView, type TutorialView } from './tutorialView.ts';
 import { tiltToVelocity } from './tilt.ts';
 import { TiltReader } from './tiltSensor.ts';
 import { nextToastSlot, rushBannerUntil } from './toastSlot.ts';
@@ -162,6 +164,12 @@ export class PlayScene extends Phaser.Scene {
   private timerText!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private hintDone = false;
+  private onboarding: Onboarding = { shown: 0, completed: false };
+  private tutorialOn = false;
+  private tutorialKind: ControlKind = 'keys';
+  private tutorialStartT = 0;
+  private tutorialView: TutorialView | null = null;
+  private lastInput: LastInput = null;
   private toastObjs = new Set<Phaser.GameObjects.Container>();
   private rushBanner!: Phaser.GameObjects.Text;
   private lastScoreShown = -1;
@@ -220,6 +228,10 @@ export class PlayScene extends Phaser.Scene {
     this.useTilt = false;
     this.tiltNeutral = null;
     this.events.once('shutdown', () => this.tilt.stop());
+    this.tutorialOn = false;
+    this.tutorialView = null;
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.lastInput = p.wasTouch ? 'touch' : 'mouse'; });
+    this.input.keyboard?.on('keydown', () => { this.lastInput = 'key'; });
     this.toastFreeAt = 0;
     this.lastNearPopT = -1;
     this.fx?.clearPops();
@@ -270,6 +282,8 @@ export class PlayScene extends Phaser.Scene {
         spawnPickup: (kind: 'star' | 'shield', x: number) => this.spawnPickup(kind, x),
         /** Test hook: HUD text objects with effective canvas position and font size. */
         hud: () => this.hudReport(),
+        /** Test hook: first-run tutorial state. */
+        tutorial: () => ({ visible: this.tutorialOn, kind: this.tutorialKind }),
       } as { god: boolean };
     }
 
@@ -289,7 +303,8 @@ export class PlayScene extends Phaser.Scene {
       save.getJSON<unknown>('missions', null),
       save.getJSON<unknown>('control', 'drag'),
       save.getJSON<unknown>('boosts', null),
-    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions, rawControl, rawBoosts]) => {
+      save.getJSON<unknown>('onboarding', null),
+    ]).then(([sid, rawWs, rawAssist, rawTier, rawMedals, rawMissions, rawControl, rawBoosts, rawOnboarding]) => {
       if (id !== this.runId || !this.sys.isActive()) return;
       if (rawControl === 'tilt') {
         this.useTilt = true;
@@ -323,6 +338,12 @@ export class PlayScene extends Phaser.Scene {
       if (cfg.grace > 0) this.graceBanner.setText(this.kit.t(`tierStart.${cfg.tier}`));
       this.buildPlayer();
       this.syncShieldHud();
+      this.onboarding = sanitizeOnboarding(rawOnboarding);
+      if (shouldShowTutorial(this.onboarding)) {
+        this.onboarding = onTutorialShown(this.onboarding); // count the show now so a reload mid-run still counts
+        void save.setJSON('onboarding', this.onboarding);
+        this.startTutorial();
+      }
       this.ready = true;
       // Random track per run: any track on the first run, never the same one twice in a row after that.
       if (this.runId > 1) this.kit.audio.music.randomTrack();
@@ -441,6 +462,7 @@ export class PlayScene extends Phaser.Scene {
     add('timer', this.timerText, false);
     add('missions', this.missionsText, false);
     add('hint', this.hint, true);
+    add('tutorial', this.tutorialOn ? this.hint : null, true);
     add('rush', this.rushBanner, true);
     add('overdrive', this.odBanner, true);
     add('grace', this.graceBanner, true);
@@ -563,6 +585,7 @@ export class PlayScene extends Phaser.Scene {
     const drag = dragToDx(this.gin.dragDx(), this.frame.zoom);
     if (this.fx.frozen || !this.ready) return;
     this.updateHint(drag);
+    this.updateTutorial(drag);
 
     this.updateBackdrop(dt);
     this.updateSpeedFx(dt);
@@ -598,9 +621,38 @@ export class PlayScene extends Phaser.Scene {
     this.updateHud(dt);
   }
 
+  /** First-run visual control tutorial: drawn over the thumb strip, the hint text becomes its caption. */
+  private startTutorial(): void {
+    const touch = this.sys.game.device.input.touch && !this.sys.game.device.os.desktop;
+    this.tutorialKind = controlKind(this.lastInput, touch);
+    this.tutorialOn = true;
+    this.tutorialStartT = this.t;
+    this.hint.setText(this.kit.t(`tutorial.${this.tutorialKind}`)).setY(1085).setColor(cssColor(this.kit.theme.text));
+    this.tutorialView = createTutorialView(this, this.tutorialKind, W, this.kit.theme.font);
+  }
+
+  private updateTutorial(drag: number): void {
+    if (!this.tutorialOn || this.dead) return;
+    const got = drag !== 0 || this.gin.vector().x !== 0;
+    const elapsed = this.t - this.tutorialStartT;
+    if (!tutorialEnded(elapsed, got)) {
+      this.tutorialView?.update(elapsed);
+      return;
+    }
+    this.tutorialOn = false;
+    this.hintDone = true;
+    this.tutorialView?.dismiss();
+    this.tutorialView = null;
+    this.tweens.add({ targets: this.hint, alpha: 0, duration: 300 });
+    if (got) {
+      this.onboarding = onTutorialInput(this.onboarding);
+      void this.kit.save.setJSON('onboarding', this.onboarding);
+    }
+  }
+
   /** Fade the drag hint after the first input or 4 s of run time, whichever comes first. */
   private updateHint(drag: number): void {
-    if (this.hintDone || this.dead) return;
+    if (this.hintDone || this.dead || this.tutorialOn) return;
     if (drag !== 0 || this.gin.vector().x !== 0 || this.t - this.runStartT >= HINT_SECONDS) {
       this.hintDone = true;
       this.tweens.add({ targets: this.hint, alpha: 0, duration: 300 });
@@ -1191,6 +1243,9 @@ export class PlayScene extends Phaser.Scene {
     this.fx.flash(this.kit.theme.danger, 120);
     playDeath(this, this.fx, this.skin, this.player.x, PLAYER_Y, col);
     this.hintDone = true;
+    this.tutorialOn = false;
+    this.tutorialView?.dismiss();
+    this.tutorialView = null;
     this.tweens.killTweensOf(this.hint);
     this.hint.setVisible(false);
     this.fx.clearPops();

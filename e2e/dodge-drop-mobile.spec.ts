@@ -64,3 +64,16 @@ test('interactive controls are at least 44 css px on an iPhone SE', async ({ pag
   expect(small.count, 'tap target hook sees the title buttons').toBeGreaterThan(5);
   expect(small.small).toEqual([]);
 });
+
+test.describe('first-run tutorial on a phone', () => {
+  test.use({ ...iphone13 });
+  test('touch device gets the ghost-finger scheme without any prior input', async ({ page }) => {
+    await page.goto('/dodge-drop/?layout=portrait');
+    await page.waitForFunction(() => (window as unknown as W).__gk?.activeScenes.includes('GKTitle') === true);
+    const box = (await page.locator('canvas').boundingBox())!;
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForFunction(() => (window as unknown as W).__gk?.activeScenes.includes('Play') === true);
+    await page.waitForFunction(() => (window as unknown as { __dd?: { tutorial?: unknown } }).__dd?.tutorial !== undefined);
+    expect(await page.evaluate(() => (window as unknown as { __dd: { tutorial(): unknown } }).__dd.tutorial())).toEqual({ visible: true, kind: 'touch' });
+  });
+});

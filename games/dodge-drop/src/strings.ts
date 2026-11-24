@@ -4,6 +4,8 @@ import type { Strings } from '@gf/game-kit';
 export const strings: Strings = {
   en: {
     dragHint: 'Drag anywhere ←→',
+    'tutorial.touch': 'Drag to move',
+    'tutorial.keys': 'Arrow keys or drag',
     shop: 'Shop',
     'tab.upgrades': 'Upgrades',
     'tab.skins': 'Skins',
@@ -107,6 +109,8 @@ export const strings: Strings = {
   },
   'zh-TW': {
     dragHint: '在任意處左右拖曳',
+    'tutorial.touch': '左右拖曳移動',
+    'tutorial.keys': '方向鍵或拖曳移動',
     shop: '商店',
     'tab.upgrades': '升級',
     'tab.skins': '造型',
