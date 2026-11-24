@@ -9,7 +9,7 @@
 **Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, goal bar, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. A first-run tutorial model (`onboarding.ts`, persisted through the existing `SaveData` key-value store) and a goal-bar model (`goalBar.ts`, built on the existing `MEDALS` tiers and optionally `GameSession.best`) drive a visual control tutorial inside gameplay and a next-medal progress bar in the HUD (left panel in landscape).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** In progress (Phase 0-2 done 2026-11-25; next Task 3.1, then STOP at 3.2/3.3 for the user's asset pick from `docs/specs/dodge-drop/v3-asset-shortlist.md`). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed; 2026-11-24 PB cue replaced by onboarding + goal bar). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
+**Status:** In progress (Phase 0-2 done 2026-11-25; Task 3.1 done; STOPPED at 3.2/3.3 for the user's asset pick from `docs/specs/dodge-drop/v3-asset-shortlist.md`). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed; 2026-11-24 PB cue replaced by onboarding + goal bar). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
 
 ---
 
@@ -51,6 +51,12 @@
 - Side work: `3008e80` CC0 asset shortlist (`docs/specs/dodge-drop/v3-asset-shortlist.md`) for the user's pick.
 - Verification: typecheck ok; `PROPERTY_SEEDS=100 npm test` 68/546; `test:smoke` 39; `test:rwd` 14; `test:portals` 4. Commander read tutorial + goal screenshots (landscape en/zh, portrait).
 - Follow-up: portrait goal label ~13.5 css px at 375 px wide (legible but small).
+
+### Batch 5 - Task 3.1 (2026-11-25) - DONE; STOPPED for user asset pick
+- Task 3.1 `4e8e8b0`: `scripts/check-assets.ts`(+test), `games/dodge-drop/assets/manifest.json` (`{"assets":[]}`), `assets/README.md`, `package.json` `check:assets`. Deviation: optional `credit` string field (some CC0 authors ask for optional credit).
+- Commander fix (red-green inline): checker ignores dotfiles (`.DS_Store`) - new test failed first, then passed.
+- Verification: `check-assets.test.ts` 10/10; `node scripts/check-assets.ts` -> `assets ok`; `npm test` 69/555; `test:smoke` 39.
+- NEXT: Tasks 3.2/3.3 need the user's pick from `docs/specs/dodge-drop/v3-asset-shortlist.md` (recommended: Kenney Simple Space + Particle Pack + UI Pack Sci-Fi; Pro Sensory synthwave x3 on OGA; Kenney Digital/Interface/Sci-fi audio). Do not start them without that pick.
 
 ## Requirements
 

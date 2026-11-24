@@ -1,5 +1,5 @@
 ---
-updated: 2026-11-24
+updated: 2026-11-25
 status: active
 ---
 # game-factory
@@ -20,7 +20,8 @@ CI 規則見 `docs/ci.md`（pre-push hook、PROPERTY_SEEDS、nightly、Pages 用
 
 ## 下一步
 1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3 重送計畫執行中：
-   `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`（橫向版面、CC0 美術音訊、個人最佳提示）。
+   `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`。Phase 0-2（橫向版面、新手引導、目標條）與 3.1（素材授權檢查器）已上線；
+   卡在 3.2/3.3：等使用者從 `docs/specs/dodge-drop/v3-asset-shortlist.md` 挑 CC0 素材。
 2. Phase 2：局內三選一 perk（完全暫停）、區域突破；未來純技術排行榜。
 3. 舊的 loop-budget-efficiency worktree 仍未處理。
 
