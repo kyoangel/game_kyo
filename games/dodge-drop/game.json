@@ -10,14 +10,14 @@
     "zh-TW": "霓虹方塊越落越快！閃過它們、擦邊累積連擊倍率、收集星星與護盾，從銅盃一路挑戰到傳奇。用星星在商店購買升級、造型與道具，完成輪替任務提升等級。"
   },
   "instructions": {
-    "en": "Drag anywhere to move left and right (arrow keys work too; on phones you can turn on tilt control). Slip close past blocks for near-miss combos, collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Survive the speed rushes and hold on through Overdrive.",
+    "en": "Drag anywhere to move left and right (arrow keys work too; on phones you can turn on tilt control). Slip close past blocks for near-miss combos, collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Survive the speed rushes and hold on through Overdrive. Landscape and portrait both supported.",
     "zh-TW": "在畫面任意處拖曳左右移動（也可用方向鍵；手機可開啟陀螺儀操作）。貼近方塊閃過可累積擦邊連擊，收集星星到商店消費，拾取護盾可抵擋一次撞擊，升級「護盾堆疊」可同時持有更多護盾。撐過一波波加速，挑戰極速模式。"
   },
   "tags": [
     "arcade",
     "reflex"
   ],
-  "orientation": "portrait",
+  "orientation": "any",
   "controls": [
     "mouse",
     "touch",
