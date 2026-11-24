@@ -32,6 +32,10 @@ describe('checkAssets', () => {
     const { pub, manifestPath } = fixture({ 'a.png': png }, { assets: [entry('a.png', png)] });
     expect(checkAssets(pub, manifestPath)).toEqual([]);
   });
+  it('ignores OS dotfiles such as .DS_Store', () => {
+    const { pub, manifestPath } = fixture({ 'a.png': png, '.DS_Store': png, 'art/.DS_Store': png }, { assets: [entry('a.png', png)] });
+    expect(checkAssets(pub, manifestPath)).toEqual([]);
+  });
   it('flags a shipped file with no manifest entry', () => {
     const { pub, manifestPath } = fixture({ 'a.png': png }, { assets: [] });
     expect(checkAssets(pub, manifestPath).join('\n')).toMatch(/a\.png.*no manifest entry/);

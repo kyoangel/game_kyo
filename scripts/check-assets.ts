@@ -9,6 +9,7 @@ interface Entry { file: string; license: string; author: string; sourceUrl: stri
 function walk(dir: string, root = dir, out: string[] = []): string[] {
   if (!existsSync(dir)) return out;
   for (const name of readdirSync(dir)) {
+    if (name.startsWith('.')) continue; // OS metadata such as .DS_Store is never shipped content
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p, root, out);
     else out.push(relative(root, p).split(sep).join('/'));
