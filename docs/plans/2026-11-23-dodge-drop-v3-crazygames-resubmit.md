@@ -9,7 +9,7 @@
 **Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, personal best, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. The personal-best cue reads `GameSession.best` (already persisted through the existing save mechanism).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** In progress (batch 1 done 2026-11-24: tasks 0.1, 0.2, 1.1). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
+**Status:** In progress (batches 1-2 done 2026-11-24: tasks 0.1, 0.2, 1.1, 1.3, 1.4, 1.5). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
 
 ---
 
@@ -21,6 +21,14 @@
 - Task 0.2 `370bc33`: STATUS.md (now tracked), juice-layer.md non-goal superseded note, crazygames.md rejection-history item.
 - Task 1.1 `8543349`: `games/dodge-drop/src/frame.ts` + `frame.test.ts` (9 tests); `layout.ts` derives PLAYER_Y/STRIP_* from `frameFor('portrait')`, values unchanged.
 - Verification: `npm run typecheck` ok; `npm test` 64 files / 514 tests passed. Not pushed yet (push at end of next batch with pre-push hook).
+
+### Batch 2 (2026-11-24) - DONE (not pushed: smoke red until Task 1.6)
+- Task 1.3 `7aaae64`: `packages/game-kit/src/frameProvider.ts`(+test), `defineGame.ts` (new `GameDefinition.onFrame`, deviation: not in plan interface), `kit.ts` (`Kit.setFrame`/`Kit.frame<T>()`, registry `gk:frame`), `index.ts`, dodge-drop `main.ts` (`frameAt` helper), `frameAccess.ts`.
+- Task 1.4 `a49b070`: `hudLayout.ts`(+test), `layout.ts` `dragToDx(dx, zoom)`, `PlayScene.ts` (field + UI cameras, `buildPanels()`, landscape-only `missionsText`, `__dd.hud()`; no `best` entry until 2.2). `backdrop.ts` untouched.
+- Commander feedback fix `34f91f0`: missions wrapped mid-item at 800x450 -> pure `missionPanelText` (label line + progress line), `MISSION_PANEL_FONT = 30`.
+- Task 1.5 `f1c00d1`: game-kit `ui/landscape.ts`, `ui/bounds.ts` (`__dd.bounds()`, `__dd.menuAt()`), `titleLayout.ts` landscape fields (signature kept `(width,height,menuCount)`), TitleScene/GameOverScene, `ResultsContext.cx/landscape`; dodge-drop `titleExtras.ts`, `boostBar.ts` vertical mode, `results.ts`, Shop panels 2-column grid. Deviations: landscape menu at 0.53h (0.5h put Shop under the centre tap); viewport spec extended with shop+results legs at 800x450 and 1920x1080.
+- Verification: typecheck ok; `npm test` 66 files / 529 passed (PROPERTY_SEEDS=100 too); `crazygames-viewport.spec.ts` 8/8 passed; `test:smoke` 11 passed / 7 failed, all 7 in `e2e/dodge-drop.spec.ts` due to 1280x720 default -> landscape; all 13 pass with `?layout=portrait` (Task 1.6 pins them).
+- Follow-ups noted: zh strings not checked in landscape; results overlay shows ~3% of paused HUD; shop level-0 descriptions read "within 0 px" / "0% more often" (pre-existing copy, worth fixing for quality); fullscreen button visible in local build - Task 1.6 confirms hidden on CrazyGames.
 
 ## Requirements
 
