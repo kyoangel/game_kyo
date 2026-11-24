@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { getKit, type OverlayData } from '../kit.ts';
 import { cssColor } from '../theme.ts';
+import { registerBounds } from '../ui/bounds.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
+import { sceneIsLandscape } from '../ui/landscape.ts';
 
 const COUNTDOWN_MS = 5000;
 const GUARD_MS = 400;
@@ -34,7 +36,8 @@ export class GameOverScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    this.add.rectangle(0, 0, width, height, 0x0d0624, 0.84).setOrigin(0, 0).setDepth(-1);
+    this.add.rectangle(0, 0, width, height, 0x0d0624, sceneIsLandscape(this) ? 0.97 : 0.84).setOrigin(0, 0).setDepth(-1);
+    registerBounds(this);
     if (this.offerRevive) this.showRevive();
     else this.showResults();
   }
@@ -160,13 +163,17 @@ export class GameOverScene extends Phaser.Scene {
     const kit = getKit(this);
     const { theme } = kit;
     const { width, height } = this.scale;
-    const cx = width / 2;
+    const land = sceneIsLandscape(this);
+    // Landscape: score summary in the left column, the game's results hook (coins, goal, boosts) in the right column.
+    const cx = land ? width * 0.27 : width / 2;
+    const rx = land ? width * 0.72 : width / 2;
     const fx = kit.fx(this);
+    const y = (portrait: number, landscape: number): number => height * (land ? landscape : portrait);
 
-    this.add.text(cx, height * 0.13, kit.t('gk.gameOver'), this.style(60, theme.text)).setOrigin(0.5);
+    this.add.text(cx, y(0.13, 0.17), kit.t('gk.gameOver'), this.style(60, theme.text)).setOrigin(0.5);
 
-    this.add.text(cx, height * 0.205, kit.t('gk.score'), this.style(26, theme.muted)).setOrigin(0.5);
-    const scoreText = this.add.text(cx, height * 0.28, '0', this.style(116, theme.accent)).setOrigin(0.5);
+    this.add.text(cx, y(0.205, 0.27), kit.t('gk.score'), this.style(26, theme.muted)).setOrigin(0.5);
+    const scoreText = this.add.text(cx, y(0.28, 0.37), '0', this.style(116, theme.accent)).setOrigin(0.5);
     const counter = { v: 0 };
     this.tweens.add({
       targets: counter,
@@ -177,28 +184,30 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     if (this.newBest) {
-      const banner = this.add.text(cx, height * 0.37, kit.t('gk.newBest'), this.style(48, theme.accent)).setOrigin(0.5).setScale(0.2);
+      const banner = this.add.text(cx, y(0.37, 0.5), kit.t('gk.newBest'), this.style(48, theme.accent)).setOrigin(0.5).setScale(0.2);
       this.tweens.add({ targets: banner, scale: 1, duration: 350, ease: 'Back.easeOut' });
-      fx.burst(cx, height * 0.37, { color: theme.accent, count: 40, speed: 520 });
+      fx.burst(cx, y(0.37, 0.5), { color: theme.accent, count: 40, speed: 520 });
       kit.audio.sfx('newBest');
     }
 
-    this.add.text(cx, height * 0.43, `${kit.t('gk.best')}: ${kit.session.best}`, this.style(34, theme.muted)).setOrigin(0.5);
+    this.add.text(cx, y(0.43, 0.58), `${kit.t('gk.best')}: ${kit.session.best}`, this.style(34, theme.muted)).setOrigin(0.5);
 
     kit.def.results?.(this, {
       score: this.score,
       best: kit.session.best,
       newBest: this.newBest,
-      top: height * 0.5,
+      top: height * (land ? 0.1 : 0.5),
       rewardedAds: kit.platform.features.rewardedAds,
+      cx: rx,
+      landscape: land,
     });
 
-    const tap = this.add.text(cx, height * 0.82, kit.t('gk.tapRetry'), this.style(34, theme.text)).setOrigin(0.5);
+    const tap = this.add.text(cx, y(0.82, 0.76), kit.t('gk.tapRetry'), this.style(34, theme.text)).setOrigin(0.5);
     this.tweens.add({ targets: tap, alpha: 0.3, duration: 500, yoyo: true, repeat: -1 });
 
-    addButton(this, cx, height * 0.91, kit.t('gk.home'), {
-      width: 200,
-      height: 60,
+    addButton(this, cx, y(0.91, 0.89), kit.t('gk.home'), {
+      width: land ? 240 : 200,
+      height: land ? 72 : 60,
       fill: theme.muted,
       fontSize: 28,
       onClick: () => kit.goTo('GKTitle'),

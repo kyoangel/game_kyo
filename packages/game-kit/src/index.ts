@@ -19,3 +19,5 @@ export { addButton, consumeButtonTap, markButtonTap, textResolution } from './ui
 export type { ResultsContext } from './results.ts';
 export type { TitleExtrasContext } from './titleLayout.ts';
 export { resolveCanvasSize, type CanvasSize, type CanvasSizeProvider } from './frameProvider.ts';
+export { isLandscape, sceneIsLandscape, landscapeFont, LANDSCAPE_MIN_FONT } from './ui/landscape.ts';
+export { registerBounds, type TextBound } from './ui/bounds.ts';

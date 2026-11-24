@@ -1,12 +1,11 @@
 import Phaser from 'phaser';
 import { addButton } from '@gf/game-kit';
 import { drawCurrencyIcon } from './playArt.ts';
-import { fitText, shopStyle, type ShopCtx } from './shopTypes.ts';
+import { fitText, shopGrid, shopStyle, type ShopCtx } from './shopTypes.ts';
 import { buyUpgrade, effectValue, MAX_LEVEL, nextCost, UPGRADE_IDS, type UpgradeId } from './workshop.ts';
 
 const ROW_Y0 = 300;
 const ROW_STEP = 134;
-const ROW_H = 124;
 
 function drawIcon(g: Phaser.GameObjects.Graphics, id: UpgradeId, x: number, y: number, color: number): void {
     g.lineStyle(7, color, 1);
@@ -29,49 +28,54 @@ function drawIcon(g: Phaser.GameObjects.Graphics, id: UpgradeId, x: number, y: n
 export function renderUpgradesPanel(ctx: ShopCtx): void {
   const { scene, kit, state } = ctx;
   const { theme } = kit;
+  const grid = shopGrid(scene, ROW_Y0, ROW_STEP);
+  const { fs } = grid;
   UPGRADE_IDS.forEach((id, i) => {
-    const y = ROW_Y0 + i * ROW_STEP;
+    const y = grid.y(i);
+    const ox = grid.ox(i);
     const level = state.workshop[id];
     const cost = nextCost(level);
     const affordable = cost !== null && state.coins >= cost;
 
     const bg = ctx.add(scene.add.graphics());
     bg.fillStyle(0x1a1033, 0.7);
-    bg.fillRoundedRect(20, y - ROW_H / 2, 680, ROW_H, 22);
+    bg.fillRoundedRect(20 + ox, y - grid.rowH / 2, 680, grid.rowH, 22);
     bg.lineStyle(3, theme.primary, 0.45);
-    bg.strokeRoundedRect(20, y - ROW_H / 2, 680, ROW_H, 22);
-    drawIcon(bg, id, 80, y, theme.accent);
+    bg.strokeRoundedRect(20 + ox, y - grid.rowH / 2, 680, grid.rowH, 22);
+    drawIcon(bg, id, 80 + ox, y, theme.accent);
 
     const maxMagnet = id === 'magnet' && level >= MAX_LEVEL;
     const desc = kit.t(maxMagnet ? 'up.magnet.descMax' : `up.${id}.desc`).replace('{v}', String(Number(effectValue(id, level).toFixed(2))));
-    const name = ctx.add(scene.add.text(150, y - 27, kit.t(`up.${id}.name`), shopStyle(kit, 30, theme.text)).setOrigin(0, 0.5));
+    const name = ctx.add(scene.add.text(150 + ox, y - (grid.land ? 52 : 27), kit.t(`up.${id}.name`), shopStyle(kit, fs(30), theme.text)).setOrigin(0, 0.5));
     // Text column ends at x=499, >= 16 px clear of the price button (left edge 515); long text wraps to 2 lines.
-    const descText = ctx.add(fitText(scene, kit, 150, y + 7, String(desc), theme.muted, { size: 22, minSize: 15, maxWidth: 349, maxLines: 2, twoLineSize: 17 }));
-    if (descText.getWrappedText().length > 1) {
+    const descText = ctx.add(fitText(scene, kit, 150 + ox, y + (grid.land ? 14 : 7), String(desc), theme.muted, grid.land ? { size: 26, minSize: 26, maxWidth: 349, maxLines: 3 } : { size: 22, minSize: 15, maxWidth: 349, maxLines: 2, twoLineSize: 17 }));
+    if (!grid.land && descText.getWrappedText().length > 1) {
       // Two-line description: lift the name a little so the lines clear it and the level dots.
       name.setY(y - 34);
       descText.setY(y + 4);
     }
     for (let k = 0; k < MAX_LEVEL; k++) {
       bg.fillStyle(k < level ? theme.accent : 0x3a2b66, 1);
-      bg.fillCircle(159 + k * 26, y + 37, 9);
+      // Landscape: dots sit after the name (the description may need all three lines below it).
+      if (grid.land) bg.fillCircle(150 + ox + name.width + 28 + k * 22, y - 52, 8);
+      else bg.fillCircle(159 + ox + k * 26, y + 37, 9);
     }
 
     if (cost === null) {
-      ctx.add(scene.add.text(600, y, kit.t('maxed'), shopStyle(kit, 34, theme.accent)).setOrigin(0.5));
+      ctx.add(scene.add.text(600 + ox, y, kit.t('maxed'), shopStyle(kit, 34, theme.accent)).setOrigin(0.5));
     } else {
-      ctx.add(addButton(scene, 600, y, String(cost), {
+      ctx.add(addButton(scene, 600 + ox, y, String(cost), {
         width: 170, height: 80, fontSize: 38,
         fill: affordable ? theme.primary : theme.muted,
         textColor: affordable ? 0xffe14d : 0xaaaaaa,
-        onClick: () => onBuy(ctx, id, y),
+        onClick: () => onBuy(ctx, id, y, ox),
       }));
-      ctx.add(drawCurrencyIcon(scene, 541, y, 34)).setDepth(3);
+      ctx.add(drawCurrencyIcon(scene, 541 + ox, y, 34)).setDepth(3);
     }
   });
 }
 
-function onBuy(ctx: ShopCtx, id: UpgradeId, y: number): void {
+function onBuy(ctx: ShopCtx, id: UpgradeId, y: number, ox: number): void {
   const { state, kit } = ctx;
   const res = buyUpgrade({ coins: state.coins, levels: state.workshop }, id);
   if (!res.ok) return;
@@ -85,5 +89,5 @@ function onBuy(ctx: ShopCtx, id: UpgradeId, y: number): void {
   });
   kit.audio.sfx('pickup');
   ctx.refresh();
-  kit.fx(ctx.scene).burst(600, y, { color: 0xffe14d, count: 24, speed: 360 });
+  kit.fx(ctx.scene).burst(600 + ox, y, { color: 0xffe14d, count: 24, speed: 360 });
 }

@@ -68,3 +68,61 @@ test('landscape: HUD text is in side panels and every text is legible (>= 14 css
   }
   await page.screenshot({ path: `${OUT}/play-800x450.png` });
 });
+
+type Bound = { name: string; top: number; bottom: number; left: number; right: number; fontPx: number };
+type DDBounds = { bounds?: () => Bound[]; results?: unknown };
+
+/** Every text must sit fully on the canvas and render at >= 14 css px. */
+async function expectLegibleOnCanvas(page: Page, label: string, w: number, h: number): Promise<void> {
+  const rows = await page.evaluate(() => {
+    const win = window as unknown as { __dd?: DDBounds; __gk: GK };
+    return { items: win.__dd?.bounds?.() ?? null, f: win.__gk.frame! };
+  });
+  expect(rows.items, 'bounds hook present').not.toBeNull();
+  expect(rows.items!.length, `${label}: some text found`).toBeGreaterThan(3);
+  const css = Math.min(w / rows.f.width, h / rows.f.height);
+  const bad = rows.items!.filter((b) => b.top < 0 || b.bottom > rows.f.height || b.left < 0 || b.right > rows.f.width || b.fontPx * css < 14);
+  expect(bad, `${label} at ${w}x${h}`).toEqual([]);
+}
+
+for (const s of [SIZES[0], SIZES[2]]) {
+  test(`title, shop and results fit the landscape canvas and are legible at ${s.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: s.width, height: s.height });
+    await page.goto(GAME);
+    await ready(page);
+    await page.waitForTimeout(600); // let async extras (missions, boosts) render
+    await page.screenshot({ path: `${OUT}/title-${s.name}.png` });
+    await expectLegibleOnCanvas(page, 'title', s.width, s.height);
+
+    // shop: second menu button (centre column), then each tab
+    const toCanvas = async (cx: number, cy: number) => {
+      const f = (await page.evaluate(() => (window as unknown as { __gk: GK }).__gk.frame))!;
+      const box = (await page.locator('canvas').boundingBox())!;
+      return { x: box.x + (cx / f.width) * box.width, y: box.y + (cy / f.height) * box.height };
+    };
+    const menu = await page.evaluate(() => (window as unknown as { __dd?: { menuAt?: (i: number) => { x: number; y: number } } }).__dd?.menuAt?.(0) ?? null);
+    expect(menu, 'title menuAt hook').not.toBeNull();
+    const p = await toCanvas(menu!.x, menu!.y);
+    await page.mouse.click(p.x, p.y);
+    await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Shop'));
+    for (const tab of [0, 1, 2]) {
+      const t = await toCanvas(720 + (tab - 1) * 224, 60);
+      await page.mouse.click(t.x, t.y);
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${OUT}/shop-${tab}-${s.name}.png` });
+      await expectLegibleOnCanvas(page, `shop tab ${tab}`, s.width, s.height);
+    }
+
+    // results overlay
+    await page.goto(GAME);
+    await ready(page);
+    await page.mouse.click(s.width / 2, s.height / 2);
+    await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+    await page.evaluate(() => void (window as unknown as { __gk: { endRound(n: number): Promise<void> } }).__gk.endRound(120));
+    await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('GKGameOver'));
+    await page.waitForFunction(() => (window as unknown as { __dd?: DDBounds }).__dd?.results !== undefined);
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: `${OUT}/results-${s.name}.png` });
+    await expectLegibleOnCanvas(page, 'results', s.width, s.height);
+  });
+}

@@ -35,9 +35,12 @@ export function ddTitleBackdrop(scene: Phaser.Scene): void {
   void kit.save.getJSON<string>('skin', 'cyan').then((sid) => {
     if (!scene.sys.isActive()) return;
     const skin = SKINS.find((s) => s.id === sid) ?? SKINS[0]!;
-    const img = scene.add.image(width / 2, height * 0.9, skinTextureKey(scene, skin)).setScale(1.6);
+    // Landscape: smaller and higher, clear of the support button under the centre menu column.
+    const land = width > height;
+    const baseY = height * (land ? 0.82 : 0.9);
+    const img = scene.add.image(width / 2, baseY, skinTextureKey(scene, skin)).setScale(land ? 1.2 : 1.6);
     if (skin.color === 'cycle') img.setTint(0xff7ad9);
-    scene.tweens.add({ targets: img, y: height * 0.9 - 24, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    scene.tweens.add({ targets: img, y: baseY - 24, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     scene.tweens.add({ targets: img, angle: 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   });
 }

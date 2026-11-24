@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addBackground, addButton, ensureTextures, getKit, type Kit } from '@gf/game-kit';
+import { addBackground, addButton, ensureTextures, getKit, registerBounds, sceneIsLandscape, type Kit } from '@gf/game-kit';
 import { sanitizeBoosts } from './boosts.ts';
 import { renderBoostsPanel } from './boostsPanel.ts';
 import { sanitizeOwned } from './format.ts';
@@ -37,7 +37,9 @@ export class ShopScene extends Phaser.Scene {
     this.skins = new SkinsPanel('cyan');
     this.events.once('shutdown', () => this.skins.destroy(this));
 
-    addButton(this, 120, 80, this.kit.t('back'), {
+    const land = sceneIsLandscape(this);
+    registerBounds(this);
+    addButton(this, 120, land ? 60 : 80, this.kit.t('back'), {
       width: 180, height: 72, fill: theme.muted, fontSize: 32,
       onClick: () => this.kit.goTo('GKTitle'),
     });
@@ -101,15 +103,18 @@ export class ShopScene extends Phaser.Scene {
     const ctx = this.ctx(state);
 
     // Balance, top-center (clear of Back on the left).
-    const bal = ctx.add(this.add.text(0, 80, String(state.coins), shopStyle(this.kit, 44, 0xffe14d)).setOrigin(0, 0.5));
+    // Landscape: one header row (Back | tabs | balance) so the card grid gets the rest of the 810 px.
+    const land = sceneIsLandscape(this);
+    const headY = land ? 60 : 80;
+    const bal = ctx.add(this.add.text(0, headY, String(state.coins), shopStyle(this.kit, 44, 0xffe14d)).setOrigin(0, 0.5));
     const total = 52 + 10 + bal.width;
-    const x0 = this.scale.width / 2 - total / 2 + 24;
-    ctx.add(drawCurrencyIcon(this, x0, 80, 52));
+    const x0 = land ? this.scale.width - 60 - total + 24 : this.scale.width / 2 - total / 2 + 24;
+    ctx.add(drawCurrencyIcon(this, x0, headY, 52));
     bal.setX(x0 + 36);
 
     SHOP_TABS.forEach((id, i) => {
       const sel = this.tab === id;
-      const btn = addButton(this, this.scale.width / 2 + (i - 1) * (TAB_W + 8), TAB_Y, this.kit.t(`tab.${id}`), {
+      const btn = addButton(this, this.scale.width / 2 + (i - 1) * (TAB_W + 8), land ? 60 : TAB_Y, this.kit.t(`tab.${id}`), {
         width: TAB_W, height: 64, fontSize: 30,
         fill: sel ? theme.accent : theme.primary,
         textColor: sel ? 0x1a1033 : 0xffffff,

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { cssColor, type Kit } from '@gf/game-kit';
+import { cssColor, landscapeFont, sceneIsLandscape, type Kit } from '@gf/game-kit';
 import type { RunBoosts } from './boosts.ts';
 import type { Workshop } from './workshop.ts';
 
@@ -31,8 +31,37 @@ export interface ShopCtx {
   persist(fn: () => Promise<void>): void;
 }
 
-/** Y of the first content row below the header and tabs. */
+/** Y of the first content row below the header and tabs (portrait). */
 export const PANEL_TOP = 252;
+
+/**
+ * Where the i-th card of a list tab goes. Portrait: one column (rows 134 apart from `rowY0`).
+ * Landscape (1440x810): two 680-wide columns starting under the single header row, with a legibility font floor.
+ */
+export interface ShopGrid {
+  land: boolean;
+  /** X offset to add to the portrait x of card i. */
+  ox(i: number): number;
+  /** Centre Y of card i. */
+  y(i: number): number;
+  /** Font size honouring the landscape floor. */
+  fs(size: number): number;
+  /** Card height (landscape cards are taller so 26 px descriptions can take three lines). */
+  rowH: number;
+}
+export const SHOP_LAND_ROW0 = 210;
+export const SHOP_LAND_COL = 720;
+export const SHOP_LAND_STEP = 152;
+export function shopGrid(scene: Phaser.Scene, rowY0: number, step = 134): ShopGrid {
+  const land = sceneIsLandscape(scene);
+  return {
+    land,
+    ox: (i) => (land ? (i % 2) * SHOP_LAND_COL : 0),
+    y: (i) => (land ? SHOP_LAND_ROW0 + Math.floor(i / 2) * SHOP_LAND_STEP : rowY0 + i * step),
+    rowH: land ? 142 : 124,
+    fs: (size) => landscapeFont(size, land),
+  };
+}
 
 export function shopStyle(kit: Kit, size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
   return { fontFamily: kit.theme.font, fontSize: `${size}px`, fontStyle: 'bold', color: cssColor(color), stroke: '#1a1033', strokeThickness: 5, align: 'center' };

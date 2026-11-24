@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { addButton } from '@gf/game-kit';
+import { addButton, landscapeFont, sceneIsLandscape } from '@gf/game-kit';
 import { buySkin, SKINS } from './economy.ts';
 import { drawCurrencyIcon } from './playArt.ts';
-import { shopStyle, type ShopCtx } from './shopTypes.ts';
+import { SHOP_LAND_ROW0, shopStyle, type ShopCtx } from './shopTypes.ts';
 import { skinTextureKey } from './skinArt.ts';
 import { fxLineKey, skinFxSpec, hueColor } from './skinFx.ts';
 import { playNearMiss, startSkinTrail, type SkinTrail } from './skinFxRender.ts';
@@ -11,6 +11,9 @@ import { skinAction } from './skinsState.ts';
 const CARD_W = 320;
 const CARD_H = 140;
 const COL_X = [190, 530];
+/** Landscape: preview panel keeps its column on the left (shifted up under the single header row), cards sit in the right half. */
+const LAND_DY = -110;
+const LAND_COL_X = [910, 1250];
 const ROW_Y0 = 700;
 const ROW_STEP = 152;
 const PREVIEW_X = 360;
@@ -59,15 +62,16 @@ export class SkinsPanel {
     const { scene, kit, state } = ctx;
     const { theme } = kit;
     this.prism = [];
+    const land = sceneIsLandscape(scene);
     const layer = ctx.add(scene.add.container(0, 0));
 
-    this.renderPreview(ctx, layer);
+    this.renderPreview(ctx, layer, land ? LAND_DY : 0);
 
     SKINS.forEach((skin, i) => {
       const col = i % 2;
       const row = Math.floor(i / 2);
-      const x = COL_X[col]!;
-      const y = ROW_Y0 + row * ROW_STEP;
+      const x = (land ? LAND_COL_X : COL_X)[col]!;
+      const y = land ? SHOP_LAND_ROW0 + row * ROW_STEP : ROW_Y0 + row * ROW_STEP;
       const owned = state.owned.includes(skin.id);
       const inUse = state.selected === skin.id;
       const isPreview = this.previewId === skin.id;
@@ -88,7 +92,7 @@ export class SkinsPanel {
       if (!owned && !affordable) img.setAlpha(0.55);
       const label = inUse ? kit.t('inUse') : owned ? kit.t('owned') : String(skin.cost);
       const labelColor = inUse ? theme.accent : owned ? theme.text : affordable ? 0xffe14d : theme.muted;
-      const text = scene.add.text(0, 48, label, shopStyle(kit, 30, labelColor)).setOrigin(0.5);
+      const text = scene.add.text(0, 48, label, shopStyle(kit, landscapeFont(30, land), labelColor)).setOrigin(0.5);
       const card = scene.add.container(x, y, [bg, img, text]);
       if (!owned) {
         const dot = drawCurrencyIcon(scene, -text.width / 2 - 20, 48, 28).setAlpha(affordable ? 1 : 0.45);
@@ -101,22 +105,25 @@ export class SkinsPanel {
     });
   }
 
-  private renderPreview(ctx: ShopCtx, layer: Phaser.GameObjects.Container): void {
+  private renderPreview(ctx: ShopCtx, layer: Phaser.GameObjects.Container, dy: number): void {
     const { scene, kit, state } = ctx;
+    const land = dy !== 0;
+    const fs = (n: number): number => landscapeFont(n, land);
+    const PY = PREVIEW_Y + dy;
     const { theme } = kit;
     const skin = SKINS.find((s) => s.id === this.previewId) ?? SKINS[0]!;
     const act = skinAction({ owned: state.owned, inUse: state.selected, coins: state.coins }, skin.id);
 
     const panel = scene.add.graphics();
     panel.fillStyle(0x1a1033, 0.78);
-    panel.fillRoundedRect(60, 250, 600, 340, 28);
+    panel.fillRoundedRect(60, 250 + dy, 600, 340, 28);
     panel.lineStyle(3, theme.primary, 0.5);
-    panel.strokeRoundedRect(60, 250, 600, 340, 28);
-    const name = scene.add.text(PREVIEW_X, 425, kit.t(`skin.${skin.id}`), shopStyle(kit, 40, theme.text)).setOrigin(0.5);
+    panel.strokeRoundedRect(60, 250 + dy, 600, 340, 28);
+    const name = scene.add.text(PREVIEW_X, 425 + dy, kit.t(`skin.${skin.id}`), shopStyle(kit, 40, theme.text)).setOrigin(0.5);
     layer.add([panel, name]);
 
     // large skin, swaying so its trail is visible (scene-level so the trail emitter follows world coords)
-    const img = scene.add.image(PREVIEW_X - 120, PREVIEW_Y, skinTextureKey(scene, skin)).setScale(PREVIEW_SIZE / 64).setDepth(6);
+    const img = scene.add.image(PREVIEW_X - 120, PY, skinTextureKey(scene, skin)).setScale(PREVIEW_SIZE / 64).setDepth(6);
     if (skin.color === 'cycle') this.prism.push(img);
     this.previewObjs.push(img);
     scene.tweens.add({ targets: img, x: PREVIEW_X + 120, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -125,27 +132,27 @@ export class SkinsPanel {
     this.trail = startSkinTrail(scene, img, skin);
 
     // tap the preview to play this skin's near-miss effect once
-    const zone = scene.add.zone(PREVIEW_X, PREVIEW_Y, 560, 150).setInteractive({ useHandCursor: true });
+    const zone = scene.add.zone(PREVIEW_X, PY, 560, 150).setInteractive({ useHandCursor: true });
     zone.on('pointerup', () => {
       const tint = skin.color === 'cycle' ? hueColor(scene.time.now / 1500, 0.55) : skin.color;
-      playNearMiss(scene, kit.fx(scene), skin, img.x, PREVIEW_Y, 1, tint);
+      playNearMiss(scene, kit.fx(scene), skin, img.x, PY, 1, tint);
       kit.audio.sfx('nearMiss', { step: 1 });
     });
     this.previewObjs.push(zone);
 
     // cosmetic tag, effect list, and the no-gameplay-effect note
-    const tag = scene.add.text(PREVIEW_X + 238, 276, kit.t('skin.tag'), { ...shopStyle(kit, 24, 0x1a1033), strokeThickness: 0 }).setOrigin(0.5);
+    const tag = scene.add.text(PREVIEW_X + 220, 276 + dy, kit.t('skin.tag'), { ...shopStyle(kit, fs(24), 0x1a1033), strokeThickness: 0 }).setOrigin(0.5);
     const tagBg = scene.add.graphics();
     tagBg.fillStyle(theme.primary, 1);
-    tagBg.fillRoundedRect(tag.x - tag.width / 2 - 14, 276 - 18, tag.width + 28, 36, 18);
+    tagBg.fillRoundedRect(tag.x - tag.width / 2 - 14, 276 + dy - 20, tag.width + 28, 40, 20);
     layer.add([tagBg, tag]);
-    const fxLine = scene.add.text(PREVIEW_X, 462, kit.t(fxLineKey(skinFxSpec(skin))), shopStyle(kit, 26, theme.muted)).setOrigin(0.5);
-    const note = scene.add.text(PREVIEW_X, 613, kit.t('skin.note'), shopStyle(kit, 24, theme.muted)).setOrigin(0.5);
+    const fxLine = scene.add.text(PREVIEW_X, 462 + dy, kit.t(fxLineKey(skinFxSpec(skin))), shopStyle(kit, fs(26), theme.muted)).setOrigin(0.5);
+    const note = scene.add.text(PREVIEW_X, 613 + dy, kit.t('skin.note'), shopStyle(kit, fs(24), theme.muted)).setOrigin(0.5);
     layer.add([fxLine, note]);
 
     // single action button
     const bx = PREVIEW_X;
-    const by = 525;
+    const by = 525 + dy;
     if (act.kind === 'inuse') {
       this.addAction(ctx, bx, by, kit.t('inUse'), theme.muted, 0.5, () => undefined);
     } else if (act.kind === 'use') {
@@ -204,7 +211,7 @@ export class SkinsPanel {
     this.busy = false;
     if (!scene.sys.isActive()) return;
     ctx.refresh();
-    kit.fx(scene).burst(PREVIEW_X, PREVIEW_Y, { color: 0xffe14d, count: 30, speed: 420 });
+    kit.fx(scene).burst(PREVIEW_X, PREVIEW_Y + (sceneIsLandscape(scene) ? LAND_DY : 0), { color: 0xffe14d, count: 30, speed: 420 });
   }
 }
 

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addButton, cssColor, getKit, markButtonTap, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
+import { addButton, cssColor, getKit, landscapeFont, markButtonTap, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
 import { renderBoostBar } from './boostBar.ts';
 import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { mergeMedals } from './medals.ts';
@@ -33,9 +33,13 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
   let chain: Promise<void> = Promise.resolve();
   const persist = (fn: () => Promise<void>): void => { chain = chain.then(fn); };
 
+  const land = ctx.landscape;
+  /** Landscape never goes below the legibility floor; portrait keeps the v2.8.4 sizes. */
+  const fs = (size: number): number => landscapeFont(size, land);
+
   const txt = (x: number, y: number, s: string, size: number, color: number, ox = 0.5): Phaser.GameObjects.Text => {
     const t = scene.add
-      .text(x, y, s, { fontFamily: theme.font, fontSize: `${size}px`, fontStyle: 'bold', color: cssColor(color), stroke: '#1a1033', strokeThickness: 4 })
+      .text(x, y, s, { fontFamily: theme.font, fontSize: `${fs(size)}px`, fontStyle: 'bold', color: cssColor(color), stroke: '#1a1033', strokeThickness: 4 })
       .setOrigin(ox, 0.5);
     t.setResolution(textResolution(scene));
     objs.push(t);
@@ -44,7 +48,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
 
   const toast = (msg: string): void => {
     const t = scene.add
-      .text(ctx.width / 2, ctx.below - 70, msg, { fontFamily: theme.font, fontSize: '24px', fontStyle: 'bold', color: cssColor(theme.danger), stroke: '#1a1033', strokeThickness: 5 })
+      .text(ctx.width / 2, land ? ctx.menuBottom + 44 : ctx.below - 70, msg, { fontFamily: theme.font, fontSize: `${fs(24)}px`, fontStyle: 'bold', color: cssColor(theme.danger), stroke: '#1a1033', strokeThickness: 5 })
       .setOrigin(0.5)
       .setDepth(5);
     t.setResolution(textResolution(scene));
@@ -62,14 +66,18 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     // Top-center star coin balance: clear of the site's top-left back icon and the top-right icon buttons.
     const balTxt = txt(0, 60, String(coins), 32, 0xffe14d, 0);
     const balW = 38 + 8 + balTxt.width;
-    const balX = ctx.width / 2 - balW / 2;
+    // Landscape: top of the left column (the centre column holds the title).
+    const balX = land ? ctx.left.x0 + 8 : ctx.width / 2 - balW / 2;
     objs.push(drawCurrencyIcon(scene, balX + 19, 60, 38));
     balTxt.setX(balX + 46);
 
     // Single-run quick-buy boost strip between Title (0.30) and Tap to Start (0.55).
+    const leftCx = (ctx.left.x0 + ctx.left.x1) / 2;
     const barObjs = renderBoostBar(scene, kit, {
-      cx: ctx.width / 2,
-      y: Math.round(ctx.height * 0.45),
+      cx: land ? leftCx : ctx.width / 2,
+      y: land ? Math.round(ctx.extrasTop + 76) : Math.round(ctx.height * 0.45),
+      height: land ? 64 : undefined,
+      vertical: land ? { step: 72, width: Math.min(420, ctx.left.x1 - ctx.left.x0), fontSize: 26 } : undefined,
       coins,
       boosts,
       shieldCap,
@@ -93,12 +101,14 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     objs.push(...barObjs);
 
     // Start chips
-    const cy = ctx.below + 24;
+    // Landscape: 2x2 grid under the boost buttons in the left column.
+    const chipCx = (i: number): number => (land ? leftCx + (i % 2 === 0 ? -106 : 106) : ctx.width / 2 + (i - 1.5) * 162);
+    const chipCy = (i: number): number => (land ? ctx.extrasTop + 76 + 3 * 72 + 56 + Math.floor(i / 2) * 76 : ctx.below + 24);
     TIERS.forEach((tr, i) => {
       const on = enabled.includes(tr.id);
       const sel = on && tier === tr.id;
-      const btn = addButton(scene, ctx.width / 2 + (i - 1.5) * 162, cy, kit.t(tr.key), {
-        width: 150, height: 46, fontSize: 21,
+      const btn = addButton(scene, chipCx(i), chipCy(i), kit.t(tr.key), {
+        width: land ? 204 : 150, height: land ? 62 : 46, fontSize: fs(21),
         fill: sel ? theme.accent : on ? theme.primary : theme.muted,
         textColor: sel ? 0x1a1033 : 0xffffff,
         // a dark stroke on dark text smears into a blurry blob: selected chips have no stroke
@@ -117,7 +127,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       });
       if (!on) btn.setAlpha(0.4);
       objs.push(btn);
-      if (!on) objs.push(drawLock(scene, ctx.width / 2 + (i - 1.5) * 162 + 62, cy - 14));
+      if (!on) objs.push(drawLock(scene, chipCx(i) + (land ? 86 : 62), chipCy(i) - (land ? 20 : 14)));
     });
 
     // Tilt on/off icon next to mute/fullscreen: only on devices that can really deliver tilt readings.
@@ -166,27 +176,33 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
     }
 
     // Missions
-    const y0 = ctx.menuBottom + 12;
     // Dark panel keeps the list readable over the falling backdrop blocks.
     const panel = scene.add.graphics().setDepth(1);
     panel.fillStyle(0x1a1033, 0.72);
-    panel.fillRoundedRect(6, y0, ctx.width - 12, 3 * 52, 18);
-    objs.push(panel);
     const cost = swapCost();
+    // Landscape: the right column, two lines per mission (label, then reward + skip) so nothing is cramped.
+    const rowH = land ? 124 : 52;
+    const y0 = land ? ctx.extrasTop : ctx.menuBottom + 12;
+    const px0 = land ? ctx.right.x0 : 6;
+    const pw = land ? ctx.right.x1 - ctx.right.x0 : ctx.width - 12;
+    panel.fillRoundedRect(px0, y0, pw, 3 * rowH, 18);
+    objs.push(panel);
     ms.active.forEach((m, i) => {
-      const y = y0 + 26 + i * 52;
+      const y = land ? y0 + 34 + i * rowH : y0 + 26 + i * 52;
+      const ry = land ? y + 52 : y;
       // Difficulty: 1-3 small dots (drawn). A star always means currency.
+      const dotX = land ? px0 + 26 : 30;
       for (let k = 0; k <= m.tier - 1; k++) {
         panel.fillStyle(theme.accent, 1);
-        panel.fillCircle(30 + k * 14, y, 5);
+        panel.fillCircle(dotX + k * 14, y, 5);
       }
-      txt(98, y, missionLabel(kit.t(`mission.${m.id}`), m, m.progress), 24, theme.text, 0);
+      txt(land ? px0 + 26 + m.tier * 14 + 14 : 98, y, missionLabel(kit.t(`mission.${m.id}`), m, m.progress), 24, theme.text, 0);
       // Reward in star coins.
-      const rw = txt(548, y, `+${missionReward(m)}`, 24, 0xffe14d, 1);
-      objs.push(drawCurrencyIcon(scene, rw.x + 17, y, 24));
+      const rw = txt(land ? px0 + 26 : 548, ry, `+${missionReward(m)}`, 24, 0xffe14d, land ? 0 : 1);
+      objs.push(drawCurrencyIcon(scene, land ? rw.x + rw.width + 20 : rw.x + 17, ry, fs(24)));
       const afford = coins >= cost;
-      const btn = addButton(scene, 648, y, kit.t('skip') + ' ' + cost, {
-        width: 128, height: 42, fontSize: 22,
+      const btn = addButton(scene, land ? px0 + pw - 100 - 14 : 648, ry, kit.t('skip') + ' ' + cost, {
+        width: land ? 200 : 128, height: land ? 54 : 42, fontSize: fs(22),
         fill: afford ? theme.primary : theme.muted,
         textColor: 0xffffff,
         strokeThickness: 4,
@@ -206,13 +222,13 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       });
       const text = btn.list[1] as Phaser.GameObjects.Text;
       text.x -= 11;
-      btn.add(scene.add.image(text.x + text.width / 2 + 13, 0, 'dd-star').setDisplaySize(20, 20));
+      btn.add(scene.add.image(text.x + text.width / 2 + 13, 0, 'dd-star').setDisplaySize(fs(20), fs(20)));
       if (!afford) btn.setAlpha(0.6);
       objs.push(btn);
     });
 
     const rp = rankProgress(ms.stars);
-    txt(ctx.width - 24, ctx.menuBottom - 4, kit.t('rank').replace('{n}', String(ms.rank)).replace('{a}', String(rp.have)).replace('{b}', String(rp.need)), 22, theme.muted, 1);
+    txt(land ? ctx.right.x1 : ctx.width - 24, land ? y0 + 3 * rowH + 30 : ctx.menuBottom - 4, kit.t('rank').replace('{n}', String(ms.rank)).replace('{a}', String(rp.have)).replace('{b}', String(rp.need)), 22, theme.muted, 1);
     // Keep extras above the panel and the backdrop blocks that spawn later.
     for (const o of objs) if (o !== panel) (o as unknown as Phaser.GameObjects.Components.Depth).setDepth(2);
   };

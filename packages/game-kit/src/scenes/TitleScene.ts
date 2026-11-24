@@ -4,6 +4,7 @@ import { addBackground, ensureTextures } from '../juice/textures.ts';
 import { cssColor } from '../theme.ts';
 import { titleLayout } from '../titleLayout.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
+import { registerBounds } from '../ui/bounds.ts';
 import { topRightSlotX } from '../ui/topRight.ts';
 
 export class TitleScene extends Phaser.Scene {
@@ -18,9 +19,11 @@ export class TitleScene extends Phaser.Scene {
     ensureTextures(this, theme);
     addBackground(this);
     kit.def.titleBackdrop?.(this);
+    const menu = kit.def.titleMenu ?? [];
+    const lay = titleLayout(width, height, menu.length);
 
     const title = this.add
-      .text(width / 2, height * 0.3, kit.t('title'), {
+      .text(width / 2, lay.titleY, kit.t('title'), {
         fontFamily: theme.font,
         fontSize: '76px',
         fontStyle: 'bold',
@@ -28,14 +31,14 @@ export class TitleScene extends Phaser.Scene {
         stroke: '#1a1033',
         strokeThickness: 8,
         align: 'center',
-        wordWrap: { width: width * 0.9 },
+        wordWrap: { width: lay.landscape ? width * 0.36 : width * 0.9 },
       })
       .setOrigin(0.5);
     kit.fx(this).glow(title, theme.primary, 6);
     this.tweens.add({ targets: title, scale: 1.06, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     const tap = this.add
-      .text(width / 2, height * 0.55, kit.t('gk.tapToStart'), {
+      .text(width / 2, lay.tapY, kit.t('gk.tapToStart'), {
         fontFamily: theme.font,
         fontSize: '40px',
         fontStyle: 'bold',
@@ -48,7 +51,7 @@ export class TitleScene extends Phaser.Scene {
 
     if (kit.session.best > 0) {
       this.add
-        .text(width / 2, height * 0.62, `${kit.t('gk.best')}: ${kit.session.best}`, {
+        .text(width / 2, lay.bestY, `${kit.t('gk.best')}: ${kit.session.best}`, {
           fontFamily: theme.font,
           fontSize: '32px',
           fontStyle: 'bold',
@@ -59,24 +62,25 @@ export class TitleScene extends Phaser.Scene {
         .setOrigin(0.5);
     }
 
-    const menu = kit.def.titleMenu ?? [];
     menu.forEach((item, i) => {
-      addButton(this, width / 2, height * 0.72 + i * 96, kit.t(item.labelKey), {
-        width: 280,
-        height: 72,
+      addButton(this, width / 2, lay.menuY0 + i * lay.menuStep, kit.t(item.labelKey), {
+        width: lay.menuButtonW,
+        height: lay.menuButtonH,
+        fontSize: lay.landscape ? 38 : undefined,
         fill: theme.primary,
         onClick: () => kit.goTo(item.scene),
       });
     });
     kit.addMuteButton(this, topRightSlotX(width, 0), 60);
     kit.addFullscreenButton(this, topRightSlotX(width, 1), 60);
-    kit.def.titleExtras?.(this, titleLayout(width, height, menu.length));
+    kit.def.titleExtras?.(this, lay);
+    registerBounds(this, { menuAt: (i: number) => ({ x: width / 2, y: lay.menuY0 + i * lay.menuStep }) });
 
     // Small support link at the very bottom, only where external links are allowed (own site, never portals).
     const supportUrl = kit.platform.supportUrl;
     if (supportUrl) {
-      addButton(this, width / 2, height - 40, kit.t('gk.support'), {
-        width: 280, height: 44, fill: 0x2a1a5e, textColor: theme.muted, fontSize: 20, strokeThickness: 3,
+      addButton(this, width / 2, height - (lay.landscape ? 44 : 40), kit.t('gk.support'), {
+        width: lay.landscape ? 340 : 280, height: lay.landscape ? 56 : 44, fill: 0x2a1a5e, textColor: theme.muted, fontSize: lay.landscape ? 26 : 20, strokeThickness: 3,
         onClick: () => { window.open(supportUrl, '_blank', 'noopener'); },
       });
     }

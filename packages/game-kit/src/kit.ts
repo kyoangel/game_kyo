@@ -199,7 +199,7 @@ export class Kit {
     if (prev?.active) prev.destroy();
     const label = scene.add
       .text(x, y + 46, text, {
-        fontFamily: this.theme.font, fontSize: '18px', fontStyle: 'bold', color: '#ffffff',
+        fontFamily: this.theme.font, fontSize: scene.scale.width > scene.scale.height ? '26px' : '18px', fontStyle: 'bold', color: '#ffffff',
         stroke: '#1a1033', strokeThickness: 5, align: 'center',
       })
       .setOrigin(0.5, 0)

@@ -43,7 +43,9 @@ function goalText(kit: Kit, g: Goal, balance: number): string {
 export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
   const kit = getKit(scene);
   const { theme } = kit;
-  const cx = scene.scale.width / 2;
+  const land = ctx.landscape === true;
+  // Landscape: the game gets the right-hand column (the kit puts the score summary on the left).
+  const cx = ctx.cx ?? scene.scale.width / 2;
   const run = (scene.registry.get(RUN_STATE_KEY) as RunState | undefined) ?? EMPTY;
   const top = ctx.top;
 
@@ -148,8 +150,8 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
 
     // Rank up: beside the "Survived" line so it never crowds the layout.
     if (s.missions.rankAfter > s.missions.rankBefore) {
-      const rx = cx + 215;
-      const ry = top + 20;
+      const rx = land ? cx : cx + 215;
+      const ry = land ? top + 58 : top + 20;
       const rt = scene.add.text(rx, ry, fill(kit.t('rankUp'), { n: s.missions.rankAfter }), style(kit, 28, 0xffe14d)).setOrigin(0.5).setScale(0.3);
       scene.tweens.add({ targets: rt, scale: 1, duration: 400, ease: 'Back.Out' });
       kit.fx(scene).burst(rx, ry, { color: 0xffe14d, count: 24, speed: 340, lifespanMs: 600 });
@@ -202,8 +204,9 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
       for (const o of boostObjs) o.destroy();
       boostObjs = renderBoostBar(scene, kit, {
         cx,
-        y: Math.round(scene.scale.height * 0.745),
-        height: 50,
+        y: land ? Math.round(top + 330) : Math.round(scene.scale.height * 0.745),
+        height: land ? 64 : 50,
+        vertical: land ? { step: 72, width: 400, fontSize: 26 } : undefined,
         coins: liveCoins,
         boosts: liveBoosts,
         shieldCap,

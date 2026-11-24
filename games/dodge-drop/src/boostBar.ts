@@ -13,6 +13,8 @@ export interface BoostBarOpts {
   /** Button height (default 54). */
   height?: number;
   showLabel?: boolean;
+  /** Landscape: stack the buttons vertically (first at `y`, label above it), with bigger text. */
+  vertical?: { step: number; width: number; fontSize: number };
   onBuy: (id: BoostId) => void;
 }
 
@@ -28,9 +30,9 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
 
   if (opts.showLabel) {
     const lbl = scene.add
-      .text(opts.cx, opts.y - 44, kit.t('boostsLabel'), {
+      .text(opts.cx, opts.y - (opts.vertical ? 56 : 44), kit.t('boostsLabel'), {
         fontFamily: theme.font,
-        fontSize: '22px',
+        fontSize: `${opts.vertical ? opts.vertical.fontSize : 22}px`,
         fontStyle: 'bold',
         color: cssColor(theme.muted),
         stroke: '#1a1033',
@@ -42,12 +44,14 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     objs.push(lbl);
   }
 
-  const btnW = 208;
+  const vert = opts.vertical;
+  const btnW = vert ? vert.width : 208;
   const btnH = opts.height ?? 54;
-  const step = 220;
+  const step = vert ? vert.step : 220;
 
   BOOST_IDS.forEach((id, i) => {
-    const bx = opts.cx + (i - 1) * step;
+    const bx = vert ? opts.cx : opts.cx + (i - 1) * step;
+    const by = vert ? opts.y + i * step : opts.y;
     const cost = BOOST_COSTS[id];
     const canBuy = canBuyBoost(opts.boosts, id, opts.coins, opts.shieldCap);
     const equipped =
@@ -62,10 +66,10 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
 
     const fill = equipped ? theme.accent : canBuy ? theme.primary : theme.muted;
     const textColor = equipped ? 0x1a1033 : 0xffffff;
-    const btn = addButton(scene, bx, opts.y, label, {
+    const btn = addButton(scene, bx, by, label, {
       width: btnW,
       height: btnH,
-      fontSize: 20,
+      fontSize: vert ? vert.fontSize : 20,
       fill,
       textColor,
       strokeThickness: equipped ? 0 : 4,
@@ -81,7 +85,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     icon.setDisplaySize(btnH * 0.58, btnH * 0.58);
     btn.add(icon);
     if (showCost) {
-      const star = scene.add.image(text.x + text.width / 2 + 12, 0, 'dd-star').setDisplaySize(20, 20);
+      const star = scene.add.image(text.x + text.width / 2 + 12, 0, 'dd-star').setDisplaySize(vert ? 26 : 20, vert ? 26 : 20);
       btn.add(star);
     }
     if (!canBuy && !equipped) btn.setAlpha(0.55);
