@@ -15,7 +15,7 @@ test('dodge-drop: plays with keys, survives or dies cleanly, overlay tap returns
     if (m.type() === 'error') errors.push(`console: ${m.text()}`);
   });
 
-  await page.goto('/dodge-drop/');
+  await page.goto('/dodge-drop/?layout=portrait');
   await page.waitForFunction(() => { const g = (window as unknown as W).__gk!; return g.activeScenes.includes('GKTitle'); });
   const box = await page.locator('canvas').boundingBox();
   expect(box).not.toBeNull();
@@ -58,7 +58,7 @@ test('dodge-drop: Shop scene opens from the title and Back returns', async ({ pa
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(`console: ${m.text()}`);
   });
-  await page.goto('/dodge-drop/');
+  await page.goto('/dodge-drop/?layout=portrait');
   await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
   const box = (await page.locator('canvas').boundingBox())!;
   const at = (gx: number, gy: number) => ({ x: box.x + (gx / 720) * box.width, y: box.y + (gy / 1280) * box.height });
@@ -101,7 +101,7 @@ function watch(page: import('@playwright/test').Page): string[] {
 }
 
 async function openTitle(page: import('@playwright/test').Page) {
-  await page.goto('/dodge-drop/');
+  await page.goto('/dodge-drop/?layout=portrait');
   await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
   const box = (await page.locator('canvas').boundingBox())!;
   const at = (gx: number, gy: number) => ({ x: box.x + (gx / 720) * box.width, y: box.y + (gy / 1280) * box.height });
@@ -315,7 +315,8 @@ test('dodge-drop: max-level magnet pulls a far star and shield to a stationary p
     d.spawnPickup!('shield', 660);
   });
   await expect
-    .poll(async () => page.evaluate(() => { const s = (window as unknown as WD).__dd!.stats!(); return [s.stars, s.shieldHits]; }), { timeout: 8000 })
+    // Pull speed is game-time (frame-rate bound): on a loaded machine Phaser runs at a fraction of 60 fps, so give it room.
+    .poll(async () => page.evaluate(() => { const s = (window as unknown as WD).__dd!.stats!(); return [s.stars, s.shieldHits]; }), { timeout: 22000 })
     .toEqual([before.stars + 1, before.shieldHits + 1]);
   expect(errors).toEqual([]);
 });

@@ -22,7 +22,7 @@ for (const slug of slugs) {
       if (m.type() === 'error') errors.push(`console: ${m.text()}`);
     });
 
-    await page.goto(`/${slug}/`);
+    await page.goto(`/${slug}/?layout=portrait`);
     await page.waitForFunction(() => (window as unknown as W).__gk?.activeScenes.includes('GKTitle') === true);
     const box = await page.locator('canvas').boundingBox();
     expect(box).not.toBeNull();

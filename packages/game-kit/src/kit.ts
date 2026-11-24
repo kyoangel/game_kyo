@@ -11,6 +11,7 @@ import { RunFlow } from './runFlow.ts';
 import { fullscreenAvailable } from './ui/fullscreenSupport.ts';
 import { topRightSlotX } from './ui/topRight.ts';
 import { resolveTheme, type Theme } from './theme.ts';
+import { resolveCanvasSize } from './frameProvider.ts';
 
 export const KIT_KEY = 'gk:kit';
 export const OVERLAY_KEY = 'GKGameOver';
@@ -39,6 +40,7 @@ export class Kit {
   private overlayUp = false;
   private reviveCb: (() => void) | undefined;
   private playKeyCache: string | undefined;
+  private pendingView: { w: number; h: number } | undefined;
 
   constructor(game: Phaser.Game, session: GameSession, platform: Platform, t: (key: string) => string, def: GameDefinition, save: SaveData, audio: GameAudio) {
     this.game = game;
@@ -58,6 +60,45 @@ export class Kit {
 
   frame<T = unknown>(): T | undefined {
     return this.game.registry.get('gk:frame') as T | undefined;
+  }
+
+  /** True while a run (or its results overlay) owns the canvas size: the frame must not change under it. */
+  private get frameLocked(): boolean {
+    return this.session.state === 'playing' || this.overlayUp;
+  }
+
+  /**
+   * Viewport changed (rotation, window resize). Applies the new canvas size and frame at once when no run is in
+   * progress (restarting the visible menu scenes so they re-layout), otherwise defers until the next scene switch.
+   */
+  onViewport(viewW: number, viewH: number): void {
+    if (!this.def.onFrame) return;
+    if (this.frameLocked) {
+      this.pendingView = { w: viewW, h: viewH };
+      return;
+    }
+    this.pendingView = undefined;
+    this.applyView(viewW, viewH, true);
+  }
+
+  private applyView(viewW: number, viewH: number, restartScenes: boolean): boolean {
+    if (!this.def.onFrame) return false;
+    const frame = this.def.onFrame(viewW, viewH);
+    const size = resolveCanvasSize(this.def.canvasSize, { width: this.def.width, height: this.def.height }, viewW, viewH);
+    const unchanged = JSON.stringify(frame) === JSON.stringify(this.frame()) && size.width === this.game.scale.width && size.height === this.game.scale.height;
+    if (unchanged) return false;
+    this.game.scale.setGameSize(size.width, size.height);
+    this.setFrame(frame);
+    if (restartScenes) for (const s of this.game.scene.getScenes(true)) s.scene.restart();
+    return true;
+  }
+
+  /** Applies a viewport change that arrived mid-run. Called right before the next scene starts. */
+  applyPendingFrame(): void {
+    const v = this.pendingView;
+    if (!v) return;
+    this.pendingView = undefined;
+    this.applyView(v.w, v.h, false);
   }
 
   t(key: string): string {
@@ -90,7 +131,16 @@ export class Kit {
     this.reviveCb = offerRevive ? opts?.revive : undefined;
     const newBest = score > this.session.best && score > 0;
     this.game.scene.pause(this.playKey);
-    if (!offerRevive) await this.session.gameOver(score);
+    if (!offerRevive) {
+      await this.session.gameOver(score);
+      // The run is over and no revive can resume it: a rotation made mid-run takes effect now, so the results
+      // overlay (launched below) lays out for the new frame. The stale paused play scene is hidden until retry.
+      const v = this.pendingView;
+      if (v) {
+        this.pendingView = undefined;
+        if (this.applyView(v.w, v.h, false)) this.game.scene.getScene(this.playKey).scene.setVisible(false);
+      }
+    }
     this.game.scene.getScene(this.playKey).scene.launch(OVERLAY_KEY, { score, newBest, offerRevive } satisfies OverlayData);
   }
 
@@ -123,6 +173,7 @@ export class Kit {
     this.overlayUp = false;
     this.game.scene.stop(OVERLAY_KEY);
     this.game.scene.stop(this.playKey);
+    this.applyPendingFrame();
     this.game.scene.start(this.playKey);
   }
 
@@ -274,6 +325,7 @@ export class Kit {
     for (const s of this.game.scene.getScenes(false)) {
       if (s.sys.isActive() || s.sys.isPaused()) this.game.scene.stop(s.scene.key);
     }
+    this.applyPendingFrame();
     this.game.scene.start(key, data);
   }
 }

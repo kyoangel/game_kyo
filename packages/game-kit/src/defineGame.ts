@@ -77,6 +77,15 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
   game.registry.set(KIT_KEY, kit);
   if (def.onFrame) kit.setFrame(def.onFrame(viewW, viewH));
 
+  // Rotation / window resize: re-pick the frame (deferred by the kit while a run is in progress).
+  if (def.onFrame && typeof window !== 'undefined') {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    window.addEventListener('resize', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => kit.onViewport(window.innerWidth, window.innerHeight), 150);
+    });
+  }
+
   // Ads: freeze the loop and mute. Tab hidden: Phaser's built-in auto-pause handles it.
   session.onPauseChange((paused) => {
     game.sound.mute = paused;

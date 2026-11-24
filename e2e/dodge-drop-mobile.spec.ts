@@ -4,7 +4,7 @@ type W = { __gk?: { activeScenes: string[] }; __ddTitle?: { tiltToggle: boolean;
 const { defaultBrowserType: _unused, ...iphone13 } = devices['iPhone 13'];
 
 async function titleState(page: import('@playwright/test').Page, settleMs: number): Promise<{ tiltToggle: boolean; control: string }> {
-  await page.goto('/dodge-drop/');
+  await page.goto('/dodge-drop/?layout=portrait');
   await page.waitForFunction(() => (window as unknown as W).__gk?.activeScenes.includes('GKTitle') === true);
   await page.waitForFunction(() => (window as unknown as W).__ddTitle !== undefined);
   await page.waitForTimeout(settleMs);

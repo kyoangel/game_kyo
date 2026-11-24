@@ -16,10 +16,12 @@ const DEVICES = {
   'pixel-7': strip(devices['Pixel 7']),
   'ipad-mini': strip(devices['iPad Mini']),
   desktop: { viewport: { width: 1440, height: 900 } },
+  'desktop-1920': { viewport: { width: 1920, height: 1080 } },
+  'desktop-1280': { viewport: { width: 1280, height: 720 } },
 } as const;
 const LOCALES = ['en-US', 'zh-TW'] as const;
 
-type W = { __gk?: { activeScenes: string[]; endRound(s?: number): Promise<void> } };
+type W = { __gk?: { activeScenes: string[]; frame?: { mode: 'portrait' | 'landscape'; width: number; height: number }; endRound(s?: number): Promise<void> } };
 
 async function scene(page: Page, name: string): Promise<void> {
   await page.waitForFunction((n) => (window as unknown as W).__gk!.activeScenes.includes(n), name);
@@ -35,6 +37,10 @@ for (const [dev, ctxOpts] of Object.entries(DEVICES)) {
       const shot = (name: string) => page.screenshot({ path: `${OUT}/${tag}-${name}.png` });
       const vp = page.viewportSize()!;
       const phone = vp.width <= 820;
+      // Phones stay pinned to portrait (the portrait layout is what they ship with); desktop sizes use the default
+      // viewport-driven frame, so they exercise landscape.
+      const gameUrl = phone ? `${GAME}?layout=portrait` : GAME;
+      const expectedMode = phone ? 'portrait' : 'landscape';
 
       // Site page
       await page.goto(SITE);
@@ -50,30 +56,37 @@ for (const [dev, ctxOpts] of Object.entries(DEVICES)) {
       }
 
       // Game scenes (local build has test hooks)
-      const open = async (): Promise<{ at: (x: number, y: number) => { x: number; y: number } }> => {
-        await page.goto(GAME);
+      type Opened = { at: (x: number, y: number) => { x: number; y: number }; w: number; h: number };
+      const open = async (): Promise<Opened> => {
+        await page.goto(gameUrl);
         await scene(page, 'GKTitle');
         await page.waitForFunction(() => (window as unknown as { __ddTitle?: unknown }).__ddTitle !== undefined);
         await page.waitForTimeout(500);
+        const frame = (await page.evaluate(() => (window as unknown as W).__gk!.frame))!;
+        expect(frame.mode, 'frame mode').toBe(expectedMode);
         const box = (await page.locator('canvas').boundingBox())!;
-        return { at: (gx, gy) => ({ x: box.x + (gx / 720) * box.width, y: box.y + (gy / 1280) * box.height }) };
+        return { at: (gx, gy) => ({ x: box.x + (gx / frame.width) * box.width, y: box.y + (gy / frame.height) * box.height }), w: frame.width, h: frame.height };
       };
       let g = await open();
       await shot('title');
-      const sh = g.at(360, 1280 * 0.72);
+      const landscape = g.w > g.h;
+      const shopBtn = landscape
+        ? await page.evaluate(() => (window as unknown as { __dd: { menuAt(i: number): { x: number; y: number } } }).__dd.menuAt(0))
+        : { x: 360, y: 1280 * 0.72 };
+      const sh = g.at(shopBtn.x, shopBtn.y);
       await page.mouse.click(sh.x, sh.y);
       await scene(page, 'Shop');
       await page.waitForTimeout(500);
       await shot('shop-upgrades');
       for (const [name, off] of [['skins', 0], ['boosts', 224]] as const) {
-        const tab = g.at(360 + off, 172);
+        const tab = landscape ? g.at(720 + off, 60) : g.at(360 + off, 172);
         await page.mouse.click(tab.x, tab.y);
         await page.waitForTimeout(600);
         await shot(`shop-${name}`);
       }
 
       g = await open();
-      const c = g.at(360, 640);
+      const c = g.at(g.w / 2, g.h / 2);
       await page.mouse.click(c.x, c.y);
       await scene(page, 'Play');
       await page.waitForTimeout(2500);

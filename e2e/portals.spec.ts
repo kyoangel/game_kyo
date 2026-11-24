@@ -87,3 +87,20 @@ for (const portal of PORTALS) {
     });
   }
 }
+
+// CrazyGames provides its own fullscreen control (platform.features.fullscreenButton = false), so the custom
+// button's slot (top-right, one step left of mute) must be inert in both frames. Positive control: the local
+// build enters fullscreen from the same spot (e2e/crazygames-viewport.spec.ts).
+for (const frame of [{ q: '', w: 1440, h: 810 }, { q: '?layout=portrait', w: 720, h: 1280 }] as const) {
+  test(`dodge-drop (crazygames): no custom fullscreen button (${frame.q || 'landscape'})`, async ({ page }) => {
+    test.skip(!existsSync(join(ROOT, 'crazygames', 'dodge-drop', 'index.html')), 'portal smoke build missing; run `npm run test:portals`');
+    const sdk = PORTALS[0];
+    await page.route(sdk.sdkUrl, (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: readFileSync(sdk.fixture, 'utf8') }));
+    await page.goto(`http://localhost:${sdk.port}/dodge-drop/${frame.q}`);
+    await page.waitForTimeout(2000);
+    const b = (await page.locator('canvas').boundingBox())!;
+    await page.mouse.click(b.x + ((frame.w - 136) / frame.w) * b.width, b.y + (60 / frame.h) * b.height);
+    await page.waitForTimeout(800);
+    expect(await page.evaluate(() => document.fullscreenElement !== null)).toBe(false);
+  });
+}

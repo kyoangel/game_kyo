@@ -171,3 +171,53 @@ test('landscape results overlay is fully opaque: the paused Play HUD does not sh
   }, png.toString('base64'));
   expect(spread, 'colour spread in an empty results band (0 = flat background)').toBeLessThanOrEqual(2);
 });
+
+test('layout switches on rotation only when no run is in progress', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(GAME);
+  await ready(page);
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.frame?.mode === 'landscape');
+  await ready(page);
+  await page.mouse.click(300, 190);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as unknown as { __gk: GK }).__gk.frame?.mode)).toBe('landscape'); // mid-run: unchanged
+  await page.evaluate(() => (window as unknown as { __gk: { endRound(s?: number): Promise<void> } }).__gk.endRound(5));
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.frame?.mode === 'portrait');
+});
+
+test('landscape journey: start, play, die, results, retry', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(GAME);
+  await ready(page);
+  await page.mouse.click(640, 360);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowLeft');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowRight');
+  await page.evaluate(() => void (window as unknown as { __gk: { endRound(n: number): Promise<void> } }).__gk.endRound(5));
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('GKGameOver'));
+  await page.waitForFunction(() => (window as unknown as { __dd?: DDBounds }).__dd?.results !== undefined);
+  await page.waitForTimeout(900);
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => {
+    const a = (window as unknown as { __gk: GK }).__gk.activeScenes;
+    return a.includes('Play') && !a.includes('GKGameOver');
+  });
+  expect(await page.evaluate(() => (window as unknown as { __gk: GK }).__gk.frame?.mode)).toBe('landscape');
+});
+
+test('control: the local build has a custom fullscreen button in the landscape title (top-right slot 1)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(GAME);
+  await ready(page);
+  await page.waitForTimeout(500);
+  const box = (await page.locator('canvas').boundingBox())!;
+  await page.mouse.click(box.x + ((1440 - 136) / 1440) * box.width, box.y + (60 / 810) * box.height);
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement !== null), { timeout: 3000 }).toBe(true);
+});
