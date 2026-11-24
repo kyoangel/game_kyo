@@ -85,13 +85,17 @@ async function expectLegibleOnCanvas(page: Page, label: string, w: number, h: nu
   expect(bad, `${label} at ${w}x${h}`).toEqual([]);
 }
 
-for (const s of [SIZES[0], SIZES[2]]) {
-  test(`title, shop and results fit the landscape canvas and are legible at ${s.name}`, async ({ page }) => {
+const LOCALES = [{ locale: 'en', tag: '' }, { locale: 'zh-TW', tag: 'zh-' }] as const;
+
+for (const L of LOCALES) for (const s of [SIZES[0], SIZES[2]]) {
+  test.describe(`locale ${L.locale}`, () => {
+  test.use({ locale: L.locale });
+  test(`title, shop, play HUD and results fit the landscape canvas and are legible at ${s.name} (${L.locale})`, async ({ page }) => {
     await page.setViewportSize({ width: s.width, height: s.height });
     await page.goto(GAME);
     await ready(page);
     await page.waitForTimeout(600); // let async extras (missions, boosts) render
-    await page.screenshot({ path: `${OUT}/title-${s.name}.png` });
+    await page.screenshot({ path: `${OUT}/title-${L.tag}${s.name}.png` });
     await expectLegibleOnCanvas(page, 'title', s.width, s.height);
 
     // shop: second menu button (centre column), then each tab
@@ -109,20 +113,29 @@ for (const s of [SIZES[0], SIZES[2]]) {
       const t = await toCanvas(720 + (tab - 1) * 224, 60);
       await page.mouse.click(t.x, t.y);
       await page.waitForTimeout(400);
-      await page.screenshot({ path: `${OUT}/shop-${tab}-${s.name}.png` });
+      await page.screenshot({ path: `${OUT}/shop-${tab}-${L.tag}${s.name}.png` });
       await expectLegibleOnCanvas(page, `shop tab ${tab}`, s.width, s.height);
     }
 
-    // results overlay
+    // play HUD
     await page.goto(GAME);
     await ready(page);
     await page.mouse.click(s.width / 2, s.height / 2);
     await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${OUT}/play-${L.tag}${s.name}.png` });
+    const hud = await page.evaluate(() => (window as unknown as { __dd: { hud(): DDHud } }).__dd.hud());
+    expect(hud.length, 'play HUD entries').toBeGreaterThan(3);
+    const css = Math.min(s.width / 1440, s.height / 810);
+    expect(hud.filter((h) => h.fontPx * css < 14 || h.x < 0 || h.x > 1440 || h.y < 0 || h.y > 810).map((h) => h.name), 'play HUD legible and on canvas').toEqual([]);
+
+    // results overlay
     await page.evaluate(() => void (window as unknown as { __gk: { endRound(n: number): Promise<void> } }).__gk.endRound(120));
     await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('GKGameOver'));
     await page.waitForFunction(() => (window as unknown as { __dd?: DDBounds }).__dd?.results !== undefined);
     await page.waitForTimeout(900);
-    await page.screenshot({ path: `${OUT}/results-${s.name}.png` });
+    await page.screenshot({ path: `${OUT}/results-${L.tag}${s.name}.png` });
     await expectLegibleOnCanvas(page, 'results', s.width, s.height);
+  });
   });
 }

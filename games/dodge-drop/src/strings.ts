@@ -111,7 +111,7 @@ export const strings: Strings = {
     'tab.upgrades': '升級',
     'tab.skins': '造型',
     'tab.boosts': '道具',
-    'boostDesc.shield': '開場多帶 1 個護盾（不超過上限）',
+    'boostDesc.shield': '開場多帶1個護盾（有上限）',
     'boostDesc.shrink': '整局角色縮小 30%（更好鑽縫隙）',
     'boostDesc.chomp': '瀕死變身大胃王，方塊變藍可吃 6 秒',
     boostReady: '下一局生效',
