@@ -2,6 +2,8 @@ import type { Frame } from './frame.ts';
 
 /** Panel text in canvas px: 40 * (450/810) = 22 css px at an 800x450 iframe. */
 export const MIN_PANEL_FONT = 40;
+/** Mission list text in the right panel (canvas px): 30 * 0.556 = 16.7 css px at 800x450; the longest label then fits the panel on one line. */
+export const MISSION_PANEL_FONT = 30;
 /** In-field text in logic px: 40 * zoom 0.633 * 0.556 = 14 css px at 800x450. */
 export const MIN_FIELD_FONT = 40;
 

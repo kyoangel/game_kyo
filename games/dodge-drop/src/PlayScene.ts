@@ -20,8 +20,8 @@ import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
 import type { Frame } from './frame.ts';
 import { getFrame } from './frameAccess.ts';
-import { fieldFont, hudAnchors, MIN_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
-import { missionLabel } from './missionLabel.ts';
+import { fieldFont, hudAnchors, MIN_PANEL_FONT, MISSION_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
+import { missionPanelText } from './missionLabel.ts';
 import { tiltToVelocity } from './tilt.ts';
 import { TiltReader } from './tiltSensor.ts';
 import { nextToastSlot, rushBannerUntil } from './toastSlot.ts';
@@ -521,7 +521,7 @@ export class PlayScene extends Phaser.Scene {
       this.kit.addFullscreenButton(this, a.mute.x - 76, a.mute.y)?.setDepth(100);
       if (landscape) {
         this.missionsText = this.add
-          .text(a.missions.x, a.missions.y, '', { ...this.textStyleFor('panel', 40, theme.muted), wordWrap: { width: this.frame.fieldX - 64 } })
+          .text(a.missions.x, a.missions.y, '', { ...this.textStyle(MISSION_PANEL_FONT, theme.muted), lineSpacing: 4 })
           .setDepth(100);
       }
     };
@@ -1266,8 +1266,9 @@ export class PlayScene extends Phaser.Scene {
       if (c > 0) this.tweens.add({ targets: this.comboText, scale: { from: 1.4, to: 1 }, duration: 160 });
     }
     if (this.missionsText) {
-      const lines = this.missionState.active.map((m) => missionLabel(this.kit.t(`mission.${m.id}`), m, liveProgress(m, this.stats)));
-      const txt = lines.join('\n');
+      // Landscape panel: label line + progress line per mission, one blank line between missions.
+      const lines = this.missionState.active.map((m) => missionPanelText(this.kit.t(`mission.${m.id}`), m, liveProgress(m, this.stats)));
+      const txt = lines.join('\n\n');
       if (txt !== this.lastMissionsShown) {
         this.lastMissionsShown = txt;
         this.missionsText.setText(txt);
