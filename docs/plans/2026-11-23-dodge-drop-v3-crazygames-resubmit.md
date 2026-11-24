@@ -933,6 +933,13 @@ Existing facts the tasks build on (verified 2026-11-24): the 4 s text hint is `P
 
 Easy-opening decision (Task 2.5 explains): a scripted gentler opening is NOT done. The first 10 s is already single-block `rain` (`waves.ts:24-27` `waveKindAt` returns `rain` below 10 s; `waves.ts:53-56` `rainRowExpected` is 1 until 90 s), preceded by a 0.4 s start offset (`schedule.ts:7` `START = 0.4`). Making it gentler means a time-varying interval/speed inside `schedule.ts`/`waves.ts` (today `speedMul`/`intervalMul` are constant per run, `schedule.ts:10-14`, `:70`) and the fairness validator replays the same speed (`schedule.ts:73-75`, property tests `schedule.test.ts:29,77,81,85`), so any change risks the "survivable for every seed" invariant. Deferred.
 
+Commander resolutions (2026-11-25, user delegated "review then implement without confirmation"):
+- Task 2.5 (free first-run shield) is NOT executed: it changes balance and was not requested. The deferral record for the scripted opening stays as documentation only.
+- Tutorial shows at most `TUTORIAL_MAX_RUNS = 2` runs, auto-dismiss after 6 s: accepted.
+- Desktop mouse users see the arrow-key caps with the caption "Arrow keys or drag": accepted.
+- `skipOnboarding(page)` fixture on clean-run e2e tests: accepted.
+- Landscape goal label that does not fit one line at 30 px: use the two-line fallback described in Task 2.4.
+
 #### Task 2.1: Onboarding model (pure)
 **Goal:** One tested module decides whether the first-run tutorial shows, which control scheme to show (touch ghost-finger vs arrow-key caps), when it ends, and where the animated ghost finger is. No Phaser, no storage.
 
