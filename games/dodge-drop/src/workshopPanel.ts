@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { addButton } from '@gf/game-kit';
 import { drawCurrencyIcon } from './playArt.ts';
 import { fitText, shopGrid, shopStyle, type ShopCtx } from './shopTypes.ts';
-import { buyUpgrade, effectValue, MAX_LEVEL, nextCost, UPGRADE_IDS, type UpgradeId } from './workshop.ts';
+import { upgradeDesc } from './upgradeDesc.ts';
+import { buyUpgrade, MAX_LEVEL, nextCost, UPGRADE_IDS, type UpgradeId } from './workshop.ts';
 
 const ROW_Y0 = 300;
 const ROW_STEP = 134;
@@ -44,8 +45,7 @@ export function renderUpgradesPanel(ctx: ShopCtx): void {
     bg.strokeRoundedRect(20 + ox, y - grid.rowH / 2, 680, grid.rowH, 22);
     drawIcon(bg, id, 80 + ox, y, theme.accent);
 
-    const maxMagnet = id === 'magnet' && level >= MAX_LEVEL;
-    const desc = kit.t(maxMagnet ? 'up.magnet.descMax' : `up.${id}.desc`).replace('{v}', String(Number(effectValue(id, level).toFixed(2))));
+    const desc = upgradeDesc((k) => kit.t(k), id, level);
     const name = ctx.add(scene.add.text(150 + ox, y - (grid.land ? 52 : 27), kit.t(`up.${id}.name`), shopStyle(kit, fs(30), theme.text)).setOrigin(0, 0.5));
     // Text column ends at x=499, >= 16 px clear of the price button (left edge 515); long text wraps to 2 lines.
     const descText = ctx.add(fitText(scene, kit, 150 + ox, y + (grid.land ? 14 : 7), String(desc), theme.muted, grid.land ? { size: 26, minSize: 26, maxWidth: 349, maxLines: 3 } : { size: 22, minSize: 15, maxWidth: 349, maxLines: 2, twoLineSize: 17 }));
