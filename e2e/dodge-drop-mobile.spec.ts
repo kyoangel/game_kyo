@@ -48,3 +48,19 @@ test.describe('tilt option visibility', () => {
     });
   });
 });
+
+test('interactive controls are at least 44 css px on an iPhone SE', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto('/dodge-drop/?layout=portrait');
+  await page.waitForFunction(() => (window as unknown as W).__gk?.activeScenes.includes('GKTitle') === true);
+  await page.waitForFunction(() => (window as unknown as W).__ddTitle !== undefined);
+  await page.waitForTimeout(800); // async extras (missions, chips) render
+  const small = await page.evaluate(() => {
+    const c = document.querySelector('canvas')!.getBoundingClientRect();
+    const s = c.width / 720;
+    const targets = (window as unknown as { __dd: { tapTargets(): { name: string; h: number }[] } }).__dd.tapTargets();
+    return { count: targets.length, small: targets.filter((t) => t.h * s < 44) };
+  });
+  expect(small.count, 'tap target hook sees the title buttons').toBeGreaterThan(5);
+  expect(small.small).toEqual([]);
+});

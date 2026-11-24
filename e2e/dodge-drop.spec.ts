@@ -176,6 +176,23 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   expect(errors).toEqual([]);
 });
 
+test('dodge-drop: enlarged hit areas never fire the neighbouring row (tap low on the first skip swaps the first mission)', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '100', missions: MISSIONS_SEED });
+  const { at } = await openTitle(page);
+  await page.waitForTimeout(500);
+  const before = JSON.parse((await ls(page, 'missions'))!);
+  // First skip button is 42 px tall (+-21) at y 996; its 88 px hit area overlaps the second row (y 1048). 18 px low is
+  // still on the first button but 34 px from the second centre: the first mission must be the one swapped.
+  const skip = at(648, 996 + 18);
+  await page.mouse.click(skip.x, skip.y);
+  await expect.poll(() => ls(page, 'coins')).toBe('95');
+  const saved = JSON.parse((await ls(page, 'missions'))!);
+  expect(saved.active[0].id).not.toBe(before.active[0].id);
+  expect(saved.active[1].id).toBe(before.active[1].id);
+  expect(errors).toEqual([]);
+});
+
 test('dodge-drop: Skins previews on tap, buys only on confirm, then Use equips', async ({ page }) => {
   const errors = watch(page);
   await seed(page, { coins: '100' });
