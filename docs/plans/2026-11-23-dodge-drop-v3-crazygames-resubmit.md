@@ -9,9 +9,18 @@
 **Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, personal best, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. The personal-best cue reads `GameSession.best` (already persisted through the existing save mechanism).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** Draft, decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed); ready to execute
+**Status:** In progress (batch 1 done 2026-11-24: tasks 0.1, 0.2, 1.1). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
 
 ---
+
+## Execution Log
+
+### Batch 1 (2026-11-24) - DONE
+- Task 0.1 `10ee7fa`: `e2e/crazygames-viewport.spec.ts` created; RED confirmed 6/6 (5 on `__gk.frame` undefined, landscape-HUD on `__dd.hud is not a function`; scene key `Play` confirmed). Not in `test:smoke`.
+  - Deviation: no "before" screenshots were produced (each test fails before its `page.screenshot`); `.superpowers/sdd/meta/v3/` is empty. Title shots appear once Task 1.3+ lands.
+- Task 0.2 `370bc33`: STATUS.md (now tracked), juice-layer.md non-goal superseded note, crazygames.md rejection-history item.
+- Task 1.1 `8543349`: `games/dodge-drop/src/frame.ts` + `frame.test.ts` (9 tests); `layout.ts` derives PLAYER_Y/STRIP_* from `frameFor('portrait')`, values unchanged.
+- Verification: `npm run typecheck` ok; `npm test` 64 files / 514 tests passed. Not pushed yet (push at end of next batch with pre-push hook).
 
 ## Requirements
 
