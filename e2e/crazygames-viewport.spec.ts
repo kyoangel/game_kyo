@@ -139,3 +139,35 @@ for (const L of LOCALES) for (const s of [SIZES[0], SIZES[2]]) {
   });
   });
 }
+
+test('landscape results overlay is fully opaque: the paused Play HUD does not show through', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 450 });
+  await page.goto(GAME);
+  await ready(page);
+  await page.mouse.click(400, 225);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.waitForTimeout(400); // drag hint + HUD are visible
+  await page.evaluate(() => void (window as unknown as { __gk: { endRound(n: number): Promise<void> } }).__gk.endRound(120));
+  await page.waitForFunction(() => (window as unknown as { __dd?: DDBounds }).__dd?.results !== undefined);
+  await page.waitForTimeout(900);
+  // Free band between the results columns, where the Play drag hint sits (css px at 800x450).
+  const png = await page.screenshot({ clip: { x: 300, y: 262, width: 150, height: 40 } });
+  const spread = await page.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d')!;
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let max = 0;
+    for (let ch = 0; ch < 3; ch++) {
+      let lo = 255, hi = 0;
+      for (let i = ch; i < d.length; i += 4) { lo = Math.min(lo, d[i]!); hi = Math.max(hi, d[i]!); }
+      max = Math.max(max, hi - lo);
+    }
+    return max;
+  }, png.toString('base64'));
+  expect(spread, 'colour spread in an empty results band (0 = flat background)').toBeLessThanOrEqual(2);
+});

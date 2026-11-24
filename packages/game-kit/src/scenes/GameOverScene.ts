@@ -36,7 +36,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
-    this.add.rectangle(0, 0, width, height, 0x0d0624, sceneIsLandscape(this) ? 0.97 : 0.84).setOrigin(0, 0).setDepth(-1);
+    this.add.rectangle(0, 0, width, height, 0x0d0624, sceneIsLandscape(this) ? 1 : 0.84).setOrigin(0, 0).setDepth(-1);
     registerBounds(this);
     if (this.offerRevive) this.showRevive();
     else this.showResults();
