@@ -10,6 +10,7 @@ import { fallSpeed, OVERDRIVE_T, overdrive, speedBoost } from './difficulty.ts';
 import { EDGE_W, MAX_STREAKS, streakAlpha, streakLen, streakSpawnRate, streakSpeed, streakTint, streakWidth, streakX, vignetteAlpha } from './speedFx.ts';
 import { SKINS, type Skin } from './economy.ts';
 import { formatTime } from './format.ts';
+import { nextGoal, type Goal } from './goalBar.ts';
 import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
 import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, edibleBlockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
 import { mulberry32 } from './rng.ts';
@@ -20,7 +21,7 @@ import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
 import type { Frame } from './frame.ts';
 import { getFrame } from './frameAccess.ts';
-import { fieldFont, hudAnchors, MIN_PANEL_FONT, MISSION_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
+import { fieldFont, hudAnchors, MIN_PANEL_FONT, MISSION_PANEL_FONT, GOAL_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
 import { missionPanelText } from './missionLabel.ts';
 import { controlKind, onTutorialInput, onTutorialShown, sanitizeOnboarding, shouldShowTutorial, tutorialEnded, type ControlKind, type LastInput, type Onboarding } from './onboarding.ts';
 import { createTutorialView, type TutorialView } from './tutorialView.ts';
@@ -161,6 +162,10 @@ export class PlayScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private comboText!: Phaser.GameObjects.Text;
   private comboBar!: Phaser.GameObjects.Graphics;
+  private goalText!: Phaser.GameObjects.Text;
+  private goalBar!: Phaser.GameObjects.Graphics;
+  private goalState: Goal = { kind: 'none' };
+  private lastGoalKey = '';
   private timerText!: Phaser.GameObjects.Text;
   private hint!: Phaser.GameObjects.Text;
   private hintDone = false;
@@ -282,6 +287,8 @@ export class PlayScene extends Phaser.Scene {
         spawnPickup: (kind: 'star' | 'shield', x: number) => this.spawnPickup(kind, x),
         /** Test hook: HUD text objects with effective canvas position and font size. */
         hud: () => this.hudReport(),
+        /** Test hook: current goal bar label and progress. */
+        goal: () => ({ text: this.goalText.text, frac: this.goalState.kind === 'none' ? 0 : this.goalState.frac, id: this.goalState.kind === 'medal' ? this.goalState.id : this.goalState.kind }),
         /** Test hook: first-run tutorial state. */
         tutorial: () => ({ visible: this.tutorialOn, kind: this.tutorialKind }),
       } as { god: boolean };
@@ -461,6 +468,7 @@ export class PlayScene extends Phaser.Scene {
     add('combo', this.comboText, false);
     add('timer', this.timerText, false);
     add('missions', this.missionsText, false);
+    add('goal', this.goalText, false);
     add('hint', this.hint, true);
     add('tutorial', this.tutorialOn ? this.hint : null, true);
     add('rush', this.rushBanner, true);
@@ -530,6 +538,9 @@ export class PlayScene extends Phaser.Scene {
       this.scoreText = this.add.text(a.score.x, a.score.y, '0', this.textStyleFor('panel', 48, theme.text)).setOrigin(a.score.originX ?? 0, 0).setDepth(100);
       this.comboText = this.add.text(a.combo.x, a.combo.y, '', this.textStyleFor('panel', 40, theme.accent)).setDepth(100).setVisible(false);
       this.comboBar = this.add.graphics().setDepth(100);
+      const goalStyle = landscape ? this.textStyle(GOAL_PANEL_FONT, theme.text) : this.textStyleFor('panel', 26, theme.text);
+      this.goalText = this.add.text(a.goal.x, a.goal.y, '', goalStyle).setOrigin(a.goal.originX ?? 0, 0).setDepth(100).setVisible(false);
+      this.goalBar = this.add.graphics().setDepth(100);
       // Shield icon row (up to 7 icons, growing rightward).
       this.shieldHudIcons = [];
       for (let i = 0; i < 7; i++) {
@@ -1299,6 +1310,32 @@ export class PlayScene extends Phaser.Scene {
 
   // -------------------------------------------------------------------- hud
 
+  /** Next-medal label + progress bar; redraws only when the label or a 1 % bar step changes. */
+  private updateGoal(): void {
+    const g = nextGoal(this.t, this.score - this.cfg.headStart, this.kit.session.best);
+    this.goalState = g;
+    if (g.kind === 'none') {
+      if (this.goalText.visible) { this.goalText.setVisible(false); this.goalBar.clear(); this.lastGoalKey = ''; }
+      return;
+    }
+    const pct = Math.round(g.frac * 100);
+    const label = g.kind === 'medal'
+      ? this.kit.t('goal.medal').replace('{medal}', this.kit.t(`medal.${g.id}`)).replace('{n}', String(g.targetSec))
+      : this.kit.t('goal.best').replace('{n}', String(g.percent));
+    const key = `${label}|${pct}`;
+    if (key === this.lastGoalKey) return;
+    this.lastGoalKey = key;
+    this.goalText.setText(label).setVisible(true);
+    const landscape = this.frame.mode === 'landscape';
+    const bw = landscape ? 380 : 220;
+    const bh = landscape ? 14 : 6;
+    const by = this.anchors.goal.y + (landscape ? 52 : 38);
+    const color = g.kind === 'medal' ? (MEDALS.find((m) => m.id === g.id)?.color ?? this.kit.theme.accent) : this.kit.theme.accent;
+    this.goalBar.clear();
+    this.goalBar.fillStyle(0x3a2f66, 0.85).fillRoundedRect(this.anchors.goal.x, by, bw, bh, bh / 2);
+    if (g.frac > 0) this.goalBar.fillStyle(color, 1).fillRoundedRect(this.anchors.goal.x, by, Math.max(bh, bw * g.frac), bh, bh / 2);
+  }
+
   private updateHud(dt: number): void {
     this.dispScore += (this.score - this.dispScore) * Math.min(1, dt * 12);
     if (this.score - this.dispScore < 0.5) this.dispScore = this.score;
@@ -1329,6 +1366,7 @@ export class PlayScene extends Phaser.Scene {
         this.missionsText.setText(txt);
       }
     }
+    this.updateGoal();
     this.comboBar.clear();
     if (c > 0) {
       const frac = Math.max(0, 1 - this.combo.sinceLast / this.combo.timeout);

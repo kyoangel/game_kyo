@@ -16,14 +16,14 @@ describe('hudAnchors', () => {
     const a = hudAnchors(f);
     const fieldL = f.fieldX;
     const fieldR = f.fieldX + f.dispW;
-    for (const [name, p] of Object.entries({ score: a.score, combo: a.combo, timer: a.timer, shields: a.shields, best: a.best, mute: a.mute, missions: a.missions })) {
+    for (const [name, p] of Object.entries({ score: a.score, combo: a.combo, timer: a.timer, shields: a.shields, goal: a.goal, mute: a.mute, missions: a.missions })) {
       expect(p.x <= fieldL || p.x >= fieldR, `${name} x=${p.x}`).toBe(true);
     }
   });
-  it('left panel holds score/combo/best, right panel holds timer/shields/missions/mute', () => {
+  it('left panel holds score/combo/goal, right panel holds timer/shields/missions/mute', () => {
     const f = frameFor('landscape');
     const a = hudAnchors(f);
-    for (const p of [a.score, a.combo, a.best]) expect(p.x).toBeLessThan(f.fieldX);
+    for (const p of [a.score, a.combo, a.goal]) expect(p.x).toBeLessThan(f.fieldX);
     for (const p of [a.timer, a.shields, a.missions, a.mute]) expect(p.x).toBeGreaterThan(f.fieldX + f.dispW);
   });
   it('panel text stays legible at 800x450 (>= 14 css px, target 20+)', () => {

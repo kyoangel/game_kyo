@@ -378,3 +378,17 @@ test('dodge-drop: skipOnboarding fixture suppresses the tutorial', async ({ page
   await startRun(page);
   expect((await tut(page)).visible).toBe(false);
 });
+
+test('goal bar shows the next medal and fills as the run proceeds', async ({ page }) => {
+  await page.goto('/dodge-drop/?layout=portrait');
+  await startRun(page);
+  type G = { text: string; frac: number; id: string };
+  const dd = (page: Page) => page.evaluate(() => (window as unknown as { __dd: { goal(): G } }).__dd.goal());
+  const g0 = await dd(page);
+  expect(g0.id).toBe('bronze');
+  expect(g0.text).toMatch(/Bronze/);
+  await page.evaluate(() => { const d = (window as unknown as { __dd: { god: boolean; warp(s: number): void } }).__dd; d.god = true; d.warp(15); });
+  await expect.poll(async () => (await dd(page)).frac).toBeGreaterThan(0.4);
+  await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(20));
+  await expect.poll(async () => (await dd(page)).id).toBe('silver');
+});

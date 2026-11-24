@@ -67,6 +67,11 @@ test('landscape: HUD text is in side panels and every text is legible (>= 14 css
     // readable HUD (score, timer, combo, best, missions, shields) must be in a panel; only large cues may be in the field
     if (!h.inField) expect(insideField, `${h.name} must be in a side panel`).toBe(false);
   }
+  const goal = hud.find((h) => h.name === 'goal');
+  expect(goal, 'goal bar text is in the HUD report').toBeTruthy();
+  expect(goal!.inField, 'goal bar lives in the left side panel').toBe(false);
+  expect(goal!.x).toBeLessThan(frame.fieldX);
+  expect(goal!.fontPx * scale, 'goal font in CSS px').toBeGreaterThanOrEqual(14);
   const tutorialRow = hud.find((h) => h.name === 'tutorial');
   expect(tutorialRow, 'first-run tutorial is visible in landscape').toBeTruthy();
   expect(tutorialRow!.fontPx * scale, 'tutorial caption font in CSS px').toBeGreaterThanOrEqual(14);
