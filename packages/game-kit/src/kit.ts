@@ -51,6 +51,15 @@ export class Kit {
     this.theme = resolveTheme(def.theme);
   }
 
+  /** Game-specific frame descriptor (opaque to the kit), set by defineGame via def.onFrame. */
+  setFrame(f: unknown): void {
+    this.game.registry.set('gk:frame', f);
+  }
+
+  frame<T = unknown>(): T | undefined {
+    return this.game.registry.get('gk:frame') as T | undefined;
+  }
+
   t(key: string): string {
     return this.translate(key);
   }

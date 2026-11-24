@@ -13,6 +13,7 @@ import { GameOverScene } from './scenes/GameOverScene.ts';
 import { PreloadScene } from './scenes/PreloadScene.ts';
 import { TitleScene } from './scenes/TitleScene.ts';
 import { GameSession } from './session.ts';
+import { resolveCanvasSize, type CanvasSizeProvider } from './frameProvider.ts';
 
 export interface GameDefinition {
   manifest: { slug: string; title: Record<string, string> };
@@ -30,6 +31,10 @@ export interface GameDefinition {
   /** Optional custom title content, drawn after the menu buttons. Use addButton so taps never start the game. */
   titleExtras?: (scene: Phaser.Scene, ctx: TitleExtrasContext) => void;
   results?: (scene: Phaser.Scene, ctx: ResultsContext) => void;
+  /** Optional viewport-driven canvas size; width/height stay the static fallback. */
+  canvasSize?: CanvasSizeProvider;
+  /** Optional game-specific frame descriptor for the viewport, stored in the registry as `gk:frame` (kit.frame()). */
+  onFrame?: (viewW: number, viewH: number) => unknown;
 }
 
 export function sceneList(def: GameDefinition): Array<new () => Phaser.Scene> {
@@ -56,17 +61,21 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
   // Letterbox bars (portrait game in a 16:9 portal iframe) show the game's own gradient instead of black.
   if (typeof document !== 'undefined') document.body.style.background = pageBackground(resolveTheme(def.theme));
 
+  const viewW = typeof window === 'undefined' ? 0 : window.innerWidth;
+  const viewH = typeof window === 'undefined' ? 0 : window.innerHeight;
+  const size = resolveCanvasSize(def.canvasSize, { width: def.width, height: def.height }, viewW, viewH);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: def.parent ?? 'game',
-    width: def.width,
-    height: def.height,
+    width: size.width,
+    height: size.height,
     backgroundColor: def.backgroundColor ?? '#111111',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: sceneList(def),
   });
   const kit = new Kit(game, session, platform, t, def, save, audio);
   game.registry.set(KIT_KEY, kit);
+  if (def.onFrame) kit.setFrame(def.onFrame(viewW, viewH));
 
   // Ads: freeze the loop and mute. Tab hidden: Phaser's built-in auto-pause handles it.
   session.onPauseChange((paused) => {
@@ -89,6 +98,7 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
       get state() { return session.state; },
       get best() { return session.best; },
       get lastScore() { return session.lastScore; },
+      get frame() { return kit.frame(); },
       get activeScenes() { return kit.activeScenes(); },
       get pausedScenes() { return kit.pausedScenes(); },
       endRound: (score = 0) => kit.gameOver(score),
