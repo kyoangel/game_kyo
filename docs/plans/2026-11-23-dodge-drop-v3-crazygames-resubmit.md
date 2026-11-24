@@ -9,7 +9,7 @@
 **Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, personal best, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. The personal-best cue reads `GameSession.best` (already persisted through the existing save mechanism).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** In progress (batches 1-2 done 2026-11-24: tasks 0.1, 0.2, 1.1, 1.3, 1.4, 1.5). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
+**Status:** In progress (batches 1-3 done 2026-11-24: Phase 0 and Phase 1 complete; next Phase 2). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
 
 ---
 
@@ -29,6 +29,18 @@
 - Task 1.5 `f1c00d1`: game-kit `ui/landscape.ts`, `ui/bounds.ts` (`__dd.bounds()`, `__dd.menuAt()`), `titleLayout.ts` landscape fields (signature kept `(width,height,menuCount)`), TitleScene/GameOverScene, `ResultsContext.cx/landscape`; dodge-drop `titleExtras.ts`, `boostBar.ts` vertical mode, `results.ts`, Shop panels 2-column grid. Deviations: landscape menu at 0.53h (0.5h put Shop under the centre tap); viewport spec extended with shop+results legs at 800x450 and 1920x1080.
 - Verification: typecheck ok; `npm test` 66 files / 529 passed (PROPERTY_SEEDS=100 too); `crazygames-viewport.spec.ts` 8/8 passed; `test:smoke` 11 passed / 7 failed, all 7 in `e2e/dodge-drop.spec.ts` due to 1280x720 default -> landscape; all 13 pass with `?layout=portrait` (Task 1.6 pins them).
 - Follow-ups noted: zh strings not checked in landscape; results overlay shows ~3% of paused HUD; shop level-0 descriptions read "within 0 px" / "0% more often" (pre-existing copy, worth fixing for quality); fullscreen button visible in local build - Task 1.6 confirms hidden on CrazyGames.
+
+### Batch 2 feedback fixes (2026-11-24, user-approved)
+- `71a5da4` shop cards preview NEXT level ("Next: ...", zh "下一級：...") instead of "0 px"/"0%" (`upgradeDesc.ts`, `strings.ts` `upNext`).
+- `c30e50f` zh-TW legs in `crazygames-viewport.spec.ts` (title, 3 shop tabs, play, results at 800x450 + 1920x1080); CJK copy shortened. `c977e54` (commander) shorter zh magnet/combo copy so no card wraps.
+- `ed9f5a8` landscape GameOver overlay alpha 1 (no ghosted Play HUD), with screenshot-variance e2e test.
+
+### Batch 3 (2026-11-24) - DONE
+- Task 1.6 `5135288`: debounced `window.resize` -> `Kit.onViewport`; deferred while playing/overlay, applied in `switchTo`/`retry`/`gameOver`(no revive). Existing specs pinned `?layout=portrait`; rwd adds desktop-1920/1280; `crazygames-viewport.spec.ts` added to `test:smoke`. Fullscreen on CrazyGames: `crazygames.ts:116 fullscreenButton:false`, click-probe tests in `portals.spec.ts` (+ positive control on local build).
+- Task 1.7 `a84c72b`: `MIN_TAP = 88` hit height in game-kit `ui/button.ts`; overlapping hit areas re-routed to nearest button centre (e2e covers Swap rows). Magnet test flake root cause: frame-rate-bound pull under heavy load; poll timeout 8 s -> 22 s (no retries). Caveat: portrait Swap rows (52 px pitch) only meet 44 css px via overlapping hit areas.
+- Task 1.8 `109d6b7`: orientation `any`; `publish:prep` payload `mobileOrientation: "BOTH"`.
+- Deviations: resize logic lives in `kit.ts` (`onViewport`/`applyView`/`applyPendingFrame`), not only `defineGame`; no `e2e/fixtures/urls.ts`; `__dd.tapTargets()` registered in `button.ts`; explicit staging instead of `git add -A`.
+- Verification: typecheck ok; `npm test` 66/530; `test:smoke` 34 passed; `test:rwd` 14 passed; `test:portals` 4 passed. Commander reviewed `button.ts`/`kit.ts` diffs inline and desktop screenshots.
 
 ## Requirements
 
