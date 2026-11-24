@@ -12,4 +12,9 @@ describe('layout', () => {
     expect(dragToDx(100)).toBe(150);
     expect(dragToDx(-40)).toBe(-60);
   });
+  it('dragToDx compensates for the camera zoom so on-screen follow ratio is constant', () => {
+    expect(dragToDx(100)).toBe(150);
+    expect(dragToDx(100, 0.5)).toBe(300);
+    expect(dragToDx(100, 0)).toBe(150); // guard against a zero zoom
+  });
 });

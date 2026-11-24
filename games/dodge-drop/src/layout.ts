@@ -9,6 +9,6 @@ export const STRIP_BOTTOM = FIELD.stripBottom;
 /** Relative drag sensitivity: 100 px of finger travel moves the player 150 px. */
 export const DRAG_GAIN = 1.5;
 
-export function dragToDx(fingerDx: number): number {
-  return fingerDx * DRAG_GAIN;
+export function dragToDx(fingerDx: number, zoom = 1): number {
+  return (fingerDx * DRAG_GAIN) / (zoom > 0 ? zoom : 1);
 }

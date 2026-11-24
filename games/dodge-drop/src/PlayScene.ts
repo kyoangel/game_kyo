@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
-import { emptyStats, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
+import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
 import { emptyWorkshop, magnetPulls, sanitizeWorkshop, shieldAfterPickup, shieldCapacity, shieldInterval, starInterval } from './workshop.ts';
@@ -18,6 +18,10 @@ import { skinTextureKey } from './skinArt.ts';
 import { playDeath, playNearMiss, startSkinTrail, type SkinTrail } from './skinFxRender.ts';
 import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
+import type { Frame } from './frame.ts';
+import { getFrame } from './frameAccess.ts';
+import { fieldFont, hudAnchors, MIN_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
+import { missionLabel } from './missionLabel.ts';
 import { tiltToVelocity } from './tilt.ts';
 import { TiltReader } from './tiltSensor.ts';
 import { nextToastSlot, rushBannerUntil } from './toastSlot.ts';
@@ -145,6 +149,13 @@ export class PlayScene extends Phaser.Scene {
   private dots: Phaser.GameObjects.Image[] = [];
   private dotSpeed: number[] = [];
 
+  private frame!: Frame;
+  private anchors!: HudAnchors;
+  /** Second camera for the side panels (landscape only). */
+  private uiCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private buildingHud = false;
+  private missionsText: Phaser.GameObjects.Text | null = null;
+  private lastMissionsShown = '';
   private scoreText!: Phaser.GameObjects.Text;
   private comboText!: Phaser.GameObjects.Text;
   private comboBar!: Phaser.GameObjects.Graphics;
@@ -177,6 +188,7 @@ export class PlayScene extends Phaser.Scene {
     this.fx = this.kit.fx(this);
     this.gin = this.kit.input(this, { joystick: false });
     const { theme } = this.kit;
+    this.setupCameras();
     ensureTextures(this, theme);
     ensurePlayTextures(this);
     addBackground(this);
@@ -256,6 +268,8 @@ export class PlayScene extends Phaser.Scene {
         giveShield: () => this.addShield(),
         /** Test hook: spawns a pickup at the top of the screen at column x. */
         spawnPickup: (kind: 'star' | 'shield', x: number) => this.spawnPickup(kind, x),
+        /** Test hook: HUD text objects with effective canvas position and font size. */
+        hud: () => this.hudReport(),
       } as { god: boolean };
     }
 
@@ -378,6 +392,62 @@ export class PlayScene extends Phaser.Scene {
     this.trail = startSkinTrail(this, this.player, this.skin);
   }
 
+  /** Landscape: zoomed field camera in the centre plus a UI camera over the whole canvas for the side panels. */
+  private setupCameras(): void {
+    this.frame = getFrame(this);
+    this.anchors = hudAnchors(this.frame);
+    this.uiCam = null;
+    this.buildingHud = false;
+    if (this.frame.mode !== 'landscape') return;
+    const f = this.frame;
+    const cam = this.cameras.main;
+    cam.setViewport(f.fieldX, 0, f.dispW, f.dispH);
+    cam.setZoom(f.zoom);
+    cam.centerOn(W / 2, H / 2);
+    const ui = this.cameras.add(0, 0, f.width, f.height);
+    this.uiCam = ui;
+    // Field objects are drawn by the main camera only; objects built while buildingHud is set only by the UI camera.
+    const route = (o: Phaser.GameObjects.GameObject): void => {
+      if (this.buildingHud) cam.ignore(o);
+      else ui.ignore(o);
+    };
+    this.events.on(Phaser.Scenes.Events.ADDED_TO_SCENE, route);
+    this.events.once('shutdown', () => this.events.off(Phaser.Scenes.Events.ADDED_TO_SCENE, route));
+  }
+
+  /** One text style helper: panel text is clamped up in landscape, in-field text via fieldFont. */
+  private textStyleFor(kind: 'panel' | 'field', size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
+    const landscape = this.frame.mode === 'landscape';
+    const px = kind === 'panel' ? (landscape ? Math.max(size, MIN_PANEL_FONT) : size) : fieldFont(this.frame, size);
+    return this.textStyle(px, color);
+  }
+
+  private hudReport(): { name: string; x: number; y: number; fontPx: number; inField: boolean }[] {
+    const f = this.frame;
+    const out: { name: string; x: number; y: number; fontPx: number; inField: boolean }[] = [];
+    const add = (name: string, t: Phaser.GameObjects.Text | null, inField: boolean): void => {
+      if (!t || !t.visible || t.alpha === 0) return;
+      const size = parseFloat(String(t.style.fontSize));
+      out.push({
+        name,
+        x: inField ? f.fieldX + t.x * f.zoom : t.x,
+        y: inField ? f.fieldY + t.y * f.zoom : t.y,
+        fontPx: inField ? size * f.zoom : size,
+        inField,
+      });
+    };
+    add('score', this.scoreText, false);
+    add('combo', this.comboText, false);
+    add('timer', this.timerText, false);
+    add('missions', this.missionsText, false);
+    add('hint', this.hint, true);
+    add('rush', this.rushBanner, true);
+    add('overdrive', this.odBanner, true);
+    add('grace', this.graceBanner, true);
+    add('chomp', this.chompBanner, true);
+    return out;
+  }
+
   private textStyle(size: number, color: number): Phaser.Types.GameObjects.Text.TextStyle {
     return {
       fontFamily: this.kit.theme.font,
@@ -405,45 +475,81 @@ export class PlayScene extends Phaser.Scene {
     g.fillCircle(W / 2, mid, 14);
   }
 
+  /** Runs fn with new objects routed to the UI camera (landscape side panels). */
+  private inPanel<T>(fn: () => T): T {
+    this.buildingHud = true;
+    try {
+      return fn();
+    } finally {
+      this.buildingHud = false;
+    }
+  }
+
+  private buildPanels(): void {
+    const f = this.frame;
+    const g = this.add.graphics().setDepth(-100);
+    const rightX = f.fieldX + f.dispW;
+    for (const [x0, w] of [[0, f.fieldX], [rightX, f.width - rightX]] as const) {
+      g.fillGradientStyle(0x1a1033, 0x1a1033, 0x0b0720, 0x0b0720, 1);
+      g.fillRect(x0, 0, w, f.height);
+    }
+    g.lineStyle(2, 0x9ee9ff, 0.25);
+    g.lineBetween(f.fieldX, 0, f.fieldX, f.height);
+    g.lineBetween(rightX, 0, rightX, f.height);
+  }
+
   private buildHud(): void {
     const { theme } = this.kit;
-    this.scoreText = this.add.text(24, 18, '0', this.textStyle(48, theme.text)).setDepth(100);
-    this.comboText = this.add.text(24, 76, '', this.textStyle(40, theme.accent)).setDepth(100).setVisible(false);
-    this.comboBar = this.add.graphics().setDepth(100);
-    // Top-center shield icon row (up to 7 icons, growing rightward clear of left score/back arrow & right timer).
-    this.shieldHudIcons = [];
-    for (let i = 0; i < 7; i++) {
-      this.shieldHudIcons.push(
-        this.add.image(220 + i * 30, 44, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
-      );
-    }
+    const a = this.anchors;
+    const landscape = this.frame.mode === 'landscape';
     this.buildStrip();
-    this.timerText = this.add.text(this.kit.fullscreenAvailable ? W - 176 : W - 100, 24, '0:00', this.textStyle(40, theme.text)).setOrigin(1, 0).setDepth(100);
-    this.kit.addMuteButton(this, W - 48, 48).setDepth(100);
-    this.kit.addFullscreenButton(this, W - 124, 48)?.setDepth(100);
+    if (landscape) this.inPanel(() => this.buildPanels());
+    const panelHud = (): void => {
+      this.scoreText = this.add.text(a.score.x, a.score.y, '0', this.textStyleFor('panel', 48, theme.text)).setOrigin(a.score.originX ?? 0, 0).setDepth(100);
+      this.comboText = this.add.text(a.combo.x, a.combo.y, '', this.textStyleFor('panel', 40, theme.accent)).setDepth(100).setVisible(false);
+      this.comboBar = this.add.graphics().setDepth(100);
+      // Shield icon row (up to 7 icons, growing rightward).
+      this.shieldHudIcons = [];
+      for (let i = 0; i < 7; i++) {
+        this.shieldHudIcons.push(
+          this.add.image(a.shields.x + i * 30, a.shields.y, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
+        );
+      }
+      const timerX = landscape || !this.kit.fullscreenAvailable ? a.timer.x : this.frame.width - 176;
+      this.timerText = this.add.text(timerX, a.timer.y, '0:00', this.textStyleFor('panel', 40, theme.text)).setOrigin(1, 0).setDepth(100);
+      this.kit.addMuteButton(this, a.mute.x, a.mute.y).setDepth(100);
+      this.kit.addFullscreenButton(this, a.mute.x - 76, a.mute.y)?.setDepth(100);
+      if (landscape) {
+        this.missionsText = this.add
+          .text(a.missions.x, a.missions.y, '', { ...this.textStyleFor('panel', 40, theme.muted), wordWrap: { width: this.frame.fieldX - 64 } })
+          .setDepth(100);
+      }
+    };
+    if (landscape) this.inPanel(panelHud);
+    else panelHud();
     this.hint = this.add
-      .text(W / 2, 800, this.kit.t('dragHint'), this.textStyle(36, theme.muted))
+      .text(W / 2, 800, this.kit.t('dragHint'), this.textStyleFor('field', 36, theme.muted))
       .setOrigin(0.5)
       .setDepth(100);
     this.hintDone = false;
     this.toastObjs = new Set();
     this.rushBanner = this.add
-      .text(W / 2, BANNER_Y, this.kit.t('rush'), { ...this.textStyle(110, 0xffa14d), strokeThickness: 10 })
+      .text(W / 2, BANNER_Y, this.kit.t('rush'), { ...this.textStyleFor('field', 110, 0xffa14d), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
     this.odBanner = this.add
-      .text(W / 2, BANNER_Y, this.kit.t('overdrive'), { ...this.textStyle(96, 0xffa14d), strokeThickness: 10 })
+      .text(W / 2, BANNER_Y, this.kit.t('overdrive'), { ...this.textStyleFor('field', 96, 0xffa14d), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
     this.graceBanner = this.add
-      .text(W / 2, BANNER_Y, '', { ...this.textStyle(84, theme.accent), strokeThickness: 10 })
+      .text(W / 2, BANNER_Y, '', { ...this.textStyleFor('field', 84, theme.accent), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
     this.chompBanner = this.add
-      .text(W / 2, CHOMP_BANNER_Y, this.kit.t('chompBanner'), { ...this.textStyle(82, 0x3ff0ff), strokeThickness: 10 })
+      .text(W / 2, CHOMP_BANNER_Y, this.kit.t('chompBanner'), { ...this.textStyleFor('field', 82, 0x3ff0ff), strokeThickness: 10 })
       .setOrigin(0.5)
       .setDepth(100)
       .setVisible(false);
@@ -454,7 +560,7 @@ export class PlayScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     const raw = Math.min(deltaMs, 50) / 1000;
     const dt = raw * this.time.timeScale;
-    const drag = dragToDx(this.gin.dragDx());
+    const drag = dragToDx(this.gin.dragDx(), this.frame.zoom);
     if (this.fx.frozen || !this.ready) return;
     this.updateHint(drag);
 
@@ -926,7 +1032,7 @@ export class PlayScene extends Phaser.Scene {
       this.score += 10;
       this.kit.audio.sfx('pickup');
       this.fx.burst(p.x, p.y, { color: 0xffe14d, count: 16, speed: 300, lifespanMs: 450 });
-      this.fx.popText(p.x, p.y - 20, '+10', { color: 0xffe14d, size: 30 });
+      this.fx.popText(p.x, p.y - 20, '+10', { color: 0xffe14d, size: fieldFont(this.frame, 30) });
     } else {
       this.addShield();
       this.kit.audio.sfx('shield');
@@ -950,7 +1056,7 @@ export class PlayScene extends Phaser.Scene {
     // Two blocks passing on both sides in the same row must not stack two pops on top of each other.
     if (this.t - this.lastNearPopT >= 0.2) {
       this.lastNearPopT = this.t;
-      this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: 34 });
+      this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: fieldFont(this.frame, 34) });
     }
     this.kit.audio.sfx('nearMiss', { step: this.combo.count });
     playNearMiss(this, this.fx, this.skin, this.player.x, PLAYER_Y, side, this.skinColor());
@@ -963,7 +1069,7 @@ export class PlayScene extends Phaser.Scene {
     this.kit.audio.sfx('pickup');
     this.fx.burst(b.x, b.y, { color: 0x3b7bff, count: 18, speed: 420, lifespanMs: 420 });
     this.fx.burst(b.x, b.y, { color: 0xffe14d, count: 12, speed: 360, lifespanMs: 380 });
-    this.fx.popText(b.x, b.y - 20, `+${CHOMP_BLOCK_SCORE}`, { color: 0xffe14d, size: 34 });
+    this.fx.popText(b.x, b.y - 20, `+${CHOMP_BLOCK_SCORE}`, { color: 0xffe14d, size: fieldFont(this.frame, 34) });
     this.fx.shake(0.2);
   }
 
@@ -1037,7 +1143,7 @@ export class PlayScene extends Phaser.Scene {
     g.fillCircle(-126, 0, 24);
     g.fillStyle(0xffffff, 0.5);
     g.fillCircle(-133, -7, 8);
-    const label = this.add.text(-84, 0, this.kit.t(`medal.${id}`), this.textStyle(36, m.color)).setOrigin(0, 0.5);
+    const label = this.add.text(-84, 0, this.kit.t(`medal.${id}`), this.textStyleFor('field', 36, m.color)).setOrigin(0, 0.5);
     this.trackToast(c);
     c.add([g, label]);
     this.tweens.add({ targets: c, y: 170, duration: 250, ease: 'Back.easeOut' });
@@ -1066,7 +1172,7 @@ export class PlayScene extends Phaser.Scene {
     g.fillRoundedRect(-200, -38, 400, 76, 38);
     g.lineStyle(4, accent, 1);
     g.strokeRoundedRect(-200, -38, 400, 76, 38);
-    const label = this.add.text(0, 0, this.kit.t('missionComplete'), this.textStyle(34, accent)).setOrigin(0.5);
+    const label = this.add.text(0, 0, this.kit.t('missionComplete'), this.textStyleFor('field', 34, accent)).setOrigin(0.5);
     this.trackToast(c);
     c.add([g, label]);
     this.kit.audio.sfx('medal');
@@ -1159,13 +1265,24 @@ export class PlayScene extends Phaser.Scene {
       this.comboText.setVisible(c > 0).setText(`×${mult}`);
       if (c > 0) this.tweens.add({ targets: this.comboText, scale: { from: 1.4, to: 1 }, duration: 160 });
     }
+    if (this.missionsText) {
+      const lines = this.missionState.active.map((m) => missionLabel(this.kit.t(`mission.${m.id}`), m, liveProgress(m, this.stats)));
+      const txt = lines.join('\n');
+      if (txt !== this.lastMissionsShown) {
+        this.lastMissionsShown = txt;
+        this.missionsText.setText(txt);
+      }
+    }
     this.comboBar.clear();
     if (c > 0) {
       const frac = Math.max(0, 1 - this.combo.sinceLast / this.combo.timeout);
       this.comboBar.fillStyle(0x1a1033, 0.6);
-      this.comboBar.fillRoundedRect(24, 140, 170, 12, 6);
+      const bx = this.anchors.combo.x;
+      const by = this.anchors.combo.y + 64;
+      const bw = this.frame.mode === 'landscape' ? 300 : 170;
+      this.comboBar.fillRoundedRect(bx, by, bw, 12, 6);
       this.comboBar.fillStyle(this.kit.theme.accent, 1);
-      this.comboBar.fillRoundedRect(24, 140, 170 * frac, 12, 6);
+      this.comboBar.fillRoundedRect(bx, by, bw * frac, 12, 6);
     }
   }
 }
