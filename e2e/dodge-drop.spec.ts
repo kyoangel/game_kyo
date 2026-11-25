@@ -369,6 +369,9 @@ test('dodge-drop: tutorial times out by itself when the player does nothing', as
   await startRun(page);
   await page.evaluate(() => { (window as unknown as { __dd: { god: boolean } }).__dd.god = true; });
   expect((await tut(page)).visible).toBe(true);
+  // The tutorial clock is game time (dt capped at 50 ms/frame), which crawls on CI's software GL; jump it past
+  // TUTORIAL_SECONDS instead of waiting on wall-clock time.
+  await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(7));
   await expect.poll(async () => (await tut(page)).visible, { timeout: 12000 }).toBe(false);
 });
 

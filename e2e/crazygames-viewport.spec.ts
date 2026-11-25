@@ -245,12 +245,14 @@ test('landscape journey: start, play, die, results, retry', async ({ page }) => 
   await page.evaluate(() => void (window as unknown as { __gk: { endRound(n: number): Promise<void> } }).__gk.endRound(5));
   await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('GKGameOver'));
   await page.waitForFunction(() => (window as unknown as { __dd?: DDBounds }).__dd?.results !== undefined);
-  await page.waitForTimeout(900);
-  await page.keyboard.press('Space');
-  await page.waitForFunction(() => {
-    const a = (window as unknown as { __gk: GK }).__gk.activeScenes;
-    return a.includes('Play') && !a.includes('GKGameOver');
-  });
+  // Retry keys attach after GUARD_MS on the scene clock, which runs slow on CI's software GL: keep pressing until it takes.
+  await expect.poll(async () => {
+    await page.keyboard.press('Space');
+    return page.evaluate(() => {
+      const a = (window as unknown as { __gk: GK }).__gk.activeScenes;
+      return a.includes('Play') && !a.includes('GKGameOver');
+    });
+  }, { timeout: 20000, intervals: [500] }).toBe(true);
   expect(await page.evaluate(() => (window as unknown as { __gk: GK }).__gk.frame?.mode)).toBe('landscape');
 });
 
