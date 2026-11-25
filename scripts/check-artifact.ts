@@ -6,6 +6,13 @@ export type PortalPlatform = 'crazygames' | 'gamedistribution';
 
 export const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
 
+/** Art + audio under `assets/` (the Vite bundle is JS/CSS and is covered by the total cap, not this budget). */
+export const ASSET_BUDGET_BYTES = 8 * 1024 * 1024;
+
+const MEDIA_EXT = new Set(['.mp3', '.ogg', '.wav', '.m4a', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.woff', '.woff2', '.ttf']);
+
+const mb = (bytes: number): string => (bytes / 1024 / 1024).toFixed(2);
+
 export const SDK_HOSTS: Record<PortalPlatform, string> = {
   crazygames: 'sdk.crazygames.com',
   gamedistribution: 'html5.api.gamedistribution.com',
@@ -82,8 +89,12 @@ export function checkArtifact(dir: string, platform: PortalPlatform): string[] {
 
   const total = files.reduce((sum, f) => sum + f.size, 0);
   if (total > MAX_ARTIFACT_BYTES) {
-    errors.push(`total size ${(total / 1024 / 1024).toFixed(2)} MB exceeds the 10 MB limit`);
+    errors.push(`total size ${mb(total)} MB exceeds the 10 MB limit`);
   }
+  const media = files
+    .filter((f) => f.rel.startsWith('assets/') && MEDIA_EXT.has(extname(f.rel).toLowerCase()))
+    .reduce((sum, f) => sum + f.size, 0);
+  if (media > ASSET_BUDGET_BYTES) errors.push(`assets exceed 8 MB budget (${mb(media)} MB of art/audio under assets/)`);
   if (!files.some((f) => f.rel === 'index.html')) errors.push('index.html missing at the artifact root');
 
   const allowed = new Set<string>([SDK_HOSTS[platform]]);

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkArtifact, INERT_URL_PREFIXES, MAX_ARTIFACT_BYTES, SDK_HOSTS } from './check-artifact.ts';
+import { ASSET_BUDGET_BYTES, checkArtifact, INERT_URL_PREFIXES, MAX_ARTIFACT_BYTES, SDK_HOSTS } from './check-artifact.ts';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -124,5 +124,48 @@ describe('checkArtifact', () => {
   it('does not scan binary files for URLs', () => {
     const dir = fixture({ 'index.html': INDEX, 'assets/a.png': Buffer.from('http://binary.evil.test/x') });
     expect(checkArtifact(dir, 'crazygames')).toEqual([]);
+  });
+
+  describe('asset budget (art + audio under assets/)', () => {
+    const MB = 1024 * 1024;
+
+    it('budget is 8 MB and sits below the total cap', () => {
+      expect(ASSET_BUDGET_BYTES).toBe(8 * MB);
+      expect(ASSET_BUDGET_BYTES).toBeLessThan(MAX_ARTIFACT_BYTES);
+    });
+    it('passes 7 MB of audio next to the page (under both caps)', () => {
+      const dir = fixture({ 'index.html': INDEX, 'assets/audio/big.mp3': Buffer.alloc(7 * MB) });
+      expect(checkArtifact(dir, 'crazygames')).toEqual([]);
+    });
+    it('passes media of exactly 8 MB', () => {
+      const dir = fixture({ 'index.html': INDEX, 'assets/audio/a.mp3': Buffer.alloc(8 * MB) });
+      expect(checkArtifact(dir, 'crazygames')).toEqual([]);
+    });
+    it('fails when media under assets/ exceed 8 MB even though the total is under 10 MB', () => {
+      const dir = fixture({
+        'index.html': INDEX,
+        'assets/audio/a.mp3': Buffer.alloc(5 * MB),
+        'assets/art/b.png': Buffer.alloc(3 * MB + 1),
+      });
+      const errors = checkArtifact(dir, 'crazygames');
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/assets exceed 8 MB budget/);
+    });
+    it('does not count the JS bundle or media outside assets/ toward the asset budget', () => {
+      const dir = fixture({
+        'index.html': INDEX,
+        'assets/main.js': 'x'.repeat(4 * MB),
+        'assets/audio/a.mp3': Buffer.alloc(4 * MB),
+        'cover.png': Buffer.alloc(1 * MB),
+      });
+      expect(checkArtifact(dir, 'crazygames')).toEqual([]);
+    });
+    it('the manifest with source URLs must stay out of the artifact (URL rule rejects it)', () => {
+      const dir = fixture({
+        'index.html': INDEX,
+        'assets/manifest.json': '{"assets":[{"sourceUrl":"https://kenney.nl/assets/ui-pack"}]}',
+      });
+      expect(checkArtifact(dir, 'crazygames').join('\n')).toMatch(/kenney\.nl/);
+    });
   });
 });
