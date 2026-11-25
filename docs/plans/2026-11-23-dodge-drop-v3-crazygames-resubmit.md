@@ -9,7 +9,7 @@
 **Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, goal bar, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. A first-run tutorial model (`onboarding.ts`, persisted through the existing `SaveData` key-value store) and a goal-bar model (`goalBar.ts`, built on the existing `MEDALS` tiers and optionally `GameSession.best`) drive a visual control tutorial inside gameplay and a next-medal progress bar in the HUD (left panel in landscape).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** In progress (Phase 0-2 done 2026-11-25; Task 3.1 done; user picked assets A/A/A 2026-11-25, executing 3.2+ for the user's asset pick from `docs/specs/dodge-drop/v3-asset-shortlist.md`). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed; 2026-11-24 PB cue replaced by onboarding + goal bar). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
+**Status:** In progress (Phase 0-2 done 2026-11-25; Task 3.1 done; 3.2-3.8 done 2026-11-25; NEXT 3.9 needs the user's listening check for the user's asset pick from `docs/specs/dodge-drop/v3-asset-shortlist.md`). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed; 2026-11-24 PB cue replaced by onboarding + goal bar). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
 
 ---
 
@@ -57,6 +57,16 @@
 - Commander fix (red-green inline): checker ignores dotfiles (`.DS_Store`) - new test failed first, then passed.
 - Verification: `check-assets.test.ts` 10/10; `node scripts/check-assets.ts` -> `assets ok`; `npm test` 69/555; `test:smoke` 39.
 - NEXT: Tasks 3.2/3.3 need the user's pick from `docs/specs/dodge-drop/v3-asset-shortlist.md` (recommended: Kenney Simple Space + Particle Pack + UI Pack Sci-Fi; Pro Sensory synthwave x3 on OGA; Kenney Digital/Interface/Sci-fi audio). Do not start them without that pick.
+
+### Batch 6 - Tasks 3.2-3.8 (2026-11-25) - DONE
+- Kenney zips (6) downloaded via the user's own Chrome (approved; scripted download endpoint refused automated clients). Pages + in-zip License.txt say CC0; UI page delivers `kenney_ui-pack-space-expansion.zip` whose License.txt is "UI Pack: Sci-fi (2.0)".
+- 3.2 `242f9ae` art (10 PNGs) + logo rendered from Orbitron (SIL OFL 1.1, font not shipped). Commander fixes: `6043b61` lossless PNG export (palette quantisation banded the glows) + 1024 px logo; `2e187e2` panel art uses abstract particle emblems (ship/station icons removed: franchise-lookalike risk).
+- 3.3 `849a357` audio: 4 music loops (Pro Sensory, OGA, CC0, optional credit recorded) + 9 Kenney SFX.
+- 3.4 `9a6df6d` `art.ts` preload + override (only `dd-ring` mapped; star/shield sprites read worse, kept procedural). 3.5 `17fa520` parallax (alpha 0.14), panel art, `GameDefinition.titleLogo` (en only; zh-TW keeps text title). `dd-panel`/`dd-button*`/star/shield PNGs shipped but unused (candidate cleanup).
+- 3.6 `f79d82d` `samples.ts` (`computeLoopPoints` trims mp3 padding), sample music/SFX with synth fallback, PreloadScene awaits samples (4 s cap). Commander `perf` commit: loop points cached per buffer.
+- 3.7 `4f7ac39` `audioManifest.ts` + per-track gains (music ~-14 LUFS target), `click` stays synth (7 ms sample too short), `e2e/audio.spec.ts` in smoke (track switches on rush/overdrive; no-audio fallback).
+- 3.8 `c916927` `ASSET_BUDGET_BYTES` 8 MB media budget (plan text contradicted itself; media-only interpretation).
+- Verification: `npm test` 72/603; smoke 44; rwd 14; portals 4; `check-assets` ok; crazygames build 4.75 MB (assets 3.1 MB), zip 3.49 MB.
 
 ## Requirements
 
