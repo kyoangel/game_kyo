@@ -89,8 +89,9 @@ items = [
 ]
 for p, size, x, y, col, a in items:
     panel.alpha_composite(tint(fit(load(p), (size, size)), col, a), (x, y))
-for n, size, x, y, col in (('station_C.png', 110, 145, 150, (90, 240, 255)), ('satellite_A.png', 100, 150, 450, (255, 120, 220)), ('ship_sidesC.png', 120, 140, 700, (185, 140, 255))):
-    panel.alpha_composite(tint(fit(load(SS / n), (size, size)), col, 0.5), (x, y))
+# abstract neon emblems only: no ships/stations (avoid iconography that reads as another franchise)
+for n, size, x, y, col in (('circle_04.png', 130, 135, 135, (90, 240, 255)), ('star_08.png', 140, 130, 430, (255, 120, 220)), ('twirl_02.png', 150, 125, 690, (185, 140, 255))):
+    panel.alpha_composite(tint(fit(load(PP / n), (size, size)), col, 0.5), (x, y))
 save(panel, 'panel-art.png', 48)
 
 # title logo: gradient lettering with neon glow (Orbitron Black, SIL OFL 1.1)
