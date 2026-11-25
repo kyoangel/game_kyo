@@ -63,6 +63,22 @@ export class SpawnScheduler {
     return out;
   }
 
+  /**
+   * Adds a one-off spawn (the anti-camping aimed block) if the field stays survivable with it.
+   * Accepted spawns count as committed, so later waves are validated against them. Not re-emitted by planUntil.
+   */
+  inject(sp: Scheduled): boolean {
+    const fromT = Math.max(0, sp.at - LOOKBACK);
+    const toT = sp.at + LOOKFORWARD;
+    const history = this.committed.filter((c) => c.at > fromT - 12);
+    const dead = firstDeadEnd([...history, ...this.buffer, sp], this.width, fromT, toT, {
+      speedMul: this.opts.speedMul ?? 1,
+    });
+    if (dead !== null) return false;
+    this.committed.push({ at: sp.at, x: sp.x, w: sp.w, h: sp.h, speedMul: sp.speedMul });
+    return true;
+  }
+
   private planOne(): void {
     let kind: WaveKind = this.fillerNext ? 'rain' : waveKindAt(this.planEnd);
     if (this.fillerNext) this.fillerNext = false;

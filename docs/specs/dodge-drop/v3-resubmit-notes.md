@@ -1,4 +1,4 @@
-# Neon Rush v3.3.0 - CrazyGames resubmission notes
+# Neon Rush v3.4.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -22,6 +22,9 @@ v3.3.0 - survival time is the only result (no score, no combo multiplier): the H
 show the time and best time, star coins = stars + 1 per 5 s survived. Near misses fill an 8-segment graze gauge; a full
 gauge turns the player into Chomp mode (4 s, +0.5 s per "Longer Chomp" level, which replaces "Steady Combo"). Score and
 combo missions replaced by "Chomp N times in one run" and "Eat N blocks in one run". Head-start points removed.
+
+v3.4.0 - no more wall camping: standing still for 3 s drops one block aimed at the player's spot (red warning chevron,
+only placed when a way through remains). The death flash covers the whole landscape screen, side panels included.
 Plan: `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`.
 
 ## What changed since v2.8.4 (paste into the portal notes)

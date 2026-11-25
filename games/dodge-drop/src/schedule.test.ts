@@ -85,4 +85,35 @@ describe('SpawnScheduler difficulty options', () => {
   it('assist + tier start together stay survivable (seeds 1..100)', async () => {
     expect(await badSeeds(SEEDS.slice(0, 100), { ...ASSIST, startT: 30 }, 110)).toEqual([]);
   }, 120_000);
+
+  it('inject refuses an aimed block that would leave no way through', () => {
+    const s = new SpawnScheduler(mulberry32(3), W);
+    s.planUntil(20);
+    const results = [65, 195, 325, 455, 585, 655].map((x) => s.inject({ at: 20, x, w: 130, h: 40, speedMul: 1 }));
+    expect(results.slice(0, 2)).toEqual([true, true]);
+    expect(results).toContain(false);
+  });
+
+  it('aimed blocks injected every 3 s keep every field survivable (seeds 1..40)', async () => {
+    const bad: number[] = [];
+    for (let seed = 1; seed <= 40; seed++) {
+      const rng = mulberry32(seed * 977);
+      const s = new SpawnScheduler(mulberry32(seed), W);
+      const all = [];
+      let accepted = 0;
+      for (let t = 4; t < 150; t += 3) {
+        all.push(...s.planUntil(t));
+        const sp = { at: t + 0.4, x: 65 + rng() * (W - 130), w: 130, h: 40, speedMul: 1 };
+        if (s.inject(sp)) {
+          all.push(sp);
+          accepted++;
+        }
+      }
+      all.push(...s.planUntil(160));
+      expect(accepted).toBeGreaterThan(20);
+      if (firstDeadEnd(all, W, 0, 160) !== null) bad.push(seed);
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    expect(bad).toEqual([]);
+  }, 300_000);
 });

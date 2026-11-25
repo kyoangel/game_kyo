@@ -473,3 +473,20 @@ test('dodge-drop: 8 near misses fill the graze gauge and trigger Chomp; the HUD 
   expect(names).not.toContain('score');
   expect(errors).toEqual([]);
 });
+
+test('dodge-drop: standing still for 3 s drops an aimed block on the player', async ({ page }) => {
+  const errors = watch(page);
+  await skipOnboarding(page);
+  await seed(page, {}, true);
+  await openTitle(page);
+  await startRun(page);
+  type S = { aimed: number; t: number };
+  type D = { stats(): S };
+  const stats = (): Promise<S> => page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats());
+  await page.waitForFunction(() => ((window as unknown as { __dd: D }).__dd.stats?.().t ?? 0) > 1);
+  expect((await stats()).aimed).toBe(0);
+  // The god player never moves: one aimed block after warm-up (2 s) + 3 s still.
+  await page.waitForFunction(() => (window as unknown as { __dd: D }).__dd.stats().aimed >= 1, undefined, { timeout: 15_000 });
+  expect((await stats()).t).toBeGreaterThan(4.5);
+  expect(errors).toEqual([]);
+});

@@ -3,6 +3,7 @@ import { addBackground, addButton, cssColor, ensureTextures, getKit, markButtonT
 import { CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { addParallax, type Parallax } from './backdrop.ts';
 import { artImage, artScale, styleArt, usedArtKeys } from './art.ts';
+import { CAMP_BLOCK_W, campBlockX, CampTracker } from './camp.ts';
 import { horizontalGap, isNearMiss } from './combo.ts';
 import { addGraze, GRAZE_FULL } from './graze.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
@@ -43,6 +44,8 @@ const KEY_ACCEL = 5000;
 const KEY_DECEL = 7000;
 const KEY_MAX = 640;
 const TELEGRAPH = 0.4;
+/** No aimed blocks during the first seconds of a run (the player is still getting their bearings). */
+const CAMP_WARMUP = 2;
 const BLOCK_POOL = 48;
 const CHEV_POOL = 48;
 const PICKUP_POOL = 8;
@@ -59,6 +62,8 @@ interface Pending {
   h: number;
   speedMul: number;
   rush: boolean;
+  /** Anti-camping block aimed at a player who stood still; its warning chevron is red. */
+  aimed?: boolean;
   chev: Chev | null;
 }
 interface Chev {
@@ -111,6 +116,8 @@ export class PlayScene extends Phaser.Scene {
   private graze = 0;
   /** Length of the current Chomp, for the draining gauge. */
   private chompTotal = 0;
+  private camp = new CampTracker();
+  private aimedTotal = 0;
   private earned: MedalId[] = [];
 
   private skin: Skin = SKINS[0]!;
@@ -228,6 +235,8 @@ export class PlayScene extends Phaser.Scene {
     this.stars = 0;
     this.graze = 0;
     this.chompTotal = 0;
+    this.camp.reset();
+    this.aimedTotal = 0;
     this.earned = [];
     this.vel = 0;
     this.tiltN = 0;
@@ -285,6 +294,7 @@ export class PlayScene extends Phaser.Scene {
         stats: () => ({
           t: this.t,
           graze: this.graze,
+          aimed: this.aimedTotal,
           chomping: this.chompTimer > 0,
           nearMisses: this.stats.nearMisses,
           dead: this.dead,
@@ -645,6 +655,7 @@ export class PlayScene extends Phaser.Scene {
       const prev = this.t;
       this.t += dt;
       this.movePlayer(dt, drag);
+      this.updateCamp(dt);
       this.schedule();
       this.updateRush();
       this.updateOverdriveBanner();
@@ -822,6 +833,25 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  /** Anti-camping: standing still for CAMP_SECONDS drops one telegraphed block on the player's spot. */
+  private updateCamp(dt: number): void {
+    // Test hook: __dd.noCamp keeps stationary test players from drawing aimed blocks.
+    const noCamp = __GK_TEST_HOOKS__ && (window as unknown as { __dd?: { noCamp?: boolean } }).__dd?.noCamp === true;
+    if (noCamp || this.chompTimer > 0 || this.tutorialOn || this.t - this.runStartT < CAMP_WARMUP) {
+      this.camp.reset();
+      return;
+    }
+    if (!this.camp.update(this.player.x, dt)) return;
+    const at = this.t + TELEGRAPH;
+    const sp = { at, x: campBlockX(this.player.x, W), w: CAMP_BLOCK_W, h: BLOCK_H, speedMul: 1 };
+    if (!this.scheduler.inject(sp)) {
+      this.camp.retrySoon();
+      return;
+    }
+    this.aimedTotal++;
+    this.pending.push({ ...sp, rush: isRush(at) || at >= OVERDRIVE_T, aimed: true, chev: null });
+  }
+
   private acquireChev(p: Pending): void {
     const c = this.chevs.find((q) => !q.active);
     if (!c) return;
@@ -830,7 +860,7 @@ export class PlayScene extends Phaser.Scene {
     const key = warnTexture(this, p.w);
     c.img.setTexture(key).setPosition(p.x, WARN_H / 2 + 4).setVisible(true).setAlpha(1);
     c.img.setDisplaySize(p.w, WARN_H);
-    c.img.setTint(p.rush ? BLOCK_ORANGE : 0xffffff);
+    c.img.setTint(p.aimed ? this.kit.theme.danger : p.rush ? BLOCK_ORANGE : 0xffffff);
     p.chev = c;
   }
 
@@ -1303,7 +1333,8 @@ export class PlayScene extends Phaser.Scene {
       await this.fx.hitStop(80);
       if (id !== this.runId) return;
       this.fx.shake(0.8);
-      this.fx.flash(this.kit.theme.danger, 120);
+      // Landscape: built for the UI camera, which spans the whole canvas (side panels included), not just the field.
+      this.inPanel(() => this.fx.flash(this.kit.theme.danger, 120));
       playDeath(this, this.fx, this.skin, this.player.x, PLAYER_Y, col);
     }
     this.hintDone = true;
