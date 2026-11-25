@@ -100,6 +100,7 @@ for (const L of LOCALES) for (const s of [SIZES[0], SIZES[2]]) {
   test.describe(`locale ${L.locale}`, () => {
   test.use({ locale: L.locale });
   test(`title, shop, play HUD and results fit the landscape canvas and are legible at ${s.name} (${L.locale})`, async ({ page }) => {
+    test.slow(); // six full-canvas screenshots across four scenes: >30 s on CI's software GL
     await page.setViewportSize({ width: s.width, height: s.height });
     await page.goto(GAME);
     await ready(page);
