@@ -43,7 +43,7 @@ describe('nearGoal', () => {
 
 describe('settleRun', () => {
   it('first short run: floor loses to base', () => {
-    const s = settleRun(run({ score: 100, seconds: 15, stars: 3 }), saved(), rng);
+    const s = settleRun(run({ score: 100, seconds: 12, stars: 3 }), saved(), rng);
     expect(s.lossStreak).toBe(1);
     expect(s.coin.coins).toBe(7);
     expect(s.coin.floorApplied).toBe(false);

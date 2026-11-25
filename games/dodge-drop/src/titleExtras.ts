@@ -126,6 +126,10 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
           render();
         },
       });
+      // Long labels (e.g. "Silver start" on wide fallback fonts) step the font down so they stay inside the chip.
+      const label = btn.list[1] as Phaser.GameObjects.Text;
+      const maxW = (land ? 204 : 150) - 14;
+      for (let size = fs(21); label.width > maxW && size > 15; size--) label.setFontSize(size - 1);
       if (!on) btn.setAlpha(0.4);
       objs.push(btn);
       if (!on) objs.push(drawLock(scene, chipCx(i) + (land ? 86 : 62), chipCy(i) - (land ? 20 : 14)));

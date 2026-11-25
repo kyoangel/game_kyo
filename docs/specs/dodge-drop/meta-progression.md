@@ -91,7 +91,7 @@ Rules:
 - After earning a medal, the player may start runs at that medal's time: Bronze 0:30, Silver 1:00, Gold 1:30 (Neon is the top tier, not a start point).
 - The title screen shows a start selector under Play: chips `0:00 / Bronze / Silver / Gold`, only earned tiers enabled. The selection persists (save key `startTier`). **Default is 0:00 and it never changes by itself** (owner decision 2026-11-22: earning a medal only unlocks a chip; only the player selects it).
 - A tier start sets the game clock to T: difficulty, wave cycle, rush timing, and medal thresholds all use the clock, so the run plays exactly like the T-second mark of a normal run.
-- 2.0 s of grace at start: no blocks spawn, banner `Silver start` / `銀盃起跑`.
+- 2.0 s of grace at start: no blocks spawn, banner `Silver start` / `銀杯起跑`.
 - Score starts at a fixed, round head start: **Bronze 100, Silver 200, Gold 300** (owner decision 2026-11-22: non-round numbers like 342 made players wonder why). This is the casual track: tier starts and upgrades are allowed. The head start counts for `best` but not for coins (§2). `rushesBefore` counts only the 45 s and 90 s rushes (Overdrive replaces rushes from 120 s).
 - Future (not now): a separate **pure-skill leaderboard** — always from 0:00, no upgrades, no assist, no revive.
 - Shield timing restarts relative to the start (first shield at start + its usual delay). Medals below T are not re-awarded; missions with "survive N s" count seconds actually survived in this run, not the clock.

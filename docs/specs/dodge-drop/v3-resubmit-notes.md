@@ -1,4 +1,4 @@
-# Neon Rush v3.1.0 - CrazyGames resubmission notes
+# Neon Rush v3.2.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -15,6 +15,9 @@ v3.1.0 - in-run pause menu (pause button, Esc / P, auto-pause when the tab or ap
 (settles to the results, stars kept); title and results quick-buy boosts can be undone with a second tap for a full
 refund; web favicon and apple-touch-icon.
 
+v3.2.0 - faster medal pacing: Bronze at 15 s, Silver at 30 s, Gold at one minute (start tiers follow); start chips read
+"Bronze / Silver / Gold start"; zh-TW medal names unified as 銅杯 / 銀杯 / 金杯 / 霓虹杯 / 鑽石杯 / 傳奇杯.
+
 ## What changed since v2.8.4 (paste into the portal notes)
 
 Thank you for the feedback on v2.8.4. We treated "overall quality" as a call for a clearly better game, not a small
@@ -29,6 +32,7 @@ tweak, and rebuilt the parts a new player sees first:
 - First-run tutorial. A short on-screen demonstration (ghost finger on touch, arrow keys on desktop) shows how to move,
   then disappears on the first input and is never shown again once the controls have been used.
 - Next-medal goal bar. During every run a progress bar shows the next medal (Bronze, Silver, ...) and how close you are.
+  Medals come quickly at first (Bronze 15 s, Silver 30 s, Gold 1 min) so a new player earns one in the first run.
 - Bigger touch targets. Buttons and menu rows meet a minimum tap size on phones.
 - Pause menu. A pause button next to the sound icon (or Esc / P) freezes the run; leaving the tab or app pauses it
   automatically. Resume continues, End run goes straight to the results and keeps the stars collected.

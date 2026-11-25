@@ -1,7 +1,9 @@
 import { SURGE_EVERY, SURGE_LEN, SURGE_T } from './difficulty.ts';
 import { coinsForRun } from './economy.ts';
+import { medalSeconds } from './medals.ts';
 
-export const LOSS_SECONDS = 30;
+/** A run that ends before Bronze counts as a loss (coin floor, assist). */
+export const LOSS_SECONDS = medalSeconds('bronze');
 export const ASSIST_SPEED_MUL = 0.85;
 export const ASSIST_INTERVAL_MUL = 1.25;
 
@@ -57,9 +59,9 @@ export function updateAssist(
 export type StartTier = 'none' | 'bronze' | 'silver' | 'gold';
 export const START_TIERS: readonly { id: StartTier; seconds: number }[] = [
   { id: 'none', seconds: 0 },
-  { id: 'bronze', seconds: 30 },
-  { id: 'silver', seconds: 60 },
-  { id: 'gold', seconds: 90 },
+  { id: 'bronze', seconds: medalSeconds('bronze') },
+  { id: 'silver', seconds: medalSeconds('silver') },
+  { id: 'gold', seconds: medalSeconds('gold') },
 ];
 
 export function tierSeconds(t: StartTier): number {

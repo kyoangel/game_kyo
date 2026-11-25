@@ -14,9 +14,12 @@ describe('buildRunConfig', () => {
       nearMissWindow: 28, comboTimeout: 2.5, luckLevel: 0, rushIdx: 0,
     });
   });
-  it('silver start: clock 60, 2 s grace, head start 200, shield timing relative to start, rush index 1', () => {
+  it('silver start: clock 30, 2 s grace, head start 200, shield timing relative to start, no rush passed yet', () => {
     const c = buildRunConfig({ ...base, tier: 'silver', workshop: ws({ shield: 2 }) });
-    expect(c).toMatchObject({ startT: 60, grace: 2, headStart: 200, firstShieldAt: 60 + 19, rushIdx: 1 });
+    expect(c).toMatchObject({ startT: 30, grace: 2, headStart: 200, firstShieldAt: 30 + 19, rushIdx: 0 });
+  });
+  it('gold start: clock 60, past the 45 s rush', () => {
+    expect(buildRunConfig({ ...base, tier: 'gold' })).toMatchObject({ startT: 60, rushIdx: 1 });
   });
   it('workshop levels feed the getters; capacity comes from Shield Stack only', () => {
     const c = buildRunConfig({ ...base, workshop: ws({ shield: 5, magnet: 3, nearMiss: 4, combo: 2, luck: 1 }) });

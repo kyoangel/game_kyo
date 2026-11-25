@@ -152,8 +152,8 @@ test('dodge-drop: silver tier start sets the game clock', async ({ page }) => {
   await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
   await page.waitForFunction(() => (window as unknown as WD).__dd?.stats?.().startTier === 'silver');
   const s = await page.evaluate(() => (window as unknown as WD).__dd!.stats!());
-  expect(s.t).toBeGreaterThanOrEqual(60);
-  expect(s.t).toBeLessThan(63);
+  expect(s.t).toBeGreaterThanOrEqual(30);
+  expect(s.t).toBeLessThan(33);
   expect(s.score).toBeGreaterThanOrEqual(200);
   expect(errors).toEqual([]);
 });
@@ -257,8 +257,8 @@ test('dodge-drop: Overdrive streaks appear after warping past 120 s and the run 
   const { box } = await openTitle(page);
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForFunction(() => (window as unknown as W).__gk!.state === 'playing');
-  await page.waitForFunction(() => ((window as unknown as { __dd?: { stats?: () => { t: number } } }).__dd?.stats?.().t ?? 0) >= 89);
-  await page.evaluate(() => (window as unknown as { __dd: { warp: (s: number) => void } }).__dd.warp(60));
+  await page.waitForFunction(() => ((window as unknown as { __dd?: { stats?: () => { t: number } } }).__dd?.stats?.().t ?? 0) >= 59);
+  await page.evaluate(() => (window as unknown as { __dd: { warp: (s: number) => void } }).__dd.warp(90));
   await page.waitForFunction(() => ((window as unknown as { __dd: { stats: () => { streaks: number } } }).__dd.stats().streaks) > 0, undefined, { timeout: 10_000 });
   await page.waitForTimeout(1500);
   const s = await page.evaluate(() => (window as unknown as { __dd: { stats: () => { overdrive: number; streaks: number; layers: number } } }).__dd.stats());
@@ -390,9 +390,9 @@ test('goal bar shows the next medal and fills as the run proceeds', async ({ pag
   const g0 = await dd(page);
   expect(g0.id).toBe('bronze');
   expect(g0.text).toMatch(/Bronze/);
-  await page.evaluate(() => { const d = (window as unknown as { __dd: { god: boolean; warp(s: number): void } }).__dd; d.god = true; d.warp(15); });
+  await page.evaluate(() => { const d = (window as unknown as { __dd: { god: boolean; warp(s: number): void } }).__dd; d.god = true; d.warp(7); });
   await expect.poll(async () => (await dd(page)).frac).toBeGreaterThan(0.4);
-  await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(20));
+  await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(10));
   await expect.poll(async () => (await dd(page)).id).toBe('silver');
 });
 

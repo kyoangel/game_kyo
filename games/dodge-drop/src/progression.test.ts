@@ -5,10 +5,10 @@ import {
 } from './progression.ts';
 
 describe('loss streak', () => {
-  it('increments below 30 s, resets at 30 s or more', () => {
+  it('increments below Bronze (15 s), resets at 15 s or more', () => {
     expect(nextLossStreak(0, 12)).toBe(1);
-    expect(nextLossStreak(2, 29)).toBe(3);
-    expect(nextLossStreak(2, 30)).toBe(0);
+    expect(nextLossStreak(2, 14)).toBe(3);
+    expect(nextLossStreak(2, 15)).toBe(0);
     expect(nextLossStreak(5, 75)).toBe(0);
   });
 });
@@ -52,7 +52,7 @@ describe('assist state machine', () => {
     s = updateAssist(s, run(0, 3));
     expect(s.active).toBe(false);
   });
-  it('turns on after 3 consecutive runs under 30 s without Bronze', () => {
+  it('turns on after 3 consecutive runs under 15 s without Bronze', () => {
     let s: AssistState = DEFAULT_ASSIST;
     s = updateAssist(s, run(10, 12));
     s = updateAssist(s, run(10, 12));
@@ -86,9 +86,9 @@ describe('assist state machine', () => {
 });
 
 describe('start tiers', () => {
-  it('Bronze 0:30, Silver 1:00, Gold 1:30 (max start is Gold)', () => {
-    expect(START_TIERS.map((t) => [t.id, t.seconds])).toEqual([['none', 0], ['bronze', 30], ['silver', 60], ['gold', 90]]);
-    expect(tierSeconds('gold')).toBe(90);
+  it('Bronze 0:15, Silver 0:30, Gold 1:00 (max start is Gold), matching the medal times', () => {
+    expect(START_TIERS.map((t) => [t.id, t.seconds])).toEqual([['none', 0], ['bronze', 15], ['silver', 30], ['gold', 60]]);
+    expect(tierSeconds('gold')).toBe(60);
   });
   it('only earned medals are available; neon/diamond/legend are not start points', () => {
     expect(availableTiers([])).toEqual(['none']);
