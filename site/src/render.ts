@@ -63,7 +63,7 @@ const LOBBY_SCRIPT =
   "try{v=localStorage.getItem('gk:'+c.getAttribute('data-slug')+':best')}catch(e){}" +
   "if(v){var el=c.querySelector('.best');el.hidden=false;el.querySelector('b').textContent=v;}});";
 
-function shell(o: { title: string; description: string; canonical: string; root: string; body: string; script?: string; pageClass?: string }): string {
+function shell(o: { title: string; description: string; canonical: string; root: string; body: string; script?: string; pageClass?: string; icon?: string }): string {
   const cls = o.pageClass ? ` class="${o.pageClass}"` : '';
   return `<!doctype html>
 <html lang="en" data-lang="en"${cls}>
@@ -73,7 +73,7 @@ function shell(o: { title: string; description: string; canonical: string; root:
 <meta name="theme-color" content="#1c0f55">
 <link rel="manifest" href="${o.root}static/manifest.webmanifest">
 <link rel="apple-touch-icon" href="${o.root}static/icon-180.png">
-<meta name="mobile-web-app-capable" content="yes">
+${o.icon ? `<link rel="icon" type="image/svg+xml" href="${escapeHtml(o.icon)}">\n` : ''}<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>${escapeHtml(o.title)}</title>
@@ -130,7 +130,8 @@ ${legacy.map(legacyCard).join('\n')}
   });
 }
 
-export function renderGamePage(game: GameManifest, opts: RenderOptions): string {
+/** `assets.favicon`: file name of a favicon inside the game build (e.g. favicon.svg), used for the page's browser tab. */
+export function renderGamePage(game: GameManifest, opts: RenderOptions, assets: { favicon?: string } = {}): string {
   const body = `<header class="game-header"><a class="back" href="../" aria-label="${escapeHtml(UI.back!.en!)}">${bilingual(UI.back!)}</a><h1 class="sr-only">${bilingual(game.title)}</h1></header>
 <div class="frame ${game.orientation}"><iframe src="./game/index.html?v=${encodeURIComponent(game.version)}" title="${escapeHtml(game.title.en)}" allow="autoplay; fullscreen" allowfullscreen></iframe></div>
 <section class="about"><p>${bilingual(game.description)}</p><h2>${bilingual(UI.howTo!)}</h2><p>${bilingual(game.instructions)}</p></section>`;
@@ -141,5 +142,6 @@ export function renderGamePage(game: GameManifest, opts: RenderOptions): string 
     root: '../',
     body,
     pageClass: 'game-page',
+    icon: assets.favicon ? `./game/${assets.favicon}` : undefined,
   });
 }

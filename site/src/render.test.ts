@@ -68,6 +68,10 @@ describe('renderGamePage', () => {
     expect(html).toContain('<link rel="canonical" href="https://example.test/root/dodge-drop/">');
   });
   it('shows instructions', () => expect(html).toContain('Move left and right.'));
+  it('uses the game build favicon for the browser tab when the game ships one', () => {
+    expect(html).not.toContain('rel="icon"');
+    expect(renderGamePage(game(), opts, { favicon: 'favicon.svg' })).toContain('<link rel="icon" type="image/svg+xml" href="./game/favicon.svg">');
+  });
   it('honours ?lang= and reloads the game when the language switches', () => {
     expect(html).toContain("get('lang')");
     expect(html).toContain('contentWindow.location.reload()');
