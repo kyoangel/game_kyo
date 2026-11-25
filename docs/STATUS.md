@@ -19,9 +19,10 @@ https://kyoangel.github.io/game_kyo/dodge-drop/ （僅自家網站，使用者�
 CI 規則見 `docs/ci.md`（pre-push hook、PROPERTY_SEEDS、nightly、Pages 用 Actions 部署）。
 
 ## 下一步
-1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3 重送計畫執行中：
-   `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`。Phase 0-2（橫向版面、新手引導、目標條）與 3.1（素材授權檢查器）已上線；
-   卡在 3.2/3.3：等使用者從 `docs/specs/dodge-drop/v3-asset-shortlist.md` 挑 CC0 素材。
+1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3.0.0 已完成、已上自家網站（計畫
+   `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`）。等使用者：試聽音訊、看封面影片、
+   跑 CrazyGames Preview，再用 `/publish-crazygames dodge-drop` 送審（Submit 由使用者按）。清單在
+   `docs/specs/dodge-drop/v3-resubmit-notes.md`。
 2. Phase 2：局內三選一 perk（完全暫停）、區域突破；未來純技術排行榜。
 3. 舊的 loop-budget-efficiency worktree 仍未處理。
 

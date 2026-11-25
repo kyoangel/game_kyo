@@ -33,4 +33,25 @@ Gameplay rules, speeds and fairness are unchanged. The build is about 4.8 MB, lo
 
 ## Status
 
-Task 4.1 verification passed (all suites green). Resubmission checklist is added in Task 4.4.
+Task 4.1 verification passed (all suites green; independent haiku run, PROPERTY_SEEDS=300). Store videos re-recorded
+without the local-build fullscreen button; landscape field backdrop bug fixed (commit 190a78a). Nothing submitted.
+
+## Resubmission checklist (the user does each step; Claude stops before Submit)
+
+- [ ] Listening check: `games/dodge-drop/assets/README.md` "Listening checklist (Task 3.9)" on
+      https://kyoangel.github.io/game_kyo/dodge-drop/ (music seams, rush/overdrive switches, each SFX).
+- [ ] Look at the store media: `games/dodge-drop/store/*.png` and `dist/store/dodge-drop/*.mp4`
+      (re-create videos with `npm run store-video -- dodge-drop` if `dist/` was cleaned).
+- [ ] CrazyGames Preview tool (https://crazygames.com/preview): portrait and landscape, 800x450 and 1920x1080
+      iframe sizes, ad blocker on, mobile via QR.
+- [ ] Progress Save option ticked ("Yes, using the Data Module"), orientation BOTH.
+- [ ] Upload `dist/portals/crazygames/dodge-drop/` (or `dist/release/dodge-drop-crazygames-v3.0.0.zip`), assets/ path preserved.
+- [ ] Covers and videos attached; "What changed since v2.8.4" pasted into the submission notes.
+- [ ] Confirm whether the old listing/slug is reused and any cooldown (UNVERIFIED): developer portal or CrazyGames support.
+- [ ] Run `/publish-crazygames dodge-drop` (it fills the portal and stops before Submit); the USER clicks Submit.
+- [ ] After submit: `npm run mark-released -- dodge-drop crazygames submitted`; on the result
+      `npm run mark-released -- dodge-drop crazygames basic|full` or `rejected --reason "<text>"`.
+- [ ] Optional (gap analysis): 3-5 unseen players for 5 minutes each; record findings here.
+
+Known leftovers (not blocking): portrait goal label ~13.5 css px on a 375 px phone; unused shipped PNGs
+(`star.png`, `shield.png`, `ui-*.png`) and `sfx-click.mp3` (synth click is used) could be removed to trim ~100 KB.

@@ -9,7 +9,7 @@
 **Architecture:** A pure `frame` module chooses a logical canvas per viewport. Portrait stays 720x1280 exactly as today. Landscape is a 1440x810 canvas in which the FULL, unchanged 720x1280 play field (gameplay geometry, speeds, fairness untouched) is shown through a zoomed camera (zoom 0.633, about 456 canvas px wide, centred) and ALL readable HUD text (score, timer, combo, goal bar, missions, shields) lives in two ~492 px side panels drawn by a second camera; in-field text is limited to large, minimal cues. Art/audio are CC0 files under `games/dodge-drop/public/assets/`, loaded in the kit preload step, overriding the procedural textures/synth when present, with every file listed in a license manifest enforced by a vitest-run checker. A first-run tutorial model (`onboarding.ts`, persisted through the existing `SaveData` key-value store) and a goal-bar model (`goalBar.ts`, built on the existing `MEDALS` tiers and optionally `GameSession.best`) drive a visual control tutorial inside gameplay and a next-medal progress bar in the HUD (left panel in landscape).
 **Tech Stack:** Phaser 3.88, TypeScript, Vite, vitest (unit, `npm test`), Playwright (`npm run test:smoke`, `npm run test:rwd`), WebAudio, ffmpeg (already installed at `/opt/homebrew/bin/ffmpeg`).
 **Complexity Path:** `E2E path` (user-facing UI, multi-layer, external portal integration, persisted state)
-**Status:** In progress (Phase 0-2 done 2026-11-25; Task 3.1 done; 3.2-3.8 done 2026-11-25; NEXT 3.9 needs the user's listening check for the user's asset pick from `docs/specs/dodge-drop/v3-asset-shortlist.md`). Decisions applied 2026-11-24 (full portrait field in landscape, TDD exception approved, daily reward/streak removed; 2026-11-24 PB cue replaced by onboarding + goal bar). Execution mode: batches of 3, pause after each; Phase 3 asset packs are shortlisted for the user to pick.
+**Status:** Complete 2026-11-25 except user-only steps (listening check, CrazyGames Preview, Submit) - checklist in `docs/specs/dodge-drop/v3-resubmit-notes.md`. Decisions 1-6 applied (full portrait field in landscape; TDD exception; daily reward removed; PB cue replaced by onboarding + goal bar; assets A/A/A).
 
 ---
 
@@ -67,6 +67,13 @@
 - 3.7 `4f7ac39` `audioManifest.ts` + per-track gains (music ~-14 LUFS target), `click` stays synth (7 ms sample too short), `e2e/audio.spec.ts` in smoke (track switches on rush/overdrive; no-audio fallback).
 - 3.8 `c916927` `ASSET_BUDGET_BYTES` 8 MB media budget (plan text contradicted itself; media-only interpretation).
 - Verification: `npm test` 72/603; smoke 44; rwd 14; portals 4; `check-assets` ok; crazygames build 4.75 MB (assets 3.1 MB), zip 3.49 MB.
+
+### Batch 7 - Tasks 3.9-4.4 (2026-11-25) - DONE (user-only steps pending)
+- 3.9 `d1e941f` two-pass loudnorm (music -18, SFX -14 LUFS, all within 1 LU except unused click), per-track gains removed; listening checklist in `games/dodge-drop/assets/README.md` (USER pending).
+- 4.1 independent haiku verification: typecheck; `PROPERTY_SEEDS=300 npm test` 72/603; smoke 44; rwd 14; portals 4; build 4.8 MB; Fast-4G ~2.1 s to canvas, ~4.7 s network idle.
+- 4.2 `b791bd3` v3.0.0 + notes; Open Question 1 resolved: no reset needed (`publish-payload.ts:58` never blocks a `rejected` entry; rejection record kept).
+- 4.3 `0f3be84` per-orientation store recording (`store-video.ts` `recordingKinds`), onboarding seeded off; covers kept (existing SVG art). Commander: `190a78a` landscape field backdrop bug (bare below logic y 810, new e2e test red->green), `afd5fed` recordings hide the local-build fullscreen button.
+- 4.4: checklist + STATUS updated; STOP before Submit.
 
 ## Requirements
 
