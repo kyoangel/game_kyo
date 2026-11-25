@@ -8,7 +8,7 @@ export const CAMP_RADIUS = 40;
 /** When an aimed block was refused (it would make the field unsurvivable), try again this much later. */
 export const CAMP_RETRY = 0.5;
 /** Aimed block width: wide enough that a small sidestep does not clear it. */
-export const CAMP_BLOCK_W = 130;
+export const CAMP_BLOCK_W = 90;
 
 export class CampTracker {
   private anchor: number | null = null;

@@ -252,6 +252,27 @@ describe('sample playback', () => {
     expect(a.state.musicSample).toBe('music-normal');
     expect(f.created.sources).toHaveLength(3);
   });
+  it('setRate speeds the playing music loop up and carries over to the next loop', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3', 'music-rush': 'r.mp3' } });
+    a.unlock();
+    a.music.start();
+    a.music.setRate(1.15);
+    expect(f.created.sources[0]!.playbackRate.value).toBeCloseTo(1.15, 5);
+    a.music.setMode('rush');
+    expect(f.created.sources[1]!.playbackRate.value).toBeCloseTo(1.15, 5);
+    a.music.setRate(0.1);
+    expect(f.created.sources[1]!.playbackRate.value).toBeCloseTo(0.5, 5); // clamped to 0.5..2
+  });
+  it('two modes sharing one file keep the same loop playing (no restart) and report the new mode', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3', 'music-rush': 'fast.mp3', 'music-overdrive': 'fast.mp3' } });
+    a.unlock();
+    a.music.start();
+    a.music.setMode('rush');
+    expect(f.created.sources).toHaveLength(2);
+    a.music.setMode('overdrive');
+    expect(f.created.sources).toHaveLength(2);
+    expect(a.state.musicSample).toBe('music-overdrive');
+  });
   it('falls back to the synth sequencer for a mode without a sample', async () => {
     vi.useFakeTimers();
     const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' } });

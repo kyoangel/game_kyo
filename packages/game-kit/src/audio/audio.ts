@@ -28,6 +28,8 @@ export interface AudioState {
   musicSource: 'sample' | 'synth' | 'none';
   /** Name of the playing music sample (`music-<mode>`), or null. */
   musicSample: string | null;
+  /** Playback rate applied to the music loop (music.setRate). */
+  musicRate: number;
   /** Names of every sample decoded so far. */
   loaded: string[];
 }
@@ -39,6 +41,8 @@ export interface GameAudio {
     stop(): void;
     setLayers(n: 1 | 2 | 3 | 4): void;
     setMode(mode: MusicMode): void;
+    /** Playback rate of the sampled music loop (tempo and pitch together), clamped to 0.5..2; kept across loops. */
+    setRate(rate: number): void;
     nextTrack(): void;
     /** Jump to a random track other than the current one. */
     randomTrack(rng?: () => number): void;
@@ -95,6 +99,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
   const layerGains: GainNode[] = [];
   let layers = 1;
   let mode: MusicMode = 'normal';
+  let rate = 1;
   let trackIdx = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
   let nextTime = 0;
@@ -256,6 +261,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     }
     const src = ctx.createBufferSource();
     src.buffer = buf;
+    src.playbackRate.value = rate;
     src.loop = true;
     src.loopStart = loop.start;
     src.loopEnd = loop.end;
@@ -276,7 +282,9 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       const buf = bank?.get(name);
       if (buf) {
         stopTimer();
-        if (voice?.name !== name) startVoice(name, buf);
+        // Two modes can share one loop file: keep it playing and only relabel the voice.
+        if (voice && voice.name !== name && voice.src.buffer === buf) voice.name = name;
+        else if (voice?.name !== name) startVoice(name, buf);
       } else {
         stopVoice(MUSIC_FADE);
         startTimer();
@@ -320,6 +328,14 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       setLayers(n) {
         layers = n;
         applyLayerGains(false);
+      },
+      setRate(next) {
+        rate = Math.min(2, Math.max(0.5, next));
+        try {
+          if (voice) voice.src.playbackRate.value = rate;
+        } catch {
+          /* never throw from audio */
+        }
       },
       setMode(next) {
         if (next === mode) return;
@@ -406,6 +422,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       return {
         musicSource: voice ? 'sample' : timer !== null ? 'synth' : 'none',
         musicSample: voice?.name ?? null,
+        musicRate: rate,
         loaded: bank ? bank.names() : [],
       };
     },

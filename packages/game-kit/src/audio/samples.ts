@@ -19,10 +19,19 @@ export class SampleBank {
   async load(urls: Record<string, string>, onProgress?: (ratio: number) => void): Promise<void> {
     const names = Object.keys(urls);
     let done = 0;
+    // Names that share a url (one loop reused by two music modes) share one fetch and one decoded buffer.
+    const byUrl = new Map<string, Promise<AudioBuffer>>();
+    const decode = (url: string): Promise<AudioBuffer> => {
+      let p = byUrl.get(url);
+      if (!p) {
+        p = this.fetcher(url).then((data) => this.ctx.decodeAudioData(data));
+        byUrl.set(url, p);
+      }
+      return p;
+    };
     await Promise.all(names.map(async (name) => {
       try {
-        const data = await this.fetcher(urls[name]!);
-        this.buffers.set(name, await this.ctx.decodeAudioData(data));
+        this.buffers.set(name, await decode(urls[name]!));
       } catch {
         /* leave unloaded: caller falls back to synthesis */
       }

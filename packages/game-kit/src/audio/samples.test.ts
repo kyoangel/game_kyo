@@ -22,6 +22,15 @@ describe('SampleBank', () => {
     await bank.load({ pickup: 'x.mp3' });
     expect(bank.get('pickup')).toBeUndefined();
   });
+  it('names that share a url fetch and decode it once and share the buffer', async () => {
+    const seen: string[] = [];
+    const ctx = { decodeAudioData: async (d: ArrayBuffer) => ({ d }) } as unknown as AudioContext;
+    const bank = new SampleBank(ctx, async (url) => { seen.push(url); return new ArrayBuffer(4); });
+    await bank.load({ a: 'same.mp3', b: 'same.mp3', c: 'other.mp3' });
+    expect(seen.sort()).toEqual(['other.mp3', 'same.mp3']);
+    expect(bank.get('a')).toBeDefined();
+    expect(bank.get('a')).toBe(bank.get('b'));
+  });
   it('reports load progress 0..1', async () => {
     const seen: number[] = [];
     const bank = new SampleBank(ctx, okFetch);

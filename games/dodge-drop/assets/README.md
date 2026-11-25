@@ -38,6 +38,10 @@ Player skins and blocks stay procedural (shape-coded, tinted per skin; plan Task
 
 ## Music and SFX (Task 3.3, retrieved 2026-11-25)
 
+3.4.0: the 80 BPM `music-normal.mp3` was removed (owner: no sense of speed). `src/audioManifest.ts` maps
+normal -> music-rush.mp3 (120 BPM), rush and overdrive -> music-overdrive.mp3 (160 BPM); the loop also speeds up
+with the run clock (`src/musicTempo.ts`, x1.0 to x1.25).
+
 **Needs listening check (Task 3.9): nothing below was auditioned.** Choices were made from
 filenames, pack themes, duration and loudness stats only. Loudness normalisation (done, see below) is Task 3.9.
 
@@ -49,9 +53,8 @@ continuation after the cut onto the loop start, 112 kbps joint-stereo mp3. Note:
 
 | File | Source track (page) | Cut | Why |
 |---|---|---|---|
-| music-normal.mp3 (48 s) | Synth Wave (/content/synth-wave) | 24.4-72.4 s, 80 BPM | slowest track, steady mid-energy section before its breakdown |
-| music-rush.mp3 (48 s) | 80's Synth Wave (/content/80s-synth-wave) | 88.5-136.5 s, 120 BPM | faster tempo, high-energy middle |
-| music-overdrive.mp3 (48 s) | Space Synth Wave (/content/space-synth-wave) | 84.2-132.2 s, 160 BPM (double time of 80) | fastest pulse; this track is quieter overall, so it may need gain in 3.9 |
+| music-rush.mp3 (48 s, plays in normal mode since 3.4.0) | 80's Synth Wave (/content/80s-synth-wave) | 88.5-136.5 s, 120 BPM | faster tempo, high-energy middle |
+| music-overdrive.mp3 (48 s, rush and overdrive since 3.4.0) | Space Synth Wave (/content/space-synth-wave) | 84.2-132.2 s, 160 BPM (double time of 80) | fastest pulse; this track is quieter overall, so it may need gain in 3.9 |
 | music-chomp.mp3 (32 s) | 80's Synth Wave | 160.5-192.5 s, 120 BPM | loudest section, different from rush; fit for chomp is a guess |
 
 SFX (Kenney, mono 128 kbps, leading silence trimmed), file to `SfxName`:
@@ -82,7 +85,6 @@ Nothing here has been auditioned by a human yet. Run `npm run dev` in `games/dod
 https://kyoangel.github.io/game_kyo/dodge-drop/ after deploy, and use headphones and speakers once each.
 
 Music (listen to at least two full loops of each; the seam is at 48 s / 32 s):
-- [ ] music-normal.mp3 (start of every run): no click, gap or jump at the loop seam; steady and not tiring.
 - [ ] music-rush.mp3 (rush mode): switches in smoothly from normal, no level jump, seam clean.
 - [ ] music-overdrive.mp3 (overdrive): switches in and out without a level jump, seam clean.
 - [ ] music-chomp.mp3 (chomp mode): fits the mood, seam clean.

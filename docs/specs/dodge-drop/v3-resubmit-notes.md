@@ -1,4 +1,4 @@
-# Neon Rush v3.4.0 - CrazyGames resubmission notes
+# Neon Rush v3.5.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -25,6 +25,10 @@ combo missions replaced by "Chomp N times in one run" and "Eat N blocks in one r
 
 v3.4.0 - no more wall camping: standing still for 3 s drops one block aimed at the player's spot (red warning chevron,
 only placed when a way through remains). The death flash covers the whole landscape screen, side panels included.
+
+v3.5.0 - music with a sense of speed: runs open on the 120 BPM synthwave loop (the 80 BPM loop is gone), rushes and
+Overdrive use the 160 BPM loop, and the music tempo rises with the run (x1.0 to x1.25 by Overdrive). Aimed block
+narrowed to 90 px.
 Plan: `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`.
 
 ## What changed since v2.8.4 (paste into the portal notes)

@@ -27,9 +27,12 @@ export const AUDIO_MANIFEST: AudioManifest = {
     rush: sfx('rush'),
     newBest: sfx('newBest'),
   },
+  // 2026-11-25 owner feedback "the music has no sense of speed": the 80 BPM loop (music-normal.mp3) is retired.
+  // Runs open on the 120 BPM loop; rush and Overdrive share the 160 BPM loop (the kit keeps it playing across the
+  // switch); PlayScene also raises the playback rate with the clock (musicTempo.ts).
   music: {
-    'music-normal': music('normal'),
-    'music-rush': music('rush'),
+    'music-normal': music('rush'),
+    'music-rush': music('overdrive'),
     'music-overdrive': music('overdrive'),
     'music-chomp': music('chomp'),
   },

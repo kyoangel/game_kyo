@@ -4,6 +4,7 @@ import { CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from '
 import { addParallax, type Parallax } from './backdrop.ts';
 import { artImage, artScale, styleArt, usedArtKeys } from './art.ts';
 import { CAMP_BLOCK_W, campBlockX, CampTracker } from './camp.ts';
+import { musicRate } from './musicTempo.ts';
 import { horizontalGap, isNearMiss } from './combo.ts';
 import { addGraze, GRAZE_FULL } from './graze.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
@@ -117,6 +118,7 @@ export class PlayScene extends Phaser.Scene {
   /** Length of the current Chomp, for the draining gauge. */
   private chompTotal = 0;
   private camp = new CampTracker();
+  private lastRate = 1;
   private aimedTotal = 0;
   private earned: MedalId[] = [];
 
@@ -1076,6 +1078,11 @@ export class PlayScene extends Phaser.Scene {
       this.lastMode = mode;
       this.kit.audio.music.setMode(mode);
     }
+    const rate = musicRate(this.t);
+    if (rate !== this.lastRate || force) {
+      this.lastRate = rate;
+      this.kit.audio.music.setRate(rate);
+    }
   }
 
   // ------------------------------------------------------------ simulation
@@ -1356,6 +1363,7 @@ export class PlayScene extends Phaser.Scene {
     this.trail?.stop();
     this.trail = null;
     this.kit.audio.music.stop();
+    this.kit.audio.music.setRate(1); // title and results music plays at its own tempo
     if (!quit) {
       this.kit.audio.sfx('death');
       await this.fx.timeScale(0.3, 500);

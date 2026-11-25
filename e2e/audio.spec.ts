@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { skipOnboarding } from './fixtures/onboarding.ts';
 
-type AudioState = { musicSource: 'sample' | 'synth' | 'none'; musicSample: string | null; loaded: string[] };
+type AudioState = { musicSource: 'sample' | 'synth' | 'none'; musicSample: string | null; musicRate: number; loaded: string[] };
 type W = {
   __gk: { activeScenes: string[]; state: string; audio: AudioState };
   __dd?: { god: boolean; noGraze?: boolean; warp(s: number): void };
@@ -35,6 +35,7 @@ test('music samples load, start after the first input and switch to the rush loo
   await startRun(page);
   await expect.poll(async () => (await audio(page)).musicSource).toBe('sample');
   expect((await audio(page)).musicSample).toBe('music-normal');
+  expect((await audio(page)).musicRate).toBe(1);
 
   await page.evaluate(() => {
     const dd = (window as unknown as W).__dd!;
@@ -46,6 +47,10 @@ test('music samples load, start after the first input and switch to the rush loo
 
   await page.evaluate(() => (window as unknown as W).__dd!.warp(80)); // past OVERDRIVE_T (120 s)
   await expect.poll(async () => (await audio(page)).musicSample).toBe('music-overdrive');
+  expect((await audio(page)).musicRate, 'music speeds up with the clock').toBeGreaterThan(1.2);
+  // Dying puts the tempo back for the results / title music.
+  await page.evaluate(() => { (window as unknown as W).__dd!.god = false; });
+  await expect.poll(async () => (await audio(page)).musicRate, { timeout: 20_000 }).toBe(1);
   expect(errors).toEqual([]);
 });
 
