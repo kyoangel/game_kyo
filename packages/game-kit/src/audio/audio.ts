@@ -238,15 +238,22 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
   }
 
   /** Loop `buf` on the music bus from its trimmed start, fading in over MUSIC_FADE. */
+  const loopCache = new WeakMap<AudioBuffer, ReturnType<typeof computeLoopPoints>>();
+
   function startVoice(name: string, buf: AudioBuffer): void {
     if (!ctx || !musicBus) return;
     const prev = voice;
     voice = null;
     if (prev) fadeOut(prev, MUSIC_FADE);
     const now = ctx.currentTime;
-    const channels: Float32Array[] = [];
-    for (let c = 0; c < buf.numberOfChannels; c++) channels.push(buf.getChannelData(c));
-    const loop = computeLoopPoints(channels, buf.sampleRate);
+    let loop = loopCache.get(buf);
+    if (!loop) {
+      // Scanning a 48 s loop is millions of samples: do it once per buffer, not on every mode switch mid-run.
+      const channels: Float32Array[] = [];
+      for (let c = 0; c < buf.numberOfChannels; c++) channels.push(buf.getChannelData(c));
+      loop = computeLoopPoints(channels, buf.sampleRate);
+      loopCache.set(buf, loop);
+    }
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
