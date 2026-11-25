@@ -63,10 +63,10 @@ function fetcher(seen: string[] = []) {
   return async (url: string): Promise<ArrayBuffer> => { seen.push(url); return new ArrayBuffer(8 + seen.length); };
 }
 
-async function withSamples(manifest: { sfx?: Record<string, string>; music?: Record<string, string> }, ctxOverride?: ReturnType<typeof fakeCtx>) {
+async function withSamples(manifest: { sfx?: Record<string, string>; music?: Record<string, string>; gains?: Record<string, number> }, ctxOverride?: ReturnType<typeof fakeCtx>) {
   const f = ctxOverride ?? fakeCtx();
   const a = createGameAudio(store().save, () => f.ctx, fetcher());
-  await a.loadSamples({ sfx: manifest.sfx ?? {}, music: manifest.music ?? {} });
+  await a.loadSamples({ sfx: manifest.sfx ?? {}, music: manifest.music ?? {}, gains: manifest.gains });
   return { f, a };
 }
 
@@ -312,5 +312,35 @@ describe('sample playback', () => {
     a.setAdPaused(true);
     expect(master.gain.value).toBe(0);
     expect(f.ctx.state).toBe('suspended');
+  });
+});
+
+describe('mix', () => {
+  it('buses sit at their constants with a music sample loaded; mute drives the master to 0', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' } });
+    a.unlock();
+    a.music.start();
+    const [master, sfxBus, musicBus] = f.created.gains;
+    expect(sfxBus!.gain.value).toBe(SFX_BUS);
+    expect(musicBus!.gain.value).toBe(MUSIC_BUS);
+    await a.toggleMute();
+    expect(master!.gain.value).toBe(0);
+    expect(musicBus!.gain.value).toBe(MUSIC_BUS);
+  });
+  it('applies a per-track gain to the music loop', async () => {
+    const { f, a } = await withSamples({ music: { 'music-overdrive': 'o.mp3' }, gains: { 'music-overdrive': 1.2 } });
+    a.unlock();
+    a.music.setMode('overdrive');
+    a.music.start();
+    const voiceGain = f.created.gains[f.created.gains.length - 1]!;
+    expect(voiceGain.gain.ramps[voiceGain.gain.ramps.length - 1]).toBeCloseTo(1.2, 5);
+  });
+  it('applies a per-sfx gain and defaults to 1', async () => {
+    const { f, a } = await withSamples({ sfx: { pickup: 'p.mp3', death: 'd.mp3' }, gains: { pickup: 1.5 } });
+    a.unlock();
+    a.sfx('pickup');
+    expect(f.created.gains[f.created.gains.length - 1]!.gain.value).toBeCloseTo(1.5, 5);
+    a.sfx('death');
+    expect(f.created.gains[f.created.gains.length - 1]!.gain.value).toBe(1);
   });
 });

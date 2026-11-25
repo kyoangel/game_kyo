@@ -1,6 +1,7 @@
 import { defineGame } from '@gf/game-kit';
 import manifest from '../game.json';
 import { preloadArt } from './art.ts';
+import { AUDIO_MANIFEST } from './audioManifest.ts';
 import { ddTitleBackdrop } from './backdrop.ts';
 import { frameFor, parseLayoutOverride, pickMode } from './frame.ts';
 import { PlayScene } from './PlayScene.ts';
@@ -20,6 +21,7 @@ void defineGame({
   onFrame: frameAt,
   strings,
   preload: preloadArt,
+  audioManifest: AUDIO_MANIFEST,
   playScene: PlayScene,
   theme: {},
   scenes: [ShopScene],

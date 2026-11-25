@@ -19,6 +19,8 @@ export type { SfxName, MusicMode };
 export interface AudioManifest {
   sfx: Record<string, string>;
   music: Record<string, string>;
+  /** Optional per-sample linear gain (key = sfx name or `music-<mode>`, default 1) to even out loudness before the buses. */
+  gains?: Record<string, number>;
 }
 
 /** Test/debug view of what the music engine is doing right now. */
@@ -99,6 +101,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
   let stepIdx = 0;
   let wantMusic = false;
   let bank: SampleBank | null = null;
+  let sampleGains: Record<string, number> = {};
   let voice: MusicVoice | null = null;
 
   if (ctx) {
@@ -251,7 +254,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     src.loopEnd = loop.end;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(1, now + MUSIC_FADE);
+    gain.gain.linearRampToValueAtTime(sampleGains[name] ?? 1, now + MUSIC_FADE);
     src.connect(gain);
     gain.connect(musicBus);
     src.start(now, loop.start);
@@ -285,7 +288,10 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
           const src = ctx.createBufferSource();
           src.buffer = buf;
           src.playbackRate.value = sfxRate(opts?.step ?? 0);
-          src.connect(sfxBus);
+          const g = ctx.createGain();
+          g.gain.value = sampleGains[name] ?? 1;
+          src.connect(g);
+          g.connect(sfxBus);
           src.start(ctx.currentTime);
           return;
         }
@@ -382,6 +388,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       }
       try {
         bank ??= new SampleBank(ctx, fetcher);
+        sampleGains = { ...sampleGains, ...manifest.gains };
         await bank.load({ ...manifest.sfx, ...manifest.music }, onProgress);
         syncMusic();
       } catch {
