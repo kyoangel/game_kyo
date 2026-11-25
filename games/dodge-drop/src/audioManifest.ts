@@ -11,10 +11,10 @@ const sfx = (name: string): string => `assets/audio/sfx-${name}.mp3`;
 const music = (mode: string): string => `assets/audio/music-${mode}.mp3`;
 
 /**
- * Mix table (linear gains before the SFX_BUS 0.42 / MUSIC_BUS 0.58 buses). Coarse: evened to measured levels from
- * ffmpeg on the shipped files (music to about -14 LUFS integrated, SFX to about -13 dB mean), which also pulls the
- * loops that peak above 1.0 after decode (chomp +1.4, rush +0.8, normal +0.4 dBTP) back under it and lifts the
- * quieter overdrive loop (-16.3 LUFS). Full loudness normalisation and a listening check are Task 3.9.
+ * No per-track gains: Task 3.9 loudness-normalised the files (music -18 LUFS, SFX -14 LUFS integrated, true peak
+ * <= -1.5 dBTP), so every sample plays at unity and the SFX_BUS 0.42 / MUSIC_BUS 0.58 buses alone set the mix.
+ * That puts SFX about 4 LU above the music before the buses and about 1 LU above after them, so the bed stays
+ * audible under the effects. The game-kit `gains` hook stays available for future tracks.
  */
 export const AUDIO_MANIFEST: AudioManifest = {
   sfx: {
@@ -32,19 +32,5 @@ export const AUDIO_MANIFEST: AudioManifest = {
     'music-rush': music('rush'),
     'music-overdrive': music('overdrive'),
     'music-chomp': music('chomp'),
-  },
-  gains: {
-    'music-normal': 0.85,
-    'music-rush': 0.7,
-    'music-overdrive': 1.2,
-    'music-chomp': 0.7,
-    nearMiss: 1.45,
-    pickup: 1.5,
-    shield: 0.9,
-    shieldBreak: 1.15,
-    death: 0.7,
-    medal: 1.3,
-    rush: 0.8,
-    newBest: 0.75,
   },
 };

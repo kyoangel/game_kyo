@@ -39,7 +39,7 @@ Player skins and blocks stay procedural (shape-coded, tinted per skin; plan Task
 ## Music and SFX (Task 3.3, retrieved 2026-11-25)
 
 **Needs listening check (Task 3.9): nothing below was auditioned.** Choices were made from
-filenames, pack themes, duration and loudness stats only. Loudness normalisation is Task 3.9.
+filenames, pack themes, duration and loudness stats only. Loudness normalisation (done, see below) is Task 3.9.
 
 Music: three Pro Sensory (Alex McCulloch) synthwave tracks on OpenGameArt, each item page lists
 License(s): CC0 (author asks for optional credit; recorded in `credit`). Loops are bar-aligned cuts
@@ -67,3 +67,37 @@ SFX (Kenney, mono 128 kbps, leading silence trimmed), file to `SfxName`:
 | click | Interface Sounds click_003 (7 ms) | UI click; very short, may be inaudible after mp3 padding |
 | rush | Digital Audio highUp (0.40 s) | rising sweep |
 | newBest | Digital Audio zapThreeToneUp (1.1 s) | rising three-tone fanfare |
+
+## Loudness normalisation (Task 3.9)
+
+Two-pass ffmpeg `loudnorm`, linear mode, same codecs as before (music 112 kbps joint stereo, SFX mono 128 kbps,
+44.1 kHz). Music targets -18 LUFS (LRA 7), SFX -14 LUFS, true peak <= -1.5 dBTP. Clips shorter than 0.5 s
+(nearMiss, pickup, rush, click) are too short for BS.1770 gating, so their level was measured on a looped copy.
+nearMiss, pickup and shieldBreak could not reach -14 LUFS under the peak ceiling with plain gain, so they got a
+fixed gain plus a fast limiter. Per-track gains were removed from `src/audioManifest.ts`.
+
+## Listening checklist (Task 3.9, for the user)
+
+Nothing here has been auditioned by a human yet. Run `npm run dev` in `games/dodge-drop`, or open the live site
+https://kyoangel.github.io/game_kyo/dodge-drop/ after deploy, and use headphones and speakers once each.
+
+Music (listen to at least two full loops of each; the seam is at 48 s / 32 s):
+- [ ] music-normal.mp3 (start of every run): no click, gap or jump at the loop seam; steady and not tiring.
+- [ ] music-rush.mp3 (rush mode): switches in smoothly from normal, no level jump, seam clean.
+- [ ] music-overdrive.mp3 (overdrive): switches in and out without a level jump, seam clean.
+- [ ] music-chomp.mp3 (chomp mode): fits the mood, seam clean.
+- [ ] Music stays audible under the SFX but never masks them; no mode feels clearly louder than another.
+
+SFX (file -> trigger):
+- [ ] sfx-nearMiss.mp3: a block grazes the player (rising phaser, pitch climbs with the combo).
+- [ ] sfx-pickup.mp3: collect a pickup (power-up blip).
+- [ ] sfx-shield.mp3: shield picked up or activated (force-field hum).
+- [ ] sfx-shieldBreak.mp3: a hit absorbed by the shield (crunchy burst).
+- [ ] sfx-death.mp3: run ends (descending tone).
+- [ ] sfx-medal.mp3: a medal is earned (multi-note confirm).
+- [ ] sfx-rush.mp3: rush mode starts (rising sweep).
+- [ ] sfx-newBest.mp3: new best score (three-tone fanfare).
+- [ ] click: menu and button clicks stay the synth blip (sfx-click.mp3 ships but is unused: 7 ms is too short).
+- [ ] No SFX is jarringly louder or quieter than the others, and none distorts.
+
+If music masks the SFX, change only `MUSIC_BUS` / `SFX_BUS` and update the test, not the files.

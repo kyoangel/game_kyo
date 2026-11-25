@@ -26,12 +26,7 @@ describe('dodge-drop audio manifest', () => {
       expect(existsSync(join(PUBLIC, url)), url).toBe(true);
     }
   });
-  it('mix gains are only set for known samples, within a sane range', () => {
-    const names = new Set([...Object.keys(AUDIO_MANIFEST.sfx), ...Object.keys(AUDIO_MANIFEST.music)]);
-    for (const [k, g] of Object.entries(AUDIO_MANIFEST.gains ?? {})) {
-      expect(names.has(k), k).toBe(true);
-      expect(g).toBeGreaterThan(0.3);
-      expect(g).toBeLessThanOrEqual(1.6);
-    }
+  it('files are loudness-normalised (Task 3.9), so there are no per-track compensation gains', () => {
+    expect(AUDIO_MANIFEST.gains ?? {}).toEqual({});
   });
 });
