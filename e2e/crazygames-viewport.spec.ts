@@ -149,6 +149,38 @@ for (const L of LOCALES) for (const s of [SIZES[0], SIZES[2]]) {
   });
 }
 
+test('landscape: the sky backdrop covers the whole play field (no dark slab under logic y 810)', async ({ page }) => {
+  await skipOnboarding(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(GAME);
+  await ready(page);
+  await page.mouse.click(640, 360);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.waitForTimeout(300);
+  // css px at 1280x720: field spans x 437..842; logic y -> css y = y * 0.6328 * (720 / 810).
+  const cssY = (y: number) => Math.round(y * (810 / 1280) * (720 / 810));
+  const median = async (y: number) => {
+    const png = await page.screenshot({ clip: { x: 444, y: cssY(y), width: 16, height: 8 } });
+    return page.evaluate(async (b64) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${b64}`;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d')!;
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      const lum: number[] = [];
+      for (let i = 0; i < d.length; i += 4) lum.push(d[i]! + d[i + 1]! + d[i + 2]!);
+      lum.sort((a, b) => a - b);
+      return lum[lum.length >> 1]!;
+    }, png.toString('base64'));
+  };
+  const sky = await median(700);
+  const low = await median(930);
+  expect(low, `field at logic y 930 (${low}) must stay sky-coloured like y 700 (${sky})`).toBeGreaterThan(sky * 0.6);
+});
+
 test('landscape results overlay is fully opaque: the paused Play HUD does not show through', async ({ page }) => {
   await skipOnboarding(page); // a clean results band, no tutorial
   await page.setViewportSize({ width: 800, height: 450 });

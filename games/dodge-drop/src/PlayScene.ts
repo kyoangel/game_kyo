@@ -21,7 +21,7 @@ import { skinTextureKey } from './skinArt.ts';
 import { playDeath, playNearMiss, startSkinTrail, type SkinTrail } from './skinFxRender.ts';
 import { SpawnScheduler } from './schedule.ts';
 import { dragToDx, PLAYER_Y, STRIP_BOTTOM, STRIP_TOP } from './layout.ts';
-import type { Frame } from './frame.ts';
+import { FIELD_H, FIELD_W, type Frame } from './frame.ts';
 import { getFrame } from './frameAccess.ts';
 import { fieldFont, hudAnchors, MIN_PANEL_FONT, MISSION_PANEL_FONT, GOAL_PANEL_FONT, type HudAnchors } from './hudLayout.ts';
 import { missionPanelText } from './missionLabel.ts';
@@ -209,7 +209,9 @@ export class PlayScene extends Phaser.Scene {
     this.setupCameras();
     ensureTextures(this, theme);
     ensurePlayTextures(this);
-    addBackground(this);
+    // The kit backdrop texture is canvas-sized (1440x810 in landscape); stretch it over the 720x1280 logic field
+    // the zoomed field camera shows, or everything below logic y 810 is bare. Portrait: canvas == field, no-op.
+    addBackground(this).setDisplaySize(FIELD_W, FIELD_H);
 
     this.runId++;
     this.ready = false;
