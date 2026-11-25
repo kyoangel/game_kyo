@@ -39,7 +39,7 @@ export const strings: Strings = {
     missionCoinsLine: 'Missions +{n}',
     missionsTitle: 'Missions',
     rank: 'Rank {n} · {a}/{b}',
-    boostsLabel: 'Next run boosts (tap again to undo)',
+    boostsLabel: 'Boosts (tap again to undo)',
     paused: 'Paused',
     resume: 'Resume',
     endRun: 'End run',
