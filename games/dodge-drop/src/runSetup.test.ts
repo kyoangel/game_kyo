@@ -9,14 +9,14 @@ const base = { workshop: ws(), assist: DEFAULT_ASSIST, tier: 'none' as const, rn
 describe('buildRunConfig', () => {
   it('defaults: clock 0, no grace, no multipliers, no start shield', () => {
     expect(buildRunConfig(base)).toMatchObject({
-      tier: 'none', startT: 0, grace: 0, headStart: 0, assisted: false, speedMul: 1, intervalMul: 1,
+      tier: 'none', startT: 0, grace: 0, assisted: false, speedMul: 1, intervalMul: 1,
       shieldLevel: 0, shieldCapacity: 1, startShieldHits: 0, firstShieldAt: 25, magnetRadius: 0,
-      nearMissWindow: 28, comboTimeout: 2.5, luckLevel: 0, rushIdx: 0,
+      nearMissWindow: 28, grazeChompSeconds: 4, luckLevel: 0, rushIdx: 0,
     });
   });
-  it('silver start: clock 30, 2 s grace, head start 200, shield timing relative to start, no rush passed yet', () => {
+  it('silver start: clock 30, 2 s grace, shield timing relative to start, no rush passed yet', () => {
     const c = buildRunConfig({ ...base, tier: 'silver', workshop: ws({ shield: 2 }) });
-    expect(c).toMatchObject({ startT: 30, grace: 2, headStart: 200, firstShieldAt: 30 + 19, rushIdx: 0 });
+    expect(c).toMatchObject({ startT: 30, grace: 2, firstShieldAt: 30 + 19, rushIdx: 0 });
   });
   it('gold start: clock 60, past the 45 s rush', () => {
     expect(buildRunConfig({ ...base, tier: 'gold' })).toMatchObject({ startT: 60, rushIdx: 1 });
@@ -24,7 +24,7 @@ describe('buildRunConfig', () => {
   it('workshop levels feed the getters; capacity comes from Shield Stack only', () => {
     const c = buildRunConfig({ ...base, workshop: ws({ shield: 5, magnet: 3, nearMiss: 4, combo: 2, luck: 1 }) });
     expect(c).toMatchObject({ shieldCapacity: 1, magnetRadius: 220, nearMissWindow: 37, luckLevel: 1 });
-    expect(c.comboTimeout).toBeCloseTo(2.8, 9);
+    expect(c.grazeChompSeconds).toBe(5);
     expect(c.firstShieldAt).toBe(10);
     expect(buildRunConfig({ ...base, workshop: ws({ shieldStack: 4 }) }).shieldCapacity).toBe(5);
   });

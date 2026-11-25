@@ -5,10 +5,10 @@ import { fieldFont, hudAnchors, MIN_FIELD_FONT, MIN_PANEL_FONT } from './hudLayo
 const CSS_800 = 450 / 810; // canvas -> css scale at an 800x450 iframe
 
 describe('hudAnchors', () => {
-  it('portrait keeps the v2.8.4 anchors', () => {
+  it('portrait: the run timer is the headline at top-left, the graze gauge under it', () => {
     const a = hudAnchors(frameFor('portrait'));
-    expect(a.score).toEqual({ x: 24, y: 18, originX: 0, panel: false });
-    expect(a.timer.originX).toBe(1);
+    expect(a.timer).toEqual({ x: 24, y: 14, originX: 0, panel: false });
+    expect(a.gauge).toEqual({ x: 24, y: 86, originX: 0, panel: false });
     expect(a.mute).toEqual({ x: 672, y: 48 });
   });
   it('landscape puts every readable HUD anchor in a side panel, clear of the field rectangle', () => {
@@ -16,15 +16,15 @@ describe('hudAnchors', () => {
     const a = hudAnchors(f);
     const fieldL = f.fieldX;
     const fieldR = f.fieldX + f.dispW;
-    for (const [name, p] of Object.entries({ score: a.score, combo: a.combo, timer: a.timer, shields: a.shields, goal: a.goal, mute: a.mute, missions: a.missions })) {
+    for (const [name, p] of Object.entries({ timer: a.timer, gauge: a.gauge, shields: a.shields, goal: a.goal, mute: a.mute, missions: a.missions })) {
       expect(p.x <= fieldL || p.x >= fieldR, `${name} x=${p.x}`).toBe(true);
     }
   });
-  it('left panel holds score/combo/goal, right panel holds timer/shields/missions/mute', () => {
+  it('left panel holds timer/gauge/goal, right panel holds shields/missions/mute', () => {
     const f = frameFor('landscape');
     const a = hudAnchors(f);
-    for (const p of [a.score, a.combo, a.goal]) expect(p.x).toBeLessThan(f.fieldX);
-    for (const p of [a.timer, a.shields, a.missions, a.mute]) expect(p.x).toBeGreaterThan(f.fieldX + f.dispW);
+    for (const p of [a.timer, a.gauge, a.goal]) expect(p.x).toBeLessThan(f.fieldX);
+    for (const p of [a.shields, a.missions, a.mute]) expect(p.x).toBeGreaterThan(f.fieldX + f.dispW);
   });
   it('panel text stays legible at 800x450 (>= 14 css px, target 20+)', () => {
     expect(MIN_PANEL_FONT * CSS_800).toBeGreaterThanOrEqual(20);

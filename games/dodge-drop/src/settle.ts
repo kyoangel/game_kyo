@@ -44,13 +44,11 @@ export interface Settled {
 export function settleRun(run: RunState, saved: Saved, rng: () => number): Settled {
   const lossStreak = nextLossStreak(saved.lossStreak, run.seconds);
   const coin = runCoins({
-    score: run.score, headStart: run.headStart, stars: run.stars, lossStreak,
+    seconds: run.seconds, stars: run.stars, lossStreak,
     rankMultiplier: rankMultiplier(saved.missions.rank),
   });
   const medals: string[] = mergeMedals(saved.medals, run.medals);
-  const assist = updateAssist(saved.assist, {
-    score: run.score - run.headStart, seconds: run.seconds, bronzeOwned: medals.includes('bronze'),
-  });
+  const assist = updateAssist(saved.assist, { seconds: run.seconds, bronzeOwned: medals.includes('bronze') });
   // Start tier is only ever changed by the player (owner decision 2026-11-22): default stays 0:00.
   const startTier = saved.startTier;
   const missions = applyRun(saved.missions, run.stats, rng);

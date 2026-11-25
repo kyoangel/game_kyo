@@ -74,8 +74,9 @@ export function magnetPulls(kind: 'star' | 'shield', dist: number, radius: numbe
 export function nearMissWindow(level: number): number {
   return Math.round(28 * (1 + 0.08 * lvl(level)));
 }
-export function comboTimeout(level: number): number {
-  return 2.5 + 0.15 * lvl(level);
+/** "Longer Chomp" (upgrade id `combo`, kept for saves): seconds of the graze-triggered Chomp. */
+export function grazeChompSeconds(level: number): number {
+  return 4 + 0.5 * lvl(level);
 }
 export function starInterval(level: number, r: number): number {
   return (6 + 3 * r) * (1 - 0.07 * lvl(level));
@@ -88,7 +89,7 @@ export function effectValue(id: UpgradeId, level: number): number {
     case 'startShield': return Math.round(startShieldChance(level) * 100);
     case 'magnet': return magnetRadius(level);
     case 'nearMiss': return nearMissWindow(level);
-    case 'combo': return comboTimeout(level);
+    case 'combo': return grazeChompSeconds(level);
     case 'luck': return 7 * lvl(level);
   }
 }

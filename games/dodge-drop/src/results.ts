@@ -10,8 +10,9 @@ import { sanitizeAssist, sanitizeStartTier } from './progression.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { settleRun, type Goal, type Saved, type Settled } from './settle.ts';
 import { sanitizeWorkshop, shieldCapacity } from './workshop.ts';
+import { nextGoal } from './goalBar.ts';
 
-const EMPTY: RunState = { score: 0, seconds: 0, stars: 0, medals: [], headStart: 0, startTier: 'none', stats: emptyStats() };
+const EMPTY: RunState = { clock: 0, seconds: 0, stars: 0, medals: [], startTier: 'none', stats: emptyStats() };
 const BAR_W = 440;
 const BAR_H = 14;
 
@@ -61,8 +62,12 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
     });
   };
 
-  // Immediate: survived time.
-  scene.add.text(cx, top + 20, `${kit.t('survived')} ${formatTime(run.seconds)}`, style(kit, 32, theme.text)).setOrigin(0.5);
+  // Immediate: how close the next medal was (the kit already shows the run time); past the top medal, plain survived time.
+  const next = nextGoal(run.clock, 0);
+  const headline = next.kind === 'medal'
+    ? kit.t('resultNext').replace('{n}', String(next.remainingSec)).replace('{medal}', kit.t(`medal.${next.id}`))
+    : `${kit.t('survived')} ${formatTime(run.clock)}`;
+  scene.add.text(cx, top + 20, headline, style(kit, 32, theme.text)).setOrigin(0.5);
 
   const save = kit.save;
   void Promise.all([

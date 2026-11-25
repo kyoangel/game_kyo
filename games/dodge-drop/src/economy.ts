@@ -18,8 +18,9 @@ export const SKINS: readonly Skin[] = [
   { id: 'prism', shape: 'diamond', color: 'cycle', trail: 'sparks', trailColor: 'rainbow', cost: 500 },
 ];
 
-export function coinsForRun(score: number, stars: number): number {
-  return stars + Math.floor(score / 25);
+/** Star coins for a run before floor and rank multiplier: 1 per collected star + 1 per 5 s survived. */
+export function coinsForRun(seconds: number, stars: number): number {
+  return stars + Math.floor(Math.max(0, seconds) / 5);
 }
 
 export function buySkin(

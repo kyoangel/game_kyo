@@ -6,15 +6,14 @@ import type { RunStats } from './missions.ts';
 export const RUN_STATE_KEY = 'dd:run';
 
 export interface RunState {
-  /** Includes the head start (counts for best). */
-  score: number;
-  /** Real seconds survived: floor(t - startT). */
+  /** The run result: final clock in whole seconds, tier-start offset included (same clock as the medals; counts for best). */
+  clock: number;
+  /** Real seconds survived: floor(t - startT); earns coins. */
   seconds: number;
   stars: number;
   /** Medals earned this run (clock based, medals below the start clock excluded). */
   medals: MedalId[];
-  headStart: number;
   startTier: StartTier;
-  /** stats.score already excludes headStart; stats.runs = 1. */
+  /** stats.runs = 1. */
   stats: RunStats;
 }

@@ -4,6 +4,8 @@ import { medalSeconds } from './medals.ts';
 
 /** A run that ends before Bronze counts as a loss (coin floor, assist). */
 export const LOSS_SECONDS = medalSeconds('bronze');
+/** A run shorter than this counts toward the assist's zero streak. */
+export const ZERO_RUN_SECONDS = 5;
 export const ASSIST_SPEED_MUL = 0.85;
 export const ASSIST_INTERVAL_MUL = 1.25;
 
@@ -11,12 +13,11 @@ export function nextLossStreak(prev: number, secondsSurvived: number): number {
   return secondsSurvived >= LOSS_SECONDS ? 0 : prev + 1;
 }
 
-export interface CoinInput { score: number; headStart: number; stars: number; lossStreak: number; rankMultiplier: number }
+export interface CoinInput { /** Seconds actually survived (tier-start offset excluded). */ seconds: number; stars: number; lossStreak: number; rankMultiplier: number }
 export interface CoinResult { coins: number; base: number; floor: number; multiplier: number; floorApplied: boolean }
 
 export function runCoins(i: CoinInput): CoinResult {
-  const earned = Math.max(0, i.score - i.headStart);
-  const base = coinsForRun(earned, i.stars);
+  const base = coinsForRun(i.seconds, i.stars);
   const floor = Math.min(10, 2 * i.lossStreak);
   const multiplier = Math.round(i.rankMultiplier * 100) / 100;
   const coins = Math.round(Math.max(base, floor) * multiplier);
@@ -43,10 +44,11 @@ export function sanitizeAssist(raw: unknown): AssistState {
 
 export function updateAssist(
   prev: AssistState,
-  run: { score: number; seconds: number; bronzeOwned: boolean },
+  run: { seconds: number; bronzeOwned: boolean },
 ): AssistState {
   if (prev.retired || run.bronzeOwned) return { zeroStreak: 0, noBronzeStreak: 0, active: false, retired: true };
-  const zeroStreak = run.score === 0 ? prev.zeroStreak + 1 : 0;
+  // "Zero" run: over almost at once (the score era counted 0-point runs, i.e. died before any block passed).
+  const zeroStreak = run.seconds < ZERO_RUN_SECONDS ? prev.zeroStreak + 1 : 0;
   const noBronzeStreak = run.seconds < LOSS_SECONDS ? prev.noBronzeStreak + 1 : 0;
   return {
     zeroStreak,
@@ -74,13 +76,6 @@ export function availableTiers(medals: readonly string[]): StartTier[] {
 
 export function sanitizeStartTier(raw: unknown, medals: readonly string[]): StartTier {
   return availableTiers(medals).find((t) => t === raw) ?? 'none';
-}
-
-/** Round, readable head starts for tier starts (owner decision 2026-11-22); count for best, never for coins. */
-export const HEAD_START_SCORE: Record<'bronze' | 'silver' | 'gold', number> = { bronze: 100, silver: 200, gold: 300 };
-
-export function headStartScore(t: StartTier): number {
-  return t === 'none' ? 0 : HEAD_START_SCORE[t];
 }
 
 /** Start time of the i-th rush (0-based): 45 s, 90 s, then a surge every 30 s from 180 s. */

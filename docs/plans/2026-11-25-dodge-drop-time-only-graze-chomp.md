@@ -1,5 +1,7 @@
 # Dodge Drop: time-only results + graze-charged Chomp (v3.3.0)
 
+Status: done 2026-11-25 (all phases; portrait gauge is 136 px wide with a Chomp icon so it clears the goal label).
+
 Owner decision 2026-11-25: score and combo feel meaningless ("nobody risks a near miss for points").
 Chosen: drop score, survival time is the only result; near misses charge a gauge that triggers Chomp.
 

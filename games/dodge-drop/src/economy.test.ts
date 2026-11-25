@@ -3,8 +3,9 @@ import { SKINS, buySkin, coinsForRun } from './economy.ts';
 
 describe('economy', () => {
   it('coinsForRun', () => {
-    expect(coinsForRun(100, 3)).toBe(7);
-    expect(coinsForRun(24, 0)).toBe(0);
+    expect(coinsForRun(20, 3)).toBe(7);
+    expect(coinsForRun(4, 0)).toBe(0);
+    expect(coinsForRun(60, 0)).toBe(12);
   });
   it('SKINS table', () => {
     expect(SKINS.map((s) => s.id)).toEqual(['cyan', 'lime', 'orb', 'tri', 'diamond', 'hex', 'star', 'prism']);

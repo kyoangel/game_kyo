@@ -82,7 +82,7 @@ test('dodge-drop: Shop scene opens from the title and Back returns', async ({ pa
 type Dd = { god?: boolean; giveShield?: () => void; spawnPickup?: (kind: 'star' | 'shield', x: number) => boolean; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { stars: number; t: number; score: number; startTier: string; shieldHits: number; shieldHeld: boolean; clock: number } };
 type WD = { __dd?: Dd };
 
-const MISSIONS_SEED = `{"active":[{"id":"score","tier":1,"progress":0},{"id":"combo","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}`;
+const MISSIONS_SEED = `{"active":[{"id":"chompEat","tier":1,"progress":0},{"id":"chompRun","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}`;
 
 async function seed(page: import('@playwright/test').Page, kv: Record<string, string>, god = false): Promise<void> {
   await page.addInitScript(([entries, g]) => {
@@ -140,7 +140,7 @@ test('dodge-drop: results expose near-goal and mission rows', async ({ page }) =
   await page.waitForFunction(() => (window as unknown as WD).__dd?.results !== undefined);
   const r = await page.evaluate(() => (window as unknown as WD).__dd!.results!);
   expect((r.goal as { cost: number }).cost).toBe(15);
-  expect(r.missions.map((m) => m.id)).toEqual(['score', 'combo', 'runs']);
+  expect(r.missions.map((m) => m.id)).toEqual(['chompEat', 'chompRun', 'runs']);
   expect(errors).toEqual([]);
 });
 
@@ -154,7 +154,6 @@ test('dodge-drop: silver tier start sets the game clock', async ({ page }) => {
   const s = await page.evaluate(() => (window as unknown as WD).__dd!.stats!());
   expect(s.t).toBeGreaterThanOrEqual(30);
   expect(s.t).toBeLessThan(33);
-  expect(s.score).toBeGreaterThanOrEqual(200);
   expect(errors).toEqual([]);
 });
 
@@ -173,7 +172,7 @@ test('dodge-drop: title chips select a tier and skip replaces a mission', async 
   // A swap always costs a flat 5 star coins.
   await expect.poll(() => ls(page, 'coins')).toBe('95');
   const saved = JSON.parse((await ls(page, 'missions'))!);
-  expect(saved.active[0].id).not.toBe('score');
+  expect(saved.active[0].id).not.toBe('chompEat');
   expect(errors).toEqual([]);
 });
 
@@ -453,5 +452,24 @@ test('dodge-drop: pause button freezes the run, Resume continues, End run goes t
   await page.mouse.click(e.x, e.y);
   await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKGameOver'));
   expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).toBe('over');
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: 8 near misses fill the graze gauge and trigger Chomp; the HUD shows the run time', async ({ page }) => {
+  const errors = watch(page);
+  await skipOnboarding(page);
+  await seed(page, {}, true);
+  await openTitle(page);
+  await startRun(page);
+  type S = { graze: number; chomping: boolean; t: number };
+  type D = { stats(): S; nearMiss(): void; hud(): Array<{ name: string }> };
+  await page.waitForFunction(() => ((window as unknown as { __dd: D }).__dd.stats?.().t ?? 0) > 0.5);
+  for (let i = 0; i < 7; i++) await page.evaluate(() => (window as unknown as { __dd: D }).__dd.nearMiss());
+  expect(await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats())).toMatchObject({ graze: 7, chomping: false });
+  await page.evaluate(() => (window as unknown as { __dd: D }).__dd.nearMiss());
+  expect(await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats())).toMatchObject({ graze: 0, chomping: true });
+  const names = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.hud())).map((h) => h.name);
+  expect(names).toContain('timer');
+  expect(names).not.toContain('score');
   expect(errors).toEqual([]);
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buyUpgrade, comboTimeout, effectValue, emptyWorkshop, magnetPulls, magnetRadius, nearMissWindow, nextCost, sanitizeWorkshop,
+  buyUpgrade, grazeChompSeconds, effectValue, emptyWorkshop, magnetPulls, magnetRadius, nearMissWindow, nextCost, sanitizeWorkshop,
   shieldAfterPickup, shieldCapacity, shieldFirstAt, shieldInterval, startShieldChance, starInterval, UPGRADE_IDS, upgradeCost,
 } from './workshop.ts';
 
@@ -60,9 +60,9 @@ describe('workshop effects', () => {
   it('near-miss window 28 -> 30/32/35/37/39 px', () => {
     expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([28, 30, 32, 35, 37, 39]);
   });
-  it('combo timeout 2.5 + 0.15L', () => {
-    expect(comboTimeout(0)).toBe(2.5);
-    expect(comboTimeout(5)).toBeCloseTo(3.25, 9);
+  it('graze Chomp lasts 4 + 0.5L seconds', () => {
+    expect(grazeChompSeconds(0)).toBe(4);
+    expect(grazeChompSeconds(5)).toBe(6.5);
   });
   it('star interval (6..9)*(1-0.07L)', () => {
     expect(starInterval(0, 0)).toBe(6);
@@ -80,7 +80,7 @@ describe('workshop effects', () => {
     expect(effectValue('magnet', 1)).toBe(80);
     expect(effectValue('magnet', 5)).toBe(Infinity);
     expect(effectValue('nearMiss', 3)).toBe(35);
-    expect(effectValue('combo', 4)).toBeCloseTo(3.1, 9);
+    expect(effectValue('combo', 4)).toBe(6);
     expect(effectValue('luck', 5)).toBe(35);
   });
 });

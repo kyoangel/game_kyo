@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  availableTiers, DEFAULT_ASSIST, HEAD_START_SCORE, headStartScore, nextLossStreak, runCoins,
+  availableTiers, DEFAULT_ASSIST, nextLossStreak, runCoins,
   rushesBefore, rushStartAt, sanitizeAssist, sanitizeStartTier, START_TIERS, tierSeconds, updateAssist, type AssistState,
 } from './progression.ts';
 
@@ -14,38 +14,36 @@ describe('loss streak', () => {
 });
 
 describe('runCoins', () => {
-  const base = { headStart: 0, lossStreak: 0, rankMultiplier: 1 };
-  it('base = stars + floor(score/25), no floor or multiplier', () => {
-    expect(runCoins({ ...base, score: 100, stars: 3 })).toEqual({ coins: 7, base: 7, floor: 0, multiplier: 1, floorApplied: false });
+  const base = { lossStreak: 0, rankMultiplier: 1 };
+  it('base = stars + floor(survived seconds / 5), no floor or multiplier', () => {
+    expect(runCoins({ ...base, seconds: 20, stars: 3 })).toEqual({ coins: 7, base: 7, floor: 0, multiplier: 1, floorApplied: false });
+    expect(runCoins({ ...base, seconds: 64, stars: 0 })).toMatchObject({ coins: 12 });
   });
   it('loss-streak floor is min(10, 2*streak) and applies only when above base', () => {
-    expect(runCoins({ ...base, score: 25, stars: 0, lossStreak: 2 })).toMatchObject({ coins: 4, base: 1, floor: 4, floorApplied: true });
-    expect(runCoins({ ...base, score: 0, stars: 0, lossStreak: 9 })).toMatchObject({ coins: 10, floor: 10, floorApplied: true });
-    expect(runCoins({ ...base, score: 250, stars: 0, lossStreak: 1 })).toMatchObject({ coins: 10, floorApplied: false });
+    expect(runCoins({ ...base, seconds: 5, stars: 0, lossStreak: 2 })).toMatchObject({ coins: 4, base: 1, floor: 4, floorApplied: true });
+    expect(runCoins({ ...base, seconds: 0, stars: 0, lossStreak: 9 })).toMatchObject({ coins: 10, floor: 10, floorApplied: true });
+    expect(runCoins({ ...base, seconds: 50, stars: 0, lossStreak: 1 })).toMatchObject({ coins: 10, floorApplied: false });
   });
   it('rank multiplier multiplies max(base, floor) and rounds', () => {
-    expect(runCoins({ ...base, score: 250, stars: 0, rankMultiplier: 1.1 })).toMatchObject({ coins: 11, multiplier: 1.1 });
-    expect(runCoins({ ...base, score: 500, stars: 0, rankMultiplier: 1.35 })).toMatchObject({ coins: 27 });
-    expect(runCoins({ ...base, score: 25, stars: 0, lossStreak: 3, rankMultiplier: 1.1 })).toMatchObject({ coins: 7, floor: 6 });
-  });
-  it('head-start score earns no coins', () => {
-    expect(runCoins({ ...base, score: 300 + 50, headStart: 300, stars: 0 })).toMatchObject({ coins: 2 });
-    expect(runCoins({ ...base, score: 100, headStart: 300, stars: 0 })).toMatchObject({ coins: 0 });
+    expect(runCoins({ ...base, seconds: 50, stars: 0, rankMultiplier: 1.1 })).toMatchObject({ coins: 11, multiplier: 1.1 });
+    expect(runCoins({ ...base, seconds: 100, stars: 0, rankMultiplier: 1.35 })).toMatchObject({ coins: 27 });
+    expect(runCoins({ ...base, seconds: 5, stars: 0, lossStreak: 3, rankMultiplier: 1.1 })).toMatchObject({ coins: 7, floor: 6 });
   });
 });
 
 describe('assist state machine', () => {
-  const run = (score: number, seconds: number, bronzeOwned = false) => ({ score, seconds, bronzeOwned });
+  // First arg kept from the score era for readability of the cases below; only seconds matter now.
+  const run = (_score: number, seconds: number, bronzeOwned = false) => ({ seconds, bronzeOwned });
   it('starts inactive', () => {
     expect(DEFAULT_ASSIST).toEqual({ zeroStreak: 0, noBronzeStreak: 0, active: false, retired: false });
   });
-  it('turns on after 2 consecutive zero-score runs', () => {
+  it('turns on after 2 consecutive runs under 5 s', () => {
     let s = updateAssist(DEFAULT_ASSIST, run(0, 3));
     expect(s.active).toBe(false);
     s = updateAssist(s, run(0, 2));
     expect(s.active).toBe(true);
   });
-  it('a non-zero score resets the zero streak', () => {
+  it('a run of 5 s or more resets that streak', () => {
     let s = updateAssist(DEFAULT_ASSIST, run(0, 3));
     s = updateAssist(s, run(5, 31));
     expect(s.zeroStreak).toBe(0);
@@ -99,14 +97,6 @@ describe('start tiers', () => {
     expect(sanitizeStartTier('silver', ['bronze', 'silver'])).toBe('silver');
     expect(sanitizeStartTier('gold', ['bronze'])).toBe('none');
     expect(sanitizeStartTier(42, ['bronze'])).toBe('none');
-  });
-});
-
-describe('headStartScore', () => {
-  it('round, readable head starts: bronze 100, silver 200, gold 300 (owner decision 2026-11-22)', () => {
-    expect(HEAD_START_SCORE).toEqual({ bronze: 100, silver: 200, gold: 300 });
-    expect(headStartScore('none')).toBe(0);
-    expect(headStartScore('silver')).toBe(200);
   });
 });
 

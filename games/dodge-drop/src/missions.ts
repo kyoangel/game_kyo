@@ -1,26 +1,26 @@
 export type MissionId =
-  | 'nearMiss' | 'combo' | 'survive' | 'starsTotal' | 'starsRun' | 'shieldBreak' | 'score' | 'rush' | 'runs';
+  | 'nearMiss' | 'chompRun' | 'survive' | 'starsTotal' | 'starsRun' | 'shieldBreak' | 'chompEat' | 'rush' | 'runs';
 export type Tier = 1 | 2 | 3;
 export interface MissionDef { id: MissionId; targets: readonly [number, number, number]; scope: 'run' | 'total' }
 
 export const MISSION_POOL: readonly MissionDef[] = [
   { id: 'nearMiss', targets: [10, 25, 50], scope: 'total' },
-  { id: 'combo', targets: [2, 3, 4], scope: 'run' },
+  { id: 'chompRun', targets: [1, 2, 3], scope: 'run' },
   { id: 'survive', targets: [20, 45, 75], scope: 'run' },
   { id: 'starsTotal', targets: [5, 15, 30], scope: 'total' },
   { id: 'starsRun', targets: [3, 6, 10], scope: 'run' },
   { id: 'shieldBreak', targets: [1, 3, 6], scope: 'total' },
-  { id: 'score', targets: [150, 400, 800], scope: 'run' },
+  { id: 'chompEat', targets: [5, 12, 20], scope: 'run' },
   { id: 'rush', targets: [1, 2, 4], scope: 'total' },
   { id: 'runs', targets: [3, 6, 10], scope: 'total' },
 ];
 
 export interface RunStats {
-  nearMisses: number; maxMultiplier: number; seconds: number; stars: number;
-  shieldBlocks: number; score: number; rushes: number; runs: number;
+  nearMisses: number; /** Graze-gauge Chomps triggered this run. */ grazeChomps: number; seconds: number; stars: number;
+  shieldBlocks: number; /** Blocks eaten in Chomp mode. */ chompEats: number; rushes: number; runs: number;
 }
 export function emptyStats(): RunStats {
-  return { nearMisses: 0, maxMultiplier: 1, seconds: 0, stars: 0, shieldBlocks: 0, score: 0, rushes: 0, runs: 0 };
+  return { nearMisses: 0, grazeChomps: 0, seconds: 0, stars: 0, shieldBlocks: 0, chompEats: 0, rushes: 0, runs: 0 };
 }
 
 export interface Mission { id: MissionId; tier: Tier; progress: number }
@@ -76,12 +76,12 @@ export function initialMissions(rng: () => number): MissionState {
 export function runValue(id: MissionId, s: RunStats): number {
   switch (id) {
     case 'nearMiss': return s.nearMisses;
-    case 'combo': return s.maxMultiplier;
+    case 'chompRun': return s.grazeChomps;
     case 'survive': return s.seconds;
     case 'starsTotal':
     case 'starsRun': return s.stars;
     case 'shieldBreak': return s.shieldBlocks;
-    case 'score': return s.score;
+    case 'chompEat': return s.chompEats;
     case 'rush': return s.rushes;
     case 'runs': return s.runs;
   }

@@ -1,4 +1,4 @@
-# Neon Rush v3.2.0 - CrazyGames resubmission notes
+# Neon Rush v3.3.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -18,6 +18,12 @@ refund; web favicon and apple-touch-icon.
 v3.2.0 - faster medal pacing: Bronze at 15 s, Silver at 30 s, Gold at one minute (start tiers follow); start chips read
 "Bronze / Silver / Gold start"; zh-TW medal names unified as 銅杯 / 銀杯 / 金杯 / 霓虹杯 / 鑽石杯 / 傳奇杯.
 
+v3.3.0 - survival time is the only result (no score, no combo multiplier): the HUD headline is the run clock, results
+show the time and best time, star coins = stars + 1 per 5 s survived. Near misses fill an 8-segment graze gauge; a full
+gauge turns the player into Chomp mode (4 s, +0.5 s per "Longer Chomp" level, which replaces "Steady Combo"). Score and
+combo missions replaced by "Chomp N times in one run" and "Eat N blocks in one run". Head-start points removed.
+Plan: `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`.
+
 ## What changed since v2.8.4 (paste into the portal notes)
 
 Thank you for the feedback on v2.8.4. We treated "overall quality" as a call for a clearly better game, not a small
@@ -36,6 +42,8 @@ tweak, and rebuilt the parts a new player sees first:
 - Bigger touch targets. Buttons and menu rows meet a minimum tap size on phones.
 - Pause menu. A pause button next to the sound icon (or Esc / P) freezes the run; leaving the tab or app pauses it
   automatically. Resume continues, End run goes straight to the results and keeps the stars collected.
+- Time is the score. No abstract points: the big number is how long you survived, and grazing blocks charges a gauge
+  that turns you into a block-eating Chomper, so taking risks pays off in play instead of in points.
 - Undo for boosts. Tapping an equipped next-run boost again refunds it, so a mis-tap never costs stars.
 - Clearer Shop. Upgrade cards now show what the next level gives instead of "0 px" / "0%" on level 0.
 

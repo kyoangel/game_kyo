@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COMBO_TIMEOUT, Combo, horizontalGap, isNearMiss } from './combo.ts';
+import { horizontalGap, isNearMiss } from './combo.ts';
 
 describe('near miss', () => {
   it('isNearMiss bounds', () => {
@@ -16,55 +16,10 @@ describe('near miss', () => {
   });
 });
 
-describe('Combo', () => {
-  const after = (n: number) => {
-    const c = new Combo();
-    for (let i = 0; i < n; i++) c.hit();
-    return c;
-  };
-  it('multiplier curve', () => {
-    expect(after(0).multiplier).toBe(1);
-    expect(after(1).multiplier).toBe(1);
-    expect(after(3).multiplier).toBe(2);
-    expect(after(12).multiplier).toBe(5);
-    expect(after(30).multiplier).toBe(5);
-  });
-  it('hit returns points', () => {
-    const c = new Combo();
-    expect(c.hit()).toBe(5);
-    c.hit();
-    expect(c.hit()).toBe(10);
-  });
-  it('tick timeout', () => {
-    const c = after(2);
-    expect(c.tick(2.4)).toBe(false);
-    expect(c.count).toBe(2);
-    expect(c.tick(COMBO_TIMEOUT - 2.4)).toBe(true);
-    expect(c.count).toBe(0);
-    expect(c.tick(10)).toBe(false);
-  });
-  it('hit resets timer; reset clears', () => {
-    const c = after(1);
-    c.tick(2);
-    c.hit();
-    expect(c.sinceLast).toBe(0);
-    c.reset();
-    expect(c.count).toBe(0);
-  });
-});
-
-describe('configurable window and timeout', () => {
+describe('configurable window', () => {
   it('isNearMiss accepts a custom window', () => {
     expect(isNearMiss(30, 32)).toBe(true);
     expect(isNearMiss(30)).toBe(false);
     expect(isNearMiss(0, 32)).toBe(false);
-  });
-  it('Combo honours a custom timeout', () => {
-    const c = new Combo(3.25);
-    c.hit();
-    expect(c.tick(2.6)).toBe(false);
-    expect(c.count).toBe(1);
-    expect(c.tick(0.7)).toBe(true);
-    expect(c.count).toBe(0);
   });
 });

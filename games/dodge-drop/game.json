@@ -1,17 +1,17 @@
 {
   "slug": "dodge-drop",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "title": {
     "en": "Neon Rush",
     "zh-TW": "霓虹極速"
   },
   "description": {
-    "en": "Neon blocks rain down faster and faster. Drag to dodge, graze near misses for combo multipliers, grab stars and stack shields, and push from Bronze to Legend. A goal bar always shows your next medal. Spend stars in the Shop on upgrades, skins and boosts, and clear rotating missions to rank up. Plays in landscape and portrait, with new art, music and sound effects.",
-    "zh-TW": "霓虹方塊越落越快！拖曳閃避、擦邊累積連擊倍率、收集星星與護盾，從銅杯一路挑戰到傳奇杯。進度條隨時顯示下一座獎杯目標。用星星在商店購買升級、造型與道具，完成輪替任務提升等級。支援橫向與直向，全新美術、音樂與音效。"
+    "en": "Neon blocks rain down faster and faster. Drag to dodge and see how long you can last. Graze past blocks to charge your gauge: fill it and you become a block-eating Chomper for a few seconds. Grab stars and stack shields, and push from Bronze at 15 seconds all the way to Legend. A goal bar always shows your next medal. Spend stars in the Shop on upgrades, skins and boosts, and clear rotating missions to rank up. Plays in landscape and portrait, with new art, music and sound effects.",
+    "zh-TW": "霓虹方塊越落越快，看你能撐多久！拖曳閃避，貼著方塊擦邊可以集氣，集滿就變身大胃王，幾秒內把方塊通通吃掉。收集星星與護盾，15 秒拿銅杯，一路挑戰到傳奇杯，進度條隨時顯示下一座獎杯目標。用星星在商店購買升級、造型與道具，完成輪替任務提升等級。支援橫向與直向，全新美術、音樂與音效。"
   },
   "instructions": {
-    "en": "Drag anywhere to move left and right (arrow keys or A / D work too; on phones you can turn on tilt control). A quick on-screen guide shows the controls on your first run. Slip close past blocks for near-miss combos, collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Watch the goal bar for your next medal. Survive the speed rushes and hold on through Overdrive. Landscape and portrait both supported.",
-    "zh-TW": "在畫面任意處拖曳左右移動（也可用方向鍵或 A / D；手機可開啟陀螺儀操作）。第一次遊玩會有簡短的畫面操作教學。貼近方塊閃過可累積擦邊連擊，收集星星到商店消費，拾取護盾可抵擋一次撞擊，升級「護盾堆疊」可同時持有更多護盾。留意進度條上的下一座獎杯目標。撐過一波波加速，挑戰極速模式。支援橫向與直向。"
+    "en": "Drag anywhere to move left and right (arrow keys or A / D work too; on phones you can turn on tilt control). A quick on-screen guide shows the controls on your first run. Slip close past blocks to charge the graze gauge (when it is full you turn into Chomp mode and can eat blocks for a few seconds), collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Watch the goal bar for your next medal. Survive the speed rushes and hold on through Overdrive. Landscape and portrait both supported.",
+    "zh-TW": "在畫面任意處拖曳左右移動（也可用方向鍵或 A / D；手機可開啟陀螺儀操作）。第一次遊玩會有簡短的畫面操作教學。貼近方塊閃過可以擦邊集氣（集滿自動變身大胃王，幾秒內可以吃掉方塊），收集星星到商店消費，拾取護盾可抵擋一次撞擊，升級「護盾堆疊」可同時持有更多護盾。留意進度條上的下一座獎杯目標。撐過一波波加速，挑戰極速模式。支援橫向與直向。"
   },
   "tags": [
     "arcade",
@@ -24,6 +24,7 @@
     "keyboard"
   ],
   "cover": "cover.svg",
+  "scoreFormat": "time",
   "store": {
     "controls": {
       "en": "- Drag left or right with the mouse or your finger to move\n- Arrow keys or A / D to move\n- On phones, tilt control can be turned on in the game\n- Space or Enter to play again after a run"

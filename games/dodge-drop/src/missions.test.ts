@@ -17,12 +17,12 @@ describe('pool', () => {
   it('has the 9 templates with the spec targets and scopes', () => {
     expect(MISSION_POOL.map((d) => [d.id, ...d.targets, d.scope])).toEqual([
       ['nearMiss', 10, 25, 50, 'total'],
-      ['combo', 2, 3, 4, 'run'],
+      ['chompRun', 1, 2, 3, 'run'],
       ['survive', 20, 45, 75, 'run'],
       ['starsTotal', 5, 15, 30, 'total'],
       ['starsRun', 3, 6, 10, 'run'],
       ['shieldBreak', 1, 3, 6, 'total'],
-      ['score', 150, 400, 800, 'run'],
+      ['chompEat', 5, 12, 20, 'run'],
       ['rush', 1, 2, 4, 'total'],
       ['runs', 3, 6, 10, 'total'],
     ]);
@@ -83,36 +83,36 @@ describe('drawMission / initialMissions', () => {
 
 describe('progress', () => {
   it('runValue maps each template to a stat', () => {
-    const s = stats({ nearMisses: 7, maxMultiplier: 3, seconds: 41, stars: 5, shieldBlocks: 2, score: 333, rushes: 1, runs: 1 });
+    const s = stats({ nearMisses: 7, grazeChomps: 3, seconds: 41, stars: 5, shieldBlocks: 2, chompEats: 333, rushes: 1, runs: 1 });
     const v = (id: Mission['id']) => runValue(id, s);
-    expect([v('nearMiss'), v('combo'), v('survive'), v('starsTotal'), v('starsRun'), v('shieldBreak'), v('score'), v('rush'), v('runs')]).toEqual([7, 3, 41, 5, 5, 2, 333, 1, 1]);
+    expect([v('nearMiss'), v('chompRun'), v('survive'), v('starsTotal'), v('starsRun'), v('shieldBreak'), v('chompEat'), v('rush'), v('runs')]).toEqual([7, 3, 41, 5, 5, 2, 333, 1, 1]);
   });
   it('total scope adds to saved progress; run scope takes the max', () => {
     expect(liveProgress({ id: 'nearMiss', tier: 1, progress: 4 }, stats({ nearMisses: 3 }))).toBe(7);
-    expect(liveProgress({ id: 'score', tier: 1, progress: 100 }, stats({ score: 60 }))).toBe(100);
-    expect(liveProgress({ id: 'score', tier: 1, progress: 100 }, stats({ score: 180 }))).toBe(180);
+    expect(liveProgress({ id: 'chompEat', tier: 1, progress: 100 }, stats({ chompEats: 60 }))).toBe(100);
+    expect(liveProgress({ id: 'chompEat', tier: 1, progress: 100 }, stats({ chompEats: 180 }))).toBe(180);
   });
   it('isComplete uses the tier target', () => {
     expect(isComplete({ id: 'nearMiss', tier: 1, progress: 9 }, stats({ nearMisses: 1 }))).toBe(true);
     expect(isComplete({ id: 'nearMiss', tier: 1, progress: 8 }, stats({ nearMisses: 1 }))).toBe(false);
   });
   it('newlyCompleted skips ids already toasted', () => {
-    const st = state([{ id: 'combo', tier: 1, progress: 0 }, { id: 'score', tier: 1, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]);
-    const s = stats({ maxMultiplier: 2, score: 200 });
-    expect(newlyCompleted(st, s, new Set()).map((m) => m.id)).toEqual(['combo', 'score']);
-    expect(newlyCompleted(st, s, new Set(['combo'])).map((m) => m.id)).toEqual(['score']);
+    const st = state([{ id: 'chompRun', tier: 1, progress: 0 }, { id: 'chompEat', tier: 1, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]);
+    const s = stats({ grazeChomps: 2, chompEats: 200 });
+    expect(newlyCompleted(st, s, new Set()).map((m) => m.id)).toEqual(['chompRun', 'chompEat']);
+    expect(newlyCompleted(st, s, new Set(['chompRun'])).map((m) => m.id)).toEqual(['chompEat']);
   });
 });
 
 describe('applyRun', () => {
   const active: Mission[] = [
     { id: 'nearMiss', tier: 1, progress: 4 },
-    { id: 'combo', tier: 1, progress: 0 },
+    { id: 'chompRun', tier: 1, progress: 0 },
     { id: 'survive', tier: 2, progress: 0 },
   ];
   it('completes, awards stars + coins, replaces completed missions, stores progress for the rest', () => {
-    const r = applyRun(state(active), stats({ nearMisses: 6, maxMultiplier: 2, seconds: 30 }), seq(0.5));
-    expect(r.completed.map((m) => m.id)).toEqual(['nearMiss', 'combo']);
+    const r = applyRun(state(active), stats({ nearMisses: 6, grazeChomps: 2, seconds: 30 }), seq(0.5));
+    expect(r.completed.map((m) => m.id)).toEqual(['nearMiss', 'chompRun']);
     expect(r.starsGained).toBe(2);
     expect(r.coinsGained).toBe(40);
     expect(r.state.stars).toBe(2);
@@ -123,24 +123,24 @@ describe('applyRun', () => {
     const ids = r.state.active.map((m) => m.id);
     expect(new Set(ids).size).toBe(3);
     expect(ids).not.toContain('nearMiss');
-    expect(ids).not.toContain('combo');
+    expect(ids).not.toContain('chompRun');
     expect(r.state.active.slice(0, 2).every((m) => m.progress === 0)).toBe(true);
     expect(r.rankBefore).toBe(1);
     expect(r.rankAfter).toBe(1);
   });
   it('replacement tier is rank-weighted by the new rank', () => {
-    const st = state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'runs', tier: 3, progress: 0 }], 4);
+    const st = state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'chompRun', tier: 3, progress: 0 }, { id: 'runs', tier: 3, progress: 0 }], 4);
     const r = applyRun(st, stats({ seconds: 50 }), seq(0.99));
     expect(r.rankAfter).toBe(2);
     expect(r.replacements[0]!.tier).toBe(2);
   });
   it('reward is 20 x tier coins', () => {
-    expect([1, 2, 3].map((t) => missionReward({ id: 'combo', tier: t as 1 | 2 | 3, progress: 0 }))).toEqual([20, 40, 60]);
-    const r = applyRun(state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]), stats({ seconds: 50 }), seq(0.5));
+    expect([1, 2, 3].map((t) => missionReward({ id: 'chompRun', tier: t as 1 | 2 | 3, progress: 0 }))).toEqual([20, 40, 60]);
+    const r = applyRun(state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'chompRun', tier: 3, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }]), stats({ seconds: 50 }), seq(0.5));
     expect(r.coinsGained).toBe(40);
   });
   it('rank-up when stars cross a multiple of 5', () => {
-    const st = state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'combo', tier: 1, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }], 4);
+    const st = state([{ id: 'survive', tier: 2, progress: 0 }, { id: 'chompRun', tier: 1, progress: 0 }, { id: 'runs', tier: 1, progress: 0 }], 4);
     const r = applyRun(st, stats({ seconds: 50 }), seq(0.5));
     expect(r.starsGained).toBe(2);
     expect(r.rankBefore).toBe(1);
@@ -148,7 +148,7 @@ describe('applyRun', () => {
     expect(r.state.rank).toBe(2);
   });
   it('runs mission counts the run', () => {
-    const st = state([{ id: 'runs', tier: 1, progress: 2 }, { id: 'combo', tier: 3, progress: 0 }, { id: 'rush', tier: 3, progress: 0 }]);
+    const st = state([{ id: 'runs', tier: 1, progress: 2 }, { id: 'chompRun', tier: 3, progress: 0 }, { id: 'rush', tier: 3, progress: 0 }]);
     expect(applyRun(st, stats({ runs: 1 }), seq(0.5)).completed.map((m) => m.id)).toEqual(['runs']);
   });
   it('is pure: input state is not mutated', () => {
@@ -160,7 +160,7 @@ describe('applyRun', () => {
 });
 
 describe('swap', () => {
-  const st = state([{ id: 'nearMiss', tier: 2, progress: 3 }, { id: 'combo', tier: 1, progress: 0 }, { id: 'score', tier: 3, progress: 0 }], 7);
+  const st = state([{ id: 'nearMiss', tier: 2, progress: 3 }, { id: 'chompRun', tier: 1, progress: 0 }, { id: 'chompEat', tier: 3, progress: 0 }], 7);
   it('always costs a flat 5', () => {
     expect(SWAP_COST).toBe(5);
     expect(swapCost()).toBe(5);
@@ -179,7 +179,7 @@ describe('swap', () => {
     expect(r.coins).toBe(95);
     expect(r.state.active[0]!.tier).toBe(2);
     expect(r.state.active[0]!.progress).toBe(0);
-    expect(['nearMiss', 'combo', 'score']).not.toContain(r.state.active[0]!.id);
+    expect(['nearMiss', 'chompRun', 'chompEat']).not.toContain(r.state.active[0]!.id);
     expect(r.state.stars).toBe(7);
     expect(r.state.rank).toBe(2);
   });
@@ -200,8 +200,8 @@ describe('sanitizeMissions', () => {
   it('drops invalid / duplicate entries, clamps, refills to 3, derives rank from stars', () => {
     const raw = {
       active: [
-        { id: 'combo', tier: 2, progress: -5 },
-        { id: 'combo', tier: 1, progress: 1 },
+        { id: 'chompRun', tier: 2, progress: -5 },
+        { id: 'chompRun', tier: 1, progress: 1 },
         { id: 'nope', tier: 1, progress: 0 },
         { id: 'runs', tier: 9, progress: 2 },
       ],
@@ -209,21 +209,31 @@ describe('sanitizeMissions', () => {
     };
     const s = sanitizeMissions(raw, seq(0.1, 0.5, 0.9));
     expect(s.active).toHaveLength(3);
-    expect(s.active[0]).toEqual({ id: 'combo', tier: 2, progress: 0 });
+    expect(s.active[0]).toEqual({ id: 'chompRun', tier: 2, progress: 0 });
     expect(new Set(s.active.map((m) => m.id)).size).toBe(3);
     expect(s.stars).toBe(12);
     expect(s.rank).toBe(3);
     expect(s.completedCount).toBe(0);
   });
+  it('drops pre-3.3 score / combo missions (no longer in the pool) and draws replacements', () => {
+    const s = sanitizeMissions({
+      active: [{ id: 'score', tier: 2, progress: 300 }, { id: 'combo', tier: 1, progress: 2 }, { id: 'runs', tier: 1, progress: 1 }],
+      stars: 0, completedCount: 0,
+    }, seq(0.1, 0.9, 0.5));
+    expect(s.active).toHaveLength(3);
+    expect(s.active.map((m) => m.id)).not.toContain('score');
+    expect(s.active.map((m) => m.id)).not.toContain('combo');
+    expect(s.active.find((m) => m.id === 'runs')).toEqual({ id: 'runs', tier: 1, progress: 1 });
+  });
   it('accepts a saved 2.5.0 state (day/swapsUsed/done): ignores the daily fields, re-draws done missions, keeps the rest', () => {
     const s = sanitizeMissions({
-      active: [{ id: 'combo', tier: 1, progress: 2, done: true }, { id: 'score', tier: 2, progress: 50 }, { id: 'runs', tier: 1, progress: 1 }],
+      active: [{ id: 'chompRun', tier: 1, progress: 2, done: true }, { id: 'chompEat', tier: 2, progress: 50 }, { id: 'runs', tier: 1, progress: 1 }],
       stars: 12, completedCount: 4, day: '2020-01-01', swapsUsed: 3,
     }, seq(0.5));
     expect(Object.keys(s).sort()).toEqual(['active', 'completedCount', 'rank', 'stars']);
     expect(s.active).toHaveLength(3);
-    expect(s.active.map((m) => m.id)).not.toContain('combo');
-    expect(s.active[0]).toEqual({ id: 'score', tier: 2, progress: 50 });
+    expect(s.active.map((m) => m.id)).not.toContain('chompRun');
+    expect(s.active[0]).toEqual({ id: 'chompEat', tier: 2, progress: 50 });
     expect(s.active[1]).toEqual({ id: 'runs', tier: 1, progress: 1 });
     expect(s.active.every((m) => !('done' in m))).toBe(true);
     expect([s.stars, s.rank, s.completedCount]).toEqual([12, 3, 4]);

@@ -11,7 +11,11 @@ export const MIN_FIELD_FONT = 40;
 
 export interface Anchor { x: number; y: number; originX?: number; panel?: boolean }
 export interface HudAnchors {
-  score: Anchor; combo: Anchor; timer: Anchor; shields: Anchor; goal: Anchor; missions: Anchor;
+  /** Run clock, the headline result. */
+  timer: Anchor;
+  /** Graze gauge (near misses charge Chomp). */
+  gauge: Anchor;
+  shields: Anchor; goal: Anchor; missions: Anchor;
   mute: { x: number; y: number };
 }
 
@@ -22,9 +26,8 @@ export function fieldFont(f: Frame, size: number): number {
 export function hudAnchors(f: Frame): HudAnchors {
   if (f.mode === 'portrait') {
     return {
-      score: { x: 24, y: 18, originX: 0, panel: false },
-      combo: { x: 24, y: 76, originX: 0, panel: false },
-      timer: { x: f.width - 100, y: 24, originX: 1, panel: false },
+      timer: { x: 24, y: 14, originX: 0, panel: false },
+      gauge: { x: 24, y: 86, originX: 0, panel: false },
       shields: { x: 220, y: 44, originX: 0, panel: false },
       goal: { x: 220, y: 84, originX: 0, panel: false },
       missions: { x: f.width / 2, y: 120, originX: 0.5, panel: false },
@@ -34,10 +37,9 @@ export function hudAnchors(f: Frame): HudAnchors {
   const left = 32;
   const rightPanelX = f.fieldX + f.dispW + 32;
   return {
-    score: { x: left, y: 40, originX: 0, panel: true },
-    combo: { x: left, y: 140, originX: 0, panel: true },
+    timer: { x: left, y: 30, originX: 0, panel: true },
+    gauge: { x: left, y: 150, originX: 0, panel: true },
     goal: { x: left, y: 270, originX: 0, panel: true },
-    timer: { x: f.width - 32, y: 40, originX: 1, panel: true },
     shields: { x: rightPanelX, y: 150, originX: 0, panel: true },
     missions: { x: rightPanelX, y: 280, originX: 0, panel: true },
     mute: { x: f.width - 56, y: f.height - 56 },

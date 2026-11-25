@@ -17,9 +17,6 @@ export const CHOMP_DURATION = 6;
 /** Brief invulnerability (seconds) right after Pac-Chomp ends. */
 export const CHOMP_EXIT_INVULN = 1.0;
 
-/** Bonus score per block eaten during Pac-Chomp. */
-export const CHOMP_BLOCK_SCORE = 15;
-
 export interface RunBoosts {
   shields: number;
   shrink: boolean;

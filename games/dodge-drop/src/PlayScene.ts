@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { addBackground, addButton, cssColor, ensureTextures, getKit, markButtonTap, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
-import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
+import { CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { addParallax, type Parallax } from './backdrop.ts';
 import { artImage, artScale, styleArt, usedArtKeys } from './art.ts';
-import { Combo, horizontalGap, isNearMiss } from './combo.ts';
+import { horizontalGap, isNearMiss } from './combo.ts';
+import { addGraze, GRAZE_FULL } from './graze.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
@@ -14,7 +15,7 @@ import { SKINS, type Skin } from './economy.ts';
 import { formatTime } from './format.ts';
 import { nextGoal, type Goal } from './goalBar.ts';
 import { MEDALS, mergeMedals, medalsReached, type MedalId } from './medals.ts';
-import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, edibleBlockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
+import { BLOCK_ORANGE, BLOCK_PAD, BLOCK_PINK, blockTexture, boostIconKey, edibleBlockTexture, ensurePlayTextures, warnTexture, WARN_H } from './playArt.ts';
 import { mulberry32 } from './rng.ts';
 import { RUN_STATE_KEY, type RunState } from './runState.ts';
 import { skinTextureKey } from './skinArt.ts';
@@ -105,10 +106,11 @@ export class PlayScene extends Phaser.Scene {
   private pauseBtn: Phaser.GameObjects.Container | null = null;
 
   private t = 0;
-  private score = 0;
-  private dispScore = 0;
   private stars = 0;
-  private combo = new Combo();
+  /** Graze gauge: near misses toward the next Chomp (0..GRAZE_FULL-1). */
+  private graze = 0;
+  /** Length of the current Chomp, for the draining gauge. */
+  private chompTotal = 0;
   private earned: MedalId[] = [];
 
   private skin: Skin = SKINS[0]!;
@@ -168,9 +170,8 @@ export class PlayScene extends Phaser.Scene {
   private buildingHud = false;
   private missionsText: Phaser.GameObjects.Text | null = null;
   private lastMissionsShown = '';
-  private scoreText!: Phaser.GameObjects.Text;
-  private comboText!: Phaser.GameObjects.Text;
-  private comboBar!: Phaser.GameObjects.Graphics;
+  private gaugeLabel: Phaser.GameObjects.Text | null = null;
+  private gaugeBar!: Phaser.GameObjects.Graphics;
   private goalText!: Phaser.GameObjects.Text;
   private goalBar!: Phaser.GameObjects.Graphics;
   private goalState: Goal = { kind: 'none' };
@@ -186,9 +187,8 @@ export class PlayScene extends Phaser.Scene {
   private lastInput: LastInput = null;
   private toastObjs = new Set<Phaser.GameObjects.Container>();
   private rushBanner!: Phaser.GameObjects.Text;
-  private lastScoreShown = -1;
   private lastSecShown = -1;
-  private lastComboShown = -1;
+  private lastGaugeKey = '';
   private rushBannerUntil = 0;
   private odBanner!: Phaser.GameObjects.Text;
   private odShown = false;
@@ -225,10 +225,9 @@ export class PlayScene extends Phaser.Scene {
     this.pauseBtn = null;
     this.rng = mulberry32(Date.now() >>> 0);
     this.t = 0;
-    this.score = 0;
-    this.dispScore = 0;
     this.stars = 0;
-    this.combo = new Combo();
+    this.graze = 0;
+    this.chompTotal = 0;
     this.earned = [];
     this.vel = 0;
     this.tiltN = 0;
@@ -274,9 +273,8 @@ export class PlayScene extends Phaser.Scene {
     this.rushBannerUntil = 0;
     this.odShown = false;
     this.streakAcc = 0;
-    this.lastScoreShown = -1;
     this.lastSecShown = -1;
-    this.lastComboShown = -1;
+    this.lastGaugeKey = '';
     this.trail = null;
 
     if (__GK_TEST_HOOKS__) {
@@ -286,17 +284,15 @@ export class PlayScene extends Phaser.Scene {
         god,
         stats: () => ({
           t: this.t,
-          score: this.score,
-          combo: this.combo.count,
+          graze: this.graze,
+          chomping: this.chompTimer > 0,
           nearMisses: this.stats.nearMisses,
           dead: this.dead,
-          multiplier: this.combo.multiplier,
           stars: this.stars,
           shieldHeld: this.shieldHeld,
           clock: this.t,
           startTier: this.cfg.tier,
           shieldHits: this.shieldHits,
-          headStart: this.cfg.headStart,
           assisted: this.cfg.assisted,
           rush: isRush(this.t) || this.t >= OVERDRIVE_T,
           medals: [...this.earned],
@@ -310,6 +306,8 @@ export class PlayScene extends Phaser.Scene {
         /** Test hook: canvas positions of the pause menu buttons while it is open. */
         pauseMenu: () => (this.paused ? this.pauseMenuReport() : null),
         warp: (seconds: number) => { this.t += seconds; },
+        /** Test hook: one near miss beside the player (charges the graze gauge). */
+        nearMiss: () => this.onNearMiss({ x: this.player.x + 60 } as Block),
         /** Test hook: adds one held shield (capped like a pickup). */
         giveShield: () => this.addShield(),
         /** Test hook: spawns a pickup at the top of the screen at column x. */
@@ -367,14 +365,11 @@ export class PlayScene extends Phaser.Scene {
       this.scheduler = new SpawnScheduler(this.rng, W, true, { speedMul: cfg.speedMul, intervalMul: cfg.intervalMul, startT: cfg.startT });
       this.t = cfg.startT;
       this.runStartT = cfg.startT;
-      this.score = cfg.headStart;
-      this.dispScore = cfg.headStart;
       this.rushIdx = cfg.rushIdx;
       this.nextShield = cfg.firstShieldAt;
       this.nextStar = cfg.startT + starInterval(cfg.luckLevel, this.rng());
       this.shieldHits = cfg.startShieldHits;
       this.chompArmed = cfg.chompArmed;
-      this.combo = new Combo(cfg.comboTimeout);
       if (cfg.grace > 0) this.graceBanner.setText(this.kit.t(`tierStart.${cfg.tier}`));
       this.buildPlayer();
       this.syncShieldHud();
@@ -500,8 +495,7 @@ export class PlayScene extends Phaser.Scene {
         inField,
       });
     };
-    add('score', this.scoreText, false);
-    add('combo', this.comboText, false);
+    add('gauge', this.gaugeLabel, false);
     add('timer', this.timerText, false);
     add('missions', this.missionsText, false);
     add('goal', this.goalText, false);
@@ -576,9 +570,14 @@ export class PlayScene extends Phaser.Scene {
     this.buildStrip();
     if (landscape) this.inPanel(() => this.buildPanels());
     const panelHud = (): void => {
-      this.scoreText = this.add.text(a.score.x, a.score.y, '0', this.textStyleFor('panel', 48, theme.text)).setOrigin(a.score.originX ?? 0, 0).setDepth(100);
-      this.comboText = this.add.text(a.combo.x, a.combo.y, '', this.textStyleFor('panel', 40, theme.accent)).setDepth(100).setVisible(false);
-      this.comboBar = this.add.graphics().setDepth(100);
+      // The run clock is the headline result (medals, best time).
+      this.timerText = this.add.text(a.timer.x, a.timer.y, '0:00', { ...this.textStyleFor('panel', 60, theme.text), strokeThickness: 7 }).setOrigin(a.timer.originX ?? 0, 0).setDepth(100);
+      // Landscape: a text label over the gauge; portrait: a small Chomp icon in front of it.
+      this.gaugeLabel = landscape
+        ? this.add.text(a.gauge.x, a.gauge.y, this.kit.t('grazeGauge'), this.textStyle(GOAL_PANEL_FONT, 0x3ff0ff)).setDepth(100)
+        : null;
+      if (!landscape) artImage(this, a.gauge.x + 12, a.gauge.y + 8, boostIconKey('chomp')).setDisplaySize(26, 26).setDepth(100);
+      this.gaugeBar = this.add.graphics().setDepth(100);
       const goalStyle = landscape ? this.textStyle(GOAL_PANEL_FONT, theme.text) : this.textStyleFor('panel', 26, theme.text);
       this.goalText = this.add.text(a.goal.x, a.goal.y, '', goalStyle).setOrigin(a.goal.originX ?? 0, 0).setDepth(100).setVisible(false);
       this.goalBar = this.add.graphics().setDepth(100);
@@ -589,10 +588,8 @@ export class PlayScene extends Phaser.Scene {
           artImage(this, a.shields.x + i * 30, a.shields.y, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
         );
       }
-      // Icon row (right to left): mute, fullscreen (when available), pause. Portrait: the timer sits left of the row.
+      // Icon row (right to left): mute, fullscreen (when available), pause.
       const icons = this.kit.fullscreenAvailable ? 2 : 1;
-      const timerX = landscape ? a.timer.x : this.frame.width - 100 - 76 * icons;
-      this.timerText = this.add.text(timerX, a.timer.y, '0:00', this.textStyleFor('panel', 40, theme.text)).setOrigin(1, 0).setDepth(100);
       this.kit.addMuteButton(this, a.mute.x, a.mute.y).setDepth(100);
       this.kit.addFullscreenButton(this, a.mute.x - 76, a.mute.y)?.setDepth(100);
       this.pauseBtn = this.addPauseButton(a.mute.x - 76 * icons, a.mute.y).setDepth(100);
@@ -652,7 +649,6 @@ export class PlayScene extends Phaser.Scene {
       this.updateRush();
       this.updateOverdriveBanner();
       this.setLayers(false);
-      this.combo.tick(dt);
       if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
       if (this.chompTimer > 0) {
         this.chompTimer = Math.max(0, this.chompTimer - dt);
@@ -665,7 +661,6 @@ export class PlayScene extends Phaser.Scene {
       this.chompBanner.setVisible(this.t < this.chompBannerUntil);
       this.updateMedals(prev, this.t);
       this.stats.seconds = Math.floor(this.t - this.runStartT);
-      this.stats.score = this.score - this.cfg.headStart;
       this.checkMissions(dt);
     }
     this.graceBanner.setVisible(this.graceBannerVisible() && !this.dead);
@@ -1093,7 +1088,6 @@ export class PlayScene extends Phaser.Scene {
       if (b.y - BLOCK_H / 2 > H + BLOCK_PAD) {
         b.active = false;
         b.img.setVisible(false);
-        if (!this.dead) this.score += this.combo.multiplier;
       }
     }
   }
@@ -1138,10 +1132,9 @@ export class PlayScene extends Phaser.Scene {
     if (p.kind === 'star') {
       this.stars++;
       this.stats.stars++;
-      this.score += 10;
       this.kit.audio.sfx('pickup');
       this.fx.burst(p.x, p.y, { color: 0xffe14d, count: 16, speed: 300, lifespanMs: 450 });
-      this.fx.popText(p.x, p.y - 20, '+10', { color: 0xffe14d, size: fieldFont(this.frame, 30) });
+      this.fx.popText(p.x, p.y - 20, '+1★', { color: 0xffe14d, size: fieldFont(this.frame, 30) });
     } else {
       this.addShield();
       this.kit.audio.sfx('shield');
@@ -1156,29 +1149,44 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private onNearMiss(b: Block): void {
-    const pts = this.combo.hit();
-    this.score += pts;
-    const mult = this.combo.multiplier;
     this.stats.nearMisses++;
-    this.stats.maxMultiplier = Math.max(this.stats.maxMultiplier, mult);
+    // Test hook: __dd.noGraze keeps the gauge empty (tests that warp through rushes must not drift into Chomp).
+    const noGraze = __GK_TEST_HOOKS__ && (window as unknown as { __dd?: { noGraze?: boolean } }).__dd?.noGraze === true;
+    const chomping = this.chompTimer > 0 || noGraze;
+    const g = addGraze(this.graze, chomping);
+    this.graze = g.gauge;
     const side = Math.sign(b.x - this.player.x) || 1;
     // Two blocks passing on both sides in the same row must not stack two pops on top of each other.
-    if (this.t - this.lastNearPopT >= 0.2) {
+    if (!chomping && this.t - this.lastNearPopT >= 0.2) {
       this.lastNearPopT = this.t;
-      this.fx.popText(this.player.x, PLAYER_Y - 70, `+5 ×${mult}`, { color: this.kit.theme.accent, size: fieldFont(this.frame, 34) });
+      this.fx.popText(this.player.x, PLAYER_Y - 70, this.kit.t('graze'), { color: 0x3ff0ff, size: fieldFont(this.frame, 34) });
     }
-    this.kit.audio.sfx('nearMiss', { step: this.combo.count });
+    // Pitch climbs with the gauge so the player hears it filling.
+    this.kit.audio.sfx('nearMiss', { step: g.trigger ? GRAZE_FULL : this.graze });
+    if (g.trigger) {
+      this.stats.grazeChomps++;
+      this.startChomp(this.cfg.grazeChompSeconds);
+    }
     playNearMiss(this, this.fx, this.skin, this.player.x, PLAYER_Y, side, this.skinColor());
+  }
+
+  /** Enter Chomp mode (graze gauge full, or the bought Chomp boost on a fatal hit): blocks turn edible. */
+  private startChomp(seconds: number): void {
+    this.chompTimer = Math.max(this.chompTimer, seconds);
+    this.chompTotal = this.chompTimer;
+    this.chompBannerUntil = this.t + 1.5;
+    this.kit.audio.sfx('rush');
+    this.setLayers(false);
+    this.syncGhostBlocks();
   }
 
   private eatBlock(b: Block): void {
     b.active = false;
     b.img.setVisible(false);
-    this.score += CHOMP_BLOCK_SCORE;
+    this.stats.chompEats++;
     this.kit.audio.sfx('pickup');
     this.fx.burst(b.x, b.y, { color: 0x3b7bff, count: 18, speed: 420, lifespanMs: 420 });
     this.fx.burst(b.x, b.y, { color: 0xffe14d, count: 12, speed: 360, lifespanMs: 380 });
-    this.fx.popText(b.x, b.y - 20, `+${CHOMP_BLOCK_SCORE}`, { color: 0xffe14d, size: fieldFont(this.frame, 34) });
     this.fx.shake(0.2);
   }
 
@@ -1189,7 +1197,6 @@ export class PlayScene extends Phaser.Scene {
       this.ring.setVisible(this.shieldHits > 0);
       this.syncShieldHud();
       this.invuln = INVULN_SHIELD;
-      this.combo.reset();
       b.active = false;
       b.img.setVisible(false);
       this.kit.audio.sfx('shieldBreak');
@@ -1200,11 +1207,8 @@ export class PlayScene extends Phaser.Scene {
     }
     if (this.chompArmed) {
       this.chompArmed = false;
-      this.chompTimer = CHOMP_DURATION;
-      this.chompBannerUntil = this.t + 1.5;
       this.chompRing.setVisible(false);
-      this.kit.audio.sfx('rush');
-      this.setLayers(false);
+      this.startChomp(CHOMP_DURATION);
       this.eatBlock(b);
       this.syncGhostBlocks();
       return;
@@ -1327,17 +1331,17 @@ export class PlayScene extends Phaser.Scene {
       if (id !== this.runId) return;
     }
     this.fx.clearPops();
+    const clock = Math.floor(this.t);
     const state: RunState = {
-      score: this.score,
+      clock,
       seconds: Math.floor(this.t - this.runStartT),
       stars: this.stars,
       medals: [...this.earned],
-      headStart: this.cfg.headStart,
       startTier: this.cfg.tier,
       stats: { ...this.stats, runs: 1 },
     };
     this.registry.set(RUN_STATE_KEY, state);
-    void this.kit.gameOver(this.score, quit ? undefined : { revive: () => this.revive() });
+    void this.kit.gameOver(clock, quit ? undefined : { revive: () => this.revive() });
   }
 
   // ----------------------------------------------------------------- pause
@@ -1440,7 +1444,6 @@ export class PlayScene extends Phaser.Scene {
     this.dead = false;
     this.tiltNeutral = null;
     this.clearStreaks();
-    this.combo.reset();
     this.invuln = INVULN_REVIVE;
     this.vel = 0;
     this.player.setVisible(true);
@@ -1453,7 +1456,7 @@ export class PlayScene extends Phaser.Scene {
 
   /** Next-medal label + progress bar; redraws only when the label or a 1 % bar step changes. */
   private updateGoal(): void {
-    const g = nextGoal(this.t, this.score - this.cfg.headStart, this.kit.session.best);
+    const g = nextGoal(this.t, this.kit.session.best);
     this.goalState = g;
     if (g.kind === 'none') {
       if (this.goalText.visible) { this.goalText.setVisible(false); this.goalBar.clear(); this.lastGoalKey = ''; }
@@ -1478,25 +1481,10 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private updateHud(dt: number): void {
-    this.dispScore += (this.score - this.dispScore) * Math.min(1, dt * 12);
-    if (this.score - this.dispScore < 0.5) this.dispScore = this.score;
-    const shown = Math.round(this.dispScore);
-    if (shown !== this.lastScoreShown) {
-      this.lastScoreShown = shown;
-      this.scoreText.setText(String(shown));
-    }
     const sec = Math.floor(this.t);
     if (sec !== this.lastSecShown) {
       this.lastSecShown = sec;
       this.timerText.setText(formatTime(sec));
-    }
-    const c = this.combo.count;
-    const mult = this.combo.multiplier;
-    const key = c === 0 ? 0 : mult;
-    if (key !== this.lastComboShown) {
-      this.lastComboShown = key;
-      this.comboText.setVisible(c > 0).setText(`×${mult}`);
-      if (c > 0) this.tweens.add({ targets: this.comboText, scale: { from: 1.4, to: 1 }, duration: 160 });
     }
     if (this.missionsText) {
       // Landscape panel: label line + progress line per mission, one blank line between missions.
@@ -1508,16 +1496,33 @@ export class PlayScene extends Phaser.Scene {
       }
     }
     this.updateGoal();
-    this.comboBar.clear();
-    if (c > 0) {
-      const frac = Math.max(0, 1 - this.combo.sinceLast / this.combo.timeout);
-      this.comboBar.fillStyle(0x1a1033, 0.6);
-      const bx = this.anchors.combo.x;
-      const by = this.anchors.combo.y + 64;
-      const bw = this.frame.mode === 'landscape' ? 300 : 170;
-      this.comboBar.fillRoundedRect(bx, by, bw, 12, 6);
-      this.comboBar.fillStyle(this.kit.theme.accent, 1);
-      this.comboBar.fillRoundedRect(bx, by, bw * frac, 12, 6);
+    this.updateGauge();
+  }
+
+  /** Graze gauge: GRAZE_FULL segments filling with near misses; while Chomp runs, one bar draining with its time. */
+  private updateGauge(): void {
+    const chomping = this.chompTimer > 0 && this.chompTotal > 0;
+    const drain = chomping ? Math.round((this.chompTimer / this.chompTotal) * 100) : -1;
+    const key = `${this.graze}|${drain}`;
+    if (key === this.lastGaugeKey) return;
+    this.lastGaugeKey = key;
+    const landscape = this.frame.mode === 'landscape';
+    const x = this.anchors.gauge.x + (landscape ? 0 : 32);
+    const y = this.anchors.gauge.y + (landscape ? 50 : 0);
+    const w = landscape ? 380 : 136;
+    const h = landscape ? 20 : 16;
+    const g = this.gaugeBar;
+    g.clear();
+    if (chomping) {
+      g.fillStyle(0x3a2f66, 0.85).fillRoundedRect(x, y, w, h, h / 2);
+      g.fillStyle(0x3b7bff, 1).fillRoundedRect(x, y, Math.max(h, (w * drain) / 100), h, h / 2);
+      return;
+    }
+    const gap = 4;
+    const seg = (w - gap * (GRAZE_FULL - 1)) / GRAZE_FULL;
+    for (let i = 0; i < GRAZE_FULL; i++) {
+      g.fillStyle(i < this.graze ? 0x3ff0ff : 0x3a2f66, i < this.graze ? 1 : 0.85);
+      g.fillRoundedRect(x + i * (seg + gap), y, seg, h, Math.min(4, h / 2));
     }
   }
 }

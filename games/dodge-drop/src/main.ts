@@ -26,6 +26,8 @@ void defineGame({
   theme: {},
   scenes: [ShopScene],
   titleMenu: [{ labelKey: 'shop', scene: 'Shop' }],
+  // Survival time is the result: results show m:ss, best = longest clock.
+  scoreFormat: 'time',
   titleExtras: ddTitleExtras,
   titleBackdrop: ddTitleBackdrop,
   titleLogo: 'dd-logo',
