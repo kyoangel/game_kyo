@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { artImage, usedArtKeys } from './art.ts';
 import { addButton, cssColor, getKit, landscapeFont, markButtonTap, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
 import { renderBoostBar } from './boostBar.ts';
-import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
+import { emptyBoosts, toggleBoost, sanitizeBoosts, type RunBoosts } from './boosts.ts';
 import { mergeMedals } from './medals.ts';
 import { missionLabel } from './missionLabel.ts';
 import { missionReward, missionTarget, rankProgress, sanitizeMissions, swapCost, swapMission, type MissionState } from './missions.ts';
@@ -84,14 +84,14 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       shieldCap,
       depth: 2,
       showLabel: true,
-      onBuy: (id) => {
-        const res = buyBoost({ coins, boosts, shieldCap }, id);
+      onToggle: (id) => {
+        const res = toggleBoost({ coins, boosts, shieldCap }, id);
         if (!res.ok) return;
         coins = res.coins;
         boosts = res.boosts;
         const c = res.coins;
         const b = res.boosts;
-        kit.audio.sfx('pickup');
+        kit.audio.sfx(res.action === 'buy' ? 'pickup' : 'click');
         persist(async () => {
           await kit.save.setNumber('coins', c);
           await kit.save.setJSON('boosts', b);

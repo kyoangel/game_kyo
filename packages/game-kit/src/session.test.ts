@@ -106,4 +106,31 @@ describe('GameSession', () => {
     expect(await session.rewarded()).toBe('unavailable');
     expect(session.state).toBe('playing');
   });
+
+  it('pauseGameplay()/resumeGameplay() stop and restart gameplay once each, only while playing', () => {
+    const { platform, session } = setup();
+    const calls: string[] = [];
+    vi.spyOn(platform, 'gameplayStop').mockImplementation(() => calls.push('stop'));
+    vi.spyOn(platform, 'gameplayStart').mockImplementation(() => calls.push('start'));
+    session.pauseGameplay();
+    expect(calls).toEqual([]);
+    session.start();
+    session.pauseGameplay();
+    session.pauseGameplay();
+    expect(session.gameplayPaused).toBe(true);
+    session.resumeGameplay();
+    session.resumeGameplay();
+    expect(calls).toEqual(['start', 'stop', 'start']);
+    expect(session.gameplayPaused).toBe(false);
+  });
+
+  it('gameOver() while paused does not stop gameplay twice', async () => {
+    const { platform, session } = setup();
+    session.start();
+    session.pauseGameplay();
+    const stop = vi.spyOn(platform, 'gameplayStop');
+    await session.gameOver(3);
+    expect(stop).not.toHaveBeenCalled();
+    expect(session.gameplayPaused).toBe(false);
+  });
 });

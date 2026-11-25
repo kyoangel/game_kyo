@@ -67,3 +67,34 @@ export function buyBoost(
 
   return { ok: true, coins: state.coins - cost, boosts: next };
 }
+
+/** True when the quick-buy bar button does something on tap: buys, or undoes an equipped boost. */
+export function canToggleBoost(boosts: RunBoosts, id: BoostId, coins: number, shieldCap: number): boolean {
+  return canBuyBoost(boosts, id, coins, shieldCap) || isEquipped(boosts, id);
+}
+
+function isEquipped(boosts: RunBoosts, id: BoostId): boolean {
+  return id === 'shield' ? boosts.shields > 0 : id === 'shrink' ? boosts.shrink : boosts.chomp;
+}
+
+/**
+ * Quick-buy bar tap: buys when possible, otherwise undoes the boost for a full refund so a mis-tap is never
+ * a lost purchase. Shields stack up to the cap; the tap after that (or one that cannot afford the next shield)
+ * refunds every bought shield at once.
+ */
+export function toggleBoost(
+  state: { coins: number; boosts: RunBoosts; shieldCap: number },
+  id: BoostId,
+): { ok: true; action: 'buy' | 'refund'; coins: number; boosts: RunBoosts } | { ok: false; reason: 'poor' } {
+  const bought = buyBoost(state, id);
+  if (bought.ok) return { ...bought, action: 'buy' };
+  if (!isEquipped(state.boosts, id)) return { ok: false, reason: 'poor' };
+  const next: RunBoosts = { ...state.boosts };
+  let refund = BOOST_COSTS[id];
+  if (id === 'shield') {
+    refund *= next.shields;
+    next.shields = 0;
+  } else if (id === 'shrink') next.shrink = false;
+  else next.chomp = false;
+  return { ok: true, action: 'refund', coins: state.coins + refund, boosts: next };
+}

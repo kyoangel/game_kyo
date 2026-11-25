@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { artImage } from './art.ts';
 import { addButton, cssColor, textResolution, type Kit } from '@gf/game-kit';
 import { boostIconKey, ensureUiTextures } from './playArt.ts';
-import { BOOST_COSTS, BOOST_IDS, canBuyBoost, type BoostId, type RunBoosts } from './boosts.ts';
+import { BOOST_COSTS, BOOST_IDS, canBuyBoost, canToggleBoost, type BoostId, type RunBoosts } from './boosts.ts';
 
 export interface BoostBarOpts {
   cx: number;
@@ -16,11 +16,12 @@ export interface BoostBarOpts {
   showLabel?: boolean;
   /** Landscape: stack the buttons vertically (first at `y`, label above it), with bigger text. */
   vertical?: { step: number; width: number; fontSize: number };
-  onBuy: (id: BoostId) => void;
+  /** Tap on a boost button: buy it, or undo an equipped one (see toggleBoost). */
+  onToggle: (id: BoostId) => void;
 }
 
 /**
- * Renders the 3-button single-run boost bar (Shield 10★, Mini 40★, Chomp 100★).
+ * Renders the 3-button single-run boost bar. Tapping an equipped boost undoes it for a full refund.
  * Returns all created GameObjects so callers can destroy/re-render cleanly.
  */
 export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts): Phaser.GameObjects.GameObject[] {
@@ -55,6 +56,7 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     const by = vert ? opts.y + i * step : opts.y;
     const cost = BOOST_COSTS[id];
     const canBuy = canBuyBoost(opts.boosts, id, opts.coins, opts.shieldCap);
+    const canToggle = canToggleBoost(opts.boosts, id, opts.coins, opts.shieldCap);
     const equipped =
       id === 'shield' ? opts.boosts.shields > 0 : id === 'shrink' ? opts.boosts.shrink : opts.boosts.chomp;
     const maxed =
@@ -75,8 +77,8 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
       textColor,
       strokeThickness: equipped ? 0 : 4,
       onClick: () => {
-        if (!canBuy) return;
-        opts.onBuy(id);
+        if (!canToggle) return;
+        opts.onToggle(id);
       },
     });
     // Drawn icons (no emoji: some Android fonts render them as boxes). Label shifts right to make room.

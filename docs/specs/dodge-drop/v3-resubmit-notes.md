@@ -1,4 +1,4 @@
-# Neon Rush v3.0.0 - CrazyGames resubmission notes
+# Neon Rush v3.1.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -10,6 +10,10 @@ Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous sub
 v3.0.0 - adaptive landscape/portrait layout for the 16:9 player (full play field plus readable side-panel HUD), new
 authored CC0 art, music and sound effects, a visual first-run control tutorial, a persistent next-medal goal bar, bigger
 touch targets, and Shop cards that describe the next upgrade level.
+
+v3.1.0 - in-run pause menu (pause button, Esc / P, auto-pause when the tab or app loses focus) with Resume and End run
+(settles to the results, stars kept); title and results quick-buy boosts can be undone with a second tap for a full
+refund; web favicon and apple-touch-icon.
 
 ## What changed since v2.8.4 (paste into the portal notes)
 
@@ -26,6 +30,9 @@ tweak, and rebuilt the parts a new player sees first:
   then disappears on the first input and is never shown again once the controls have been used.
 - Next-medal goal bar. During every run a progress bar shows the next medal (Bronze, Silver, ...) and how close you are.
 - Bigger touch targets. Buttons and menu rows meet a minimum tap size on phones.
+- Pause menu. A pause button next to the sound icon (or Esc / P) freezes the run; leaving the tab or app pauses it
+  automatically. Resume continues, End run goes straight to the results and keeps the stars collected.
+- Undo for boosts. Tapping an equipped next-run boost again refunds it, so a mis-tap never costs stars.
 - Clearer Shop. Upgrade cards now show what the next level gives instead of "0 px" / "0%" on level 0.
 
 Gameplay rules, speeds and fairness are unchanged. The build is about 4.8 MB, loads to an interactive canvas in about

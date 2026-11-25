@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { addButton, cssColor, getKit, type Kit, type ResultsContext } from '@gf/game-kit';
 import { renderBoostBar } from './boostBar.ts';
-import { buyBoost, sanitizeBoosts, type RunBoosts } from './boosts.ts';
+import { sanitizeBoosts, toggleBoost, type RunBoosts } from './boosts.ts';
 import { formatTime, sanitizeOwned } from './format.ts';
 import { mergeMedals } from './medals.ts';
 import { drawCurrencyIcon } from './playArt.ts';
@@ -212,15 +212,15 @@ export function ddResults(scene: Phaser.Scene, ctx: ResultsContext): void {
         shieldCap,
         depth: 4,
         showLabel: true,
-        onBuy: (id) => {
-          const res = buyBoost({ coins: liveCoins, boosts: liveBoosts, shieldCap }, id);
+        onToggle: (id) => {
+          const res = toggleBoost({ coins: liveCoins, boosts: liveBoosts, shieldCap }, id);
           if (!res.ok) return;
           const delta = res.coins - liveCoins;
           liveCoins = res.coins;
           liveBoosts = res.boosts;
           const nextBoosts = res.boosts;
           paintBalancePill();
-          kit.audio.sfx('pickup');
+          kit.audio.sfx(res.action === 'buy' ? 'pickup' : 'click');
           chain = chain.then(async () => {
             const cur = await save.getNumber('coins', 0);
             await save.setNumber('coins', Math.max(0, cur + delta));

@@ -10,6 +10,7 @@ export class GameSession {
   private readonly platform: Platform;
   private readonly bestKey: string;
   private adPaused = false;
+  private pausedByPlayer = false;
   private readonly listeners: Array<(paused: boolean) => void> = [];
 
   constructor(platform: Platform, slug: string) {
@@ -36,6 +37,7 @@ export class GameSession {
   start(): void {
     if (this.state === 'playing') return;
     this.state = 'playing';
+    this.pausedByPlayer = false;
     this.platform.gameplayStart();
   }
 
@@ -43,12 +45,32 @@ export class GameSession {
     if (this.state !== 'playing') return false;
     this.state = 'over';
     this.lastScore = score;
-    this.platform.gameplayStop();
+    if (this.pausedByPlayer) this.pausedByPlayer = false;
+    else this.platform.gameplayStop();
     if (score > this.best) {
       this.best = score;
       await this.platform.storage.set(this.bestKey, String(score));
     }
     return true;
+  }
+
+  /** True while the player has the run paused (pause menu open). */
+  get gameplayPaused(): boolean {
+    return this.pausedByPlayer;
+  }
+
+  /** Player opened the pause menu: tell the platform gameplay stopped. Idempotent; no-op unless playing. */
+  pauseGameplay(): void {
+    if (this.state !== 'playing' || this.pausedByPlayer) return;
+    this.pausedByPlayer = true;
+    this.platform.gameplayStop();
+  }
+
+  /** Player left the pause menu back into the run. Idempotent. */
+  resumeGameplay(): void {
+    if (this.state !== 'playing' || !this.pausedByPlayer) return;
+    this.pausedByPlayer = false;
+    this.platform.gameplayStart();
   }
 
   /** Natural pause point during play (e.g. between levels). The adapter decides whether an ad runs. */

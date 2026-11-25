@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
+import { addBackground, addButton, cssColor, ensureTextures, getKit, markButtonTap, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
 import { addParallax, type Parallax } from './backdrop.ts';
 import { artImage, artScale, styleArt, usedArtKeys } from './art.ts';
@@ -99,6 +99,10 @@ export class PlayScene extends Phaser.Scene {
   private runId = 0;
   private ready = false;
   private dead = false;
+  /** Pause menu open: the run loop, tweens and timers are frozen. */
+  private paused = false;
+  private pauseObjs: Phaser.GameObjects.GameObject[] = [];
+  private pauseBtn: Phaser.GameObjects.Container | null = null;
 
   private t = 0;
   private score = 0;
@@ -216,6 +220,9 @@ export class PlayScene extends Phaser.Scene {
     this.runId++;
     this.ready = false;
     this.dead = false;
+    this.paused = false;
+    this.pauseObjs = [];
+    this.pauseBtn = null;
     this.rng = mulberry32(Date.now() >>> 0);
     this.t = 0;
     this.score = 0;
@@ -244,6 +251,16 @@ export class PlayScene extends Phaser.Scene {
     this.tutorialView = null;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { this.lastInput = p.wasTouch ? 'touch' : 'mouse'; });
     this.input.keyboard?.on('keydown', () => { this.lastInput = 'key'; });
+    this.input.keyboard?.on('keydown-ESC', () => this.togglePause());
+    this.input.keyboard?.on('keydown-P', () => this.togglePause());
+    // Leaving the tab / app mid-run opens the pause menu, so coming back never drops the player into live blocks.
+    const autoPause = (): void => this.openPause();
+    this.game.events.on(Phaser.Core.Events.BLUR, autoPause);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, autoPause);
+    this.events.once('shutdown', () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, autoPause);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, autoPause);
+    });
     this.toastFreeAt = 0;
     this.lastNearPopT = -1;
     this.fx?.clearPops();
@@ -286,7 +303,12 @@ export class PlayScene extends Phaser.Scene {
           layers: this.layerCount(),
           overdrive: overdrive(this.t),
           streaks: this.streaks.filter((s) => s.active).length,
+          paused: this.paused,
         }),
+        /** Test hook: canvas position of the pause button, or null before the run is ready. */
+        pauseButton: () => (this.pauseBtn ? { x: this.pauseBtn.x, y: this.pauseBtn.y } : null),
+        /** Test hook: canvas positions of the pause menu buttons while it is open. */
+        pauseMenu: () => (this.paused ? this.pauseMenuReport() : null),
         warp: (seconds: number) => { this.t += seconds; },
         /** Test hook: adds one held shield (capped like a pickup). */
         giveShield: () => this.addShield(),
@@ -567,10 +589,13 @@ export class PlayScene extends Phaser.Scene {
           artImage(this, a.shields.x + i * 30, a.shields.y, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
         );
       }
-      const timerX = landscape || !this.kit.fullscreenAvailable ? a.timer.x : this.frame.width - 176;
+      // Icon row (right to left): mute, fullscreen (when available), pause. Portrait: the timer sits left of the row.
+      const icons = this.kit.fullscreenAvailable ? 2 : 1;
+      const timerX = landscape ? a.timer.x : this.frame.width - 100 - 76 * icons;
       this.timerText = this.add.text(timerX, a.timer.y, '0:00', this.textStyleFor('panel', 40, theme.text)).setOrigin(1, 0).setDepth(100);
       this.kit.addMuteButton(this, a.mute.x, a.mute.y).setDepth(100);
       this.kit.addFullscreenButton(this, a.mute.x - 76, a.mute.y)?.setDepth(100);
+      this.pauseBtn = this.addPauseButton(a.mute.x - 76 * icons, a.mute.y).setDepth(100);
       if (landscape) {
         this.missionsText = this.add
           .text(a.missions.x, a.missions.y, '', { ...this.textStyle(MISSION_PANEL_FONT, theme.muted), lineSpacing: 4 })
@@ -613,7 +638,7 @@ export class PlayScene extends Phaser.Scene {
     const raw = Math.min(deltaMs, 50) / 1000;
     const dt = raw * this.time.timeScale;
     const drag = dragToDx(this.gin.dragDx(), this.frame.zoom);
-    if (this.fx.frozen || !this.ready) return;
+    if (this.fx.frozen || !this.ready || this.paused) return;
     this.updateHint(drag);
     this.updateTutorial(drag);
 
@@ -1266,14 +1291,17 @@ export class PlayScene extends Phaser.Scene {
 
   // ----------------------------------------------------------------- death
 
-  private async die(): Promise<void> {
+  /** Ends the run. `quit`: chosen from the pause menu, so no death effects and no revive offer. */
+  private async die(quit = false): Promise<void> {
     const id = this.runId;
     const col = this.skinColor();
-    await this.fx.hitStop(80);
-    if (id !== this.runId) return;
-    this.fx.shake(0.8);
-    this.fx.flash(this.kit.theme.danger, 120);
-    playDeath(this, this.fx, this.skin, this.player.x, PLAYER_Y, col);
+    if (!quit) {
+      await this.fx.hitStop(80);
+      if (id !== this.runId) return;
+      this.fx.shake(0.8);
+      this.fx.flash(this.kit.theme.danger, 120);
+      playDeath(this, this.fx, this.skin, this.player.x, PLAYER_Y, col);
+    }
     this.hintDone = true;
     this.tutorialOn = false;
     this.tutorialView?.dismiss();
@@ -1292,10 +1320,12 @@ export class PlayScene extends Phaser.Scene {
     this.syncShieldHud();
     this.trail?.stop();
     this.trail = null;
-    this.kit.audio.sfx('death');
     this.kit.audio.music.stop();
-    await this.fx.timeScale(0.3, 500);
-    if (id !== this.runId) return;
+    if (!quit) {
+      this.kit.audio.sfx('death');
+      await this.fx.timeScale(0.3, 500);
+      if (id !== this.runId) return;
+    }
     this.fx.clearPops();
     const state: RunState = {
       score: this.score,
@@ -1307,7 +1337,97 @@ export class PlayScene extends Phaser.Scene {
       stats: { ...this.stats, runs: 1 },
     };
     this.registry.set(RUN_STATE_KEY, state);
-    void this.kit.gameOver(this.score, { revive: () => this.revive() });
+    void this.kit.gameOver(this.score, quit ? undefined : { revive: () => this.revive() });
+  }
+
+  // ----------------------------------------------------------------- pause
+
+  private addPauseButton(x: number, y: number): Phaser.GameObjects.Container {
+    const g = this.add.graphics();
+    g.fillStyle(0x1a1033, 0.5);
+    g.fillCircle(0, 0, 28);
+    g.fillStyle(this.kit.theme.text, 1);
+    g.fillRoundedRect(-11, -13, 8, 26, 2);
+    g.fillRoundedRect(3, -13, 8, 26, 2);
+    const c = this.add.container(x, y, [g]);
+    // Same 76 px hit area as the kit's mute / fullscreen icons.
+    c.setSize(76, 76);
+    c.setInteractive({ useHandCursor: true });
+    c.on('pointerdown', () => {
+      markButtonTap(this);
+      this.openPause();
+    });
+    return c;
+  }
+
+  private togglePause(): void {
+    if (this.paused) this.resumeRun();
+    else this.openPause();
+  }
+
+  private canPause(): boolean {
+    return this.ready && !this.dead && !this.paused && this.sys.isActive() && this.kit.session.state === 'playing';
+  }
+
+  private openPause(): void {
+    if (!this.canPause()) return;
+    this.paused = true;
+    this.tweens.pauseAll();
+    this.time.paused = true;
+    this.kit.audio.music.stop();
+    this.kit.session.pauseGameplay();
+    const build = (): void => {
+      const { theme } = this.kit;
+      const f = this.frame;
+      const cx = f.width / 2;
+      const cy = f.height / 2;
+      const land = f.mode === 'landscape';
+      const dim = this.add.rectangle(0, 0, f.width, f.height, 0x0b0720, 0.72).setOrigin(0).setDepth(2000).setInteractive();
+      // Swallow taps on the backdrop so they never reach the field (drag) underneath.
+      dim.on('pointerdown', () => markButtonTap(this));
+      const title = this.add.text(cx, cy - (land ? 190 : 230), this.kit.t('paused'), { ...this.textStyle(land ? 84 : 96, theme.text), strokeThickness: 10 }).setOrigin(0.5).setDepth(2001);
+      const resume = addButton(this, cx, cy - (land ? 40 : 50), this.kit.t('resume'), {
+        width: 360, height: land ? 100 : 110, fontSize: 44, fill: theme.primary, textColor: 0xffffff,
+        onClick: () => this.resumeRun(),
+      }).setDepth(2001);
+      const end = addButton(this, cx, cy + (land ? 100 : 120), this.kit.t('endRun'), {
+        width: 360, height: land ? 90 : 96, fontSize: 38, fill: theme.muted, textColor: 0xffffff,
+        onClick: () => this.endRunFromPause(),
+      }).setDepth(2001);
+      const note = this.add.text(cx, cy + (land ? 172 : 200), this.kit.t('endRunNote'), this.textStyle(land ? MIN_PANEL_FONT - 8 : 26, theme.muted)).setOrigin(0.5).setDepth(2001);
+      this.pauseObjs = [dim, title, resume, end, note];
+    };
+    if (this.frame.mode === 'landscape') this.inPanel(build);
+    else build();
+  }
+
+  private closePauseMenu(): void {
+    for (const o of this.pauseObjs) o.destroy();
+    this.pauseObjs = [];
+    this.paused = false;
+    this.tweens.resumeAll();
+    this.time.paused = false;
+    // Held keys / drag motion from before the pause must not carry the player on resume.
+    this.vel = 0;
+  }
+
+  private resumeRun(): void {
+    if (!this.paused) return;
+    this.closePauseMenu();
+    this.kit.session.resumeGameplay();
+    this.kit.audio.music.start();
+  }
+
+  private endRunFromPause(): void {
+    if (!this.paused || this.dead) return;
+    this.closePauseMenu();
+    this.dead = true;
+    void this.die(true);
+  }
+
+  private pauseMenuReport(): { resume: { x: number; y: number }; end: { x: number; y: number } } {
+    const [, , resume, end] = this.pauseObjs as Phaser.GameObjects.Container[];
+    return { resume: { x: resume!.x, y: resume!.y }, end: { x: end!.x, y: end!.y } };
   }
 
   private revive(): void {

@@ -395,3 +395,63 @@ test('goal bar shows the next medal and fills as the run proceeds', async ({ pag
   await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(20));
   await expect.poll(async () => (await dd(page)).id).toBe('silver');
 });
+
+test('dodge-drop: title boost bar - a second tap on an equipped boost refunds it', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '100' });
+  const { at } = await openTitle(page);
+  // Portrait boost bar: y = 0.45H, buttons at cx + (i - 1) * 220 -> Mini (shrink) is the middle one.
+  const mini = at(360, Math.round(1280 * 0.45));
+  await page.mouse.click(mini.x, mini.y);
+  await expect.poll(async () => JSON.parse((await ls(page, 'boosts')) ?? '{}').shrink).toBe(true);
+  expect(await ls(page, 'coins')).toBe('85');
+  await page.waitForTimeout(300);
+  await page.mouse.click(mini.x, mini.y);
+  await expect.poll(async () => JSON.parse((await ls(page, 'boosts')) ?? '{}').shrink).toBe(false);
+  expect(await ls(page, 'coins')).toBe('100');
+  // Neither tap started the run.
+  expect(await page.evaluate(() => (window as unknown as W).__gk!.activeScenes)).toContain('GKTitle');
+  expect(errors).toEqual([]);
+});
+
+type DdPause = {
+  stats(): { t: number; paused: boolean; dead: boolean };
+  pauseButton(): { x: number; y: number } | null;
+  pauseMenu(): { resume: { x: number; y: number }; end: { x: number; y: number } } | null;
+};
+type WP = { __dd: DdPause };
+
+test('dodge-drop: pause button freezes the run, Resume continues, End run goes to results without a revive', async ({ page }) => {
+  const errors = watch(page);
+  await skipOnboarding(page);
+  await seed(page, {}, true);
+  const { box } = await openTitle(page);
+  await startRun(page);
+  await page.waitForFunction(() => ((window as unknown as WP).__dd.stats?.().t ?? 0) > 1);
+  const toPage = (p: { x: number; y: number }) => ({ x: box.x + (p.x / 720) * box.width, y: box.y + (p.y / 1280) * box.height });
+
+  const btn = await page.evaluate(() => (window as unknown as WP).__dd.pauseButton());
+  expect(btn).not.toBeNull();
+  const b = toPage(btn!);
+  await page.mouse.click(b.x, b.y);
+  await page.waitForFunction(() => (window as unknown as WP).__dd.stats().paused);
+  const t0 = await page.evaluate(() => (window as unknown as WP).__dd.stats().t);
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(() => (window as unknown as WP).__dd.stats().t)).toBe(t0);
+
+  const menu = (await page.evaluate(() => (window as unknown as WP).__dd.pauseMenu()))!;
+  const r = toPage(menu.resume);
+  await page.mouse.click(r.x, r.y);
+  await page.waitForFunction(() => !(window as unknown as WP).__dd.stats().paused);
+  await page.waitForFunction((t) => (window as unknown as WP).__dd.stats().t > t + 0.2, t0);
+
+  // Esc reopens it; End run settles straight to the results (no revive panel).
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => (window as unknown as WP).__dd.stats().paused);
+  const m2 = (await page.evaluate(() => (window as unknown as WP).__dd.pauseMenu()))!;
+  const e = toPage(m2.end);
+  await page.mouse.click(e.x, e.y);
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKGameOver'));
+  expect(await page.evaluate(() => (window as unknown as W).__gk!.state)).toBe('over');
+  expect(errors).toEqual([]);
+});

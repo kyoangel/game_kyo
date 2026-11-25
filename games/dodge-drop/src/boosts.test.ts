@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOST_COSTS, buyBoost, canBuyBoost, emptyBoosts, sanitizeBoosts } from './boosts.ts';
+import { BOOST_COSTS, buyBoost, canBuyBoost, canToggleBoost, emptyBoosts, sanitizeBoosts, toggleBoost } from './boosts.ts';
 
 describe('boosts', () => {
   it('sanitizeBoosts handles invalid values and clamps shields to capacity', () => {
@@ -38,5 +38,46 @@ describe('boosts', () => {
     expect(buyBoost({ coins: 9, boosts: emptyBoosts(), shieldCap: 2 }, 'shield')).toEqual({ ok: false, reason: 'poor' });
     expect(buyBoost({ coins: 14, boosts: emptyBoosts(), shieldCap: 2 }, 'shrink')).toEqual({ ok: false, reason: 'poor' });
     expect(buyBoost({ coins: 19, boosts: emptyBoosts(), shieldCap: 2 }, 'chomp')).toEqual({ ok: false, reason: 'poor' });
+  });
+
+  describe('toggleBoost (title / results quick-buy bar: tap again to undo)', () => {
+    it('buys a boost that is not equipped', () => {
+      expect(toggleBoost({ coins: 50, boosts: emptyBoosts(), shieldCap: 2 }, 'shrink')).toEqual({
+        ok: true, action: 'buy', coins: 50 - BOOST_COSTS.shrink, boosts: { shields: 0, shrink: true, chomp: false },
+      });
+    });
+
+    it('refunds an equipped shrink or chomp in full', () => {
+      const boosts = { shields: 0, shrink: true, chomp: true };
+      expect(toggleBoost({ coins: 3, boosts, shieldCap: 1 }, 'shrink')).toEqual({
+        ok: true, action: 'refund', coins: 3 + BOOST_COSTS.shrink, boosts: { shields: 0, shrink: false, chomp: true },
+      });
+      expect(toggleBoost({ coins: 3, boosts, shieldCap: 1 }, 'chomp')).toEqual({
+        ok: true, action: 'refund', coins: 3 + BOOST_COSTS.chomp, boosts: { shields: 0, shrink: true, chomp: false },
+      });
+    });
+
+    it('stacks shields up to the cap, then one more tap refunds every bought shield', () => {
+      const r1 = toggleBoost({ coins: 30, boosts: emptyBoosts(), shieldCap: 2 }, 'shield');
+      expect(r1).toMatchObject({ ok: true, action: 'buy', coins: 20, boosts: { shields: 1 } });
+      if (!r1.ok) return;
+      const r2 = toggleBoost({ coins: r1.coins, boosts: r1.boosts, shieldCap: 2 }, 'shield');
+      expect(r2).toMatchObject({ ok: true, action: 'buy', coins: 10, boosts: { shields: 2 } });
+      if (!r2.ok) return;
+      const r3 = toggleBoost({ coins: r2.coins, boosts: r2.boosts, shieldCap: 2 }, 'shield');
+      expect(r3).toEqual({ ok: true, action: 'refund', coins: 30, boosts: emptyBoosts() });
+    });
+
+    it('a shield tap that cannot afford the next one refunds the held ones instead of doing nothing', () => {
+      expect(toggleBoost({ coins: 4, boosts: { shields: 1, shrink: false, chomp: false }, shieldCap: 3 }, 'shield')).toEqual({
+        ok: true, action: 'refund', coins: 4 + BOOST_COSTS.shield, boosts: emptyBoosts(),
+      });
+    });
+
+    it('rejects an unaffordable boost that is not equipped', () => {
+      expect(toggleBoost({ coins: 9, boosts: emptyBoosts(), shieldCap: 2 }, 'shield')).toEqual({ ok: false, reason: 'poor' });
+      expect(canToggleBoost(emptyBoosts(), 'chomp', 19, 1)).toBe(false);
+      expect(canToggleBoost({ shields: 0, shrink: false, chomp: true }, 'chomp', 0, 1)).toBe(true);
+    });
   });
 });

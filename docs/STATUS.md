@@ -19,7 +19,7 @@ https://kyoangel.github.io/game_kyo/dodge-drop/ （僅自家網站，使用者�
 CI 規則見 `docs/ci.md`（pre-push hook、PROPERTY_SEEDS、nightly、Pages 用 Actions 部署）。
 
 ## 下一步
-1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3.0.0 已完成、已上自家網站（計畫
+1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3.0.0 已完成，2026-11-25 再加暫停選單／開局道具再點取消／favicon 成為 v3.1.0，已上自家網站（計畫
    `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`）。等使用者：試聽音訊、看封面影片、
    跑 CrazyGames Preview，再用 `/publish-crazygames dodge-drop` 送審（Submit 由使用者按）。清單在
    `docs/specs/dodge-drop/v3-resubmit-notes.md`。
