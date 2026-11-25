@@ -10,9 +10,25 @@ import {
   type MusicMode,
   type MusicTrack,
 } from './music.ts';
+import { computeLoopPoints, SampleBank, sfxRate, type Fetcher } from './samples.ts';
 import { noise, playSfx, tone, type SfxName } from './sfx.ts';
 
 export type { SfxName, MusicMode };
+
+/** Sample files for a game: `sfx` keyed by SfxName, `music` keyed by `music-<MusicMode>`. Anything missing falls back to synth. */
+export interface AudioManifest {
+  sfx: Record<string, string>;
+  music: Record<string, string>;
+}
+
+/** Test/debug view of what the music engine is doing right now. */
+export interface AudioState {
+  musicSource: 'sample' | 'synth' | 'none';
+  /** Name of the playing music sample (`music-<mode>`), or null. */
+  musicSample: string | null;
+  /** Names of every sample decoded so far. */
+  loaded: string[];
+}
 
 export interface GameAudio {
   sfx(name: SfxName, opts?: { step?: number }): void;
@@ -33,6 +49,9 @@ export interface GameAudio {
   unlock(): void;
   setAdPaused(paused: boolean): void;
   loadMuted(): Promise<void>;
+  /** Fetch and decode the manifest's samples; never rejects (failures leave the synth fallback in place). */
+  loadSamples(manifest: AudioManifest, onProgress?: (ratio: number) => void): Promise<void>;
+  readonly state: AudioState;
 }
 
 /** Balanced for mobile speakers as well as headphones (music audible at ~30-40% volume, SFX crisp on top). */
@@ -40,6 +59,16 @@ export const SFX_BUS = 0.42;
 export const MUSIC_BUS = 0.58;
 const SCHEDULE_AHEAD = 0.1;
 const TICK_MS = 25;
+/** Crossfade between music sample loops (mode switches). */
+const MUSIC_FADE = 0.4;
+/** Quick fade when music stops, avoids a click. */
+const MUSIC_STOP_FADE = 0.15;
+
+interface MusicVoice {
+  name: string;
+  src: AudioBufferSourceNode;
+  gain: GainNode;
+}
 
 function defaultFactory(): AudioContext | null {
   const C = (globalThis as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
@@ -47,7 +76,7 @@ function defaultFactory(): AudioContext | null {
   return C ? new C() : null;
 }
 
-export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext | null = defaultFactory): GameAudio {
+export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext | null = defaultFactory, fetcher?: Fetcher): GameAudio {
   let muted = false;
   let adPaused = false;
   let unlocked = false;
@@ -69,6 +98,8 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
   let nextTime = 0;
   let stepIdx = 0;
   let wantMusic = false;
+  let bank: SampleBank | null = null;
+  let voice: MusicVoice | null = null;
 
   if (ctx) {
     try {
@@ -178,10 +209,86 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     timer = setInterval(tick, TICK_MS);
   }
 
+  function stopTimer(): void {
+    if (timer !== null) clearInterval(timer);
+    timer = null;
+  }
+
+  function fadeOut(v: MusicVoice, sec: number): void {
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    v.gain.gain.cancelScheduledValues(now);
+    v.gain.gain.setValueAtTime(v.gain.gain.value, now);
+    v.gain.gain.linearRampToValueAtTime(0, now + sec);
+    v.src.stop(now + sec + 0.05);
+  }
+
+  function stopVoice(sec: number): void {
+    if (!voice) return;
+    const v = voice;
+    voice = null;
+    try {
+      fadeOut(v, sec);
+    } catch {
+      /* never throw from audio */
+    }
+  }
+
+  /** Loop `buf` on the music bus from its trimmed start, fading in over MUSIC_FADE. */
+  function startVoice(name: string, buf: AudioBuffer): void {
+    if (!ctx || !musicBus) return;
+    const prev = voice;
+    voice = null;
+    if (prev) fadeOut(prev, MUSIC_FADE);
+    const now = ctx.currentTime;
+    const channels: Float32Array[] = [];
+    for (let c = 0; c < buf.numberOfChannels; c++) channels.push(buf.getChannelData(c));
+    const loop = computeLoopPoints(channels, buf.sampleRate);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.loopStart = loop.start;
+    src.loopEnd = loop.end;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(1, now + MUSIC_FADE);
+    src.connect(gain);
+    gain.connect(musicBus);
+    src.start(now, loop.start);
+    voice = { name, src, gain };
+  }
+
+  /** Picks sample loop or synth sequencer for the current mode; safe to call from any state change. */
+  function syncMusic(): void {
+    if (!ctx || !unlocked || !wantMusic) return;
+    try {
+      const name = `music-${mode}`;
+      const buf = bank?.get(name);
+      if (buf) {
+        stopTimer();
+        if (voice?.name !== name) startVoice(name, buf);
+      } else {
+        stopVoice(MUSIC_FADE);
+        startTimer();
+      }
+    } catch {
+      /* never throw from audio */
+    }
+  }
+
   const audio: GameAudio = {
     sfx(name, opts) {
       if (!ctx || !unlocked || !sfxBus) return;
       try {
+        const buf = bank?.get(name);
+        if (buf) {
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.playbackRate.value = sfxRate(opts?.step ?? 0);
+          src.connect(sfxBus);
+          src.start(ctx.currentTime);
+          return;
+        }
         playSfx(ctx, sfxBus, name, opts?.step ?? 0);
       } catch {
         /* never throw from audio */
@@ -190,16 +297,12 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     music: {
       start() {
         wantMusic = true;
-        try {
-          startTimer();
-        } catch {
-          /* ignore */
-        }
+        syncMusic();
       },
       stop() {
         wantMusic = false;
-        if (timer !== null) clearInterval(timer);
-        timer = null;
+        stopTimer();
+        stopVoice(MUSIC_STOP_FADE);
       },
       setLayers(n) {
         layers = n;
@@ -211,6 +314,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
         mode = next;
         if (chompBoundary) stepIdx = 0;
         applyLayerGains(true);
+        syncMusic();
       },
       nextTrack() {
         trackIdx = (trackIdx + 1) % TRACKS.length;
@@ -251,7 +355,7 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
       try {
         void Promise.resolve(ctx.resume()).catch(() => {});
         applyMaster();
-        if (wantMusic) startTimer();
+        syncMusic();
       } catch {
         /* ignore */
       }
@@ -270,6 +374,26 @@ export function createGameAudio(save: SaveData, ctxFactory: () => AudioContext |
     async loadMuted() {
       muted = (await save.getNumber('muted', 0)) === 1;
       applyMaster();
+    },
+    async loadSamples(manifest, onProgress) {
+      if (!ctx) {
+        onProgress?.(1);
+        return;
+      }
+      try {
+        bank ??= new SampleBank(ctx, fetcher);
+        await bank.load({ ...manifest.sfx, ...manifest.music }, onProgress);
+        syncMusic();
+      } catch {
+        /* never throw from audio */
+      }
+    },
+    get state(): AudioState {
+      return {
+        musicSource: voice ? 'sample' : timer !== null ? 'synth' : 'none',
+        musicSample: voice?.name ?? null,
+        loaded: bank ? bank.names() : [],
+      };
     },
   };
   return audio;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SaveData } from '../save.ts';
 import { createGameAudio, MUSIC_BUS, SFX_BUS } from './audio.ts';
 import { TRACKS } from './music.ts';
@@ -8,13 +8,24 @@ function store() {
   return { m, save: new SaveData({ get: async (k) => m.get(k) ?? null, set: async (k, v) => void m.set(k, v) }, 'g') };
 }
 
+interface FakeSource {
+  buffer: unknown; loop: boolean; loopStart: number; loopEnd: number; started: boolean; stopped: boolean;
+  playbackRate: { value: number };
+  connect(): void; start(): void; stop(): void;
+}
+
 function fakeCtx() {
-  const created = { osc: 0, gains: [] as Array<{ gain: { value: number } }> };
-  const param = () => ({
-    value: 1,
-    setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {},
-    setTargetAtTime() {}, cancelScheduledValues() {},
-  });
+  const created = { osc: 0, gains: [] as Array<{ gain: { value: number; ramps: number[] } }>, sources: [] as FakeSource[] };
+  const param = () => {
+    const p = {
+      value: 1,
+      ramps: [] as number[],
+      setValueAtTime() {}, exponentialRampToValueAtTime() {},
+      linearRampToValueAtTime(v: number) { p.ramps.push(v); },
+      setTargetAtTime() {}, cancelScheduledValues() {},
+    };
+    return p;
+  };
   const ctx = {
     currentTime: 0,
     sampleRate: 44100,
@@ -25,11 +36,41 @@ function fakeCtx() {
     createOscillator: () => { created.osc++; return { type: 'sine', frequency: param(), connect() {}, start() {}, stop() {} }; },
     createGain: () => { const g = { gain: param(), connect() {} }; created.gains.push(g); return g; },
     createBuffer: (_c: number, n: number) => ({ getChannelData: () => new Float32Array(n) }),
-    createBufferSource: () => ({ buffer: null, connect() {}, start() {}, stop() {} }),
+    createBufferSource: () => {
+      const src: FakeSource = {
+        buffer: null, loop: false, loopStart: 0, loopEnd: 0, started: false, stopped: false, playbackRate: { value: 1 },
+        connect() {}, start() { src.started = true; }, stop() { src.stopped = true; },
+      };
+      created.sources.push(src);
+      return src;
+    },
+    decodeAudioData: async (data: ArrayBuffer) => fakeBuffer(data.byteLength),
     createBiquadFilter: () => ({ type: 'lowpass', frequency: param(), connect() {} }),
   };
   return { ctx: ctx as unknown as AudioContext, created };
 }
+
+/** Decoded-buffer stand-in: `byteLength` doubles as a tag so tests can tell loaded samples apart. */
+function fakeBuffer(tag: number): AudioBuffer {
+  const sr = 1000;
+  const ch = new Float32Array(2000);
+  for (let i = 25; i < 1990; i++) ch[i] = i % 2 ? 0.4 : -0.4; // 25 leading, 10 trailing padding samples
+  return { duration: 2, sampleRate: sr, numberOfChannels: 1, length: ch.length, getChannelData: () => ch, tag } as unknown as AudioBuffer;
+}
+
+/** Fetch stand-in: the byte length encodes the URL index so a decoded buffer maps to its URL. */
+function fetcher(seen: string[] = []) {
+  return async (url: string): Promise<ArrayBuffer> => { seen.push(url); return new ArrayBuffer(8 + seen.length); };
+}
+
+async function withSamples(manifest: { sfx?: Record<string, string>; music?: Record<string, string> }, ctxOverride?: ReturnType<typeof fakeCtx>) {
+  const f = ctxOverride ?? fakeCtx();
+  const a = createGameAudio(store().save, () => f.ctx, fetcher());
+  await a.loadSamples({ sfx: manifest.sfx ?? {}, music: manifest.music ?? {} });
+  return { f, a };
+}
+
+afterEach(() => { vi.useRealTimers(); });
 
 describe('createGameAudio', () => {
   it('stub mode never throws and still persists mute', async () => {
@@ -139,5 +180,137 @@ describe('createGameAudio', () => {
   it('balances music bus louder than sfx bus for mobile speakers', () => {
     expect(MUSIC_BUS).toBeGreaterThan(SFX_BUS);
     expect(MUSIC_BUS).toBeGreaterThanOrEqual(0.5);
+  });
+});
+
+describe('sample playback', () => {
+  it('plays a loaded sfx sample through a BufferSource with no oscillator', async () => {
+    const { f, a } = await withSamples({ sfx: { pickup: 'sfx-pickup.mp3' } });
+    a.unlock();
+    a.sfx('pickup');
+    expect(f.created.sources).toHaveLength(1);
+    expect(f.created.sources[0]!.started).toBe(true);
+    expect(f.created.osc).toBe(0);
+  });
+  it('pitches a sample per combo step via playbackRate', async () => {
+    const { f, a } = await withSamples({ sfx: { nearMiss: 'sfx-nearMiss.mp3' } });
+    a.unlock();
+    a.sfx('nearMiss', { step: 12 });
+    expect(f.created.sources[0]!.playbackRate.value).toBeCloseTo(2, 3);
+  });
+  it('uses the synth oscillator when no sample is loaded for that name', async () => {
+    const { f, a } = await withSamples({ sfx: { pickup: 'sfx-pickup.mp3' } });
+    a.unlock();
+    a.sfx('click');
+    expect(f.created.osc).toBeGreaterThanOrEqual(1);
+  });
+  it('a failed fetch keeps the synth fallback and never throws', async () => {
+    const f = fakeCtx();
+    const a = createGameAudio(store().save, () => f.ctx, async () => { throw new Error('404'); });
+    await expect(a.loadSamples({ sfx: { pickup: 'x' }, music: { 'music-normal': 'y' } })).resolves.toBeUndefined();
+    a.unlock();
+    a.sfx('pickup');
+    expect(f.created.osc).toBeGreaterThanOrEqual(1);
+    a.music.start();
+    expect(a.state.musicSource).toBe('synth');
+  });
+  it('loadSamples without a context resolves (stub mode)', async () => {
+    const a = createGameAudio(store().save, () => null);
+    await expect(a.loadSamples({ sfx: { pickup: 'x' }, music: {} })).resolves.toBeUndefined();
+  });
+  it('loops a music sample between the trimmed encoder-padding points', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'm.mp3' } });
+    a.unlock();
+    a.music.start();
+    expect(a.state.musicSource).toBe('sample');
+    const src = f.created.sources[0]!;
+    expect(src.loop).toBe(true);
+    expect(src.loopStart).toBeCloseTo(0.025, 5);
+    expect(src.loopEnd).toBeCloseTo(1.99, 5);
+    expect(f.created.osc).toBe(0);
+  });
+  it('does not run the synth sequencer while a music sample plays', async () => {
+    vi.useFakeTimers();
+    const { f, a } = await withSamples({ music: { 'music-normal': 'm.mp3' } });
+    a.unlock();
+    a.music.start();
+    vi.advanceTimersByTime(500);
+    expect(f.created.osc).toBe(0);
+  });
+  it('crossfades to the rush loop and back, stopping the faded-out source', async () => {
+    vi.useFakeTimers();
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3', 'music-rush': 'r.mp3' } });
+    a.unlock();
+    a.music.start();
+    a.music.setMode('rush');
+    expect(f.created.sources).toHaveLength(2);
+    expect(a.state.musicSample).toBe('music-rush');
+    vi.advanceTimersByTime(600);
+    expect(f.created.sources[0]!.stopped).toBe(true);
+    expect(f.created.sources[1]!.stopped).toBe(false);
+    a.music.setMode('normal');
+    expect(a.state.musicSample).toBe('music-normal');
+    expect(f.created.sources).toHaveLength(3);
+  });
+  it('falls back to the synth sequencer for a mode without a sample', async () => {
+    vi.useFakeTimers();
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' } });
+    a.unlock();
+    a.music.start();
+    a.music.setMode('chomp');
+    expect(a.state.musicSource).toBe('synth');
+    (f.ctx as unknown as { currentTime: number }).currentTime += 1;
+    vi.advanceTimersByTime(100);
+    expect(f.created.osc).toBeGreaterThan(0);
+  });
+  it('stop() silences the sample and start() resumes it', async () => {
+    vi.useFakeTimers();
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' } });
+    a.unlock();
+    a.music.start();
+    a.music.stop();
+    vi.advanceTimersByTime(600);
+    expect(f.created.sources[0]!.stopped).toBe(true);
+    expect(a.state.musicSource).toBe('none');
+    a.music.start();
+    expect(f.created.sources).toHaveLength(2);
+    expect(a.state.musicSource).toBe('sample');
+  });
+  it('start() twice does not stack a second loop', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' } });
+    a.unlock();
+    a.music.start();
+    a.music.start();
+    expect(f.created.sources).toHaveLength(1);
+  });
+  it('samples that finish loading after music started take over from the synth', async () => {
+    vi.useFakeTimers();
+    const f = fakeCtx();
+    const a = createGameAudio(store().save, () => f.ctx, fetcher());
+    a.unlock();
+    a.music.start();
+    expect(a.state.musicSource).toBe('synth');
+    await a.loadSamples({ sfx: {}, music: { 'music-normal': 'n.mp3' } });
+    expect(a.state.musicSource).toBe('sample');
+  });
+  it('music waits for unlock, then starts the sample', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' } });
+    a.music.start();
+    expect(f.created.sources).toHaveLength(0);
+    a.unlock();
+    expect(a.state.musicSource).toBe('sample');
+  });
+  it('mute and ad pause still gate sample audio through the master gain', async () => {
+    const { f, a } = await withSamples({ music: { 'music-normal': 'n.mp3' }, sfx: { pickup: 'p.mp3' } });
+    a.unlock();
+    a.music.start();
+    const master = f.created.gains[0]!;
+    await a.toggleMute();
+    expect(master.gain.value).toBe(0);
+    await a.toggleMute();
+    expect(master.gain.value).toBe(1);
+    a.setAdPaused(true);
+    expect(master.gain.value).toBe(0);
+    expect(f.ctx.state).toBe('suspended');
   });
 });

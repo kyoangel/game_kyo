@@ -5,7 +5,7 @@ import { sceneList as pureSceneList } from './sceneList.ts';
 import type { ResultsContext } from './results.ts';
 import type { TitleExtrasContext } from './titleLayout.ts';
 import { pageBackground, resolveTheme, type Theme } from './theme.ts';
-import { createGameAudio } from './audio/audio.ts';
+import { createGameAudio, type AudioManifest } from './audio/audio.ts';
 import { SaveData } from './save.ts';
 import { createI18n, mergeStrings, type Strings } from './i18n.ts';
 import { KIT_KEY, Kit } from './kit.ts';
@@ -23,6 +23,8 @@ export interface GameDefinition {
   strings?: Strings;
   backgroundColor?: string;
   preload?: (scene: Phaser.Scene) => void;
+  /** Optional CC0/own audio files; any missing or undecodable file falls back to the synth for that sound. */
+  audioManifest?: AudioManifest;
   parent?: string;
   theme?: Partial<Theme>;
   scenes?: Array<new () => Phaser.Scene>;
@@ -110,6 +112,7 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
       get best() { return session.best; },
       get lastScore() { return session.lastScore; },
       get frame() { return kit.frame(); },
+      get audio() { return audio.state; },
       get activeScenes() { return kit.activeScenes(); },
       get pausedScenes() { return kit.pausedScenes(); },
       endRound: (score = 0) => kit.gameOver(score),
