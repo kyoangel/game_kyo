@@ -1,5 +1,5 @@
 {
-  "initScript": "window.__dd = { god: true };",
+  "initScript": "window.__dd = { god: true }; localStorage.setItem('gk:dodge-drop:onboarding', JSON.stringify({ shown: 2, completed: true }));",
   "warmupMs": 1500,
-  "afterStartScript": "window.__dd.warp(40)"
+  "afterStartScript": "window.__dd.warp(80)"
 }

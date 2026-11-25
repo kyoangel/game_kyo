@@ -76,7 +76,12 @@ const OUTPUTS = [
   { kind: 'landscape', file: 'video-landscape-1920x1080.mp4', w: 1920, h: 1080 },
 ] as const;
 
-async function recordGameplay(slug: string, orientation: Orientation, workDir: string): Promise<{ file: string; startAt: number }> {
+/** Which recording feeds each output: games with orientation `any` get a landscape and a portrait pass (true adaptive layouts). */
+export function recordingKinds(orientation: Orientation): Array<'portrait' | 'landscape'> {
+  return orientation === 'any' ? ['portrait', 'landscape'] : [orientation === 'landscape' ? 'landscape' : 'portrait'];
+}
+
+async function recordGameplay(slug: string, kind: 'portrait' | 'landscape', workDir: string, single: boolean): Promise<{ file: string; startAt: number }> {
   const { spawn } = await import('node:child_process');
   const { existsSync, readFileSync } = await import('node:fs');
   const { chromium } = await import('@playwright/test');
@@ -90,7 +95,7 @@ async function recordGameplay(slug: string, orientation: Orientation, workDir: s
   const browser = await chromium.launch();
   try {
     await new Promise((r) => setTimeout(r, 500));
-    const viewport = cfg.viewport ?? RECORD_VIEWPORT[orientation === 'landscape' ? 'landscape' : 'portrait'];
+    const viewport = single && cfg.viewport ? cfg.viewport : RECORD_VIEWPORT[kind];
     const context = await browser.newContext({ viewport, locale: 'en-US', recordVideo: { dir: workDir, size: viewport } });
     const t0 = Date.now();
     const page = await context.newPage();
@@ -105,12 +110,13 @@ async function recordGameplay(slug: string, orientation: Orientation, workDir: s
       await page.evaluate(cfg.afterStartScript);
     }
     const end = Date.now() + (MAX_SECONDS + 1) * 1000;
+    // Strictly alternate equal-length taps so the player weaves around the centre instead of hugging a wall.
     let key = 'ArrowLeft';
     while (Date.now() < end) {
       await page.keyboard.down(key);
-      await page.waitForTimeout(300 + Math.random() * 600);
+      await page.waitForTimeout(260);
       await page.keyboard.up(key);
-      if (Math.random() < 0.7) key = key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
+      key = key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
     }
     const video = page.video();
     await context.close();
@@ -139,15 +145,18 @@ async function main(argv: string[]): Promise<number> {
   mkdirSync(outDir, { recursive: true });
   const from = flag('--from');
   const trim = { top: Number(flag('--top') ?? 0), bottom: Number(flag('--bottom') ?? 0) };
-  const src = from
-    ? { file: resolve(from), startAt: 0 }
-    : await recordGameplay(slug, game.orientation, mkdtempSync(join(tmpdir(), `store-video-${slug}-`)));
+  const kinds = recordingKinds(game.orientation);
   const probeOf = (f: string) => execFileSync('ffprobe', ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', f], { encoding: 'utf8' });
-  const hasAudio = (JSON.parse(probeOf(src.file)) as { streams: Array<{ codec_type: string }> }).streams.some((s) => s.codec_type === 'audio');
+  const work = from ? '' : mkdtempSync(join(tmpdir(), `store-video-${slug}-`));
+  const srcs = new Map<string, { file: string; startAt: number }>();
+  if (from) for (const k of ['portrait', 'landscape']) srcs.set(k, { file: resolve(from), startAt: 0 });
+  else for (const k of kinds) srcs.set(k, await recordGameplay(slug, k, work, kinds.length === 1));
   const filters = videoFilters(trim);
   let failed = false;
   for (const o of OUTPUTS) {
     const out = join(outDir, o.file);
+    const src = srcs.get(o.kind) ?? [...srcs.values()][0]!;
+    const hasAudio = (JSON.parse(probeOf(src.file)) as { streams: Array<{ codec_type: string }> }).streams.some((s) => s.codec_type === 'audio');
     execFileSync('ffmpeg', ffmpegArgs(src.file, out, filters[o.kind], hasAudio, src.startAt), { stdio: 'inherit' });
     const problems = videoProblems(probeOf(out), o.w, o.h);
     console.log(problems.length ? `[store-video] FAIL ${out}: ${problems.join('; ')}` : `[store-video] ${out}`);

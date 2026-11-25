@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ffmpegArgs, MAX_SECONDS, RECORD_VIEWPORT, videoFilters, videoProblems } from './store-video.ts';
+import { ffmpegArgs, MAX_SECONDS, RECORD_VIEWPORT, recordingKinds, videoFilters, videoProblems } from './store-video.ts';
 
 describe('videoFilters', () => {
   const fit = (w: number, h: number) =>
@@ -46,4 +46,12 @@ describe('videoProblems', () => {
   it('flags wrong size', () =>
     expect(videoProblems(probe(720, 1264, '19.9'), 1080, 1620)).toEqual(['size 720x1264, expected 1080x1620']));
   it('flags > 20 s', () => expect(videoProblems(probe(1080, 1620, '21.0'), 1080, 1620)).toEqual(['duration 21.0 s exceeds 20 s']));
+});
+
+describe('recordingKinds', () => {
+  it('records both layouts for orientation any', () => expect(recordingKinds('any')).toEqual(['portrait', 'landscape']));
+  it('records one pass for fixed orientations', () => {
+    expect(recordingKinds('portrait')).toEqual(['portrait']);
+    expect(recordingKinds('landscape')).toEqual(['landscape']);
+  });
 });
