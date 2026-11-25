@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { artImage } from './art.ts';
 import { addButton, cssColor, getKit, landscapeFont, markButtonTap, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
 import { renderBoostBar } from './boostBar.ts';
 import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
@@ -132,6 +133,12 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
 
     // Tilt on/off icon next to mute/fullscreen: only on devices that can really deliver tilt readings.
     if (__GK_TEST_HOOKS__) (window as unknown as { __ddTitle?: object }).__ddTitle = { tiltToggle: tiltAvail, control };
+    if (__GK_TEST_HOOKS__) {
+      const w = window as unknown as { __dd?: Record<string, unknown> };
+      w.__dd = w.__dd ?? {};
+      /** Test hook: every registered texture key (loaded art and generated fallbacks). */
+      w.__dd.textures = () => Object.keys(scene.textures.list);
+    }
     if (tiltAvail) {
       const on = control === 'tilt';
       // Flush with the icons actually shown (mute, then fullscreen when available).
@@ -222,7 +229,7 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       });
       const text = btn.list[1] as Phaser.GameObjects.Text;
       text.x -= 11;
-      btn.add(scene.add.image(text.x + text.width / 2 + 13, 0, 'dd-star').setDisplaySize(fs(20), fs(20)));
+      btn.add(artImage(scene, text.x + text.width / 2 + 13, 0, 'dd-star').setDisplaySize(fs(20), fs(20)));
       if (!afford) btn.setAlpha(0.6);
       objs.push(btn);
     });

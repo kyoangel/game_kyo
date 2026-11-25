@@ -1,5 +1,6 @@
 import { defineGame } from '@gf/game-kit';
 import manifest from '../game.json';
+import { preloadArt } from './art.ts';
 import { ddTitleBackdrop } from './backdrop.ts';
 import { frameFor, parseLayoutOverride, pickMode } from './frame.ts';
 import { PlayScene } from './PlayScene.ts';
@@ -18,6 +19,7 @@ void defineGame({
   canvasSize: (vw, vh) => { const f = frameAt(vw, vh); return { width: f.width, height: f.height }; },
   onFrame: frameAt,
   strings,
+  preload: preloadArt,
   playScene: PlayScene,
   theme: {},
   scenes: [ShopScene],

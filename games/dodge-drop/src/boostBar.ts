@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { artImage } from './art.ts';
 import { addButton, cssColor, textResolution, type Kit } from '@gf/game-kit';
 import { boostIconKey, ensureUiTextures } from './playArt.ts';
 import { BOOST_COSTS, BOOST_IDS, canBuyBoost, type BoostId, type RunBoosts } from './boosts.ts';
@@ -81,11 +82,11 @@ export function renderBoostBar(scene: Phaser.Scene, kit: Kit, opts: BoostBarOpts
     // Drawn icons (no emoji: some Android fonts render them as boxes). Label shifts right to make room.
     const text = btn.list[1] as Phaser.GameObjects.Text;
     text.x += showCost ? 6 : 14;
-    const icon = scene.add.image(-btnW / 2 + 24, 0, maxed ? 'dd-check' : boostIconKey(id));
+    const icon = artImage(scene, -btnW / 2 + 24, 0, maxed ? 'dd-check' : boostIconKey(id));
     icon.setDisplaySize(btnH * 0.58, btnH * 0.58);
     btn.add(icon);
     if (showCost) {
-      const star = scene.add.image(text.x + text.width / 2 + 12, 0, 'dd-star').setDisplaySize(vert ? 26 : 20, vert ? 26 : 20);
+      const star = artImage(scene, text.x + text.width / 2 + 12, 0, 'dd-star').setDisplaySize(vert ? 26 : 20, vert ? 26 : 20);
       btn.add(star);
     }
     if (!canBuy && !equipped) btn.setAlpha(0.55);

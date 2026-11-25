@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { artImage } from './art.ts';
 import { addButton } from '@gf/game-kit';
 import { BOOST_COSTS, BOOST_IDS, buyBoost, canBuyBoost } from './boosts.ts';
 import { boostIconKey, drawCurrencyIcon } from './playArt.ts';
@@ -28,7 +29,7 @@ export function renderBoostsPanel(ctx: ShopCtx): void {
     bg.fillRoundedRect(20 + ox, y - grid.rowH / 2, 680, grid.rowH, 22);
     bg.lineStyle(3, theme.primary, 0.45);
     bg.strokeRoundedRect(20 + ox, y - grid.rowH / 2, 680, grid.rowH, 22);
-    ctx.add(scene.add.image(84 + ox, y, boostIconKey(id)).setDisplaySize(84, 84));
+    ctx.add(artImage(scene, 84 + ox, y, boostIconKey(id)).setDisplaySize(84, 84));
 
     const tag = id === 'shield' ? `  (${b.shields}/${shieldCap})` : '';
     ctx.add(scene.add.text(150 + ox, y - (grid.land ? 52 : 28), `${kit.t(`boost.${id}`)}${tag}`, shopStyle(kit, 32, theme.text)).setOrigin(0, 0.5));

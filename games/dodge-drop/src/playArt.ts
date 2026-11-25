@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { artImage } from './art.ts';
 import { BLOCK_H, BLOCK_PAD } from './waves.ts';
 
 export { BLOCK_PAD };
@@ -273,5 +274,5 @@ export function boostIconKey(id: 'shield' | 'shrink' | 'chomp'): string {
 /** Currency icon: the same star as the in-game pickup, so collected stars visibly read as star coins. */
 export function drawCurrencyIcon(scene: Phaser.Scene, x: number, y: number, size: number): Phaser.GameObjects.Image {
   ensureUiTextures(scene);
-  return scene.add.image(x, y, 'dd-star').setDisplaySize(size, size);
+  return artImage(scene, x, y, 'dd-star').setDisplaySize(size, size);
 }

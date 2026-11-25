@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
+import { artImage, artScale, styleArt } from './art.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
@@ -149,6 +150,8 @@ export class PlayScene extends Phaser.Scene {
 
   private grid!: Phaser.GameObjects.Graphics;
   private gridPhase = 0;
+  /** Loaded ring art is larger than the procedural ring; this keeps the on-screen footprint. */
+  private ringArtScale = 1;
   private dots: Phaser.GameObjects.Image[] = [];
   private dotSpeed: number[] = [];
 
@@ -289,6 +292,8 @@ export class PlayScene extends Phaser.Scene {
         hud: () => this.hudReport(),
         /** Test hook: current goal bar label and progress. */
         goal: () => ({ text: this.goalText.text, frac: this.goalState.kind === 'none' ? 0 : this.goalState.frac, id: this.goalState.kind === 'medal' ? this.goalState.id : this.goalState.kind }),
+        /** Test hook: every registered texture key. */
+        textures: () => Object.keys(this.textures.list),
         /** Test hook: first-run tutorial state. */
         tutorial: () => ({ visible: this.tutorialOn, kind: this.tutorialKind }),
       } as { god: boolean };
@@ -399,7 +404,8 @@ export class PlayScene extends Phaser.Scene {
   private buildPlayer(): void {
     const key = skinTextureKey(this, this.skin);
     this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
-    this.ring = this.add.image(W / 2, PLAYER_Y, 'dd-ring').setDepth(11).setVisible(false);
+    this.ring = styleArt(this, this.add.image(W / 2, PLAYER_Y, 'dd-ring'), 'dd-ring').setDepth(11).setVisible(false);
+    this.ringArtScale = artScale(this, 'dd-ring');
     this.chompRing = this.add.image(W / 2, PLAYER_Y, 'dd-chomp-ring').setDepth(11).setVisible(false);
     if (this.skin.color === 'cycle') {
       this.prism = [];
@@ -545,7 +551,7 @@ export class PlayScene extends Phaser.Scene {
       this.shieldHudIcons = [];
       for (let i = 0; i < 7; i++) {
         this.shieldHudIcons.push(
-          this.add.image(a.shields.x + i * 30, a.shields.y, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
+          artImage(this, a.shields.x + i * 30, a.shields.y, 'dd-shield').setDisplaySize(28, 28).setDepth(100).setVisible(false),
         );
       }
       const timerX = landscape || !this.kit.fullscreenAvailable ? a.timer.x : this.frame.width - 176;
@@ -743,7 +749,7 @@ export class PlayScene extends Phaser.Scene {
     this.chompRing.setVisible(this.chompArmed && !chomping);
     if (this.shieldHeld) {
       this.ring.setPosition(this.player.x, this.player.y);
-      this.ring.setScale(baseScale * (1 + Math.sin(this.t * 8) * 0.04));
+      this.ring.setScale(baseScale * this.ringArtScale * (1 + Math.sin(this.t * 8) * 0.04));
       this.ring.rotation += dt * 1.5;
     }
     if (this.chompArmed && !chomping) {
@@ -869,7 +875,8 @@ export class PlayScene extends Phaser.Scene {
     p.kind = kind;
     p.x = x;
     p.y = -30;
-    p.img.setTexture(kind === 'star' ? 'dd-star' : 'dd-shield').setVisible(true).setPosition(x, p.y).setAlpha(1).setScale(1);
+    const key = kind === 'star' ? 'dd-star' : 'dd-shield';
+    styleArt(this, p.img.setTexture(key), key).setVisible(true).setPosition(x, p.y).setAlpha(1).setScale(artScale(this, key));
     return true;
   }
 

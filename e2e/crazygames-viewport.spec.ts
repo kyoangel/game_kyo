@@ -231,3 +231,22 @@ test('control: the local build has a custom fullscreen button in the landscape t
   await page.mouse.click(box.x + ((1440 - 136) / 1440) * box.width, box.y + (60 / 810) * box.height);
   await expect.poll(() => page.evaluate(() => document.fullscreenElement !== null), { timeout: 3000 }).toBe(true);
 });
+
+test('with every art file missing the game still boots and plays on the procedural fallback', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.route('**/assets/art/**', (r) => r.abort());
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(GAME);
+  await ready(page);
+  const title = await page.evaluate(() => (window as unknown as { __dd: { textures(): string[] } }).__dd.textures());
+  expect(title, 'no logo file -> text title').not.toContain('dd-logo');
+  expect(title, 'procedural star generated').toContain('dd-star');
+  await page.mouse.click(640, 360);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.waitForTimeout(800);
+  const play = await page.evaluate(() => (window as unknown as { __dd: { textures(): string[] } }).__dd.textures());
+  for (const k of ['dd-star', 'dd-shield', 'dd-ring']) expect(play).toContain(k);
+  expect(play).not.toContain('dd-bg-far');
+  expect(errors).toEqual([]);
+});
