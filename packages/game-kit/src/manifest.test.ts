@@ -61,6 +61,11 @@ describe('validateManifest', () => {
       errorsOf({ ...valid(), releases: { crazygames: { status: 'submitted', version: '0.1.0', submittedAt: '12/01' } } }).join(),
     ).toMatch(/submittedAt/));
 
+  it('accepts an optional scoreFormat of points or time', () => {
+    expect(validateManifest({ ...valid(), scoreFormat: 'time' }).ok).toBe(true);
+    expect(validateManifest({ ...valid(), scoreFormat: 'points' }).ok).toBe(true);
+    expect(validateManifest({ ...valid(), scoreFormat: 'laps' }).ok).toBe(false);
+  });
   it('accepts optional portalIds.gamedistribution', () => {
     expect(validateManifest({ ...valid(), portalIds: { gamedistribution: 'abc123' } }).ok).toBe(true);
     expect(validateManifest({ ...valid(), portalIds: {} }).ok).toBe(true);

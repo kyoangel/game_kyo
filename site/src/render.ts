@@ -19,6 +19,7 @@ const UI: Record<string, Record<string, string>> = {
   tagline: { en: 'Free mini games — play instantly in your browser', 'zh-TW': '免費小遊戲，打開瀏覽器就能玩' },
   all: { en: 'All', 'zh-TW': '全部' },
   best: { en: 'Best', 'zh-TW': '最高分' },
+  bestTime: { en: 'Best time', 'zh-TW': '最佳時間' },
   howTo: { en: 'How to play', 'zh-TW': '玩法' },
   back: { en: '← All games', 'zh-TW': '← 所有遊戲' },
   support: { en: '☕ Support the developer', 'zh-TW': '☕ 支持作者' },
@@ -60,7 +61,8 @@ const LOBBY_SCRIPT =
   "var t=b.getAttribute('data-filter');document.querySelectorAll('.card').forEach(function(c){" +
   "var tags=(c.getAttribute('data-tags')||'').split(' ');c.hidden=t!=='*'&&tags.indexOf(t)<0;});});});" +
   "document.querySelectorAll('[data-slug]').forEach(function(c){var v=null;" +
-  "try{v=localStorage.getItem('gk:'+c.getAttribute('data-slug')+':best')}catch(e){}" +
+"try{v=localStorage.getItem('gk:'+c.getAttribute('data-slug')+':'+(c.getAttribute('data-best')||'best'))}catch(e){}" +
+  "if(v&&c.getAttribute('data-best')==='bestTime'){var n=Math.max(0,Math.floor(Number(v)));v=Math.floor(n/60)+':'+('0'+n%60).slice(-2);}" +
   "if(v){var el=c.querySelector('.best');el.hidden=false;el.querySelector('b').textContent=v;}});";
 
 function shell(o: { title: string; description: string; canonical: string; root: string; body: string; script?: string; pageClass?: string; icon?: string }): string {
@@ -93,11 +95,12 @@ ${o.body}
 }
 
 function gameCard(g: GameManifest): string {
-  return `<a class="card" href="./${g.slug}/" data-slug="${g.slug}" data-tags="${escapeHtml(g.tags.join(' '))}">
+  const timed = g.scoreFormat === 'time';
+  return `<a class="card" href="./${g.slug}/" data-slug="${g.slug}" data-best="${timed ? 'bestTime' : 'best'}" data-tags="${escapeHtml(g.tags.join(' '))}">
 <img src="./${g.slug}/game/${escapeHtml(g.cover)}" alt="" loading="lazy" width="320" height="180">
 <h2>${bilingual(g.title)}</h2>
 <p>${bilingual(g.description)}</p>
-<p class="best" hidden>${bilingual(UI.best!)}: <b></b></p>
+<p class="best" hidden>${bilingual(timed ? UI.bestTime! : UI.best!)}: <b></b></p>
 </a>`;
 }
 

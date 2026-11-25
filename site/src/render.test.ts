@@ -38,6 +38,14 @@ describe('renderLobby', () => {
     expect(html).toContain('<span lang="zh-TW" data-l="zh-TW">Dodge &lt;blocks&gt; &amp; win</span>');
   });
   it('escapes manifest text', () => expect(html).not.toContain('<blocks>'));
+  it('a time-scored game card reads its bestTime key and shows m:ss under "Best time"', () => {
+    expect(html).toContain('data-best="best"');
+    const timed = renderLobby([{ ...game(), scoreFormat: 'time' }], [], opts);
+    expect(timed).toContain('data-best="bestTime"');
+    expect(timed).toContain('Best time');
+    expect(timed).toContain('最佳時間');
+    expect(timed).toContain("Math.floor(n/60)");
+  });
   it('game links follow the language switch with ?lang=', () => {
     expect(html).toContain("'/?lang='+l");
     expect(html).toContain('gkLinks(l)');

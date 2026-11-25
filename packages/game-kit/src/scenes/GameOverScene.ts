@@ -4,6 +4,7 @@ import { cssColor } from '../theme.ts';
 import { registerBounds } from '../ui/bounds.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
 import { sceneIsLandscape } from '../ui/landscape.ts';
+import { formatScore } from '../scoreFormat.ts';
 
 const COUNTDOWN_MS = 5000;
 const GUARD_MS = 400;
@@ -172,15 +173,17 @@ export class GameOverScene extends Phaser.Scene {
 
     this.add.text(cx, y(0.13, 0.17), kit.t('gk.gameOver'), this.style(60, theme.text)).setOrigin(0.5);
 
-    this.add.text(cx, y(0.205, 0.27), kit.t('gk.score'), this.style(26, theme.muted)).setOrigin(0.5);
+    const format = kit.def.scoreFormat;
+    const show = (n: number): string => formatScore(n, format);
+    this.add.text(cx, y(0.205, 0.27), kit.t(format === 'time' ? 'gk.time' : 'gk.score'), this.style(26, theme.muted)).setOrigin(0.5);
     const scoreText = this.add.text(cx, y(0.28, 0.37), '0', this.style(116, theme.accent)).setOrigin(0.5);
     const counter = { v: 0 };
     this.tweens.add({
       targets: counter,
       v: this.score,
       duration: 400,
-      onUpdate: () => scoreText.setText(String(Math.round(counter.v))),
-      onComplete: () => scoreText.setText(String(this.score)),
+      onUpdate: () => scoreText.setText(show(counter.v)),
+      onComplete: () => scoreText.setText(show(this.score)),
     });
 
     if (this.newBest) {
@@ -190,7 +193,7 @@ export class GameOverScene extends Phaser.Scene {
       kit.audio.sfx('newBest');
     }
 
-    this.add.text(cx, y(0.43, 0.58), `${kit.t('gk.best')}: ${kit.session.best}`, this.style(34, theme.muted)).setOrigin(0.5);
+    this.add.text(cx, y(0.43, 0.58), `${kit.t(format === 'time' ? 'gk.bestTime' : 'gk.best')}: ${show(kit.session.best)}`, this.style(34, theme.muted)).setOrigin(0.5);
 
     kit.def.results?.(this, {
       score: this.score,

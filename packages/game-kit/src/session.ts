@@ -13,9 +13,9 @@ export class GameSession {
   private pausedByPlayer = false;
   private readonly listeners: Array<(paused: boolean) => void> = [];
 
-  constructor(platform: Platform, slug: string) {
+  constructor(platform: Platform, slug: string, bestKey = `${slug}:best`) {
     this.platform = platform;
-    this.bestKey = `${slug}:best`;
+    this.bestKey = bestKey;
     platform.onAdPause(() => this.setAdPaused(true));
     platform.onAdResume(() => this.setAdPaused(false));
   }

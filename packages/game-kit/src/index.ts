@@ -2,6 +2,7 @@ export { defineGame, sceneList, type GameDefinition } from './defineGame.ts';
 export { getKit, Kit, KIT_KEY, type GameOverOptions } from './kit.ts';
 export { RunFlow } from './runFlow.ts';
 export { GameSession, type SessionState } from './session.ts';
+export { bestKeyFor, formatScore, type ScoreFormat } from './scoreFormat.ts';
 export { createI18n, mergeStrings, resolveLocale, type Strings } from './i18n.ts';
 export type { GameManifest } from './manifest.ts';
 export { DEFAULT_THEME, resolveTheme, cssColor, type Theme } from './theme.ts';

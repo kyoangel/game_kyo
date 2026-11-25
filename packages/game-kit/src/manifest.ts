@@ -49,6 +49,8 @@ export interface GameManifest {
   /** Ids issued by a portal dashboard; GameDistribution needs its gameId at build time. */
   portalIds?: PortalIds;
   store?: StoreMeta;
+  /** What the best result measures (default points); `time` bests are whole seconds stored under `<slug>:bestTime`. */
+  scoreFormat?: 'points' | 'time';
 }
 
 export type ValidationResult = { ok: true; manifest: GameManifest } | { ok: false; errors: string[] };
@@ -154,5 +156,6 @@ export function validateManifest(raw: unknown): ValidationResult {
   checkReleases(m.releases, errors);
   checkPortalIds(m.portalIds, errors);
   checkStore(m.store, errors);
+  if (m.scoreFormat !== undefined && m.scoreFormat !== 'points' && m.scoreFormat !== 'time') errors.push('scoreFormat must be points or time');
   return errors.length > 0 ? { ok: false, errors } : { ok: true, manifest: m as unknown as GameManifest };
 }

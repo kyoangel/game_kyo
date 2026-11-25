@@ -133,4 +133,13 @@ describe('GameSession', () => {
     expect(stop).not.toHaveBeenCalled();
     expect(session.gameplayPaused).toBe(false);
   });
+
+  it('a custom best key keeps separate bests', async () => {
+    const { platform, slug } = setup();
+    await platform.storage.set(`${slug}:best`, '500');
+    await platform.storage.set(`${slug}:bestTime`, '42');
+    const s = new GameSession(platform, slug, `${slug}:bestTime`);
+    await s.loadBest();
+    expect(s.best).toBe(42);
+  });
 });

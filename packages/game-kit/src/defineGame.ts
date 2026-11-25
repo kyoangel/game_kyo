@@ -13,6 +13,7 @@ import { GameOverScene } from './scenes/GameOverScene.ts';
 import { PreloadScene } from './scenes/PreloadScene.ts';
 import { TitleScene } from './scenes/TitleScene.ts';
 import { GameSession } from './session.ts';
+import { bestKeyFor, type ScoreFormat } from './scoreFormat.ts';
 import { resolveCanvasSize, type CanvasSizeProvider } from './frameProvider.ts';
 
 export interface GameDefinition {
@@ -39,6 +40,8 @@ export interface GameDefinition {
   canvasSize?: CanvasSizeProvider;
   /** Optional game-specific frame descriptor for the viewport, stored in the registry as `gk:frame` (kit.frame()). */
   onFrame?: (viewW: number, viewH: number) => unknown;
+  /** What the score passed to kit.gameOver measures (default points). `time`: whole seconds, shown as m:ss. */
+  scoreFormat?: ScoreFormat;
 }
 
 export function sceneList(def: GameDefinition): Array<new () => Phaser.Scene> {
@@ -55,7 +58,7 @@ export async function defineGame(def: GameDefinition): Promise<Phaser.Game> {
   const platform = createPlatform();
   await platform.init();
   const t = createI18n(mergeStrings(BUILTIN_STRINGS, titleStrings(def.manifest.title), def.strings ?? {}), platform.locale());
-  const session = new GameSession(platform, def.manifest.slug);
+  const session = new GameSession(platform, def.manifest.slug, bestKeyFor(def.manifest.slug, def.scoreFormat));
   await session.loadBest();
 
   const save = new SaveData(platform.storage, def.manifest.slug);

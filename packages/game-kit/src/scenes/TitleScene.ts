@@ -6,6 +6,7 @@ import { titleLayout } from '../titleLayout.ts';
 import { addButton, consumeButtonTap } from '../ui/button.ts';
 import { registerBounds } from '../ui/bounds.ts';
 import { topRightSlotX } from '../ui/topRight.ts';
+import { formatScore } from '../scoreFormat.ts';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -60,7 +61,7 @@ export class TitleScene extends Phaser.Scene {
 
     if (kit.session.best > 0) {
       this.add
-        .text(width / 2, lay.bestY, `${kit.t('gk.best')}: ${kit.session.best}`, {
+        .text(width / 2, lay.bestY, `${kit.t(kit.def.scoreFormat === 'time' ? 'gk.bestTime' : 'gk.best')}: ${formatScore(kit.session.best, kit.def.scoreFormat)}`, {
           fontFamily: theme.font,
           fontSize: '32px',
           fontStyle: 'bold',
