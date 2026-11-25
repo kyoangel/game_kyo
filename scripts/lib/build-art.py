@@ -20,9 +20,10 @@ UI = packs / 'kenney_ui-pack-space-expansion/PNG/Extra/Double'
 def load(p): return Image.open(p).convert('RGBA')
 
 
-def save(im, name, colors=128):
-    q = im.quantize(colors=colors, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
-    q.save(out / name, optimize=True)
+def save(im, name, colors=None):
+    # Lossless RGBA: palette quantisation banded the soft glows (CrazyGames rejects compression artefacts).
+    # The art budget (2 MB) leaves plenty of room; `colors` is kept only for call-site compatibility.
+    im.save(out / name, optimize=True)
 
 
 def fit(im, size):
@@ -118,6 +119,6 @@ text_layer = Image.new('RGBA', (W, H), (0, 0, 0, 0))
 text_layer.paste(grad, (0, 0), mask)
 logo.alpha_composite(text_layer)
 logo = logo.crop(logo.getbbox())
-logo = fit(logo, (logo.width * 640 // logo.width, logo.height * 640 // logo.width))
+logo = fit(logo, (logo.width * 1024 // logo.width, logo.height * 1024 // logo.width))
 save(logo, 'logo.png', 128)
 print('ok')

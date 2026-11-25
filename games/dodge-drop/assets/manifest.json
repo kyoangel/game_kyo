@@ -5,7 +5,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/simple-space",
       "notes": "Own composite (scripts/lib/build-art.py): Simple Space star_tiny/star_small scattered on a seamless 512x512 tile, tinted.",
-      "sha256": "9ad9a37c1d0151e510a9e4812497adc9cfa026ac607e35210e3be0c58ff15196",
+      "sha256": "c61ca6cadd2cbee17e703a6661b6abdfc26bc758e7e2a071db9f101aae37fa53",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -15,7 +15,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/simple-space",
       "notes": "Own composite (scripts/lib/build-art.py): Simple Space star_medium/star_large plus Particle Pack (https://kenney.nl/assets/particle-pack) star_04/05/07, seamless 512x512 tile, tinted.",
-      "sha256": "3c7b80d8f77f107a2d28c12147d6cadfcd0b26d83d695a225a09c68f26c2f6a9",
+      "sha256": "9da85da08ba44f4a7dff8d6dff3174c7ef55acca99a2c9a0efffc433a02b2c02",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -26,7 +26,7 @@
       "sourceUrl": "https://github.com/google/fonts/tree/main/ofl/orbitron",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "notes": "Own lettering 'NEON RUSH' rendered with Pillow (scripts/lib/build-art.py) from the font Orbitron (Copyright 2018 The Orbitron Project Authors, https://github.com/theleagueof/orbitron), licensed SIL Open Font License 1.1 (https://github.com/google/fonts/blob/main/ofl/orbitron/OFL.txt; METADATA.pb license: OFL, verified 2026-11-25). The OFL permits using the font to create artwork; the font file is NOT shipped. Image released as CC0 by the game author.",
-      "sha256": "82b10b1b06627193c69af2a6d210c50f15f5421e00abb36a48fe82f1f217e315",
+      "sha256": "7a1e32c8d0554b61de2f9abe2d8a2a8a98bb5b3efbb81faf47a38fddd29cd4bd",
       "license": "CC0-1.0",
       "retrievedAt": "2026-11-25"
     },
@@ -35,7 +35,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/simple-space",
       "notes": "Own composite (scripts/lib/build-art.py): Simple Space station_C/satellite_A/ship_sidesC icons plus Particle Pack (https://kenney.nl/assets/particle-pack) circle_01/magic_03/light_02, 400x900, tinted, low alpha.",
-      "sha256": "f02b24a02bc57479418c08a8c39941319f7a59a4b3e8f00f8fda606892d2a260",
+      "sha256": "65156a39aba622101f464e35d7adb2b6000d4b848e8fd7f2c18947498d953d9b",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -45,7 +45,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/particle-pack",
       "notes": "Particle Pack 1.1, circle_02.png resized to 256 px, palette-quantised; white, tinted in code.",
-      "sha256": "32f65b8a5f95cfe55bc330166caf9d81bb8751ec2ee334ae5f939d9e961d923c",
+      "sha256": "6a2c5461ec68f187b8846d2d1e0c0e5ccd941ebad56d1788c028fe77f5a31996",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -55,7 +55,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/particle-pack",
       "notes": "Particle Pack 1.1, circle_03.png resized to 256 px, palette-quantised; white, tinted in code.",
-      "sha256": "d10b19187a40378173ecd344de6941ad7f03f17e7cf0974803485640946561ea",
+      "sha256": "d37f539fb44d8184ed12d51b8620a366c1626f23518c76a8934b445ac582c73f",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -65,7 +65,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/particle-pack",
       "notes": "Particle Pack 1.1, star_06.png resized to 128 px, palette-quantised; white, tinted in code. Pack License.txt: CC0.",
-      "sha256": "983f19c41a1be3d8e2cfb746cce3daf30830dcef285bccea1e152b8c7513206e",
+      "sha256": "de6bfe3a75364657d92fca9d5a311108da8a0335dcb4c21508c961f5ce537443",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -75,7 +75,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/ui-pack-sci-fi",
       "notes": "UI Pack: Sci-fi 2.0, PNG/Extra/Double/button_rectangle_depth.png, palette-quantised.",
-      "sha256": "37eabe408a8b22a78f1c4a7d300cc271227a889dd364dbc65de4dbe0a8e276cf",
+      "sha256": "e8d884e85b6f23bf63711300e6d92b7e183a3530610c36edd9e5a059781e94f6",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -85,7 +85,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/ui-pack-sci-fi",
       "notes": "UI Pack: Sci-fi 2.0, PNG/Extra/Double/button_rectangle.png, palette-quantised.",
-      "sha256": "b1e817c60944fb516457788c75e774a10df1469c01f8ba9c75ab39f946cd703c",
+      "sha256": "a885781577cc7e23e9772c90a55dd2b523f955d870457f26ecd45a75bf95dc5f",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
@@ -95,7 +95,7 @@
       "author": "Kenney Vleugels (Kenney.nl)",
       "sourceUrl": "https://kenney.nl/assets/ui-pack-sci-fi",
       "notes": "UI Pack: Sci-fi 2.0, PNG/Extra/Double/panel_glass.png (zip delivered as kenney_ui-pack-space-expansion.zip; its License.txt says UI Pack: Sci-fi (2.0), CC0), palette-quantised.",
-      "sha256": "34eeb1c950bd73c918daf1a846705162e7a10cdbc93b5c4d1cb877f8ff3cacab",
+      "sha256": "9bd24a26099b3d59ca305a434e1758a3343d7aabe70bd6c3e9263e8444fb526a",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
