@@ -26,5 +26,6 @@ void defineGame({
   titleMenu: [{ labelKey: 'shop', scene: 'Shop' }],
   titleExtras: ddTitleExtras,
   titleBackdrop: ddTitleBackdrop,
+  titleLogo: 'dd-logo',
   results: ddResults,
 });

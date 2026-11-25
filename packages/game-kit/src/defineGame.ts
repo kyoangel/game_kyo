@@ -28,6 +28,8 @@ export interface GameDefinition {
   scenes?: Array<new () => Phaser.Scene>;
   titleMenu?: Array<{ labelKey: string; scene: string }>;
   titleBackdrop?: (scene: Phaser.Scene) => void;
+  /** Texture key of a logo image shown instead of the title text when it is loaded and the title is shown in the manifest's English form (the logo is lettered in English). */
+  titleLogo?: string;
   /** Optional custom title content, drawn after the menu buttons. Use addButton so taps never start the game. */
   titleExtras?: (scene: Phaser.Scene, ctx: TitleExtrasContext) => void;
   results?: (scene: Phaser.Scene, ctx: ResultsContext) => void;

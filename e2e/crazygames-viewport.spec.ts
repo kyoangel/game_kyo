@@ -250,3 +250,31 @@ test('with every art file missing the game still boots and plays on the procedur
   expect(play).not.toContain('dd-bg-far');
   expect(errors).toEqual([]);
 });
+
+type ArtHook = { __dd: { art(): string[]; textures(): string[] } };
+
+test('authored art is registered and drawn: logo on the title, panel art and parallax layers in landscape play', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(GAME);
+  await ready(page);
+  const have = await page.evaluate(() => (window as unknown as ArtHook).__dd.textures());
+  for (const k of ['dd-logo', 'dd-panel-art', 'dd-bg-far']) expect(have).toContain(k);
+  expect(await page.evaluate(() => (window as unknown as ArtHook).__dd.art()), 'title draws the logo').toContain('dd-logo');
+  await page.mouse.click(640, 360);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.waitForTimeout(500);
+  const play = await page.evaluate(() => (window as unknown as ArtHook).__dd.art());
+  for (const k of ['dd-panel-art', 'dd-bg-far', 'dd-bg-mid']) expect(play, `landscape play draws ${k}`).toContain(k);
+});
+
+test('portrait play draws the parallax layers but no side-panel art', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto(GAME);
+  await ready(page);
+  await page.mouse.click(187, 333);
+  await page.waitForFunction(() => (window as unknown as { __gk: GK }).__gk.activeScenes.includes('Play'));
+  await page.waitForTimeout(500);
+  const play = await page.evaluate(() => (window as unknown as ArtHook).__dd.art());
+  expect(play).toEqual(expect.arrayContaining(['dd-bg-far', 'dd-bg-mid']));
+  expect(play).not.toContain('dd-panel-art');
+});

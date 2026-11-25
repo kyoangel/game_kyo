@@ -22,20 +22,29 @@ export class TitleScene extends Phaser.Scene {
     const menu = kit.def.titleMenu ?? [];
     const lay = titleLayout(width, height, menu.length);
 
-    const title = this.add
-      .text(width / 2, lay.titleY, kit.t('title'), {
-        fontFamily: theme.font,
-        fontSize: '76px',
-        fontStyle: 'bold',
-        color: cssColor(theme.text),
-        stroke: '#1a1033',
-        strokeThickness: 8,
-        align: 'center',
-        wordWrap: { width: lay.landscape ? width * 0.36 : width * 0.9 },
-      })
-      .setOrigin(0.5);
-    kit.fx(this).glow(title, theme.primary, 6);
-    this.tweens.add({ targets: title, scale: 1.06, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const logoKey = kit.def.titleLogo;
+    if (logoKey && this.textures.exists(logoKey) && kit.t('title') === kit.def.manifest.title.en) {
+      const logo = this.add.image(width / 2, lay.titleY - height * (lay.landscape ? 0.02 : 0.04), logoKey);
+      // Fit a box (keeps the glow clear of the tap prompt and the extras below): 30% x 21% of the canvas in landscape, 70% x 24% in portrait.
+      const fit = Math.min((width * (lay.landscape ? 0.3 : 0.7)) / logo.width, (height * (lay.landscape ? 0.21 : 0.24)) / logo.height);
+      logo.setScale(fit);
+      this.tweens.add({ targets: logo, scale: fit * 1.04, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    } else {
+      const title = this.add
+        .text(width / 2, lay.titleY, kit.t('title'), {
+          fontFamily: theme.font,
+          fontSize: '76px',
+          fontStyle: 'bold',
+          color: cssColor(theme.text),
+          stroke: '#1a1033',
+          strokeThickness: 8,
+          align: 'center',
+          wordWrap: { width: lay.landscape ? width * 0.36 : width * 0.9 },
+        })
+        .setOrigin(0.5);
+      kit.fx(this).glow(title, theme.primary, 6);
+      this.tweens.add({ targets: title, scale: 1.06, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
 
     const tap = this.add
       .text(width / 2, lay.tapY, kit.t('gk.tapToStart'), {

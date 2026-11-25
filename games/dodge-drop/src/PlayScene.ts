@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { addBackground, cssColor, ensureTextures, getKit, type Fx, type GameInput, type Kit, type MusicMode, TRACKS } from '@gf/game-kit';
 import { CHOMP_BLOCK_SCORE, CHOMP_DURATION, CHOMP_EXIT_INVULN, emptyBoosts, sanitizeBoosts } from './boosts.ts';
-import { artImage, artScale, styleArt } from './art.ts';
+import { addParallax, type Parallax } from './backdrop.ts';
+import { artImage, artScale, styleArt, usedArtKeys } from './art.ts';
 import { Combo, horizontalGap, isNearMiss } from './combo.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
@@ -150,6 +151,7 @@ export class PlayScene extends Phaser.Scene {
 
   private grid!: Phaser.GameObjects.Graphics;
   private gridPhase = 0;
+  private parallax: Parallax | null = null;
   /** Loaded ring art is larger than the procedural ring; this keeps the on-screen footprint. */
   private ringArtScale = 1;
   private dots: Phaser.GameObjects.Image[] = [];
@@ -294,6 +296,8 @@ export class PlayScene extends Phaser.Scene {
         goal: () => ({ text: this.goalText.text, frac: this.goalState.kind === 'none' ? 0 : this.goalState.frac, id: this.goalState.kind === 'medal' ? this.goalState.id : this.goalState.kind }),
         /** Test hook: every registered texture key. */
         textures: () => Object.keys(this.textures.list),
+        /** Test hook: art keys actually drawn by this scene. */
+        art: () => usedArtKeys(this),
         /** Test hook: first-run tutorial state. */
         tutorial: () => ({ visible: this.tutorialOn, kind: this.tutorialKind }),
       } as { god: boolean };
@@ -369,6 +373,8 @@ export class PlayScene extends Phaser.Scene {
 
   private buildBackdrop(): void {
     this.grid = this.add.graphics().setDepth(-90);
+    this.parallax = addParallax(this, W, H);
+    if (this.parallax) this.grid.setAlpha(0.35);
     this.gridPhase = 0;
     this.dots = [];
     this.dotSpeed = [];
@@ -525,6 +531,11 @@ export class PlayScene extends Phaser.Scene {
     const f = this.frame;
     const g = this.add.graphics().setDepth(-100);
     const rightX = f.fieldX + f.dispW;
+    if (this.textures.exists('dd-panel-art')) {
+      const k = (f.height / 900) * 0.95;
+      this.add.image(f.fieldX / 2, f.height / 2, 'dd-panel-art').setDepth(-99).setAlpha(0.2).setScale(k);
+      this.add.image(rightX + (f.width - rightX) / 2, f.height / 2, 'dd-panel-art').setDepth(-99).setAlpha(0.2).setScale(k).setFlipX(true);
+    }
     for (const [x0, w] of [[0, f.fieldX], [rightX, f.width - rightX]] as const) {
       g.fillGradientStyle(0x1a1033, 0x1a1033, 0x0b0720, 0x0b0720, 1);
       g.fillRect(x0, 0, w, f.height);
@@ -680,6 +691,7 @@ export class PlayScene extends Phaser.Scene {
     const od = overdrive(this.t);
     const speed = fallSpeed(this.t) * speedBoost(this.t) * (1 + od);
     this.gridPhase = (this.gridPhase + (dt * speed * 0.3) / 160) % 1;
+    this.parallax?.update(dt, speed);
     const g = this.grid;
     g.clear();
     const vpX = W / 2;

@@ -44,3 +44,25 @@ export function ddTitleBackdrop(scene: Phaser.Scene): void {
     scene.tweens.add({ targets: img, angle: 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   });
 }
+
+export interface Parallax { update(dt: number, speed: number): void }
+
+/** Layer tuning: share of the block fall speed, alpha (kept low so blocks stay the brightest thing) and tile scale. */
+const FAR = { depth: -95, k: 0.15, alpha: 0.14, tile: 0.7 };
+const MID = { depth: -92, k: 0.4, alpha: 0.14, tile: 0.9 };
+
+/** Two scrolling star tiles behind the play field; null when the art is not loaded (procedural fallback). */
+export function addParallax(scene: Phaser.Scene, w: number, h: number): Parallax | null {
+  if (!scene.textures.exists('dd-bg-far') || !scene.textures.exists('dd-bg-mid')) return null;
+  const layer = (key: string, l: typeof FAR): Phaser.GameObjects.TileSprite =>
+    scene.add.tileSprite(w / 2, h / 2, w, h, key).setDepth(l.depth).setAlpha(l.alpha).setTileScale(l.tile);
+  const far = layer('dd-bg-far', FAR);
+  const mid = layer('dd-bg-mid', MID);
+  return {
+    update(dt, speed) {
+      // Tile offsets are in texture px; dividing by the tile scale makes the on-screen shift k * speed * dt.
+      far.tilePositionY -= (dt * speed * FAR.k) / FAR.tile;
+      mid.tilePositionY -= (dt * speed * MID.k) / MID.tile;
+    },
+  };
+}

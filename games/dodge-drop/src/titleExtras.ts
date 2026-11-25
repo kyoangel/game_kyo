@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { artImage } from './art.ts';
+import { artImage, usedArtKeys } from './art.ts';
 import { addButton, cssColor, getKit, landscapeFont, markButtonTap, textResolution, type Kit, type TitleExtrasContext } from '@gf/game-kit';
 import { renderBoostBar } from './boostBar.ts';
 import { buyBoost, emptyBoosts, sanitizeBoosts, type RunBoosts } from './boosts.ts';
@@ -138,6 +138,8 @@ export function ddTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): voi
       w.__dd = w.__dd ?? {};
       /** Test hook: every registered texture key (loaded art and generated fallbacks). */
       w.__dd.textures = () => Object.keys(scene.textures.list);
+      /** Test hook: art keys actually drawn by this scene. */
+      w.__dd.art = () => usedArtKeys(scene);
     }
     if (tiltAvail) {
       const on = control === 'tilt';

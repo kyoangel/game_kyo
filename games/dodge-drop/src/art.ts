@@ -56,3 +56,15 @@ export function styleArt<T extends Phaser.GameObjects.Image>(scene: Phaser.Scene
   else img.clearTint();
   return img;
 }
+
+/** Test-hook helper: art keys drawn by at least one visible display object of the scene. */
+export function usedArtKeys(scene: Phaser.Scene): string[] {
+  const used = new Set<string>();
+  for (const o of scene.children.list) {
+    // TileSprite keeps the source texture in displayTexture and renders from its own tile texture.
+    const t = o as Phaser.GameObjects.Image & { displayTexture?: Phaser.Textures.Texture };
+    const key = t.displayTexture?.key ?? t.texture?.key;
+    if (t.visible && key && ART_FILES.some((f) => f.key === key)) used.add(key);
+  }
+  return [...used];
+}
