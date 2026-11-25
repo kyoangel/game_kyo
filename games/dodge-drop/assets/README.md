@@ -35,3 +35,35 @@ google/fonts); the font file is not shipped.
 | logo.png | dd-logo | Orbitron lettering "NEON RUSH" |
 
 Player skins and blocks stay procedural (shape-coded, tinted per skin; plan Task 3.2 step 2).
+
+## Music and SFX (Task 3.3, retrieved 2026-11-25)
+
+**Needs listening check (Task 3.9): nothing below was auditioned.** Choices were made from
+filenames, pack themes, duration and loudness stats only. Loudness normalisation is Task 3.9.
+
+Music: three Pro Sensory (Alex McCulloch) synthwave tracks on OpenGameArt, each item page lists
+License(s): CC0 (author asks for optional credit; recorded in `credit`). Loops are bar-aligned cuts
+(tempo and beat phase estimated with a low-band onset comb), a 0.3 s equal-power crossfade of the
+continuation after the cut onto the loop start, 112 kbps joint-stereo mp3. Note: mp3 encoder delay
+(~25 ms) may leave a tiny gap at the loop point in WebAudio; check in 3.6/3.9.
+
+| File | Source track (page) | Cut | Why |
+|---|---|---|---|
+| music-normal.mp3 (48 s) | Synth Wave (/content/synth-wave) | 24.4-72.4 s, 80 BPM | slowest track, steady mid-energy section before its breakdown |
+| music-rush.mp3 (48 s) | 80's Synth Wave (/content/80s-synth-wave) | 88.5-136.5 s, 120 BPM | faster tempo, high-energy middle |
+| music-overdrive.mp3 (48 s) | Space Synth Wave (/content/space-synth-wave) | 84.2-132.2 s, 160 BPM (double time of 80) | fastest pulse; this track is quieter overall, so it may need gain in 3.9 |
+| music-chomp.mp3 (32 s) | 80's Synth Wave | 160.5-192.5 s, 120 BPM | loudest section, different from rush; fit for chomp is a guess |
+
+SFX (Kenney, mono 128 kbps, leading silence trimmed), file to `SfxName`:
+
+| SfxName | Source | Why |
+|---|---|---|
+| nearMiss | Digital Audio phaserUp5 (0.22 s) | shortest rising phaser; pitched via playbackRate |
+| pickup | Digital Audio powerUp2 (0.35 s) | classic power-up blip |
+| shield | Sci-Fi Sounds forceField_000 (0.95 s) | force-field energy hum |
+| shieldBreak | Sci-Fi Sounds explosionCrunch_000 (0.78 s) | crunchy burst |
+| death | Digital Audio lowDown (0.65 s) | descending tone |
+| medal | Interface Sounds confirmation_002 (0.54 s) | multi-note confirm |
+| click | Interface Sounds click_003 (7 ms) | UI click; very short, may be inaudible after mp3 padding |
+| rush | Digital Audio highUp (0.40 s) | rising sweep |
+| newBest | Digital Audio zapThreeToneUp (1.1 s) | rising three-tone fanfare |

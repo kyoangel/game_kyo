@@ -99,6 +99,140 @@
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/music-chomp.mp3",
+      "author": "Pro Sensory (Alex McCulloch)",
+      "sourceUrl": "https://opengameart.org/content/80s-synth-wave",
+      "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
+      "notes": "Item page License(s): CC0 (checked 2026-11-25). Cut 160.495 s-192.495 s (16 bars at 120 BPM) of 'synth_wave_1980s.mp3' (a different, high-energy section than music-rush), 0.3 s loop crossfade, 112 kbps mp3. Fitness for chomp mode is a guess; needs listening check.",
+      "sha256": "a0d5bf6ab81440d2351c0d31eb48c6cc93ace8252e487144d41fb75603d50b58",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/music-normal.mp3",
+      "author": "Pro Sensory (Alex McCulloch)",
+      "sourceUrl": "https://opengameart.org/content/synth-wave",
+      "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
+      "notes": "Item page License(s): CC0 (checked 2026-11-25). Page text: 'just include my name, Alex McCulloch. This is not mandatory.' Cut 24.425 s-72.425 s (16 bars at 80 BPM) of 'Synth Wave.mp3', 0.3 s equal-power loop crossfade, 112 kbps mp3. Loop seam needs listening check (Task 3.9).",
+      "sha256": "602816ee88f14f8ed8e0d0343fd7dbc0acf6a2a1cddac70b5d8f5fce512f3f5d",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/music-overdrive.mp3",
+      "author": "Pro Sensory (Alex McCulloch)",
+      "sourceUrl": "https://opengameart.org/content/space-synth-wave",
+      "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
+      "notes": "Item page License(s): CC0 (checked 2026-11-25). Page text: 'just include my name, Alex McCulloch. This is not mandatory. Please message me so I can put you and your game on my ...'. Cut 84.155 s-132.155 s (32 bars at 160 BPM) of 'Cool 80's Synth Wave.wav', 0.3 s loop crossfade, 112 kbps mp3.",
+      "sha256": "8cd0e8d393316ab8912a4e2084046b8c20f05574245f3cec6f57d858b44bff6a",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/music-rush.mp3",
+      "author": "Pro Sensory (Alex McCulloch)",
+      "sourceUrl": "https://opengameart.org/content/80s-synth-wave",
+      "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
+      "notes": "Item page License(s): CC0 (checked 2026-11-25). Page text: 'Just include my name, Alex McCulloch.' plus a request to link his blog (CC0, so not required). Cut 88.495 s-136.495 s (24 bars at 120 BPM) of 'synth_wave_1980s.mp3', 0.3 s loop crossfade, 112 kbps mp3.",
+      "sha256": "77577321b82c7d36f0bb26bcaf8f87d523d5111f457d7069606f5cda54e581ef",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-click.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "notes": "Interface Sounds 1.0 click_003.ogg (10 ms); trimmed, mono mp3.",
+      "sha256": "40d4703263ca09059f126fcfce88369e04170c25ad74484070534676603f1388",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-death.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/digital-audio",
+      "notes": "Digital Audio lowDown.ogg; trimmed, mono mp3.",
+      "sha256": "4e553a398fe1081f0cd17de559aa545f3790d0f862d1662983e159fe92e89b42",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-medal.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "notes": "Interface Sounds 1.0 confirmation_002.ogg; trimmed, mono mp3.",
+      "sha256": "3cf790b80fafbdcee46ed789719e6e4c32c47ff62e4c05ec716fd7cb073d32fd",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-nearMiss.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/digital-audio",
+      "notes": "Digital Audio phaserUp5.ogg; leading silence trimmed, mono, 128 kbps mp3.",
+      "sha256": "f8bc491bc93170657d390928cff9df314190f20c58905bb3bbd5024abed17900",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-newBest.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/digital-audio",
+      "notes": "Digital Audio zapThreeToneUp.ogg; trimmed, mono mp3.",
+      "sha256": "381ebd8639ee70efb711a343a7f5603bea6b4e098da33613fc0106de7e14fe67",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-pickup.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/digital-audio",
+      "notes": "Digital Audio powerUp2.ogg; trimmed, mono mp3.",
+      "sha256": "b7488788cf19fe189cda621fd42cfcdb986d0e286099b96a5184213e0bc1e23b",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-rush.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/digital-audio",
+      "notes": "Digital Audio highUp.ogg; trimmed, mono mp3.",
+      "sha256": "6e1d982473d5a4e543ddb5312bfed9f7d943bc69b93ae644e3d023b058065845",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-shield.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/sci-fi-sounds",
+      "notes": "Sci-Fi Sounds 1.0 forceField_000.ogg; trimmed, mono mp3.",
+      "sha256": "0d8590c188c0fd477e7c7ebc9bbcd994aa13e974ffbeb01263f2b6bf514e899f",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
+    },
+    {
+      "file": "audio/sfx-shieldBreak.mp3",
+      "author": "Kenney Vleugels (Kenney.nl)",
+      "sourceUrl": "https://kenney.nl/assets/sci-fi-sounds",
+      "notes": "Sci-Fi Sounds 1.0 explosionCrunch_000.ogg; trimmed, mono mp3.",
+      "sha256": "944852ee58d3aca28c41931950ae7fe44dded096972e9cef433381552a82f02e",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "retrievedAt": "2026-11-25"
     }
   ]
 }
