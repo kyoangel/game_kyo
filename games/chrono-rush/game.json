@@ -1,0 +1,32 @@
+{
+  "slug": "chrono-rush",
+  "version": "0.1.0",
+  "title": {
+    "en": "Chrono Rush",
+    "zh-TW": "時光疾走勇者"
+  },
+  "description": {
+    "en": "Race against the ticking clock! Power-level through monster zones, buy gear in villages, and storm the Demon Castle before time runs out. Spend Crystals at Camp for permanent Roguelike upgrades and conquer higher World Loops.",
+    "zh-TW": "與倒數時鐘賽跑！在怪物荒野中極速練等、進村秒買裝備、衝進魔王城討伐魔王！每局結算魔晶永久強化營地天賦，挑戰更高輪迴的世界！"
+  },
+  "instructions": {
+    "en": "Move with WASD / Arrow Keys (or drag on touch). Press Space to Dash. Bump into monsters for instant high-speed combat, visit villages to pause the clock, heal, and upgrade gear, and slay the Demon Lord before time expires!",
+    "zh-TW": "使用 WASD 或方向鍵移動（手機可拖曳搖桿），空白鍵衝刺。撞擊怪物自動高速戰鬥，進村莊暫停計時、回滿血並強化裝備，在時間歸零前衝進魔王城擊敗魔王！"
+  },
+  "tags": ["arcade", "rpg", "roguelike"],
+  "orientation": "landscape",
+  "controls": ["keyboard", "mouse", "touch"],
+  "cover": "cover.svg",
+  "store": {
+    "controls": {
+      "en": "- WASD or Arrow Keys (or drag on touch) to move\n- Space or Shift to Dash\n- 1 / 2 inside a Village to buy Weapon or Armor\n- Space or Esc to leave Village"
+    },
+    "crazygames": {
+      "category": "Action",
+      "tags": ["RPG", "Pixel", "Speed", "Upgrade", "2D"],
+      "progressSave": "sdk"
+    }
+  },
+  "targets": ["site", "crazygames", "gamedistribution"],
+  "releases": {}
+}
