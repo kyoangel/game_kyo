@@ -1,4 +1,4 @@
-# Neon Rush v3.6.0 - CrazyGames resubmission notes
+# Neon Rush v3.7.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -33,6 +33,9 @@ narrowed to 90 px.
 v3.6.0 - every block eaten in Chomp is a star; Chomp plays an original upbeat chiptune; a 3-2-1 countdown (banner
 and ticks) before every rush, surge and Overdrive, and rushes ease in over 1 s instead of jumping; stronger upgrades:
 graze window 34 px base (54 px at max), Longer Chomp +0.8 s per level (8 s at max), Shield Core interval x0.9 per level.
+
+v3.7.0 - new original racing-style main loop (150 BPM); rushes and Overdrive play the Space Synth Wave loop at native
+tempo; the run loop only speeds up slightly (x1.08 by Overdrive).
 Plan: `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`.
 
 ## What changed since v2.8.4 (paste into the portal notes)

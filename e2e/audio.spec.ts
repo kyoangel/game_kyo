@@ -44,13 +44,11 @@ test('music samples load, start after the first input and switch to the rush loo
     dd.warp(46); // first rush window starts at 45 s
   });
   await expect.poll(async () => (await audio(page)).musicSample).toBe('music-rush');
+  expect((await audio(page)).musicRate, 'the rush loop plays at its own tempo').toBe(1);
 
   await page.evaluate(() => (window as unknown as W).__dd!.warp(80)); // past OVERDRIVE_T (120 s)
   await expect.poll(async () => (await audio(page)).musicSample).toBe('music-overdrive');
-  expect((await audio(page)).musicRate, 'music speeds up with the clock').toBeGreaterThan(1.2);
-  // Dying puts the tempo back for the results / title music.
-  await page.evaluate(() => { (window as unknown as W).__dd!.god = false; });
-  await expect.poll(async () => (await audio(page)).musicRate, { timeout: 20_000 }).toBe(1);
+  expect((await audio(page)).musicRate, 'the Overdrive loop plays at its own tempo').toBe(1);
   expect(errors).toEqual([]);
 });
 

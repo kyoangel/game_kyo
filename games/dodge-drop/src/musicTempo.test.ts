@@ -8,10 +8,10 @@ describe('musicRate', () => {
     expect(musicRate(60)).toBeGreaterThan(musicRate(30));
     expect(musicRate(119)).toBeGreaterThan(musicRate(60));
   });
-  it('tops out after Overdrive is fully on and never goes past MUSIC_RATE_MAX', () => {
-    expect(musicRate(130)).toBeCloseTo(MUSIC_RATE_MAX, 5);
+  it('tops out at Overdrive and stays a small shift (pitch rises with it)', () => {
+    expect(musicRate(120)).toBeCloseTo(MUSIC_RATE_MAX, 5);
     expect(musicRate(600)).toBeCloseTo(MUSIC_RATE_MAX, 5);
-    expect(MUSIC_RATE_MAX).toBeLessThanOrEqual(1.3);
+    expect(MUSIC_RATE_MAX).toBeLessThanOrEqual(1.1);
   });
   it('is quantised so the audio node is not touched every frame', () => {
     expect(musicRate(10)).toBe(musicRate(10.1));

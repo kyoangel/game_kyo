@@ -1115,8 +1115,8 @@ export class PlayScene extends Phaser.Scene {
       this.lastMode = mode;
       this.kit.audio.music.setMode(mode);
     }
-    // The Chomp jingle is written at its own tempo (168 BPM); only the run loops speed up with the clock.
-    const rate = mode === 'chomp' ? 1 : musicRate(this.t);
+    // Only the run loop speeds up with the clock; the rush / Overdrive and Chomp loops play at their own tempo.
+    const rate = mode === 'normal' ? musicRate(this.t) : 1;
     if (rate !== this.lastRate || force) {
       this.lastRate = rate;
       this.kit.audio.music.setRate(rate);

@@ -19,7 +19,7 @@ https://kyoangel.github.io/game_kyo/dodge-drop/ （僅自家網站，使用者�
 CI 規則見 `docs/ci.md`（pre-push hook、PROPERTY_SEEDS、nightly、Pages 用 Actions 部署）。
 
 ## 下一步
-1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3.0.0 已完成，2026-11-25 再加暫停選單／開局道具再點取消／favicon 成為 v3.1.0；同日獎杯節奏改為 15/30/60 秒、用詞統一為「杯」成為 v3.2.0；同日拿掉分數/連擊、改成只看存活時間＋擦邊集氣觸發大胃王成為 v3.3.0（計畫 `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`）；同日加入防龜縮（站著不動 3 秒會有瞄準方塊）＋橫向死亡紅閃滿版成為 v3.4.0；同日音樂改快（開局 120 BPM、加速/極速 160 BPM、播放速度隨時間 ×1.0→×1.25）、瞄準方塊縮為 90px 成為 v3.5.0；同日大胃王吃方塊給星星、原創歡樂大胃王音樂、加速前 3-2-1 倒數與 1 秒漸進、天賦加強（擦邊 34→54px、大胃王最長 8 秒）成為 v3.6.0，已上自家網站（計畫
+1. v2.8.4 於 2026-11-23 被 CrazyGames 以整體品質退件；v3.0.0 已完成，2026-11-25 再加暫停選單／開局道具再點取消／favicon 成為 v3.1.0；同日獎杯節奏改為 15/30/60 秒、用詞統一為「杯」成為 v3.2.0；同日拿掉分數/連擊、改成只看存活時間＋擦邊集氣觸發大胃王成為 v3.3.0（計畫 `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`）；同日加入防龜縮（站著不動 3 秒會有瞄準方塊）＋橫向死亡紅閃滿版成為 v3.4.0；同日音樂改快（開局 120 BPM、加速/極速 160 BPM、播放速度隨時間 ×1.0→×1.25）、瞄準方塊縮為 90px 成為 v3.5.0；同日大胃王吃方塊給星星、原創歡樂大胃王音樂、加速前 3-2-1 倒數與 1 秒漸進、天賦加強（擦邊 34→54px、大胃王最長 8 秒）成為 v3.6.0；同日主題曲換成原創賽車風（`games/dodge-drop/scripts/render-run-music.ts`）、加速/極速改用原速 Space Synth Wave 成為 v3.7.0，已上自家網站（計畫
    `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`）。等使用者：試聽音訊、看封面影片、
    跑 CrazyGames Preview，再用 `/publish-crazygames dodge-drop` 送審（Submit 由使用者按）。清單在
    `docs/specs/dodge-drop/v3-resubmit-notes.md`。

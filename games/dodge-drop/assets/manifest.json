@@ -111,23 +111,22 @@
       "retrievedAt": "2026-11-26"
     },
     {
+      "file": "audio/music-normal.mp3",
+      "author": "Neon Rush (own work)",
+      "sourceUrl": "https://github.com/kyoangel/game_kyo/blob/master/games/dodge-drop/scripts/render-run-music.ts",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "notes": "Original racing-style synth loop (150 BPM, 16 bars, A minor) synthesised by scripts/render-run-music.ts, 7 kHz low-pass, loudnorm -18 LUFS, 112 kbps mp3. Released as CC0 by the game author.",
+      "sha256": "37a54a5f3a8a29b2c6e6db77c3d2c1d8dae28efb0dc6bfe91c1357029aa76b91",
+      "license": "CC0-1.0",
+      "retrievedAt": "2026-11-26"
+    },
+    {
       "file": "audio/music-overdrive.mp3",
       "author": "Pro Sensory (Alex McCulloch)",
       "sourceUrl": "https://opengameart.org/content/space-synth-wave",
       "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
       "notes": "Item page License(s): CC0 (checked 2026-11-25). Page text: 'just include my name, Alex McCulloch. This is not mandatory. Please message me so I can put you and your game on my ...'. Cut 84.155 s-132.155 s (32 bars at 160 BPM) of 'Cool 80's Synth Wave.wav', 0.3 s loop crossfade, 112 kbps mp3. loudnorm -18 LUFS (two-pass, TP -1.5 dBTP).",
       "sha256": "9cfa1f61a2023eed6a87d6adaa846b4038beb6af6fffbb10b61d6ae0061232bd",
-      "license": "CC0-1.0",
-      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "retrievedAt": "2026-11-25"
-    },
-    {
-      "file": "audio/music-rush.mp3",
-      "author": "Pro Sensory (Alex McCulloch)",
-      "sourceUrl": "https://opengameart.org/content/80s-synth-wave",
-      "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
-      "notes": "Item page License(s): CC0 (checked 2026-11-25). Page text: 'Just include my name, Alex McCulloch.' plus a request to link his blog (CC0, so not required). Cut 88.495 s-136.495 s (24 bars at 120 BPM) of 'synth_wave_1980s.mp3', 0.3 s loop crossfade, 112 kbps mp3. loudnorm -18 LUFS (two-pass, TP -1.5 dBTP).",
-      "sha256": "4b61c3844eef5cf2e5c3b0724dbf2571098dafc72d5e64d16cd302f2809f6065",
       "license": "CC0-1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "retrievedAt": "2026-11-25"

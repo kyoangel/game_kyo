@@ -27,11 +27,11 @@ export const AUDIO_MANIFEST: AudioManifest = {
     rush: sfx('rush'),
     newBest: sfx('newBest'),
   },
-  // 2026-11-25 owner feedback "the music has no sense of speed": the 80 BPM loop (music-normal.mp3) is retired.
-  // Runs open on the 120 BPM loop; rush and Overdrive share the 160 BPM loop (the kit keeps it playing across the
-  // switch); PlayScene also raises the playback rate with the clock (musicTempo.ts).
+  // 2026-11-26 owner picks: runs play an original racing-style loop (scripts/render-run-music.ts, 150 BPM); rushes
+  // and Overdrive share the Space Synth Wave loop the owner liked (the kit keeps it playing across the switch) at its
+  // native tempo. Only the run loop speeds up slightly with the clock (musicTempo.ts).
   music: {
-    'music-normal': music('rush'),
+    'music-normal': music('normal'),
     'music-rush': music('overdrive'),
     'music-overdrive': music('overdrive'),
     'music-chomp': music('chomp'),
