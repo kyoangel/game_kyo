@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#13092b"/>
+      <stop offset="55%" stop-color="#4c1d57"/>
+      <stop offset="100%" stop-color="#9a3412"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="310" fill="url(#sky)"/>
+  <rect y="310" width="800" height="140" fill="#15803d"/>
+  <rect y="355" width="800" height="34" fill="#b45309"/>
+  <text x="400" y="142" text-anchor="middle" font-family="monospace" font-weight="900" font-size="78" fill="#facc15" stroke="#13092b" stroke-width="10">CHRONO RUSH</text>
+  <text x="400" y="206" text-anchor="middle" font-family="monospace" font-weight="700" font-size="26" fill="#fef08a" stroke="#13092b" stroke-width="5">BEAT THE CLOCK • SLAY THE DEMON LORD</text>
+  <circle cx="400" cy="276" r="34" fill="#1e1b4b" stroke="#38bdf8" stroke-width="6"/>
+  <text x="400" y="287" text-anchor="middle" font-family="monospace" font-weight="900" font-size="28" fill="#facc15">⏱</text>
+</svg>
