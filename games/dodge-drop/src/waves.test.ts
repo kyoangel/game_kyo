@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { spawnInterval } from './difficulty.ts';
 import { mulberry32 } from './rng.ts';
 import {
-  BLOCK_H, PLAYER_HITBOX_W, isRush, planWave, rainRow, rainRowBlocks, rainRowExpected, rainWidthRange, rowHasGap,
+  BLOCK_H, heavyRainMul, PLAYER_HITBOX_W, isRush, planWave, rainRow, rainRowBlocks, rainRowExpected, rainWidthRange, rowHasGap,
   stairsWidth, waveKindAt, zigzagWidthRange,
 } from './waves.ts';
 import type { WaveKind } from './waves.ts';
@@ -118,22 +119,22 @@ describe('intervalMul', () => {
 });
 
 describe('density curve (tuned)', () => {
-  it('expected blocks per row: 1 through Silver (<= 90 s), 1.4 at 120 -> 2.0 at 180 -> 2.6 at 240, flat after', () => {
+  it('expected blocks per row: 1 through Silver (<= 90 s), 1.2 at 120 -> 1.5 at 180 -> 1.8 at 240, flat after', () => {
     const at = [0, 30, 60, 90, 120, 150, 180, 300].map(rainRowExpected);
-    expect(rainRowExpected(210)).toBeCloseTo(2.3, 9);
-    expect(rainRowExpected(240)).toBeCloseTo(2.6, 9);
-    [1, 1, 1, 1, 1.4, 1.7, 2.0, 2.6].forEach((v, i) => expect(at[i]).toBeCloseTo(v, 9));
+    expect(rainRowExpected(210)).toBeCloseTo(1.65, 9);
+    expect(rainRowExpected(240)).toBeCloseTo(1.8, 9);
+    [1, 1, 1, 1, 1.2, 1.35, 1.5, 1.8].forEach((v, i) => expect(at[i]).toBeCloseTo(v, 9));
   });
   it('rainRowBlocks is strictly 1 through Silver and floor/ceil afterwards, max 3', () => {
     expect(rainRowBlocks(0, () => 0)).toBe(1);
     expect(rainRowBlocks(60, () => 0)).toBe(1);
     expect(rainRowBlocks(90, () => 0)).toBe(1);
-    expect(rainRowBlocks(150, () => 0.0)).toBe(2); // e=1.7, rng<0.7 -> +1
-    expect(rainRowBlocks(150, () => 0.8)).toBe(1);
-    expect(rainRowBlocks(180, () => 0.0)).toBe(2);
-    expect(rainRowBlocks(240, () => 0.59)).toBe(3);
-    expect(rainRowBlocks(240, () => 0.61)).toBe(2);
-    expect(rainRowBlocks(300, () => 0.0)).toBe(3);
+    expect(rainRowBlocks(150, () => 0.0)).toBe(2); // e=1.35, rng<0.35 -> +1
+    expect(rainRowBlocks(150, () => 0.4)).toBe(1);
+    expect(rainRowBlocks(180, () => 0.49)).toBe(2);
+    expect(rainRowBlocks(240, () => 0.79)).toBe(2);
+    expect(rainRowBlocks(240, () => 0.81)).toBe(1);
+    expect(rainRowBlocks(300, () => 0.0)).toBe(2);
   });
   it('width ranges: widens single blocks through Silver (110-250 at 90 s), then tapers to 80-180 from 120 s', () => {
     expect(rainWidthRange(0)).toEqual({ min: 60, max: 160 });
@@ -175,7 +176,7 @@ describe('density curve (tuned)', () => {
     for (const s of p.spawns) byAt.set(s.at, (byAt.get(s.at) ?? 0) + 1);
     expect(Math.max(...byAt.values())).toBeGreaterThanOrEqual(2);
   });
-  it('mean coverage grows cleanly from ~15% at 30 s, ~25% single-block at 90 s, to ~45% by 240 s', () => {
+  it('mean coverage grows cleanly from ~15% at 30 s, ~25% single-block at 90 s, to ~32% by 240 s (capped)', () => {
     const cov = (t: number) => {
       let sum = 0;
       for (let seed = 1; seed <= 2000; seed++) sum += rainRow(t, mulberry32(seed), W).reduce((a, b) => a + b.w, 0) / W;
@@ -185,9 +186,22 @@ describe('density curve (tuned)', () => {
     expect(cov(30)).toBeLessThan(0.18);
     expect(cov(90)).toBeGreaterThan(0.22);
     expect(cov(90)).toBeLessThan(0.28);
-    expect(cov(180)).toBeGreaterThan(0.32);
-    expect(cov(180)).toBeLessThan(0.42);
-    expect(cov(240)).toBeGreaterThan(0.40);
-    expect(cov(240)).toBeLessThan(0.52);
+    expect(cov(180)).toBeGreaterThan(0.24);
+    expect(cov(180)).toBeLessThan(0.30);
+    expect(cov(240)).toBeGreaterThan(0.29);
+    expect(cov(240)).toBeLessThan(0.36);
+  });
+});
+
+describe('late density cap (owner: Legend was a wall of blocks)', () => {
+  it('heavy rain is 0.6x the interval through Gold, easing to 0.8x by 180 s', () => {
+    expect(heavyRainMul(90)).toBeCloseTo(0.6, 9);
+    expect(heavyRainMul(135)).toBeCloseTo(0.7, 9);
+    expect(heavyRainMul(180)).toBeCloseTo(0.8, 9);
+    expect(heavyRainMul(400)).toBeCloseTo(0.8, 9);
+  });
+  it('expected rain blocks per second at Legend stay under 8 (was about 17)', () => {
+    expect(rainRowExpected(240) / spawnInterval(240)).toBeLessThan(8);
+    expect(rainRowExpected(240) / (spawnInterval(240) * heavyRainMul(240))).toBeLessThan(10);
   });
 });

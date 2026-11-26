@@ -15,7 +15,8 @@ export function isSurge(t: number): boolean {
 
 export function spawnInterval(elapsedSec: number): number {
   if (elapsedSec <= 60) return Math.max(0.28, 0.9 - elapsedSec * (0.62 / 60));
-  return Math.max(0.15, 0.28 - (0.13 / 120) * (elapsedSec - 60));
+  // Density cap (owner 2026-11-26: Legend was a wall of blocks): late difficulty comes from speed, not crowding.
+  return Math.max(0.24, 0.28 - (0.04 / 120) * (elapsedSec - 60));
 }
 
 export function fallSpeed(elapsedSec: number): number {

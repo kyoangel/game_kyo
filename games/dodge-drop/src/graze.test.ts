@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addGraze, GRAZE_FULL } from './graze.ts';
+import { addGraze, GRAZE_COOLDOWN, GRAZE_FULL } from './graze.ts';
 
 describe('graze gauge', () => {
   it('fills by one per near miss and triggers Chomp when full, then empties', () => {
@@ -15,4 +15,12 @@ describe('graze gauge', () => {
     expect(addGraze(3, true)).toEqual({ gauge: 3, trigger: false });
   });
   it('8 near misses fill it', () => expect(GRAZE_FULL).toBe(8));
+});
+
+describe('graze cooldown after Chomp (owner: late-run Chomp came too often)', () => {
+  it('no charge while cooling down, normal charge after', () => {
+    expect(GRAZE_COOLDOWN).toBe(8);
+    expect(addGraze(3, false, true)).toEqual({ gauge: 3, trigger: false });
+    expect(addGraze(3, false, false)).toEqual({ gauge: 4, trigger: false });
+  });
 });

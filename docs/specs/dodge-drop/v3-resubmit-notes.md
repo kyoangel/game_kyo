@@ -36,6 +36,8 @@ graze window 34 px base (54 px at max), Longer Chomp +0.8 s per level (8 s at ma
 
 v3.7.0 - new original racing-style main loop (150 BPM); rushes and Overdrive play the Space Synth Wave loop at native
 tempo; the run loop only speeds up slightly (x1.08 by Overdrive).
+Late density capped (Legend: about 7 rain blocks/s instead of 17; row gap floor 0.24 s, rows up to 1.8 blocks, heavy
+rain eases to 0.8x); an 8 s graze cooldown after every Chomp; graze window 30 px base (45 px at max).
 Plan: `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`.
 
 ## What changed since v2.8.4 (paste into the portal notes)

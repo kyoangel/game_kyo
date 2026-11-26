@@ -49,11 +49,16 @@ function lerp(t: number, t0: number, t1: number, a: number, b: number): number {
   return a + ((b - a) * (t - t0)) / (t1 - t0);
 }
 
-/** Expected blocks per rain row: 1 through Silver (<= 90 s), 1.4 at 120 s, 2.0 at 180 s, 2.6 from 240 s. */
+/** Expected blocks per rain row: 1 through Silver (<= 90 s), 1.2 at 120 s, 1.5 at 180 s, 1.8 from 240 s (capped 2026-11-26). */
 export function rainRowExpected(t: number): number {
   if (t <= DENSITY_MULTI_T) return 1;
-  if (t <= DENSITY_T1) return lerp(t, DENSITY_MULTI_T, DENSITY_T1, 1, 1.4);
-  return t <= DENSITY_T2 ? lerp(t, DENSITY_T1, DENSITY_T2, 1.4, 2.0) : lerp(t, DENSITY_T2, DENSITY_T3, 2.0, 2.6);
+  if (t <= DENSITY_T1) return lerp(t, DENSITY_MULTI_T, DENSITY_T1, 1, 1.2);
+  return t <= DENSITY_T2 ? lerp(t, DENSITY_T1, DENSITY_T2, 1.2, 1.5) : lerp(t, DENSITY_T2, DENSITY_T3, 1.5, 1.8);
+}
+
+/** Heavy-rain interval multiplier: 0.6 through Gold, easing to 0.8 by 180 s so late heavy rain stays dodgeable. */
+export function heavyRainMul(t: number): number {
+  return lerp(t, DENSITY_MULTI_T, DENSITY_T2, 0.6, 0.8);
 }
 
 export function rainRowBlocks(t: number, rng: () => number): number {
@@ -193,7 +198,7 @@ export function planWave(
     case 'rain':
       return rain(t, rng, width, intervalMul);
     case 'rainHeavy':
-      return rain(t, rng, width, 0.6 * intervalMul);
+      return rain(t, rng, width, heavyRainMul(t) * intervalMul);
     case 'wall':
       return wall(rng, width, prevGapX);
     case 'stairs':

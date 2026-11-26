@@ -456,6 +456,7 @@ test('dodge-drop: pause button freezes the run, Resume continues, End run goes t
 });
 
 test('dodge-drop: 8 near misses fill the graze gauge and trigger Chomp; the HUD shows the run time', async ({ page }) => {
+  test.setTimeout(60_000);
   const errors = watch(page);
   await skipOnboarding(page);
   await seed(page, {}, true);
@@ -471,6 +472,12 @@ test('dodge-drop: 8 near misses fill the graze gauge and trigger Chomp; the HUD 
   const names = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.hud())).map((h) => h.name);
   expect(names).toContain('timer');
   expect(names).not.toContain('score');
+  // After Chomp ends the gauge cools down: near misses do not charge it for a while.
+  type C = { stats(): S & { grazeCooldown: number }; nearMiss(): void };
+  await page.waitForFunction(() => !(window as unknown as { __dd: C }).__dd.stats().chomping, undefined, { timeout: 30_000 });
+  expect((await page.evaluate(() => (window as unknown as { __dd: C }).__dd.stats())).grazeCooldown).toBeGreaterThan(0);
+  await page.evaluate(() => (window as unknown as { __dd: C }).__dd.nearMiss());
+  expect(await page.evaluate(() => (window as unknown as { __dd: C }).__dd.stats())).toMatchObject({ graze: 0, chomping: false });
   expect(errors).toEqual([]);
 });
 

@@ -1,4 +1,4 @@
-export const NEAR_MISS_PX = 34;
+export const NEAR_MISS_PX = 30;
 
 /** Edge-to-edge horizontal gap; <= 0 means the boxes overlap. */
 export function horizontalGap(a: { x: number; w: number }, b: { x: number; w: number }): number {

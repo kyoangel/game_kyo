@@ -57,8 +57,8 @@ describe('workshop effects', () => {
     expect(magnetPulls('shield', 100, 140, 2, 2)).toBe(false);
     expect(magnetPulls('star', 10, 0, 0, 1)).toBe(false);
   });
-  it('near-miss window 34 -> 38/42/46/50/54 px', () => {
-    expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([34, 38, 42, 46, 50, 54]);
+  it('near-miss window 30 -> 33/36/39/42/45 px', () => {
+    expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([30, 33, 36, 39, 42, 45]);
   });
   it('graze Chomp lasts 4 + 0.8L seconds', () => {
     expect(grazeChompSeconds(0)).toBe(4);
@@ -71,7 +71,7 @@ describe('workshop effects', () => {
   });
   it('clamps out-of-range levels', () => {
     expect(shieldFirstAt(-3)).toBe(25);
-    expect(nearMissWindow(99)).toBe(54);
+    expect(nearMissWindow(99)).toBe(45);
     expect(shieldCapacity(99)).toBe(6);
   });
   it('effectValue gives the number shown per row', () => {
@@ -79,7 +79,7 @@ describe('workshop effects', () => {
     expect(effectValue('startShield', 3)).toBe(60);
     expect(effectValue('magnet', 1)).toBe(80);
     expect(effectValue('magnet', 5)).toBe(Infinity);
-    expect(effectValue('nearMiss', 3)).toBe(46);
+    expect(effectValue('nearMiss', 3)).toBe(39);
     expect(effectValue('combo', 4)).toBe(7.2);
     expect(effectValue('luck', 5)).toBe(35);
   });

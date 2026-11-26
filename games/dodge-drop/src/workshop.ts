@@ -72,7 +72,7 @@ export function magnetPulls(kind: 'star' | 'shield', dist: number, radius: numbe
   return kind === 'star' || shieldHits < capacity;
 }
 export function nearMissWindow(level: number): number {
-  return Math.round(34 * (1 + 0.12 * lvl(level)));
+  return Math.round(30 * (1 + 0.1 * lvl(level)));
 }
 /** "Longer Chomp" (upgrade id `combo`, kept for saves): seconds of the graze-triggered Chomp. */
 export function grazeChompSeconds(level: number): number {

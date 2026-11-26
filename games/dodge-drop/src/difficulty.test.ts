@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { fallSpeed, isSurge, OVERDRIVE_T, overdrive, spawnInterval, speedBoost } from './difficulty.ts';
 
 describe('dodge-drop difficulty', () => {
-  it('spawn interval eases gently through Silver (0.28s at 60s) and floors at 0.15s at 180s', () => {
+  it('spawn interval eases gently through Silver (0.28s at 60s) and floors at 0.24s at 180s (density cap)', () => {
     expect(spawnInterval(0)).toBeCloseTo(0.9);
     expect(spawnInterval(30)).toBeCloseTo(0.59);
     expect(spawnInterval(60)).toBeCloseTo(0.28);
-    expect(spawnInterval(120)).toBeCloseTo(0.215);
-    expect(spawnInterval(180)).toBeCloseTo(0.15, 3);
-    expect(spawnInterval(240)).toBe(0.15);
+    expect(spawnInterval(120)).toBeCloseTo(0.26);
+    expect(spawnInterval(180)).toBeCloseTo(0.24, 9);
+    expect(spawnInterval(240)).toBe(0.24);
   });
 
   it('fall speed starts at 260px/s and caps at 900px/s', () => {
