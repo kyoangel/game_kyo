@@ -11,7 +11,7 @@ describe('buildRunConfig', () => {
     expect(buildRunConfig(base)).toMatchObject({
       tier: 'none', startT: 0, grace: 0, assisted: false, speedMul: 1, intervalMul: 1,
       shieldLevel: 0, shieldCapacity: 1, startShieldHits: 0, firstShieldAt: 25, magnetRadius: 0,
-      nearMissWindow: 28, grazeChompSeconds: 4, luckLevel: 0, rushIdx: 0,
+      nearMissWindow: 34, grazeChompSeconds: 4, luckLevel: 0, rushIdx: 0,
     });
   });
   it('silver start: clock 30, 2 s grace, shield timing relative to start, no rush passed yet', () => {
@@ -23,8 +23,8 @@ describe('buildRunConfig', () => {
   });
   it('workshop levels feed the getters; capacity comes from Shield Stack only', () => {
     const c = buildRunConfig({ ...base, workshop: ws({ shield: 5, magnet: 3, nearMiss: 4, combo: 2, luck: 1 }) });
-    expect(c).toMatchObject({ shieldCapacity: 1, magnetRadius: 220, nearMissWindow: 37, luckLevel: 1 });
-    expect(c.grazeChompSeconds).toBe(5);
+    expect(c).toMatchObject({ shieldCapacity: 1, magnetRadius: 220, nearMissWindow: 50, luckLevel: 1 });
+    expect(c.grazeChompSeconds).toBe(5.6);
     expect(c.firstShieldAt).toBe(10);
     expect(buildRunConfig({ ...base, workshop: ws({ shieldStack: 4 }) }).shieldCapacity).toBe(5);
   });

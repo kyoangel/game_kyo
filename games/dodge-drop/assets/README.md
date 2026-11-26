@@ -55,7 +55,7 @@ continuation after the cut onto the loop start, 112 kbps joint-stereo mp3. Note:
 |---|---|---|---|
 | music-rush.mp3 (48 s, plays in normal mode since 3.4.0) | 80's Synth Wave (/content/80s-synth-wave) | 88.5-136.5 s, 120 BPM | faster tempo, high-energy middle |
 | music-overdrive.mp3 (48 s, rush and overdrive since 3.4.0) | Space Synth Wave (/content/space-synth-wave) | 84.2-132.2 s, 160 BPM (double time of 80) | fastest pulse; this track is quieter overall, so it may need gain in 3.9 |
-| music-chomp.mp3 (32 s) | 80's Synth Wave | 160.5-192.5 s, 120 BPM | loudest section, different from rush; fit for chomp is a guess |
+| music-chomp.mp3 (11.4 s) | own work, `scripts/render-chomp-music.ts` (3.6.0) | 168 BPM, 8 bars | original bright major-key chiptune for the Chomp power-up |
 
 SFX (Kenney, mono 128 kbps, leading silence trimmed), file to `SfxName`:
 

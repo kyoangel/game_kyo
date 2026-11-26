@@ -48,7 +48,7 @@ export function shieldFirstAt(level: number): number {
   return 25 - 3 * lvl(level);
 }
 export function shieldInterval(level: number, r: number): number {
-  return (30 + 10 * r) * 0.92 ** lvl(level);
+  return (30 + 10 * r) * 0.9 ** lvl(level);
 }
 /** Max shields held at once: 1 + Shield Stack level (the argument is the shieldStack level). */
 export function shieldCapacity(stackLevel: number): number {
@@ -72,11 +72,11 @@ export function magnetPulls(kind: 'star' | 'shield', dist: number, radius: numbe
   return kind === 'star' || shieldHits < capacity;
 }
 export function nearMissWindow(level: number): number {
-  return Math.round(28 * (1 + 0.08 * lvl(level)));
+  return Math.round(34 * (1 + 0.12 * lvl(level)));
 }
 /** "Longer Chomp" (upgrade id `combo`, kept for saves): seconds of the graze-triggered Chomp. */
 export function grazeChompSeconds(level: number): number {
-  return 4 + 0.5 * lvl(level);
+  return Math.round((4 + 0.8 * lvl(level)) * 10) / 10;
 }
 export function starInterval(level: number, r: number): number {
   return (6 + 3 * r) * (1 - 0.07 * lvl(level));

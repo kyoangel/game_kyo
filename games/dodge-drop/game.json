@@ -1,6 +1,6 @@
 {
   "slug": "dodge-drop",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "title": {
     "en": "Neon Rush",
     "zh-TW": "霓虹極速"
@@ -10,8 +10,8 @@
     "zh-TW": "霓虹方塊越落越快，看你能撐多久！拖曳閃避，貼著方塊擦邊可以集氣，集滿就變身大胃王，幾秒內把方塊通通吃掉。收集星星與護盾，15 秒拿銅杯，一路挑戰到傳奇杯，進度條隨時顯示下一座獎杯目標。用星星在商店購買升級、造型與道具，完成輪替任務提升等級。支援橫向與直向，全新美術、音樂與音效。"
   },
   "instructions": {
-    "en": "Drag anywhere to move left and right (arrow keys or A / D work too; on phones you can turn on tilt control). A quick on-screen guide shows the controls on your first run. Slip close past blocks to charge the graze gauge (when it is full you turn into Chomp mode and can eat blocks for a few seconds), collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Keep moving: stand still too long and a block comes for you (watch for the red warning). Watch the goal bar for your next medal. Survive the speed rushes and hold on through Overdrive. Landscape and portrait both supported.",
-    "zh-TW": "在畫面任意處拖曳左右移動（也可用方向鍵或 A / D；手機可開啟陀螺儀操作）。第一次遊玩會有簡短的畫面操作教學。貼近方塊閃過可以擦邊集氣（集滿自動變身大胃王，幾秒內可以吃掉方塊），收集星星到商店消費，拾取護盾可抵擋一次撞擊，升級「護盾堆疊」可同時持有更多護盾。別停在原地太久，否則會有方塊瞄準你落下（注意紅色警示）。留意進度條上的下一座獎杯目標。撐過一波波加速，挑戰極速模式。支援橫向與直向。"
+    "en": "Drag anywhere to move left and right (arrow keys or A / D work too; on phones you can turn on tilt control). A quick on-screen guide shows the controls on your first run. Slip close past blocks to charge the graze gauge (when it is full you turn into Chomp mode for a few seconds: every block you eat is a star), collect stars to spend in the Shop, and pick up shields: each one absorbs a hit, and the Shield Stack upgrade lets you carry more. Keep moving: stand still too long and a block comes for you (watch for the red warning). Watch the goal bar for your next medal. A 3-2-1 countdown warns you before each speed rush. Survive the speed rushes and hold on through Overdrive. Landscape and portrait both supported.",
+    "zh-TW": "在畫面任意處拖曳左右移動（也可用方向鍵或 A / D；手機可開啟陀螺儀操作）。第一次遊玩會有簡短的畫面操作教學。貼近方塊閃過可以擦邊集氣（集滿自動變身大胃王，幾秒內吃掉的每個方塊都換成星星），收集星星到商店消費，拾取護盾可抵擋一次撞擊，升級「護盾堆疊」可同時持有更多護盾。別停在原地太久，否則會有方塊瞄準你落下（注意紅色警示）。留意進度條上的下一座獎杯目標。每次加速前都有 3、2、1 倒數提醒。撐過一波波加速，挑戰極速模式。支援橫向與直向。"
   },
   "tags": [
     "arcade",

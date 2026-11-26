@@ -31,6 +31,13 @@ export function overdrive(t: number): number {
 
 /** Single source of truth for the block-motion multiplier (PlayScene and the fairness validator). */
 export function speedBoost(t: number): number {
-  if (t < OVERDRIVE_T) return t >= 45 && (t - 45) % 45 < 4 ? 1.4 : 1;
-  return (1 + 0.3 * overdrive(t)) * (isSurge(t) ? SURGE_MUL : 1);
+  if (t < OVERDRIVE_T) return t >= 45 && (t - 45) % 45 < 4 ? 1 + 0.4 * rampIn((t - 45) % 45) : 1;
+  const surge = isSurge(t) ? 1 + (SURGE_MUL - 1) * rampIn((t - SURGE_T) % SURGE_EVERY) : 1;
+  return (1 + 0.3 * overdrive(t)) * surge;
+}
+
+/** Rushes and surges reach full speed over their first RUSH_RAMP seconds instead of jumping (owner: "too sudden"). */
+export const RUSH_RAMP = 1;
+function rampIn(phase: number): number {
+  return Math.min(1, phase / RUSH_RAMP);
 }

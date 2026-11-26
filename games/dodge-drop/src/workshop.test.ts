@@ -24,11 +24,11 @@ describe('workshop table', () => {
 });
 
 describe('workshop effects', () => {
-  it('shield core: first at 25-3L, interval (30..40)*0.92^L (timing only)', () => {
+  it('shield core: first at 25-3L, interval (30..40)*0.9^L (timing only)', () => {
     expect([0, 1, 2, 3, 4, 5].map(shieldFirstAt)).toEqual([25, 22, 19, 16, 13, 10]);
     expect(shieldInterval(0, 0)).toBe(30);
     expect(shieldInterval(0, 0.9999)).toBeCloseTo(40, 2);
-    expect(shieldInterval(2, 0)).toBeCloseTo(30 * 0.92 ** 2, 6);
+    expect(shieldInterval(2, 0)).toBeCloseTo(30 * 0.9 ** 2, 6);
   });
   it('shield stack: capacity is 1 + L (1..6), from the shieldStack level', () => {
     expect([0, 1, 2, 3, 4, 5].map(shieldCapacity)).toEqual([1, 2, 3, 4, 5, 6]);
@@ -57,12 +57,12 @@ describe('workshop effects', () => {
     expect(magnetPulls('shield', 100, 140, 2, 2)).toBe(false);
     expect(magnetPulls('star', 10, 0, 0, 1)).toBe(false);
   });
-  it('near-miss window 28 -> 30/32/35/37/39 px', () => {
-    expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([28, 30, 32, 35, 37, 39]);
+  it('near-miss window 34 -> 38/42/46/50/54 px', () => {
+    expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([34, 38, 42, 46, 50, 54]);
   });
-  it('graze Chomp lasts 4 + 0.5L seconds', () => {
+  it('graze Chomp lasts 4 + 0.8L seconds', () => {
     expect(grazeChompSeconds(0)).toBe(4);
-    expect(grazeChompSeconds(5)).toBe(6.5);
+    expect(grazeChompSeconds(5)).toBe(8);
   });
   it('star interval (6..9)*(1-0.07L)', () => {
     expect(starInterval(0, 0)).toBe(6);
@@ -71,7 +71,7 @@ describe('workshop effects', () => {
   });
   it('clamps out-of-range levels', () => {
     expect(shieldFirstAt(-3)).toBe(25);
-    expect(nearMissWindow(99)).toBe(39);
+    expect(nearMissWindow(99)).toBe(54);
     expect(shieldCapacity(99)).toBe(6);
   });
   it('effectValue gives the number shown per row', () => {
@@ -79,8 +79,8 @@ describe('workshop effects', () => {
     expect(effectValue('startShield', 3)).toBe(60);
     expect(effectValue('magnet', 1)).toBe(80);
     expect(effectValue('magnet', 5)).toBe(Infinity);
-    expect(effectValue('nearMiss', 3)).toBe(35);
-    expect(effectValue('combo', 4)).toBe(6);
+    expect(effectValue('nearMiss', 3)).toBe(46);
+    expect(effectValue('combo', 4)).toBe(7.2);
     expect(effectValue('luck', 5)).toBe(35);
   });
 });

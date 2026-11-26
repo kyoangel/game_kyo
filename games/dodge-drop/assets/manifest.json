@@ -102,14 +102,13 @@
     },
     {
       "file": "audio/music-chomp.mp3",
-      "author": "Pro Sensory (Alex McCulloch)",
-      "sourceUrl": "https://opengameart.org/content/80s-synth-wave",
-      "credit": "Music by Alex McCulloch (Pro Sensory), optional credit requested on the item page",
-      "notes": "Item page License(s): CC0 (checked 2026-11-25). Cut 160.495 s-192.495 s (16 bars at 120 BPM) of 'synth_wave_1980s.mp3' (a different, high-energy section than music-rush), 0.3 s loop crossfade, 112 kbps mp3. Fitness for chomp mode is a guess; needs listening check. loudnorm -18 LUFS (two-pass, TP -1.5 dBTP).",
-      "sha256": "7031d1a40cea4160d336df9592dd12363629d93efbd9cfb43353d4f12292c532",
-      "license": "CC0-1.0",
+      "author": "Neon Rush (own work)",
+      "sourceUrl": "https://github.com/kyoangel/game_kyo/blob/master/games/dodge-drop/scripts/render-chomp-music.ts",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "retrievedAt": "2026-11-25"
+      "notes": "Original chiptune (168 BPM, 8 bars, C major I-vi-IV-V) synthesised by scripts/render-chomp-music.ts, 6.5 kHz low-pass, loudnorm -18 LUFS, 112 kbps mp3. Replaces the 80's Synth Wave cut (2026-11-26, owner wanted a joyful power-up feel). Released as CC0 by the game author.",
+      "sha256": "909d302c79252e0d3d77a05b2ccdef202c564a97f3b528f2c6e36976ccff7fea",
+      "license": "CC0-1.0",
+      "retrievedAt": "2026-11-26"
     },
     {
       "file": "audio/music-overdrive.mp3",

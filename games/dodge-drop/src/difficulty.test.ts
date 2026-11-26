@@ -42,7 +42,7 @@ describe('dodge-drop difficulty', () => {
 
 describe('Diamond surges', () => {
   it('every 30 s from 180 s a 4 s surge multiplies top speed by 1.2, forever', () => {
-    const at = [179, 181, 185, 211, 215, 240, 300, 305, 1020.5].map(speedBoost);
+    const at = [179, 181, 185, 211, 215, 241, 301, 305, 1021].map(speedBoost);
     [1.3, 1.56, 1.3, 1.56, 1.3, 1.56, 1.56, 1.3, 1.56].forEach((v, i) => expect(at[i]).toBeCloseTo(v, 9));
     expect(isSurge(179.9)).toBe(false);
     expect(isSurge(183.9)).toBe(true);
@@ -51,5 +51,18 @@ describe('Diamond surges', () => {
   it('outside surges, boost and fall speed never change after Neon top speed', () => {
     for (let t = 130; t < 600; t += 0.5) if (!isSurge(t)) expect(speedBoost(t)).toBeCloseTo(1.3, 9);
     expect(fallSpeed(130)).toBe(1150);
+  });
+});
+
+describe('rush ramp-in', () => {
+  it('a rush eases from x1 to x1.4 over its first second instead of jumping', () => {
+    expect(speedBoost(44.99)).toBe(1);
+    expect(speedBoost(45)).toBeCloseTo(1, 9);
+    expect(speedBoost(45.5)).toBeCloseTo(1.2, 9);
+    expect(speedBoost(46)).toBeCloseTo(1.4, 9);
+  });
+  it('a Diamond surge eases in the same way', () => {
+    expect(speedBoost(180.5)).toBeCloseTo(1.3 * 1.1, 9);
+    expect(speedBoost(181)).toBeCloseTo(1.56, 9);
   });
 });

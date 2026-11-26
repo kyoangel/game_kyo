@@ -5,6 +5,7 @@ import { addParallax, type Parallax } from './backdrop.ts';
 import { artImage, artScale, styleArt, usedArtKeys } from './art.ts';
 import { CAMP_BLOCK_W, campBlockX, CampTracker } from './camp.ts';
 import { musicRate } from './musicTempo.ts';
+import { countdownAt, WARN_LEAD } from './countdown.ts';
 import { horizontalGap, isNearMiss } from './combo.ts';
 import { addGraze, GRAZE_FULL } from './graze.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
@@ -161,6 +162,9 @@ export class PlayScene extends Phaser.Scene {
 
   private rushIdx = 0;
   private rushWarned = false;
+  private rushGo = false;
+  private rushDigit: number | null = null;
+  private odDigit: number | null = null;
   private lastLayers = 0;
   private lastMode: MusicMode = 'normal';
 
@@ -279,6 +283,9 @@ export class PlayScene extends Phaser.Scene {
     this.nextShield = 25;
     this.rushIdx = 0;
     this.rushWarned = false;
+    this.rushGo = false;
+    this.rushDigit = null;
+    this.odDigit = null;
     this.lastLayers = 0;
     this.lastMode = 'normal';
     this.rushBannerUntil = 0;
@@ -950,24 +957,47 @@ export class PlayScene extends Phaser.Scene {
 
   private updateRush(): void {
     const next = rushStartAt(this.rushIdx);
-    if (!this.rushWarned && this.t >= next - 1) {
+    if (!this.rushWarned && this.t >= next - WARN_LEAD) {
       this.rushWarned = true;
+      this.rushGo = false;
+      this.rushDigit = null;
       // A rush that starts inside the tier-start banner's window shows its banner right after it (never on top of it).
       const graceEnd = this.cfg.grace > 0 ? this.cfg.startT + GRACE_SECONDS : 0;
       this.rushBannerUntil = rushBannerUntil(next, graceEnd);
-      this.kit.audio.sfx('rush');
     }
     if (this.rushWarned && this.t >= next + 4) {
       if (next >= this.runStartT) this.stats.rushes++;
       this.rushIdx++;
       this.rushWarned = false;
     }
-    const show = this.rushWarned && this.t < this.rushBannerUntil && !this.graceBannerVisible();
+    const digit = this.rushWarned ? countdownAt(this.t, next) : null;
+    const quiet = this.graceBannerVisible();
+    if (digit !== null && digit !== this.rushDigit) {
+      this.rushDigit = digit;
+      if (!quiet) this.kit.audio.sfx('click', { step: WARN_LEAD - digit });
+    }
+    if (this.rushWarned && !this.rushGo && this.t >= next) {
+      this.rushGo = true;
+      this.kit.audio.sfx('rush');
+    }
+    const show = this.rushWarned && this.t < this.rushBannerUntil && !quiet;
     this.rushBanner.setVisible(show);
     if (show) {
-      this.rushBanner.setScale(1 + 0.08 * Math.sin(this.t * 24));
-      this.rushBanner.setAlpha(Math.floor(this.t * 10) % 2 === 0 ? 1 : 0.6);
+      this.setBannerText(this.rushBanner, digit === null ? this.kit.t('rush') : this.kit.t('rushIn').replace('{n}', String(digit)));
+      this.pulseBanner(this.rushBanner);
     }
+  }
+
+  /** Sets a banner's text and shrinks it to fit the field width (countdown labels are longer than "RUSH!"). */
+  private setBannerText(b: Phaser.GameObjects.Text, text: string): void {
+    if (b.text !== text) b.setText(text);
+    b.setData('fit', Math.min(1, (W - 40) / Math.max(1, b.width)));
+  }
+
+  private pulseBanner(b: Phaser.GameObjects.Text): void {
+    const fit = (b.getData('fit') as number | undefined) ?? 1;
+    b.setScale(fit * (1 + 0.08 * Math.sin(this.t * 24)));
+    b.setAlpha(Math.floor(this.t * 10) % 2 === 0 ? 1 : 0.6);
   }
 
   private graceBannerVisible(): boolean {
@@ -986,15 +1016,22 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private updateOverdriveBanner(): void {
+    const digit = countdownAt(this.t, OVERDRIVE_T);
+    const quiet = this.graceBannerVisible();
+    if (digit !== null && digit !== this.odDigit) {
+      this.odDigit = digit;
+      if (!quiet) this.kit.audio.sfx('click', { step: WARN_LEAD - digit });
+    }
     if (!this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.5) {
       this.odShown = true;
       this.kit.audio.sfx('rush');
     }
-    const show = this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.2 && !this.graceBannerVisible();
+    const going = this.odShown && this.t >= OVERDRIVE_T && this.t < OVERDRIVE_T + 1.2;
+    const show = (digit !== null || going) && !quiet;
     this.odBanner.setVisible(show);
     if (show) {
-      this.odBanner.setScale(1 + 0.08 * Math.sin(this.t * 24));
-      this.odBanner.setAlpha(Math.floor(this.t * 10) % 2 === 0 ? 1 : 0.6);
+      this.setBannerText(this.odBanner, digit === null ? this.kit.t('overdrive') : this.kit.t('overdriveIn').replace('{n}', String(digit)));
+      this.pulseBanner(this.odBanner);
     }
   }
 
@@ -1078,7 +1115,8 @@ export class PlayScene extends Phaser.Scene {
       this.lastMode = mode;
       this.kit.audio.music.setMode(mode);
     }
-    const rate = musicRate(this.t);
+    // The Chomp jingle is written at its own tempo (168 BPM); only the run loops speed up with the clock.
+    const rate = mode === 'chomp' ? 1 : musicRate(this.t);
     if (rate !== this.lastRate || force) {
       this.lastRate = rate;
       this.kit.audio.music.setRate(rate);
@@ -1221,6 +1259,8 @@ export class PlayScene extends Phaser.Scene {
     b.active = false;
     b.img.setVisible(false);
     this.stats.chompEats++;
+    this.stars++; // owner: eating should pay now that there is no score
+    this.fx.popText(b.x, b.y - 20, '+1★', { color: 0xffe14d, size: fieldFont(this.frame, 30) });
     this.kit.audio.sfx('pickup');
     this.fx.burst(b.x, b.y, { color: 0x3b7bff, count: 18, speed: 420, lifespanMs: 420 });
     this.fx.burst(b.x, b.y, { color: 0xffe14d, count: 12, speed: 360, lifespanMs: 380 });
