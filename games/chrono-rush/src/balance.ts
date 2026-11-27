@@ -30,6 +30,7 @@ export function medalRank(m: SpeedrunMedal | undefined): number {
 export const BALANCE = {
   baseRunSeconds: 30,
   reviveBonusSeconds: 10,
+  crystalReviveCost: 100,
   timeUpgradeSecPerRank: 3, // Chrono Hourglass: +3s per rank (max 5 -> 45s)
 
   // Skin Mastery bonus: rewards collecting LV 5 polished skins without breaking late-game math

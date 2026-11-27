@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { addButton, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
-import { diagnoseDefeat, FEATURES, medalForTimeLeft } from './balance.ts';
+import { BALANCE, diagnoseDefeat, FEATURES, medalForTimeLeft } from './balance.ts';
 import { createBossEvoRig, formatBossName, getBossEvo, type BossEvoRig, type BossEvoSpec } from './bossEvo.ts';
 import { getChapterForLoop, resolveObstacleCollision, type ChapterStageInfo, type MapPoiDef, type VillagePlacement } from './chapters.ts';
 import { playDefeatJingle, playGoddessReviveChime, playVictoryFanfare } from './fanfare.ts';
@@ -154,6 +154,7 @@ export class PlayScene extends Phaser.Scene {
   private pauseOverlay: Phaser.GameObjects.GameObject[] = [];
   private defeatCutsceneObjects: Phaser.GameObjects.GameObject[] = [];
   private skinsUnlockedThisRun: string[] = [];
+  private crystalReviveUsed = false;
   private runEnded = false;
   private ready = false;
   private lastMusicState = '';
@@ -196,6 +197,7 @@ export class PlayScene extends Phaser.Scene {
     this.bossArenaObjects = [];
     this.fireballs = [];
     this.skinsUnlockedThisRun = [];
+    this.crystalReviveUsed = false;
     this.activeVillage = null;
     this.mode = 'overworld';
     this.castleReentryCooldown = 0;
@@ -2606,10 +2608,159 @@ export class PlayScene extends Phaser.Scene {
     this.finalizeRun(reason, false);
   }
 
+  private showCrystalReviveOffer(reason: 'defeated' | 'timeUp', fanfarePlayed: boolean): void {
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2;
+    const font = this.kit.theme.font;
+    const cost = BALANCE.crystalReviveCost;
+    const objects: Phaser.GameObjects.GameObject[] = [];
+    const addO = <T extends Phaser.GameObjects.GameObject & { setScrollFactor?: (x: number) => T; setDepth?: (d: number) => T }>(
+      o: T,
+      depth: number,
+    ): T => {
+      if ('setScrollFactor' in o && typeof o.setScrollFactor === 'function') o.setScrollFactor(0);
+      if ('setDepth' in o && typeof o.setDepth === 'function') o.setDepth(depth);
+      objects.push(o);
+      return o;
+    };
+
+    const COUNTDOWN_MS = 5000;
+    let remaining = COUNTDOWN_MS;
+    let decided = false;
+
+    addO(this.add.rectangle(cx, cy, width, height, 0x09050f, 0.55), 138);
+    addO(this.add.rectangle(cx, cy, 620, 420, 0x1a1033, 0.94).setStrokeStyle(4, 0xd97706), 139);
+
+    const ringCx = cx;
+    const ringCy = cy - 102;
+    const ringR = 54;
+    const ringGfx = addO(this.add.graphics(), 140);
+    const drawRing = (): void => {
+      if (!ringGfx.active) return;
+      ringGfx.clear();
+      ringGfx.lineStyle(12, 0x0f0726, 0.8);
+      ringGfx.strokeCircle(ringCx, ringCy, ringR);
+      const frac = Math.max(0, remaining / COUNTDOWN_MS);
+      ringGfx.lineStyle(12, 0xfacc15, 1);
+      ringGfx.beginPath();
+      ringGfx.arc(ringCx, ringCy, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac, false);
+      ringGfx.strokePath();
+    };
+    drawRing();
+
+    const numText = addO(
+      this.add
+        .text(ringCx, ringCy, '5', {
+          fontFamily: font,
+          fontSize: '46px',
+          fontStyle: 'bold',
+          color: '#fef9c3',
+          stroke: '#09050f',
+          strokeThickness: 5,
+        })
+        .setOrigin(0.5),
+      141,
+    );
+
+    const cleanupOffer = (): void => {
+      tick.remove(false);
+      for (const o of objects) {
+        if (o.active) o.destroy();
+      }
+      objects.length = 0;
+    };
+
+    const decline = (): void => {
+      if (decided) return;
+      decided = true;
+      this.crystalReviveUsed = true;
+      cleanupOffer();
+      this.finalizeRun(reason, fanfarePlayed);
+    };
+
+    const accept = (): void => {
+      if (decided) return;
+      decided = true;
+      this.crystalReviveUsed = true;
+      this.meta = { ...this.meta, crystals: Math.max(0, this.meta.crystals - cost) };
+      void this.kit.save.setJSON(META_SAVE_KEY, this.meta);
+      cleanupOffer();
+      this.playGoddessReviveCutscene();
+    };
+
+    const reviveBtn = addButton(this, cx, cy + 28, `✨ ${this.kit.t('goddessCrystalRevive')}`, {
+      width: 520,
+      height: 78,
+      fill: 0xd97706,
+      fontSize: 26,
+      onClick: accept,
+    });
+    reviveBtn.setScrollFactor(0).setDepth(142);
+    objects.push(reviveBtn);
+
+    addO(
+      this.add
+        .text(cx, cy + 92, `${this.kit.t('goddessCrystalOwned')} ${this.meta.crystals}`, {
+          fontFamily: font,
+          fontSize: '18px',
+          fontStyle: 'bold',
+          color: '#38bdf8',
+          stroke: '#09050f',
+          strokeThickness: 4,
+        })
+        .setOrigin(0.5),
+      141,
+    );
+
+    const noBtn = addO(
+      this.add
+        .text(cx, cy + 148, this.kit.t('noThanks'), {
+          fontFamily: font,
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: '#cbd5e1',
+          stroke: '#09050f',
+          strokeThickness: 4,
+        })
+        .setOrigin(0.5)
+        .setPadding(24, 10, 24, 10)
+        .setInteractive({ useHandCursor: true }),
+      142,
+    );
+    noBtn.on('pointerup', () => {
+      this.kit.audio.sfx('click');
+      decline();
+    });
+
+    const tick = this.time.addEvent({
+      delay: 50,
+      loop: true,
+      callback: () => {
+        if (decided || !this.scene.isActive()) return;
+        remaining = Math.max(0, remaining - 50);
+        drawRing();
+        if (numText.active) numText.setText(String(Math.max(0, Math.ceil(remaining / 1000))));
+        if (remaining <= 0) decline();
+      },
+    });
+    this.events.once('shutdown', cleanupOffer);
+  }
+
   private finalizeRun(reason: RunSummary['reason'], fanfarePlayed: boolean): void {
     this.fx.clearPops();
 
     const bossSlain = reason === 'victory';
+    // On ad-free platforms (e.g. own website), offer Time Goddess revive for 100 Crystals (once per run)!
+    if (
+      !bossSlain &&
+      !this.kit.platform.features.rewardedAds &&
+      !this.crystalReviveUsed &&
+      this.meta.crystals >= BALANCE.crystalReviveCost
+    ) {
+      this.showCrystalReviveOffer(reason, fanfarePlayed);
+      return;
+    }
     this.kit.audio.music.stop();
     if (!bossSlain && !fanfarePlayed) {
       this.kit.audio.sfx('death');
