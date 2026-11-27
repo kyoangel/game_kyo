@@ -172,7 +172,6 @@ export class PlayScene extends Phaser.Scene {
   private dashBarFill!: Phaser.GameObjects.Rectangle;
   private pausedBanner!: Phaser.GameObjects.Text;
   private controlsHintText!: Phaser.GameObjects.Text;
-  private jumpBtn?: Phaser.GameObjects.Container;
   private isMobile = false;
   private villageOverlay: Phaser.GameObjects.GameObject[] = [];
 
@@ -183,7 +182,10 @@ export class PlayScene extends Phaser.Scene {
   create(): void {
     this.kit = getKit(this);
     this.isMobile = isTouchMobileViewport();
-    this.jumpBtn = undefined;
+    // Enable multi-touch (up to 3 simultaneous fingers) so left-thumb joystick + right-thumb DASH work together!
+    if (this.input.manager.pointersTotal < 3) {
+      this.input.addPointer(3 - this.input.manager.pointersTotal);
+    }
     ensureTextures(this, this.kit.theme);
     ensurePixelArt(this);
     this.fx = this.kit.fx(this);
@@ -674,27 +676,22 @@ export class PlayScene extends Phaser.Scene {
       height: dashH,
       fill: 0x0284c7,
       fontSize: m ? 28 : 22,
-      onClick: () => this.tryDash(),
+      onClick: () => {
+        // Desktop click fallback; on touch/pointerdown we trigger immediately below for zero latency!
+        if (!this.isMobile) this.tryDash();
+      },
     });
     dashBtn.setScrollFactor(0).setDepth(102);
+    // Fire Dash immediately on pointerdown (fixes multi-touch & scrolled-camera mobile taps!)
+    dashBtn.on('pointerdown', () => {
+      if (this.isMobile) this.tryDash();
+    });
     this.add.rectangle(dashX, m ? height - 24 : height - 26, dashW - 8, m ? 10 : 8, 0x1e1b4b).setScrollFactor(0).setDepth(101);
     this.dashBarFill = this.add
       .rectangle(dashX - (dashW - 8) / 2, m ? height - 24 : height - 26, dashW - 8, m ? 8 : 6, 0x38bdf8)
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(102);
-
-    // Mobile-only dedicated Jump button for Boss Arena (hidden in Overworld & completely absent on Desktop!)
-    if (m) {
-      this.jumpBtn = addButton(this, dashX - 202, dashY, this.kit.t('jump'), {
-        width: 176,
-        height: 74,
-        fill: 0x16a34a,
-        fontSize: 28,
-        onClick: () => this.tryArenaJump(),
-      });
-      this.jumpBtn.setScrollFactor(0).setDepth(102).setVisible(false);
-    }
 
     this.controlsHintText = this.add
       .text(24, height - 28, this.kit.t(m ? 'touchControlsHint' : 'controlsHint'), {
@@ -1021,7 +1018,6 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.controlsHintText.setText(this.kit.t(this.isMobile ? 'touchControlsHint' : 'bossControls'));
-    this.jumpBtn?.setVisible(this.isMobile);
     this.syncMusicIntensity();
   }
 
@@ -1048,7 +1044,6 @@ export class PlayScene extends Phaser.Scene {
     this.castleReentryCooldown = 1.6;
     this.heroSprite.setPosition(CASTLE_POS.x - 120, CASTLE_POS.y);
     this.controlsHintText.setText(this.kit.t(this.isMobile ? 'touchControlsHint' : 'controlsHint'));
-    this.jumpBtn?.setVisible(false);
     this.kit.audio.sfx('click');
     this.syncMusicIntensity();
   }
@@ -1604,7 +1599,18 @@ export class PlayScene extends Phaser.Scene {
       return o;
     };
 
-    addObj(this.add.rectangle(cx, cy, 640, 424, 0x13092b, 0.95).setStrokeStyle(4, 0xfacc15));
+    // Dimmed full-screen backdrop: tap/click anywhere outside the Village box to close it!
+    const backdrop = this.add
+      .rectangle(width / 2, height / 2, width, height, 0x09050f, 0.5)
+      .setScrollFactor(0)
+      .setDepth(198)
+      .setInteractive({ useHandCursor: false });
+    backdrop.on('pointerup', () => this.closeVillage());
+    this.villageOverlay.push(backdrop);
+
+    // Village panel absorbs taps inside the box so they never trigger backdrop close
+    const panelBox = addObj(this.add.rectangle(cx, cy, 640, 424, 0x13092b, 0.95).setStrokeStyle(4, 0xfacc15));
+    panelBox.setInteractive();
     addObj(
       this.add
         .text(cx, cy - 178, `${this.kit.t(`village.${v.id}`)}  •  ${this.kit.t('villageTitle')}`, {

@@ -53,8 +53,9 @@ export function createInput(scene: Phaser.Scene, opts: { joystick?: boolean; joy
   const base = scene.add.circle(0, 0, radius, theme.accent, 0.35).setDepth(900).setVisible(false).setScrollFactor(0);
   const knob = scene.add.circle(0, 0, radius * 0.4, theme.accent, 0.35).setDepth(901).setVisible(false).setScrollFactor(0);
 
-  const onDown = (p: Phaser.Input.Pointer): void => {
+  const onDown = (p: Phaser.Input.Pointer, currentlyOver?: Phaser.GameObjects.GameObject[]): void => {
     if (activeId !== -1) return;
+    if (currentlyOver && currentlyOver.length > 0) return;
     if (p.wasTouch) usingTouch = true;
     activeId = p.id;
     lastX = p.x;
