@@ -48,8 +48,11 @@ function nearestButtonAt(scene: Phaser.Scene, p: Phaser.Input.Pointer, self: Pha
   for (const b of sceneButtons.get(scene) ?? []) {
     if (!b.active || !b.visible || !b.input?.enabled) continue;
     const c = hitCentre(b);
-    const dx = Math.abs(p.worldX - c.x);
-    const dy = Math.abs(p.worldY - c.y);
+    // Screen-space (scrollFactor 0) buttons live in camera viewport coordinates (p.x/p.y), NOT scrolled world coordinates!
+    const px = b.scrollFactorX === 0 ? p.x : p.worldX;
+    const py = b.scrollFactorY === 0 ? p.y : p.worldY;
+    const dx = Math.abs(px - c.x);
+    const dy = Math.abs(py - c.y);
     if (dx > b.width / 2 || dy > b.height / 2) continue;
     const d = dy / b.height + dx / b.width; // normalised, so a wide button does not steal taps from a narrow neighbour
     if (d < bestD) { bestD = d; best = b; }

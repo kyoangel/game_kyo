@@ -72,6 +72,15 @@ export function createInput(scene: Phaser.Scene, opts: { joystick?: boolean; joy
     lastX = p.x;
     if (origin) {
       pointerPos = { x: p.x, y: p.y };
+      // Floating follow-anchor: keep joystick origin within `radius` of the thumb so reversing direction is instant (no overshoot!)
+      const dx = pointerPos.x - origin.x;
+      const dy = pointerPos.y - origin.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > radius) {
+        const pull = (dist - radius) / dist;
+        origin = { x: origin.x + dx * pull, y: origin.y + dy * pull };
+        base.setPosition(origin.x, origin.y);
+      }
       const v = joystickVector(origin, pointerPos, radius, 0);
       knob.setPosition(origin.x + v.x * radius, origin.y + v.y * radius);
     }

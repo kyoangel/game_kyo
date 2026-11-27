@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { addButton, getKit, markButtonTap, type TitleExtrasContext } from '@gf/game-kit';
+import manifest from '../game.json';
 import { FEATURES } from './balance.ts';
 import { BOOST_CATALOG, type BoostId } from './boosts.ts';
 import { CHAPTERS, EPISODES_PER_CHAPTER, getChapterForLoop } from './chapters.ts';
@@ -252,6 +253,22 @@ export function heroTitleExtras(scene: Phaser.Scene, ctx: TitleExtrasContext): v
       layer.push(o);
       return o;
     };
+
+    // Subtle version badge in bottom-left corner so players can always confirm the latest deployed build
+    add(
+      scene.add
+        .text(18, height - 16, `v${manifest.version}`, {
+          fontFamily: font,
+          fontSize: '14px',
+          fontStyle: 'bold',
+          color: '#94a3b8',
+          stroke: '#09050f',
+          strokeThickness: 3,
+        })
+        .setOrigin(0, 1)
+        .setDepth(21)
+        .setAlpha(0.85),
+    );
 
     // Top-left Crystal balance badge
     add(scene.add.rectangle(108, 44, 152, 46, 0x13092b, 0.85).setStrokeStyle(2, 0x38bdf8).setDepth(20));
