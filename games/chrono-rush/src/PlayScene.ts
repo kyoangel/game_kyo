@@ -149,6 +149,9 @@ export class PlayScene extends Phaser.Scene {
   private dashDir = { x: 1, y: 0 };
   private invulnLeft = 0;
   private villageReentryCooldown = 0;
+  private villageOpenedAt = 0;
+  private heroPrevX = 0;
+  private heroPrevY = 0;
   private activeVillage: VillagePlacement | null = null;
   private pausedByUser = false;
   private pauseOverlay: Phaser.GameObjects.GameObject[] = [];
@@ -757,9 +760,13 @@ export class PlayScene extends Phaser.Scene {
       vy = this.dashDir.y;
     }
 
+    const prevX = this.heroSprite.x;
+    const prevY = this.heroSprite.y;
+    this.heroPrevX = prevX;
+    this.heroPrevY = prevY;
     const speed = this.hero.moveSpeed * (this.dashTimeLeft > 0 ? 2.15 : 1);
-    const rawX = Phaser.Math.Clamp(this.heroSprite.x + vx * speed * dt, 36, WORLD_W - 36);
-    const rawY = Phaser.Math.Clamp(this.heroSprite.y + vy * speed * dt, 108, WORLD_H - 40);
+    const rawX = Phaser.Math.Clamp(prevX + vx * speed * dt, 36, WORLD_W - 36);
+    const rawY = Phaser.Math.Clamp(prevY + vy * speed * dt, 108, WORLD_H - 40);
     const resolved = resolveObstacleCollision(rawX, rawY, 18, this.stage.chapter.obstacles, this.stage.chapter.barriers ?? []);
     const nx = Phaser.Math.Clamp(resolved.x, 36, WORLD_W - 36);
     const ny = Phaser.Math.Clamp(resolved.y, 108, WORLD_H - 40);
@@ -1422,7 +1429,23 @@ export class PlayScene extends Phaser.Scene {
     this.tweens.add({ targets: ghost, alpha: 0, scaleX: target.scaleX * 0.9, duration: 200, onComplete: () => ghost.destroy() });
   }
 
+  /** Shortest distance from point (px, py) to segment (ax, ay) -> (bx, by) to prevent high-speed tunneling. */
+  private static distPointToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const lenSq = abx * abx + aby * aby;
+    if (lenSq <= 0.0001) return Math.hypot(px - ax, py - ay);
+    const t = Phaser.Math.Clamp(((px - ax) * abx + (py - ay) * aby) / lenSq, 0, 1);
+    return Math.hypot(px - (ax + abx * t), py - (ay + aby * t));
+  }
+
   private updateEnemies(dt: number): void {
+    const hitRadius = this.dashTimeLeft > 0 ? 54 : 48;
+    const ax = this.heroPrevX || this.heroSprite.x;
+    const ay = this.heroPrevY || this.heroSprite.y;
+    const bx = this.heroSprite.x;
+    const by = this.heroSprite.y;
+
     for (const e of this.enemies) {
       e.bumpCooldown = Math.max(0, e.bumpCooldown - dt);
       if (!e.alive) {
@@ -1448,7 +1471,7 @@ export class PlayScene extends Phaser.Scene {
       e.sprite.setTexture(mobTextureKey(this.stage.chapter.id, e.spec.id as OverworldMobId, frame));
       this.syncEnemyVisuals(e);
 
-      if (e.bumpCooldown <= 0 && Phaser.Math.Distance.Between(this.heroSprite.x, this.heroSprite.y, e.sprite.x, e.sprite.y) < 42) {
+      if (e.bumpCooldown <= 0 && PlayScene.distPointToSegment(e.sprite.x, e.sprite.y, ax, ay, bx, by) < hitRadius) {
         this.handleBump(e);
         if (this.runEnded) return;
       }
@@ -1529,10 +1552,19 @@ export class PlayScene extends Phaser.Scene {
 
     if (!res.oneShot) {
       const angle = Phaser.Math.Angle.Between(e.sprite.x, e.sprite.y, this.heroSprite.x, this.heroSprite.y);
+      // Mutual knockback: both Hero and surviving Monster recoil cleanly apart!
       this.heroSprite.setPosition(
-        Phaser.Math.Clamp(this.heroSprite.x + Math.cos(angle) * 34, 36, WORLD_W - 36),
-        Phaser.Math.Clamp(this.heroSprite.y + Math.sin(angle) * 34, 108, WORLD_H - 40),
+        Phaser.Math.Clamp(this.heroSprite.x + Math.cos(angle) * 22, 36, WORLD_W - 36),
+        Phaser.Math.Clamp(this.heroSprite.y + Math.sin(angle) * 22, 108, WORLD_H - 40),
       );
+      e.homeX = Phaser.Math.Clamp(e.homeX - Math.cos(angle) * 24, 60, WORLD_W - 60);
+      e.homeY = Phaser.Math.Clamp(e.homeY - Math.sin(angle) * 24, 120, WORLD_H - 60);
+      e.sprite.setPosition(e.homeX, e.homeY);
+      e.sprite.setTintFill(0xffffff);
+      this.time.delayedCall(80, () => {
+        if (e.sprite.active) e.sprite.clearTint();
+      });
+      this.syncEnemyVisuals(e);
       e.bumpCooldown = 0.22;
       this.fx.shake(0.22);
       void this.fx.hitStop(35);
@@ -1576,6 +1608,7 @@ export class PlayScene extends Phaser.Scene {
 
   private openVillage(v: VillagePlacement): void {
     this.activeVillage = v;
+    this.villageOpenedAt = this.time.now;
     this.kit.audio.sfx('click');
     this.renderVillageOverlay();
     this.updateHud();
@@ -1599,13 +1632,25 @@ export class PlayScene extends Phaser.Scene {
       return o;
     };
 
-    // Dimmed full-screen backdrop: tap/click anywhere outside the Village box to close it!
+    // Dimmed full-screen backdrop: tap/click outside the Village box to close,
+    // with a 350ms grace buffer + fresh pointerdown check so lifting the virtual joystick thumb never closes it!
     const backdrop = this.add
       .rectangle(width / 2, height / 2, width, height, 0x09050f, 0.5)
       .setScrollFactor(0)
       .setDepth(198)
       .setInteractive({ useHandCursor: false });
-    backdrop.on('pointerup', () => this.closeVillage());
+    let backdropDownArmed = false;
+    backdrop.on('pointerdown', () => {
+      if (this.time.now - this.villageOpenedAt >= 350) {
+        backdropDownArmed = true;
+      }
+    });
+    backdrop.on('pointerup', () => {
+      if (backdropDownArmed && this.time.now - this.villageOpenedAt >= 350) {
+        this.closeVillage();
+      }
+      backdropDownArmed = false;
+    });
     this.villageOverlay.push(backdrop);
 
     // Village panel absorbs taps inside the box so they never trigger backdrop close
