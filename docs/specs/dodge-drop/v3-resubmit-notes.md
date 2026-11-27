@@ -1,4 +1,4 @@
-# Neon Rush v3.7.0 - CrazyGames resubmission notes
+# Neon Rush v3.8.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -40,6 +40,10 @@ Late density capped (Legend: about 7 rain blocks/s instead of 17; row gap floor 
 rain eases to 0.8x); an 8 s graze cooldown after every Chomp; graze window 30 px base (45 px at max).
 Plan: `docs/plans/2026-11-25-dodge-drop-time-only-graze-chomp.md`.
 
+v3.8.0 - graze gauge removed: near misses no longer charge or trigger Chomp (Chomp only comes from the bought boost);
+the Daredevil and Longer Chomp upgrades are retired and their star coins refunded once; the "Chomp N times in one run"
+mission is gone. New original synth-pop main loop (140 BPM, F minor, sidechain pump).
+
 ## What changed since v2.8.4 (paste into the portal notes)
 
 Thank you for the feedback on v2.8.4. We treated "overall quality" as a call for a clearly better game, not a small
@@ -58,8 +62,7 @@ tweak, and rebuilt the parts a new player sees first:
 - Bigger touch targets. Buttons and menu rows meet a minimum tap size on phones.
 - Pause menu. A pause button next to the sound icon (or Esc / P) freezes the run; leaving the tab or app pauses it
   automatically. Resume continues, End run goes straight to the results and keeps the stars collected.
-- Time is the score. No abstract points: the big number is how long you survived, and grazing blocks charges a gauge
-  that turns you into a block-eating Chomper, so taking risks pays off in play instead of in points.
+- Time is the score. No abstract points: the big number is how long you survived.
 - Undo for boosts. Tapping an equipped next-run boost again refunds it, so a mis-tap never costs stars.
 - Clearer Shop. Upgrade cards now show what the next level gives instead of "0 px" / "0%" on level 0.
 

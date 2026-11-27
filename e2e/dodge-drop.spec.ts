@@ -82,7 +82,7 @@ test('dodge-drop: Shop scene opens from the title and Back returns', async ({ pa
 type Dd = { god?: boolean; giveShield?: () => void; spawnPickup?: (kind: 'star' | 'shield', x: number) => boolean; results?: { goal: unknown; missions: Array<{ id: string }> }; stats?: () => { stars: number; t: number; score: number; startTier: string; shieldHits: number; shieldHeld: boolean; clock: number } };
 type WD = { __dd?: Dd };
 
-const MISSIONS_SEED = `{"active":[{"id":"chompEat","tier":1,"progress":0},{"id":"chompRun","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}`;
+const MISSIONS_SEED = `{"active":[{"id":"chompEat","tier":1,"progress":0},{"id":"starsRun","tier":1,"progress":0},{"id":"runs","tier":1,"progress":0}],"stars":0,"rank":1,"completedCount":0}`;
 
 async function seed(page: import('@playwright/test').Page, kv: Record<string, string>, god = false): Promise<void> {
   await page.addInitScript(([entries, g]) => {
@@ -129,6 +129,20 @@ test('dodge-drop: Shop upgrades buy persists level and coins', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test('dodge-drop: retired graze upgrades (Daredevil, Longer Chomp) are refunded once on the title', async ({ page }) => {
+  const errors = watch(page);
+  await seed(page, { coins: '10', workshop: '{"shield":2,"nearMiss":5,"combo":1}' });
+  await openTitle(page);
+  // 236 (all five Daredevil levels) + 15 (one Longer Chomp level) on top of the 10 held.
+  await expect.poll(async () => await ls(page, 'coins')).toBe('261');
+  expect(JSON.parse((await ls(page, 'workshop')) ?? '{}')).toEqual({ shield: 2, shieldStack: 0, startShield: 0, magnet: 0, luck: 0 });
+  await page.reload();
+  await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
+  await page.waitForTimeout(300);
+  expect(await ls(page, 'coins'), 'paid once').toBe('261');
+  expect(errors).toEqual([]);
+});
+
 test('dodge-drop: results expose near-goal and mission rows', async ({ page }) => {
   const errors = watch(page);
   await seed(page, { coins: '10', missions: MISSIONS_SEED });
@@ -140,7 +154,7 @@ test('dodge-drop: results expose near-goal and mission rows', async ({ page }) =
   await page.waitForFunction(() => (window as unknown as WD).__dd?.results !== undefined);
   const r = await page.evaluate(() => (window as unknown as WD).__dd!.results!);
   expect((r.goal as { cost: number }).cost).toBe(15);
-  expect(r.missions.map((m) => m.id)).toEqual(['chompEat', 'chompRun', 'runs']);
+  expect(r.missions.map((m) => m.id)).toEqual(['chompEat', 'starsRun', 'runs']);
   expect(errors).toEqual([]);
 });
 
@@ -455,29 +469,24 @@ test('dodge-drop: pause button freezes the run, Resume continues, End run goes t
   expect(errors).toEqual([]);
 });
 
-test('dodge-drop: 8 near misses fill the graze gauge and trigger Chomp; the HUD shows the run time', async ({ page }) => {
-  test.setTimeout(60_000);
+test('dodge-drop: near misses never trigger Chomp (no graze gauge); the HUD shows the run time', async ({ page }) => {
   const errors = watch(page);
   await skipOnboarding(page);
   await seed(page, {}, true);
   await openTitle(page);
   await startRun(page);
-  type S = { graze: number; chomping: boolean; t: number };
+  type S = { chomping: boolean; nearMisses: number; t: number };
   type D = { stats(): S; nearMiss(): void; hud(): Array<{ name: string }> };
   await page.waitForFunction(() => ((window as unknown as { __dd: D }).__dd.stats?.().t ?? 0) > 0.5);
-  for (let i = 0; i < 7; i++) await page.evaluate(() => (window as unknown as { __dd: D }).__dd.nearMiss());
-  expect(await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats())).toMatchObject({ graze: 7, chomping: false });
-  await page.evaluate(() => (window as unknown as { __dd: D }).__dd.nearMiss());
-  expect(await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats())).toMatchObject({ graze: 0, chomping: true });
+  const before = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats())).nearMisses;
+  for (let i = 0; i < 12; i++) await page.evaluate(() => (window as unknown as { __dd: D }).__dd.nearMiss());
+  const s = await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats());
+  expect(s.chomping).toBe(false);
+  expect(s.nearMisses - before).toBe(12);
   const names = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.hud())).map((h) => h.name);
   expect(names).toContain('timer');
   expect(names).not.toContain('score');
-  // After Chomp ends the gauge cools down: near misses do not charge it for a while.
-  type C = { stats(): S & { grazeCooldown: number }; nearMiss(): void };
-  await page.waitForFunction(() => !(window as unknown as { __dd: C }).__dd.stats().chomping, undefined, { timeout: 30_000 });
-  expect((await page.evaluate(() => (window as unknown as { __dd: C }).__dd.stats())).grazeCooldown).toBeGreaterThan(0);
-  await page.evaluate(() => (window as unknown as { __dd: C }).__dd.nearMiss());
-  expect(await page.evaluate(() => (window as unknown as { __dd: C }).__dd.stats())).toMatchObject({ graze: 0, chomping: false });
+  expect(names, 'the Chomp label shows only while Chomp runs').not.toContain('gauge');
   expect(errors).toEqual([]);
 });
 
@@ -493,8 +502,6 @@ test('dodge-drop: standing still for 3 s drops an aimed block on the player', as
   const stats = (): Promise<S> => page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats());
   await page.waitForFunction(() => ((window as unknown as { __dd: D }).__dd.stats?.().t ?? 0) > 1);
   expect((await stats()).aimed).toBe(0);
-  // No graze Chomp: the wider graze window lets a stationary player fill the gauge, and Chomp pauses camping.
-  await page.evaluate(() => { (window as unknown as { __dd: { noGraze: boolean } }).__dd.noGraze = true; });
   // The god player never moves: one aimed block after warm-up (2 s) + 3 s still (game clock; CI's software GL runs slow).
   await page.waitForFunction(() => (window as unknown as { __dd: D }).__dd.stats().aimed >= 1, undefined, { timeout: 40_000 });
   expect((await stats()).t).toBeGreaterThan(4.5);

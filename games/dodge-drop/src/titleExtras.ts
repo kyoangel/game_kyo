@@ -9,7 +9,7 @@ import { missionReward, missionTarget, rankProgress, sanitizeMissions, swapCost,
 import { drawCurrencyIcon, ensureUiTextures } from './playArt.ts';
 import { browserTiltEnv, detectTilt, requestTilt } from './tiltSensor.ts';
 import { availableTiers, sanitizeStartTier, type StartTier } from './progression.ts';
-import { sanitizeWorkshop, shieldCapacity } from './workshop.ts';
+import { migrateWorkshop, sanitizeWorkshop, shieldCapacity } from './workshop.ts';
 
 const TIERS: Array<{ id: StartTier; key: string }> = [
   { id: 'none', key: 'tier.none' },
@@ -279,10 +279,19 @@ function drawLock(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects
   return g;
 }
 
+/** One-time refund of star coins spent on upgrades removed in v3.8.0 (Daredevil, Longer Chomp). */
+async function refundRetiredUpgrades(kit: Kit): Promise<void> {
+  const m = migrateWorkshop(await kit.save.getJSON<unknown>('workshop', {}));
+  if (!m.changed) return;
+  await kit.save.setJSON('workshop', m.workshop);
+  if (m.refund > 0) await kit.save.setNumber('coins', (await kit.save.getNumber('coins', 0)) + m.refund);
+}
+
 async function load(kit: Kit): Promise<{
   medals: string[]; tier: StartTier; missions: MissionState; coins: number;
   boosts: RunBoosts; shieldCap: number; fresh: boolean; control: 'drag' | 'tilt';
 }> {
+  await refundRetiredUpgrades(kit);
   const [rawMedals, rawTier, rawMissions, coins, rawControl, rawWs, rawBoosts] = await Promise.all([
     kit.save.getJSON<unknown>('medals', []),
     kit.save.getJSON<unknown>('startTier', 'none'),

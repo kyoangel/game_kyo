@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buyUpgrade, grazeChompSeconds, effectValue, emptyWorkshop, magnetPulls, magnetRadius, nearMissWindow, nextCost, sanitizeWorkshop,
+  buyUpgrade, effectValue, emptyWorkshop, magnetPulls, magnetRadius, migrateWorkshop, nextCost, sanitizeWorkshop,
   shieldAfterPickup, shieldCapacity, shieldFirstAt, shieldInterval, startShieldChance, starInterval, UPGRADE_IDS, upgradeCost,
 } from './workshop.ts';
 
 describe('workshop table', () => {
-  it('lists the seven upgrades in row order (Shield Stack second)', () => {
-    expect(UPGRADE_IDS).toEqual(['shield', 'shieldStack', 'startShield', 'magnet', 'nearMiss', 'combo', 'luck']);
+  it('lists the five upgrades in row order (Shield Stack second; graze upgrades retired)', () => {
+    expect(UPGRADE_IDS).toEqual(['shield', 'shieldStack', 'startShield', 'magnet', 'luck']);
   });
-  it('costs 15/24/38/61/98 per level, 236 per upgrade, 1652 total', () => {
+  it('costs 15/24/38/61/98 per level, 236 per upgrade, 1180 total', () => {
     expect([1, 2, 3, 4, 5].map(upgradeCost)).toEqual([15, 24, 38, 61, 98]);
     const per = [1, 2, 3, 4, 5].reduce((s, n) => s + upgradeCost(n), 0);
     expect(per).toBe(236);
-    expect(per * UPGRADE_IDS.length).toBe(1652);
+    expect(per * UPGRADE_IDS.length).toBe(1180);
     expect(upgradeCost(0)).toBe(Infinity);
     expect(upgradeCost(6)).toBe(Infinity);
   });
@@ -57,13 +57,6 @@ describe('workshop effects', () => {
     expect(magnetPulls('shield', 100, 140, 2, 2)).toBe(false);
     expect(magnetPulls('star', 10, 0, 0, 1)).toBe(false);
   });
-  it('near-miss window 30 -> 33/36/39/42/45 px', () => {
-    expect([0, 1, 2, 3, 4, 5].map(nearMissWindow)).toEqual([30, 33, 36, 39, 42, 45]);
-  });
-  it('graze Chomp lasts 4 + 0.8L seconds', () => {
-    expect(grazeChompSeconds(0)).toBe(4);
-    expect(grazeChompSeconds(5)).toBe(8);
-  });
   it('star interval (6..9)*(1-0.07L)', () => {
     expect(starInterval(0, 0)).toBe(6);
     expect(starInterval(0, 1)).toBe(9);
@@ -71,7 +64,6 @@ describe('workshop effects', () => {
   });
   it('clamps out-of-range levels', () => {
     expect(shieldFirstAt(-3)).toBe(25);
-    expect(nearMissWindow(99)).toBe(45);
     expect(shieldCapacity(99)).toBe(6);
   });
   it('effectValue gives the number shown per row', () => {
@@ -79,9 +71,23 @@ describe('workshop effects', () => {
     expect(effectValue('startShield', 3)).toBe(60);
     expect(effectValue('magnet', 1)).toBe(80);
     expect(effectValue('magnet', 5)).toBe(Infinity);
-    expect(effectValue('nearMiss', 3)).toBe(39);
-    expect(effectValue('combo', 4)).toBe(7.2);
     expect(effectValue('luck', 5)).toBe(35);
+  });
+});
+
+describe('retired upgrades (v3.8.0)', () => {
+  it('refunds every level bought of Daredevil and Longer Chomp, and drops them', () => {
+    const r = migrateWorkshop({ shield: 2, nearMiss: 5, combo: 2 });
+    expect(r).toEqual({ workshop: { ...emptyWorkshop(), shield: 2 }, refund: 236 + 15 + 24, changed: true });
+  });
+  it('a save without retired keys is unchanged and refunds nothing (so the refund is paid once)', () => {
+    expect(migrateWorkshop({ shield: 2 })).toEqual({ workshop: { ...emptyWorkshop(), shield: 2 }, refund: 0, changed: false });
+    expect(migrateWorkshop(migrateWorkshop({ nearMiss: 3 }).workshop).changed).toBe(false);
+  });
+  it('a retired key at level 0 or garbage is dropped without a refund', () => {
+    expect(migrateWorkshop({ nearMiss: 0, combo: 'x' })).toMatchObject({ refund: 0, changed: true });
+    expect(migrateWorkshop({ combo: 99 }).refund).toBe(236);
+    expect(migrateWorkshop(null)).toMatchObject({ refund: 0, changed: false });
   });
 });
 
@@ -90,8 +96,8 @@ describe('sanitize / buy', () => {
     expect(sanitizeWorkshop({ shield: 2 }).shieldStack).toBe(0);
   });
   it('sanitizes unknown ids and out-of-range levels to 0..5', () => {
-    expect(sanitizeWorkshop({ shield: 3, bogus: 2, magnet: 9, luck: -1, combo: '2', nearMiss: 2.7 })).toEqual({
-      shield: 3, shieldStack: 0, startShield: 0, magnet: 5, nearMiss: 2, combo: 0, luck: 0,
+    expect(sanitizeWorkshop({ shield: 3, bogus: 2, magnet: 9, luck: -1, startShield: '2', shieldStack: 2.7 })).toEqual({
+      shield: 3, shieldStack: 2, startShield: 0, magnet: 5, luck: 0,
     });
     expect(sanitizeWorkshop(null)).toEqual(emptyWorkshop());
     expect(sanitizeWorkshop([1, 2])).toEqual(emptyWorkshop());

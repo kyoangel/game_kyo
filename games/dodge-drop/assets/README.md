@@ -43,6 +43,9 @@ Player skins and blocks stay procedural (shape-coded, tinted per skin; plan Task
 Wave) at native tempo; the 80's Synth Wave cut (`music-rush.mp3`) was removed. Only the run loop speeds up with the
 clock (`src/musicTempo.ts`, x1.0 to x1.08).
 
+3.8.0 (owner brief 2026-11-27: faster feel, not kids' music, a little pop): `music-normal.mp3` re-rendered by the
+same script as a 140 BPM synth-pop / future-house loop in F minor (own work, CC0).
+
 **Needs listening check (Task 3.9): nothing below was auditioned.** Choices were made from
 filenames, pack themes, duration and loudness stats only. Loudness normalisation (done, see below) is Task 3.9.
 
@@ -54,7 +57,7 @@ continuation after the cut onto the loop start, 112 kbps joint-stereo mp3. Note:
 
 | File | Source track (page) | Cut | Why |
 |---|---|---|---|
-| music-normal.mp3 (25.6 s) | own work, `scripts/render-run-music.ts` (3.7.0) | 150 BPM, 16 bars | original racing-style synth (Eurobeat / OutRun ingredients) |
+| music-normal.mp3 (27.4 s) | own work, `scripts/render-run-music.ts` (3.8.0) | 140 BPM, 16 bars | original synth-pop / future-house (sidechain pump, pluck stabs, hook chorus) |
 | music-overdrive.mp3 (48 s, rush and overdrive since 3.4.0) | Space Synth Wave (/content/space-synth-wave) | 84.2-132.2 s, 160 BPM (double time of 80) | fastest pulse; this track is quieter overall, so it may need gain in 3.9 |
 | music-chomp.mp3 (11.4 s) | own work, `scripts/render-chomp-music.ts` (3.6.0) | 168 BPM, 8 bars | original bright major-key chiptune for the Chomp power-up |
 

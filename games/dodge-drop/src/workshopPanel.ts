@@ -19,13 +19,11 @@ function drawIcon(g: Phaser.GameObjects.Graphics, id: UpgradeId, x: number, y: n
         g.beginPath(); g.arc(x, y - 4, 28, Math.PI, 0, false); g.strokePath();
         g.fillRect(x - 34, y - 4, 12, 30); g.fillRect(x + 22, y - 4, 12, 30);
         break;
-      case 'nearMiss': g.fillTriangle(x, y - 34, x - 12, y + 4, x + 12, y + 4); g.fillTriangle(x, y + 34, x - 12, y - 4, x + 12, y - 4); break;
-      case 'combo': g.fillRect(x - 32, y + 8, 16, 24); g.fillRect(x - 8, y - 8, 16, 40); g.fillRect(x + 16, y - 28, 16, 60); break;
       case 'luck': g.fillStyle(0xffe14d, 1); g.fillCircle(x, y, 30); g.fillStyle(0xffffff, 0.5); g.fillCircle(x - 9, y - 9, 8); break;
     }
   }
 
-/** Upgrades tab: the 7 permanent workshop rows. */
+/** Upgrades tab: the permanent workshop rows. */
 export function renderUpgradesPanel(ctx: ShopCtx): void {
   const { scene, kit, state } = ctx;
   const { theme } = kit;

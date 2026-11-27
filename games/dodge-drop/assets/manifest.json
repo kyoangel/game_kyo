@@ -115,10 +115,10 @@
       "author": "Neon Rush (own work)",
       "sourceUrl": "https://github.com/kyoangel/game_kyo/blob/master/games/dodge-drop/scripts/render-run-music.ts",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "notes": "Original racing-style synth loop (150 BPM, 16 bars, A minor) synthesised by scripts/render-run-music.ts, 7 kHz low-pass, loudnorm -18 LUFS, 112 kbps mp3. Released as CC0 by the game author.",
-      "sha256": "37a54a5f3a8a29b2c6e6db77c3d2c1d8dae28efb0dc6bfe91c1357029aa76b91",
+      "notes": "Original synth-pop / future-house loop (140 BPM, 16 bars, F minor, sidechain pump) synthesised by scripts/render-run-music.ts, 9 kHz low-pass, loudnorm -18 LUFS, 112 kbps mp3. Released as CC0 by the game author.",
+      "sha256": "fab3bb7f99c8730e54ab79dcbc71f9d18612f3ba5cd74242f2611c2920f27f36",
       "license": "CC0-1.0",
-      "retrievedAt": "2026-11-26"
+      "retrievedAt": "2026-11-27"
     },
     {
       "file": "audio/music-overdrive.mp3",

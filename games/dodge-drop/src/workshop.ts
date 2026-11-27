@@ -1,5 +1,10 @@
-export type UpgradeId = 'shield' | 'shieldStack' | 'startShield' | 'magnet' | 'nearMiss' | 'combo' | 'luck';
-export const UPGRADE_IDS: readonly UpgradeId[] = ['shield', 'shieldStack', 'startShield', 'magnet', 'nearMiss', 'combo', 'luck'];
+export type UpgradeId = 'shield' | 'shieldStack' | 'startShield' | 'magnet' | 'luck';
+export const UPGRADE_IDS: readonly UpgradeId[] = ['shield', 'shieldStack', 'startShield', 'magnet', 'luck'];
+/**
+ * Upgrades removed in v3.8.0 with the graze gauge (owner: graze-triggered Chomp felt out of place): "Daredevil"
+ * (near-miss window) and "Longer Chomp" (graze Chomp length). Saved levels are refunded once, see migrateWorkshop.
+ */
+export const RETIRED_UPGRADE_IDS: readonly string[] = ['nearMiss', 'combo'];
 export const MAX_LEVEL = 5;
 export type Workshop = Record<UpgradeId, number>;
 
@@ -9,7 +14,7 @@ function lvl(level: number): number {
 }
 
 export function emptyWorkshop(): Workshop {
-  return { shield: 0, shieldStack: 0, startShield: 0, magnet: 0, nearMiss: 0, combo: 0, luck: 0 };
+  return { shield: 0, shieldStack: 0, startShield: 0, magnet: 0, luck: 0 };
 }
 
 export function sanitizeWorkshop(raw: unknown): Workshop {
@@ -21,6 +26,26 @@ export function sanitizeWorkshop(raw: unknown): Workshop {
     out[id] = typeof v === 'number' && Number.isFinite(v) ? lvl(v) : 0;
   }
   return out;
+}
+
+/**
+ * Star coins spent on retired upgrades in a saved workshop (refunded in full). `changed` is true when the save still
+ * holds a retired key, so the caller rewrites it once and the refund is never paid twice.
+ */
+export function migrateWorkshop(raw: unknown): { workshop: Workshop; refund: number; changed: boolean } {
+  const workshop = sanitizeWorkshop(raw);
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { workshop, refund: 0, changed: false };
+  const rec = raw as Record<string, unknown>;
+  let refund = 0;
+  let changed = false;
+  for (const id of RETIRED_UPGRADE_IDS) {
+    if (!(id in rec)) continue;
+    changed = true;
+    const v = rec[id];
+    const level = typeof v === 'number' ? lvl(v) : 0;
+    for (let n = 1; n <= level; n++) refund += upgradeCost(n);
+  }
+  return { workshop, refund, changed };
 }
 
 export function upgradeCost(n: number): number {
@@ -71,13 +96,6 @@ export function magnetPulls(kind: 'star' | 'shield', dist: number, radius: numbe
   if (radius <= 0 || dist > radius) return false;
   return kind === 'star' || shieldHits < capacity;
 }
-export function nearMissWindow(level: number): number {
-  return Math.round(30 * (1 + 0.1 * lvl(level)));
-}
-/** "Longer Chomp" (upgrade id `combo`, kept for saves): seconds of the graze-triggered Chomp. */
-export function grazeChompSeconds(level: number): number {
-  return Math.round((4 + 0.8 * lvl(level)) * 10) / 10;
-}
 export function starInterval(level: number, r: number): number {
   return (6 + 3 * r) * (1 - 0.07 * lvl(level));
 }
@@ -88,8 +106,6 @@ export function effectValue(id: UpgradeId, level: number): number {
     case 'shieldStack': return shieldCapacity(level);
     case 'startShield': return Math.round(startShieldChance(level) * 100);
     case 'magnet': return magnetRadius(level);
-    case 'nearMiss': return nearMissWindow(level);
-    case 'combo': return grazeChompSeconds(level);
     case 'luck': return 7 * lvl(level);
   }
 }

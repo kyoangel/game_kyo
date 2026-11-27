@@ -28,6 +28,13 @@ export interface ToneOpts {
   decay?: number;
   /** Attack time (s), default 4 ms. */
   attack?: number;
+  /** Two-pole low-pass on the note (Hz). With cutoffPeak/cutoffDecay the cutoff starts at the peak and falls to it (pluck). */
+  cutoff?: number;
+  cutoffPeak?: number;
+  cutoffDecay?: number;
+  /** Pitch glide from this many semitones below up to the note (s = glideTime). */
+  glide?: number;
+  glideTime?: number;
 }
 
 export class Loop {
@@ -60,14 +67,25 @@ export class Loop {
     const f = hz(midi);
     const attack = opts.attack ?? 0.004;
     let phase = 0;
+    let y1 = 0;
+    let y2 = 0;
     for (let k = 0; k < len + rel; k++) {
       const t = k / SR;
       const vib = opts.vibrato && t > 0.12 ? 1 + 0.006 * Math.sin(2 * Math.PI * 6 * t) : 1;
-      phase += (f * vib) / SR;
+      const gl = opts.glide ? 2 ** ((-opts.glide * Math.max(0, 1 - t / (opts.glideTime ?? 0.06))) / 12) : 1;
+      phase += (f * vib * gl) / SR;
       const att = Math.min(1, k / (attack * SR));
       const dec = opts.decay ? Math.max(0.55, Math.exp(-t / opts.decay)) : 1;
       const env = k < len ? att * dec : att * dec * (1 - (k - len) / rel);
-      this.add(start + k, wave(phase) * env * gain);
+      let v = wave(phase);
+      if (opts.cutoff) {
+        const fc = opts.cutoffPeak ? opts.cutoff + (opts.cutoffPeak - opts.cutoff) * Math.exp(-t / (opts.cutoffDecay ?? 0.1)) : opts.cutoff;
+        const a = 1 - Math.exp((-2 * Math.PI * fc) / SR);
+        y1 += a * (v - y1);
+        y2 += a * (y1 - y2);
+        v = y2;
+      }
+      this.add(start + k, v * env * gain);
     }
   }
 
@@ -108,6 +126,37 @@ export class Loop {
       this.add(s + k, (n - prev) * 0.5 * Math.exp(-t / (open ? 0.03 : 0.01)) * gain); // first difference: crude high-pass
       prev = n;
     }
+  }
+
+  /** Rising noise sweep over `steps` sixteenths (build-up into the next phrase). */
+  riser(step: number, steps: number, gain = 0.12): void {
+    const s = Math.round(step * this.step * SR);
+    const len = Math.round(steps * this.step * SR);
+    let prev = 0;
+    for (let k = 0; k < len; k++) {
+      const n = this.noise();
+      const x = k / len;
+      this.add(s + k, (n - prev * (1 - x)) * 0.5 * x * x * gain);
+      prev = n;
+    }
+  }
+
+  /** Feedback echo of the whole loop (wraps, so the echo of the last bar lands on the first). */
+  echo(steps: number, feedback: number, wet: number): void {
+    const d = Math.round(steps * this.step * SR);
+    const tail = new Float32Array(this.n);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < this.n; i++) {
+        const j = (i - d + this.n) % this.n;
+        tail[i] = this.buf[j]! + feedback * tail[j]!;
+      }
+    }
+    for (let i = 0; i < this.n; i++) this.buf[i]! += wet * tail[i]!;
+  }
+
+  /** Adds this loop into `target`, each sample scaled by `gain(i)` (e.g. a sidechain pump). */
+  mixInto(target: Loop, gain: (i: number) => number = () => 1): void {
+    for (let i = 0; i < this.n; i++) target.buf[i]! += this.buf[i]! * gain(i);
   }
 
   /** Peak-normalises to 16-bit WAV, then low-passes, loudness-normalises and encodes the mp3 at `out`. */

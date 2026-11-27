@@ -1,11 +1,10 @@
 export type MissionId =
-  | 'nearMiss' | 'chompRun' | 'survive' | 'starsTotal' | 'starsRun' | 'shieldBreak' | 'chompEat' | 'rush' | 'runs';
+  | 'nearMiss' | 'survive' | 'starsTotal' | 'starsRun' | 'shieldBreak' | 'chompEat' | 'rush' | 'runs';
 export type Tier = 1 | 2 | 3;
 export interface MissionDef { id: MissionId; targets: readonly [number, number, number]; scope: 'run' | 'total' }
 
 export const MISSION_POOL: readonly MissionDef[] = [
   { id: 'nearMiss', targets: [10, 25, 50], scope: 'total' },
-  { id: 'chompRun', targets: [1, 2, 3], scope: 'run' },
   { id: 'survive', targets: [20, 45, 75], scope: 'run' },
   { id: 'starsTotal', targets: [5, 15, 30], scope: 'total' },
   { id: 'starsRun', targets: [3, 6, 10], scope: 'run' },
@@ -16,11 +15,11 @@ export const MISSION_POOL: readonly MissionDef[] = [
 ];
 
 export interface RunStats {
-  nearMisses: number; /** Graze-gauge Chomps triggered this run. */ grazeChomps: number; seconds: number; stars: number;
+  nearMisses: number; seconds: number; stars: number;
   shieldBlocks: number; /** Blocks eaten in Chomp mode. */ chompEats: number; rushes: number; runs: number;
 }
 export function emptyStats(): RunStats {
-  return { nearMisses: 0, grazeChomps: 0, seconds: 0, stars: 0, shieldBlocks: 0, chompEats: 0, rushes: 0, runs: 0 };
+  return { nearMisses: 0, seconds: 0, stars: 0, shieldBlocks: 0, chompEats: 0, rushes: 0, runs: 0 };
 }
 
 export interface Mission { id: MissionId; tier: Tier; progress: number }
@@ -76,7 +75,6 @@ export function initialMissions(rng: () => number): MissionState {
 export function runValue(id: MissionId, s: RunStats): number {
   switch (id) {
     case 'nearMiss': return s.nearMisses;
-    case 'chompRun': return s.grazeChomps;
     case 'survive': return s.seconds;
     case 'starsTotal':
     case 'starsRun': return s.stars;

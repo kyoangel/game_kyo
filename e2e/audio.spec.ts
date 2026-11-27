@@ -4,7 +4,7 @@ import { skipOnboarding } from './fixtures/onboarding.ts';
 type AudioState = { musicSource: 'sample' | 'synth' | 'none'; musicSample: string | null; musicRate: number; loaded: string[] };
 type W = {
   __gk: { activeScenes: string[]; state: string; audio: AudioState };
-  __dd?: { god: boolean; noGraze?: boolean; warp(s: number): void };
+  __dd?: { god: boolean; warp(s: number): void };
 };
 
 const audio = (page: Page) => page.evaluate(() => (window as unknown as W).__gk.audio);
@@ -40,7 +40,6 @@ test('music samples load, start after the first input and switch to the rush loo
   await page.evaluate(() => {
     const dd = (window as unknown as W).__dd!;
     dd.god = true;
-    dd.noGraze = true; // a stationary god player grazes a lot in rushes; a graze Chomp would switch to the chomp loop
     dd.warp(46); // first rush window starts at 45 s
   });
   await expect.poll(async () => (await audio(page)).musicSample).toBe('music-rush');
