@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { ChapterDef } from './chapters.ts';
 import { getArmorSpec, getShieldSpec, getWeaponSpec, type ArmorHelm, type ArmorId, type ShieldId, type WeaponId, type WeaponShape } from './gear.ts';
+import type { HeroCharacter } from './meta.ts';
 
 type Palette = Record<string, string>;
 
@@ -490,6 +491,7 @@ function drawHeroBodyAndGear(
   hasShield: boolean,
   pal: Palette,
   scale: number,
+  character: HeroCharacter = 'hero',
 ): void {
   const px = (x: number, y: number, ch: string) => {
     const color = pal[ch];
@@ -503,73 +505,116 @@ function drawHeroBodyAndGear(
 
   const bob = frame === 1 ? 1 : 0;
 
-  // 1. Cape (behind body)
-  rect(2 - bob, 7 + bob, 2, 3, 'R');
-  rect(3 - bob, 9 + bob, 2, 2, 'r');
-  px(1 - bob, 8 + bob, 'K');
+  if (character === 'goddess') {
+    // Fallen Goddess (Goddess A without divine halo & wings — long golden wavy hair + graceful dress)
+    // Flowing golden back hair cascading down shoulders
+    rect(3, 2 + bob, 9, 8, 'F');
+    rect(3, 8 + bob, 2, 3, 'f');
+    rect(10, 8 + bob, 2, 3, 'f');
+    px(2, 5 + bob, 'f');
+    px(12, 5 + bob, 'f');
 
-  // 2. Torso / Tunic + Boots
-  rect(5, 6 + bob, 5, 4, 'B');
-  rect(5, 9 + bob, 5, 1, 'b');
-  px(7, 7 + bob, 'Y'); // belt buckle
-  if (frame === 0) {
-    rect(5, 10, 2, 2, 'D');
-    rect(8, 10, 2, 2, 'D');
+    // Flowing dress / skirt (flares slightly at hem, tinted by equipped Armor!)
+    rect(5, 6 + bob, 5, 4, 'B');
+    rect(4, 9 + bob, 7, 2, 'B');
+    rect(4, 11 + bob, 7, 1, 'b');
+    rect(5, 8 + bob, 5, 1, 'Y'); // golden waist sash
+    // Delicate boots peeking beneath dress hem
+    if (frame === 0) {
+      px(5, 12, 'D');
+      px(9, 12, 'D');
+    } else {
+      px(4, 12, 'D');
+      px(10, 12, 'D');
+    }
+
+    // Soft peach face framed by golden hair, sapphire eyes & rosy blush
+    rect(5, 3 + bob, 5, 3, 'S');
+    px(6, 4 + bob, 'E');
+    px(8, 4 + bob, 'E');
+    px(5, 5 + bob, 'P'); // rosy blush
+    px(9, 5 + bob, 'P');
+    // Golden bangs & side locks framing face (no dark beard outline!)
+    rect(5, 1 + bob, 5, 2, 'F');
+    px(5, 2 + bob, 'f');
+    px(9, 2 + bob, 'f');
+    rect(4, 2 + bob, 1, 5, 'F');
+    rect(10, 2 + bob, 1, 5, 'F');
+    if (helm === 'kingCrown' || helm === 'crownIce') {
+      // Subtle tiara accent when wearing crown armors
+      px(6, 0 + bob, 'Y');
+      px(7, 0 + bob, 'H');
+      px(8, 0 + bob, 'Y');
+    }
   } else {
-    rect(4, 11, 2, 2, 'D');
-    rect(9, 11, 2, 2, 'D');
-  }
-  // Outline torso
-  rect(4, 6 + bob, 1, 4, 'K');
-  rect(10, 6 + bob, 1, 4, 'K');
+    // 1. Cape (behind body)
+    rect(2 - bob, 7 + bob, 2, 3, 'R');
+    rect(3 - bob, 9 + bob, 2, 2, 'r');
+    px(1 - bob, 8 + bob, 'K');
 
-  // 3. Head + Skin + Eyes
-  rect(5, 3 + bob, 5, 3, 'S');
-  px(6, 4 + bob, 'K');
-  px(8, 4 + bob, 'K');
-  rect(4, 3 + bob, 1, 3, 'K');
-  rect(10, 3 + bob, 1, 3, 'K');
+    // 2. Torso / Tunic + Boots
+    rect(5, 6 + bob, 5, 4, 'B');
+    rect(5, 9 + bob, 5, 1, 'b');
+    px(7, 7 + bob, 'Y'); // belt buckle
+    if (frame === 0) {
+      rect(5, 10, 2, 2, 'D');
+      rect(8, 10, 2, 2, 'D');
+    } else {
+      rect(4, 11, 2, 2, 'D');
+      rect(9, 11, 2, 2, 'D');
+    }
+    // Outline torso
+    rect(4, 6 + bob, 1, 4, 'K');
+    rect(10, 6 + bob, 1, 4, 'K');
 
-  // 4. Distinct Armor Headgear Silhouette!
-  switch (helm) {
-    case 'hair':
-      rect(5, 1 + bob, 5, 2, 'H');
-      px(9, 2 + bob, 'h');
-      rect(5, 0 + bob, 5, 1, 'K');
-      break;
-    case 'hood':
-      rect(4, 1 + bob, 7, 2, 'H');
-      rect(3, 2 + bob, 2, 3, 'h');
-      rect(5, 0 + bob, 5, 1, 'K');
-      break;
-    case 'visor':
-      rect(4, 1 + bob, 7, 3, 'H');
-      rect(5, 3 + bob, 5, 1, 'h');
-      px(6, 3 + bob, 'K');
-      px(8, 3 + bob, 'K');
-      rect(6, 0 + bob, 3, 1, 'R'); // knight plume!
-      break;
-    case 'horns':
-      rect(5, 1 + bob, 5, 2, 'H');
-      px(3, 0 + bob, 'Y'); px(4, 1 + bob, 'Y'); // left dragon horn
-      px(11, 0 + bob, 'Y'); px(10, 1 + bob, 'Y'); // right dragon horn
-      break;
-    case 'crownIce':
-      rect(5, 2 + bob, 5, 1, 'H');
-      px(5, 0 + bob, 'H'); px(7, 0 + bob, 'W'); px(9, 0 + bob, 'H');
-      px(5, 1 + bob, 'H'); px(7, 1 + bob, 'H'); px(9, 1 + bob, 'H');
-      break;
-    case 'shadow':
-      rect(4, 1 + bob, 7, 5, 'H');
-      rect(5, 3 + bob, 5, 2, 'K');
-      px(6, 4 + bob, 'R'); // glowing crimson eyes!
-      px(8, 4 + bob, 'R');
-      break;
-    case 'kingCrown':
-      rect(4, 1 + bob, 7, 2, 'H');
-      px(4, 0 + bob, 'H'); px(7, 0 + bob, 'H'); px(10, 0 + bob, 'H');
-      px(7, 1 + bob, 'R'); // royal ruby gem!
-      break;
+    // 3. Head + Skin + Eyes
+    rect(5, 3 + bob, 5, 3, 'S');
+    px(6, 4 + bob, 'K');
+    px(8, 4 + bob, 'K');
+    rect(4, 3 + bob, 1, 3, 'K');
+    rect(10, 3 + bob, 1, 3, 'K');
+
+    // 4. Distinct Armor Headgear Silhouette!
+    switch (helm) {
+      case 'hair':
+        rect(5, 1 + bob, 5, 2, 'H');
+        px(9, 2 + bob, 'h');
+        rect(5, 0 + bob, 5, 1, 'K');
+        break;
+      case 'hood':
+        rect(4, 1 + bob, 7, 2, 'H');
+        rect(3, 2 + bob, 2, 3, 'h');
+        rect(5, 0 + bob, 5, 1, 'K');
+        break;
+      case 'visor':
+        rect(4, 1 + bob, 7, 3, 'H');
+        rect(5, 3 + bob, 5, 1, 'h');
+        px(6, 3 + bob, 'K');
+        px(8, 3 + bob, 'K');
+        rect(6, 0 + bob, 3, 1, 'R'); // knight plume!
+        break;
+      case 'horns':
+        rect(5, 1 + bob, 5, 2, 'H');
+        px(3, 0 + bob, 'Y'); px(4, 1 + bob, 'Y'); // left dragon horn
+        px(11, 0 + bob, 'Y'); px(10, 1 + bob, 'Y'); // right dragon horn
+        break;
+      case 'crownIce':
+        rect(5, 2 + bob, 5, 1, 'H');
+        px(5, 0 + bob, 'H'); px(7, 0 + bob, 'W'); px(9, 0 + bob, 'H');
+        px(5, 1 + bob, 'H'); px(7, 1 + bob, 'H'); px(9, 1 + bob, 'H');
+        break;
+      case 'shadow':
+        rect(4, 1 + bob, 7, 5, 'H');
+        rect(5, 3 + bob, 5, 2, 'K');
+        px(6, 4 + bob, 'R'); // glowing crimson eyes!
+        px(8, 4 + bob, 'R');
+        break;
+      case 'kingCrown':
+        rect(4, 1 + bob, 7, 2, 'H');
+        px(4, 0 + bob, 'H'); px(7, 0 + bob, 'H'); px(10, 0 + bob, 'H');
+        px(7, 1 + bob, 'R'); // royal ruby gem!
+        break;
+    }
   }
 
   // 5. Distinct Weapon Silhouette (Right hand at x=11, y=7+bob)
@@ -648,19 +693,27 @@ export function ensureHeroAppearance(
   weaponId: WeaponId,
   armorId: ArmorId,
   shieldId: ShieldId | null = null,
+  character: HeroCharacter = 'hero',
 ): [string, string] {
   const sTag = shieldId ?? 'none';
-  const k0 = `px-hero-${weaponId}-${armorId}-${sTag}-0`;
-  const k1 = `px-hero-${weaponId}-${armorId}-${sTag}-1`;
+  const cTag = character === 'goddess' ? 'goddess-' : '';
+  const k0 = `px-hero-${cTag}${weaponId}-${armorId}-${sTag}-0`;
+  const k1 = `px-hero-${cTag}${weaponId}-${armorId}-${sTag}-1`;
   const w = getWeaponSpec(weaponId);
   const a = getArmorSpec(armorId);
   const s = getShieldSpec(shieldId);
+  const isStarterGoddessDress = character === 'goddess' && armorId === 'tunic';
   const pal: Palette = {
     ...HERO_PALETTE,
+    S: character === 'goddess' ? '#ffe4cc' : HERO_PALETTE.S,
+    F: '#facc15',
+    f: '#d97706',
+    E: '#1d4ed8',
+    P: '#fb7185',
     H: a.helmColor,
     h: a.helmShade,
-    B: a.tunicColor,
-    b: a.tunicDark,
+    B: isStarterGoddessDress ? '#e0f2fe' : a.tunicColor,
+    b: isStarterGoddessDress ? '#7dd3fc' : a.tunicDark,
     R: a.capeColor,
     r: a.capeDark,
     W: w.bladeColor,
@@ -675,7 +728,7 @@ export function ensureHeroAppearance(
     if (!tex) continue;
     const ctx = tex.getContext();
     ctx.imageSmoothingEnabled = false;
-    drawHeroBodyAndGear(ctx, frame, a.helm, w.shape, s !== null, pal, 4);
+    drawHeroBodyAndGear(ctx, frame, a.helm, w.shape, s !== null, pal, 4, character);
     tex.refresh();
     scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
   }
@@ -930,6 +983,216 @@ const CELESTIAL_GUARD_1 = [
   '..KKK......KKK..',
 ];
 
+// Goddess A (Active Default): Celestial Sun Goddess — Golden wavy hair, white feathered wings, chrono staff
+const GODDESS_A_PALETTE: Palette = {
+  H: '#fde047', // halo bright gold
+  G: '#facc15', // golden hair light
+  g: '#d97706', // golden hair shade
+  W: '#ffffff', // white wings / highlight
+  P: '#e0f2fe', // soft ice wing shade
+  S: '#ffe4cc', // soft peach skin
+  R: '#fb7185', // rosy blush
+  E: '#1d4ed8', // bright sapphire eyes
+  C: '#38bdf8', // cyan chrono sash / gem
+  B: '#e0f2fe', // angelic white-blue dress
+  b: '#7dd3fc', // dress shadow
+  Y: '#f59e0b', // gold trim / staff
+};
+
+const GODDESS_A_0 = [
+  '........HHHHHHHH........',
+  '.......H........H.......',
+  '........GGGGGGGG........',
+  '.......GGgGGGGgGG.......',
+  '......GGSSSSSSSSGG......',
+  '..WW..GSSSSSSSSSSG..WW..',
+  '.WWPW.GSESSSSSSESG.WPWW.',
+  'WWPPW.GSRSSSSSSRSG.WPPWW',
+  'WPPPW.GGSSSSSSSSGG.WPPPW',
+  '.WWPP..GGgBBBBgGG..PPWW.',
+  '..WWP..GgBBCCBBgG..PWW..',
+  '...W...GgBBBBBBgG.Y.W...',
+  '.......GgBBBBBBgGYCY....',
+  '......GGbBYYYYBbGGY.....',
+  '......GgBBBBBBBBgGY.....',
+  '.....GGbBBBBBBBBbGY.....',
+  '.....GgbBBBBBBBBbgY.....',
+  '.....G.bBBbBBbBBb.Y.....',
+  '......bBBBBBBBBBBbY.....',
+  '.....bBBBBbBBbBBBBb.....',
+  '.....bBBBbbBBbbBBBb.....',
+  '......bYYYYYYYYYYb......',
+  '.......bbbbbbbbbb.......',
+  '........................',
+];
+
+const GODDESS_A_1 = [
+  '.......HHHHHHHHHH.......',
+  '......H..........H......',
+  '........GGGGGGGG........',
+  '.......GGgGGGGgGG.......',
+  '......GGSSSSSSSSGG......',
+  '......GSSSSSSSSSSG......',
+  '.WW...GSESSSSSSESG...WW.',
+  'WWPW..GSRSSSSSSRSG..WPWW',
+  'WPPPW.GGSSSSSSSSGG.WPPPW',
+  'WPPPW..GGgBBBBgGG..WPPPW',
+  '.WWPP..GgBBCCBBgG..PPWW.',
+  '..WWP..GgBBBBBBgG.Y.PWW.',
+  '...W...GgBBBBBBgGYCY.W..',
+  '......GGbBYYYYBbGGY.....',
+  '......GgBBBBBBBBgGY.....',
+  '.....GGbBBBBBBBBbGY.....',
+  '.....GgbBBBBBBBBbgY.....',
+  '.....G.bBBbBBbBBb.Y.....',
+  '......bBBBBBBBBBBbY.....',
+  '.....bBBBBbBBbBBBBb.....',
+  '.....bBBBbbBBbbBBBb.....',
+  '......bYYYYYYYYYYb......',
+  '.......bbbbbbbbbb.......',
+  '........................',
+];
+
+// Goddess B (Reserved for future expansion): Astral Silver-Hair Time Goddess
+const GODDESS_B_PALETTE: Palette = {
+  H: '#7dd3fc',
+  C: '#38bdf8',
+  L: '#f1f5f9',
+  l: '#94a3b8',
+  W: '#ffffff',
+  V: '#c084fc',
+  v: '#7c3aed',
+  S: '#ffe8d6',
+  R: '#f472b6',
+  E: '#0284c7',
+  D: '#1e3a8a',
+  d: '#172554',
+  Y: '#fde047',
+};
+
+const GODDESS_B_0 = [
+  '........HHHHHHHH........',
+  '.......H...YY...H.......',
+  '........LLLLLLLL........',
+  '.......LLlLLLLlLL.......',
+  '.CC...LLSSSSSSSSLL...CC.',
+  'CVVC..LSSSSSSSSSSL..CVVC',
+  'CVWVC.LSESSSSSSESL.CVWVC',
+  'CVVVC.LSRSSSSSSRSL.CVVVC',
+  '.CVVC.LLSSSSSSSSLL.CVVC.',
+  '..vv..LLlDDDDDDlLL..vv..',
+  '.vVVv.LlDDYWWYDDlL.vVVv.',
+  '.vVVv.LlDDYYYYDDlL.vVVv.',
+  '..vv..LlDDDDDDDDlL..vv..',
+  '......LLdDDCCDDdLL......',
+  '.....LLdDDDDDDDDdLL.....',
+  '.....LldDDYDDYDDdlL.....',
+  '.....Ll.dDDDDDDd.lL.....',
+  '.....L..dDDDDDDd..L.....',
+  '.......dDDDYDDDDd.......',
+  '......dDDDDDDDDDDd......',
+  '.....dDDYDDDDDDYDDd.....',
+  '.....dCCCCCCCCCCCCd.....',
+  '......dddddddddddd......',
+  '........................',
+];
+
+const GODDESS_B_1 = [
+  '.......HHHHHHHHHH.......',
+  '......H....YY....H......',
+  '........LLLLLLLL........',
+  '.......LLlLLLLlLL.......',
+  '......LLSSSSSSSSLL......',
+  '.CC...LSSSSSSSSSSL...CC.',
+  'CVVC..LSESSSSSSESL..CVVC',
+  'CVWVC.LSRSSSSSSRSL.CVWVC',
+  'CVVVC.LLSSSSSSSSLL.CVVVC',
+  '.CVVC.LLlDDDDDDlLL.CVVC.',
+  '..vv..LlDDYWWYDDlL..vv..',
+  '.vVVv.LlDDYYYYDDlL.vVVv.',
+  '..vv..LlDDDDDDDDlL..vv..',
+  '......LLdDDCCDDdLL......',
+  '.....LLdDDDDDDDDdLL.....',
+  '.....LldDDYDDYDDdlL.....',
+  '.....Ll.dDDDDDDd.lL.....',
+  '.....L..dDDDDDDd..L.....',
+  '.......dDDDYDDDDd.......',
+  '......dDDDDDDDDDDd......',
+  '.....dDDYDDDDDDYDDd.....',
+  '.....dCCCCCCCCCCCCd.....',
+  '......dddddddddddd......',
+  '........................',
+];
+
+// Goddess C (Reserved for future expansion): Blossom Seraph Goddess
+const GODDESS_C_PALETTE: Palette = {
+  H: '#fef08a',
+  Y: '#facc15',
+  P: '#fda4af',
+  p: '#e11d48',
+  W: '#fffbeb',
+  w: '#fde68a',
+  S: '#ffe4cc',
+  R: '#fb7185',
+  E: '#9333ea',
+  C: '#38bdf8',
+  M: '#fbcfe8',
+};
+
+const GODDESS_C_0 = [
+  '........HHHHHHHH........',
+  '.......H..YYYY..H.......',
+  '........PPPPPPPP........',
+  '.......PPpPPPPpPP.......',
+  '......PPSSSSSSSSPP......',
+  '..WW..PSSSSSSSSSSP..WW..',
+  '.WWwW.PSESSSSSSESP.WwWW.',
+  '.WwwW.PSRSSSSSSRSP.WwwW.',
+  '.WwwW.PPSSSSSSSSPP.WwwW.',
+  '..WWw.PPpWWWWWWpPP.wWW..',
+  '...WW.PpWWMMMMWWpP.WW...',
+  '......PpWWYYYYWWpP......',
+  '......PpWYCWWCYWpP......',
+  '.....PPwWWYYYYWWwPP.....',
+  '.....PpwWWWWWWWWwpP.....',
+  '.....P.wWWWWWWWWw.P.....',
+  '.......wWWMMMMWWw.......',
+  '......wWWWWWWWWWWw......',
+  '.....wWWWWWWWWWWWWw.....',
+  '.....wWWWwWWWWwWWWw.....',
+  '....wWWWWwWWWWwWWWWw....',
+  '....wYYYYYYYYYYYYYYw....',
+  '.....wwwwwwwwwwwwww.....',
+  '........................',
+];
+
+const GODDESS_C_1 = [
+  '.......HHHHHHHHHH.......',
+  '......H...YYYY...H......',
+  '........PPPPPPPP........',
+  '.......PPpPPPPpPP.......',
+  '......PPSSSSSSSSPP......',
+  '......PSSSSSSSSSSP......',
+  '..WW..PSESSSSSSESP..WW..',
+  '.WWwW.PSRSSSSSSRSP.WwWW.',
+  '.WwwW.PPSSSSSSSSPP.WwwW.',
+  '.WwwW.PPpWWWWWWpPP.WwwW.',
+  '..WWw.PpWWMMMMWWpP.wWW..',
+  '...WW.PpWWYYYYWWpP.WW...',
+  '......PpWYCWWCYWpP......',
+  '.....PPwWWYYYYWWwPP.....',
+  '.....PpwWWWWWWWWwpP.....',
+  '.....P.wWWWWWWWWw.P.....',
+  '.......wWWMMMMWWw.......',
+  '......wWWWWWWWWWWw......',
+  '.....wWWWWWWWWWWWWw.....',
+  '.....wWWWwWWWWwWWWw.....',
+  '....wWWWWwWWWWwWWWWw....',
+  '....wYYYYYYYYYYYYYYw....',
+  '.....wwwwwwwwwwwwww.....',
+  '........................',
+];
+
 export type OverworldMobId = 'slime' | 'goblin' | 'skeleton';
 
 export function mobTextureKey(chapterId: ChapterDef['id'], mobId: OverworldMobId, frame: number): string {
@@ -996,4 +1259,10 @@ export function ensurePixelArt(scene: Phaser.Scene): void {
   drawPixelTexture(scene, 'px-rock-ash', ROCK_GRID, ROCK_PALETTE, 4);
   drawPixelTexture(scene, 'px-crystal', CRYSTAL_GRID, CRYSTAL_PALETTE, 4);
   drawPixelTexture(scene, 'px-coin', COIN_GRID, COIN_PALETTE, 4);
+  drawPixelTexture(scene, 'px-goddess-0', GODDESS_A_0, GODDESS_A_PALETTE, 5);
+  drawPixelTexture(scene, 'px-goddess-1', GODDESS_A_1, GODDESS_A_PALETTE, 5);
+  drawPixelTexture(scene, 'px-goddess-astral-0', GODDESS_B_0, GODDESS_B_PALETTE, 5);
+  drawPixelTexture(scene, 'px-goddess-astral-1', GODDESS_B_1, GODDESS_B_PALETTE, 5);
+  drawPixelTexture(scene, 'px-goddess-blossom-0', GODDESS_C_0, GODDESS_C_PALETTE, 5);
+  drawPixelTexture(scene, 'px-goddess-blossom-1', GODDESS_C_1, GODDESS_C_PALETTE, 5);
 }

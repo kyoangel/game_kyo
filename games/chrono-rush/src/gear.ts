@@ -18,8 +18,8 @@ export const ENDGAME_ARMOR_COST = 680;
 export const ENDGAME_SHIELD_COST = 380;
 
 /** Standardized endgame stats reached by ANY ascended gear (1H vs 2H balanced for shield trade-off). */
-export const ASCENDED_WEAPON_1H = { baseAtk: 68, polishAtkPerLv: 22 } as const;
-export const ASCENDED_WEAPON_2H = { baseAtk: 84, polishAtkPerLv: 26 } as const;
+export const ASCENDED_WEAPON_1H = { baseAtk: 72, polishAtkPerLv: 24 } as const;
+export const ASCENDED_WEAPON_2H = { baseAtk: 90, polishAtkPerLv: 28 } as const;
 export const ASCENDED_ARMOR = { baseDef: 44, baseHp: 260, polishDefPerLv: 15 } as const;
 export const ASCENDED_SHIELD = { defBonus: 28, hpBonus: 110 } as const;
 
@@ -74,12 +74,12 @@ export interface ShieldSpec {
  *   and late-game ATK/DEF/HP are equalized — choosing gear becomes purely about playstyle & passives!
  */
 export const WEAPON_CATALOG: readonly WeaponSpec[] = [
-  { id: 'wood', shape: 'short', hands: 1, passive: 'swiftStride', unlockCost: 0, baseAtk: 0, polishAtkPerLv: 4, critBonus: 0, bladeColor: '#d97706', edgeColor: '#92400e', hiltColor: '#fef08a' },
-  { id: 'iron', shape: 'long', hands: 1, passive: 'bounty', unlockCost: 35, baseAtk: 8, polishAtkPerLv: 6, critBonus: 0.04, bladeColor: '#f8fafc', edgeColor: '#94a3b8', hiltColor: '#facc15' },
-  { id: 'crimson', shape: 'greatsword', hands: 2, passive: 'critBurst', unlockCost: 95, baseAtk: 24, polishAtkPerLv: 11, critBonus: 0.22, bladeColor: '#fb923c', edgeColor: '#dc2626', hiltColor: '#fde047' },
-  { id: 'frost', shape: 'katana', hands: 1, passive: 'frostSlow', unlockCost: 190, baseAtk: 34, polishAtkPerLv: 13, critBonus: 0.08, bladeColor: '#bae6fd', edgeColor: '#0284c7', hiltColor: '#e0f2fe' },
-  { id: 'thunder', shape: 'axe', hands: 2, passive: 'chainLightning', unlockCost: 320, baseAtk: 56, polishAtkPerLv: 18, critBonus: 0.10, bladeColor: '#fde047', edgeColor: '#ca8a04', hiltColor: '#38bdf8' },
-  { id: 'void', shape: 'scythe', hands: 2, passive: 'lifesteal', unlockCost: 480, baseAtk: 70, polishAtkPerLv: 22, critBonus: 0.12, bladeColor: '#d8b4fe', edgeColor: '#7e22ce', hiltColor: '#f43f5e' },
+  { id: 'wood', shape: 'short', hands: 1, passive: 'swiftStride', unlockCost: 0, baseAtk: 2, polishAtkPerLv: 5, critBonus: 0, bladeColor: '#d97706', edgeColor: '#92400e', hiltColor: '#fef08a' },
+  { id: 'iron', shape: 'long', hands: 1, passive: 'bounty', unlockCost: 35, baseAtk: 16, polishAtkPerLv: 9, critBonus: 0.04, bladeColor: '#f8fafc', edgeColor: '#94a3b8', hiltColor: '#facc15' },
+  { id: 'crimson', shape: 'greatsword', hands: 2, passive: 'critBurst', unlockCost: 95, baseAtk: 38, polishAtkPerLv: 15, critBonus: 0.22, bladeColor: '#fb923c', edgeColor: '#dc2626', hiltColor: '#fde047' },
+  { id: 'frost', shape: 'katana', hands: 1, passive: 'frostSlow', unlockCost: 190, baseAtk: 48, polishAtkPerLv: 17, critBonus: 0.08, bladeColor: '#bae6fd', edgeColor: '#0284c7', hiltColor: '#e0f2fe' },
+  { id: 'thunder', shape: 'axe', hands: 2, passive: 'chainLightning', unlockCost: 320, baseAtk: 68, polishAtkPerLv: 21, critBonus: 0.10, bladeColor: '#fde047', edgeColor: '#ca8a04', hiltColor: '#38bdf8' },
+  { id: 'void', shape: 'scythe', hands: 2, passive: 'lifesteal', unlockCost: 480, baseAtk: 78, polishAtkPerLv: 24, critBonus: 0.12, bladeColor: '#d8b4fe', edgeColor: '#7e22ce', hiltColor: '#f43f5e' },
   { id: 'excalibur', shape: 'excalibur', hands: 1, passive: 'heroic', unlockCost: ENDGAME_WEAPON_COST, baseAtk: ASCENDED_WEAPON_1H.baseAtk, polishAtkPerLv: ASCENDED_WEAPON_1H.polishAtkPerLv, critBonus: 0.12, bladeColor: '#fef08a', edgeColor: '#eab308', hiltColor: '#38bdf8' },
 ];
 
@@ -164,7 +164,7 @@ export function isShieldId(v: unknown): v is ShieldId {
 }
 
 export function goldPriceScale(loop: number): number {
-  return 1 + Math.max(0, loop - 1) * 0.25;
+  return 1 + Math.max(0, loop - 1) * 0.15;
 }
 
 export function weaponPolishCost(currentLv: number, loop = 1): number | null {

@@ -20,6 +20,8 @@ import {
 
 export const HARD_MODE_LOOP = 26;
 
+export type HeroCharacter = 'hero' | 'goddess';
+
 export type UpgradeId = 'atk' | 'def' | 'spd' | 'xp' | 'gold' | 'startLv' | 'time' | 'crit' | 'eva';
 
 export interface UpgradeSpec {
@@ -68,6 +70,7 @@ export interface MetaSave {
   unlockedArmorSkins: ArmorId[];
   equippedWeaponSkin: WeaponId | null;
   equippedArmorSkin: ArmorId | null;
+  heroCharacter: HeroCharacter;
   activeBoosts: BoostId[];
   stageRecords: Record<string, StageRecord>;
 }
@@ -96,6 +99,7 @@ export function defaultMeta(): MetaSave {
     unlockedArmorSkins: [],
     equippedWeaponSkin: null,
     equippedArmorSkin: null,
+    heroCharacter: 'hero',
     activeBoosts: [],
     stageRecords: {},
   };
@@ -181,6 +185,9 @@ export function sanitizeMeta(raw: unknown): MetaSave {
   const equippedArmorSkin =
     isArmorId(obj.equippedArmorSkin) && unlockedArmorSkins.includes(obj.equippedArmorSkin) ? obj.equippedArmorSkin : null;
 
+  const heroCharacter: HeroCharacter =
+    obj.heroCharacter === 'goddess' && maxUnlockedLoop >= HARD_MODE_LOOP ? 'goddess' : 'hero';
+
   return {
     crystals,
     loop,
@@ -200,6 +207,7 @@ export function sanitizeMeta(raw: unknown): MetaSave {
     unlockedArmorSkins,
     equippedWeaponSkin,
     equippedArmorSkin,
+    heroCharacter,
     activeBoosts: uniqueBoosts(obj.activeBoosts),
     stageRecords: sanitizeRecords(obj.stageRecords),
   };
@@ -415,6 +423,20 @@ export function recordStageClear(meta: MetaSave, clearedLoop: number, timeLeft: 
   };
 }
 
+export function isGoddessHeroUnlocked(meta: MetaSave): boolean {
+  return meta.maxUnlockedLoop >= HARD_MODE_LOOP;
+}
+
+export function activeHeroCharacter(meta: MetaSave): HeroCharacter {
+  return meta.heroCharacter === 'goddess' && isGoddessHeroUnlocked(meta) ? 'goddess' : 'hero';
+}
+
+export function selectHeroCharacter(meta: MetaSave, character: HeroCharacter): MetaSave | null {
+  if (character === 'goddess' && !isGoddessHeroUnlocked(meta)) return null;
+  if (meta.heroCharacter === character) return null;
+  return { ...meta, heroCharacter: character };
+}
+
 export function resolveHeroAppearance(meta: MetaSave): { weaponLook: WeaponId; armorLook: ArmorId; shieldLook: ShieldId | null } {
   const weaponLook =
     meta.equippedWeaponSkin && meta.unlockedWeaponSkins.includes(meta.equippedWeaponSkin)
@@ -439,6 +461,7 @@ export interface RunSummary {
   skinsUnlocked: string[];
   defeatTip: DefeatTipKey | null;
   reason: 'victory' | 'timeUp' | 'defeated';
+  fanfarePlayed?: boolean;
 }
 
 export function computeCrystalReward(

@@ -17,8 +17,11 @@ export function heroResults(scene: Phaser.Scene, ctx: ResultsContext): void {
 
   if (summary) {
     scene.game.registry.set(LAST_RUN_KEY, undefined);
-    if (summary.bossSlain) playVictoryFanfare(kit.audio.muted);
-    else playDefeatJingle(kit.audio.muted);
+    if (summary.bossSlain) {
+      if (!summary.fanfarePlayed) playVictoryFanfare(kit.audio.muted);
+    } else {
+      if (!summary.fanfarePlayed) playDefeatJingle(kit.audio.muted);
+    }
     void kit.save.getJSON<unknown>(META_SAVE_KEY, null).then((raw) => {
       let meta = sanitizeMeta(raw);
       meta = { ...meta, crystals: meta.crystals + summary.crystalsEarned };

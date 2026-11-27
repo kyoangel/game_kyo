@@ -252,11 +252,13 @@ export function resolveBumpClash(
   enemyHp: number,
   enemy: EnemySpec,
   rng: () => number = Math.random,
+  isDashing = false,
 ): ClashResult {
   const hAtk = totalAtk(hero);
   const hDef = totalDef(hero);
   const lowHpBoost = hero.weaponPassive === 'lifesteal' && hero.hp <= hero.maxHp * 0.5 ? 1.25 : 1;
-  const baseDmgToEnemy = Math.max(1, Math.round((hAtk - enemy.def) * lowHpBoost));
+  const dashMult = isDashing ? 1.5 : 1;
+  const baseDmgToEnemy = Math.max(1, Math.round((hAtk - enemy.def) * lowHpBoost * dashMult));
   const critTriggered = rng() < hero.critChance;
   const critMult = hero.weaponPassive === 'critBurst' ? 1.85 : 1.5;
   const dmgToEnemy = critTriggered ? Math.round(baseDmgToEnemy * critMult) : baseDmgToEnemy;

@@ -50,8 +50,8 @@ export const BALANCE = {
   bossAtk: (loop: number): number => Math.round(36 + (loop - 1) * 18 + Math.pow(Math.max(0, loop - 1), 1.35) * 3.5),
   bossDef: (_loop: number): number => 0,
 
-  // Overworld mob scaling (stats accelerate faster than rewards so higher loops stay genuinely tense)
-  mobStatScale: (loop: number): number => 1 + (loop - 1) * 0.45 + Math.pow(Math.max(0, loop - 1), 1.45) * 0.08,
+  // Overworld mob scaling (smooth early-mid curve so Loop 1..8 stay snappy, accelerating in Loop 10+)
+  mobStatScale: (loop: number): number => 1 + (loop - 1) * 0.25 + Math.pow(Math.max(0, loop - 1), 1.55) * 0.032,
   mobRewardScale: (loop: number): number => 1 + (loop - 1) * 0.28,
 
   // Crystal economy (sqrt curve prevents runaway inflation at Loop 15+)

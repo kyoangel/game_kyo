@@ -15,6 +15,7 @@ import {
   weaponAscendCost,
 } from './gear.ts';
 import {
+  activeHeroCharacter,
   activeShieldFor,
   ascendArmor,
   ascendShield,
@@ -26,10 +27,12 @@ import {
   computeCrystalReward,
   computeScore,
   defaultMeta,
+  isGoddessHeroUnlocked,
   recordStageClear,
   resolveHeroAppearance,
   sanitizeMeta,
   selectArmorSkin,
+  selectHeroCharacter,
   selectStageLoop,
   selectWeaponSkin,
   togglePreRunBoost,
@@ -119,9 +122,16 @@ describe('chrono-rush meta progression, gear & skins', () => {
     let meta = { ...defaultMeta(), crystals: 200 };
     // Locked before Loop 26
     expect(togglePreRunBoost(meta, 'chronoDust')).toBeNull();
+    expect(isGoddessHeroUnlocked(meta)).toBe(false);
+    expect(selectHeroCharacter(meta, 'goddess')).toBeNull();
+    expect(activeHeroCharacter(meta)).toBe('hero');
 
-    // Unlocked at Loop 26 (Hard Mode)
+    // Unlocked at Loop 26 (Hard Mode + Fallen Goddess playable heroine!)
     meta = { ...meta, maxUnlockedLoop: 26, loop: 26 };
+    expect(isGoddessHeroUnlocked(meta)).toBe(true);
+    const asGoddess = selectHeroCharacter(meta, 'goddess')!;
+    expect(activeHeroCharacter(asGoddess)).toBe('goddess');
+    expect(activeHeroCharacter(selectHeroCharacter(asGoddess, 'hero')!)).toBe('hero');
     meta = togglePreRunBoost(meta, 'chronoDust')!;
     expect(meta.crystals).toBe(140);
     // Toggle OFF refunds full 60 crystals!
@@ -196,6 +206,11 @@ describe('chrono-rush bump combat, blacksmith polish & paid inn heal', () => {
     expect(hit1.enemyDefeated).toBe(false);
     expect(hit1.enemyDamageDealt).toBe(33);
     expect(hit1.remainingEnemyHp).toBe(35);
+
+    // Overworld Dash-Slash deals 1.5x damage (33 * 1.5 = 50)
+    const dashHit = resolveBumpClash(hero, goblin.hp, goblin, () => 0.99, true);
+    expect(dashHit.enemyDamageDealt).toBe(50);
+    expect(dashHit.remainingEnemyHp).toBe(18);
   });
 
   it('ascends any owned gear to endgame stats only after all gear in that category is owned', () => {

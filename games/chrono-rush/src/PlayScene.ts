@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { addButton, ensureTextures, getKit, type Fx, type GameInput, type Kit } from '@gf/game-kit';
 import { diagnoseDefeat, FEATURES, medalForTimeLeft } from './balance.ts';
+import { createBossEvoRig, formatBossName, getBossEvo, type BossEvoRig, type BossEvoSpec } from './bossEvo.ts';
 import { getChapterForLoop, resolveObstacleCollision, type ChapterStageInfo, type MapPoiDef, type VillagePlacement } from './chapters.ts';
+import { playDefeatJingle, playGoddessReviveChime, playVictoryFanfare } from './fanfare.ts';
 import {
   armorPolishCost,
   elixirCost,
@@ -12,9 +14,11 @@ import {
   weaponPolishCost,
 } from './gear.ts';
 import {
+  activeHeroCharacter,
   computeCrystalReward,
   computeScore,
   defaultMeta,
+  HARD_MODE_LOOP,
   resolveHeroAppearance,
   sanitizeMeta,
   unlockArmorSkin,
@@ -23,6 +27,7 @@ import {
   type RunSummary,
 } from './meta.ts';
 import { ensureHeroAppearance, ensurePixelArt, mobTextureKey, type OverworldMobId } from './pixelArt.ts';
+import { isTouchMobileViewport } from './mobile.ts';
 import {
   bossBonusDamageMult,
   bossComboMultiplier,
@@ -120,6 +125,9 @@ export class PlayScene extends Phaser.Scene {
   private arenaHeroVy = 0;
   private arenaKnockbackTimer = 0;
   private arenaBoss!: Phaser.GameObjects.Image;
+  private arenaBossEvo!: BossEvoSpec;
+  private arenaBossEvoRig: BossEvoRig | null = null;
+  private arenaBossVolleyCount = 0;
   private arenaBossHpFill!: Phaser.GameObjects.Rectangle;
   private arenaBossHpText!: Phaser.GameObjects.Text;
   private arenaBossAttackTimer = 1.6;
@@ -144,6 +152,7 @@ export class PlayScene extends Phaser.Scene {
   private activeVillage: VillagePlacement | null = null;
   private pausedByUser = false;
   private pauseOverlay: Phaser.GameObjects.GameObject[] = [];
+  private defeatCutsceneObjects: Phaser.GameObjects.GameObject[] = [];
   private skinsUnlockedThisRun: string[] = [];
   private runEnded = false;
   private ready = false;
@@ -162,6 +171,8 @@ export class PlayScene extends Phaser.Scene {
   private dashBarFill!: Phaser.GameObjects.Rectangle;
   private pausedBanner!: Phaser.GameObjects.Text;
   private controlsHintText!: Phaser.GameObjects.Text;
+  private jumpBtn?: Phaser.GameObjects.Container;
+  private isMobile = false;
   private villageOverlay: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
@@ -170,6 +181,8 @@ export class PlayScene extends Phaser.Scene {
 
   create(): void {
     this.kit = getKit(this);
+    this.isMobile = isTouchMobileViewport();
+    this.jumpBtn = undefined;
     ensureTextures(this, this.kit.theme);
     ensurePixelArt(this);
     this.fx = this.kit.fx(this);
@@ -273,7 +286,7 @@ export class PlayScene extends Phaser.Scene {
       this.bossHp = this.bossSpec.hp;
       this.bossMaxHp = this.bossSpec.hp;
       const { weaponLook, armorLook, shieldLook } = resolveHeroAppearance(this.meta);
-      this.heroFrames = ensureHeroAppearance(this, weaponLook, armorLook, shieldLook);
+      this.heroFrames = ensureHeroAppearance(this, weaponLook, armorLook, shieldLook, activeHeroCharacter(this.meta));
       this.buildWorld();
       this.spawnHero();
       this.spawnEntities();
@@ -484,14 +497,15 @@ export class PlayScene extends Phaser.Scene {
     const firstV = this.stage.chapter.villages[0];
     const startX = firstV.x + 100;
     const startY = firstV.y;
-    this.heroShadow = this.add.ellipse(startX, startY + 22, 42, 14, 0x000000, 0.35).setDepth(9);
-    this.heroSprite = this.add.image(startX, startY, this.heroFrames[0]).setDepth(12);
-    this.heroHpBg = this.add.rectangle(startX, startY - 36, 50, 7, 0x120d1d).setDepth(16);
-    this.heroHpFill = this.add.rectangle(startX - 24, startY - 36, 48, 5, 0x22c55e).setOrigin(0, 0.5).setDepth(17);
+    const m = this.isMobile;
+    this.heroShadow = this.add.ellipse(startX, startY + (m ? 28 : 22), m ? 54 : 42, m ? 18 : 14, 0x000000, 0.35).setDepth(9);
+    this.heroSprite = this.add.image(startX, startY, this.heroFrames[0]).setScale(m ? 1.3 : 1).setDepth(12);
+    this.heroHpBg = this.add.rectangle(startX, startY - (m ? 46 : 36), 50, m ? 9 : 7, 0x120d1d).setDepth(16);
+    this.heroHpFill = this.add.rectangle(startX - 24, startY - (m ? 46 : 36), 48, m ? 7 : 5, 0x22c55e).setOrigin(0, 0.5).setDepth(17);
     this.heroReadyBang = this.add
-      .text(startX, startY - 62, '!', {
+      .text(startX, startY - (m ? 76 : 62), '!', {
         fontFamily: this.kit.theme.font,
-        fontSize: '34px',
+        fontSize: m ? '42px' : '34px',
         fontStyle: 'bold',
         color: '#facc15',
         stroke: '#09050f',
@@ -510,20 +524,21 @@ export class PlayScene extends Phaser.Scene {
 
   private createEnemyEntity(id: OverworldMobId, x: number, y: number): EnemyEntity {
     const spec = makeEnemy(id, this.meta.loop);
-    const sprite = this.add.image(x, y, mobTextureKey(this.stage.chapter.id, id, 0)).setDepth(10);
+    const m = this.isMobile;
+    const sprite = this.add.image(x, y, mobTextureKey(this.stage.chapter.id, id, 0)).setScale(m ? 1.28 : 1).setDepth(10);
 
-    const barW = 44;
-    const barY = y - 30;
-    const hpBg = this.add.rectangle(x, barY, barW, 6, 0x09050f).setDepth(15);
-    const hpFill = this.add.rectangle(x - barW / 2 + 1, barY, barW - 2, 4, 0xef4444).setOrigin(0, 0.5).setDepth(16);
+    const barW = m ? 56 : 44;
+    const barY = y - (m ? 38 : 30);
+    const hpBg = this.add.rectangle(x, barY, barW, m ? 8 : 6, 0x09050f).setDepth(15);
+    const hpFill = this.add.rectangle(x - barW / 2 + 1, barY, barW - 2, m ? 6 : 4, 0xef4444).setOrigin(0, 0.5).setDepth(16);
     const label = this.add
-      .text(x, barY - 11, `HP ${spec.hp}`, {
+      .text(x, barY - (m ? 15 : 11), `HP ${spec.hp}`, {
         fontFamily: this.kit.theme.font,
-        fontSize: '12px',
+        fontSize: m ? '17px' : '12px',
         fontStyle: 'bold',
         color: '#e2e8f0',
         stroke: '#09050f',
-        strokeThickness: 3,
+        strokeThickness: m ? 4 : 3,
       })
       .setOrigin(0.5)
       .setDepth(16);
@@ -553,37 +568,39 @@ export class PlayScene extends Phaser.Scene {
   private buildHud(): void {
     const { width, height } = this.scale;
     const font = this.kit.theme.font;
+    const m = this.isMobile;
+    const barH = m ? 96 : 84;
 
-    this.add.rectangle(width / 2, 42, width, 84, 0x0e081f, 0.86).setScrollFactor(0).setDepth(100);
-    this.add.rectangle(width / 2, 84, width, 3, 0xfacc15, 0.65).setScrollFactor(0).setDepth(100);
+    this.add.rectangle(width / 2, barH / 2, width, barH, 0x0e081f, 0.86).setScrollFactor(0).setDepth(100);
+    this.add.rectangle(width / 2, barH, width, 3, 0xfacc15, 0.65).setScrollFactor(0).setDepth(100);
 
     this.lvText = this.add
-      .text(24, 16, '', { fontFamily: font, fontSize: '26px', fontStyle: 'bold', color: '#facc15', stroke: '#09050f', strokeThickness: 4 })
+      .text(24, m ? 14 : 16, '', { fontFamily: font, fontSize: m ? '31px' : '26px', fontStyle: 'bold', color: '#facc15', stroke: '#09050f', strokeThickness: 4 })
       .setScrollFactor(0)
       .setDepth(102);
 
     this.statText = this.add
-      .text(145, 22, '', { fontFamily: font, fontSize: '18px', fontStyle: 'bold', color: '#cbd5e1' })
+      .text(m ? 156 : 145, m ? 21 : 22, '', { fontFamily: font, fontSize: m ? '21px' : '18px', fontStyle: 'bold', color: '#cbd5e1' })
       .setScrollFactor(0)
       .setDepth(102);
 
-    this.add.rectangle(24, 58, 220, 18, 0x1e1b4b).setOrigin(0, 0.5).setScrollFactor(0).setDepth(101);
-    this.hpBarFill = this.add.rectangle(26, 58, 216, 14, 0x22c55e).setOrigin(0, 0.5).setScrollFactor(0).setDepth(102);
+    this.add.rectangle(24, m ? 66 : 58, 220, m ? 24 : 18, 0x1e1b4b).setOrigin(0, 0.5).setScrollFactor(0).setDepth(101);
+    this.hpBarFill = this.add.rectangle(26, m ? 66 : 58, 216, m ? 20 : 14, 0x22c55e).setOrigin(0, 0.5).setScrollFactor(0).setDepth(102);
     this.hpBarText = this.add
-      .text(134, 58, '', { fontFamily: font, fontSize: '13px', fontStyle: 'bold', color: '#ffffff', stroke: '#09050f', strokeThickness: 3 })
+      .text(134, m ? 66 : 58, '', { fontFamily: font, fontSize: m ? '16px' : '13px', fontStyle: 'bold', color: '#ffffff', stroke: '#09050f', strokeThickness: 3 })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(103);
 
-    this.add.rectangle(256, 58, 150, 14, 0x1e1b4b).setOrigin(0, 0.5).setScrollFactor(0).setDepth(101);
-    this.xpBarFill = this.add.rectangle(258, 58, 0, 10, 0xa78bfa).setOrigin(0, 0.5).setScrollFactor(0).setDepth(102);
+    this.add.rectangle(256, m ? 66 : 58, 150, m ? 18 : 14, 0x1e1b4b).setOrigin(0, 0.5).setScrollFactor(0).setDepth(101);
+    this.xpBarFill = this.add.rectangle(258, m ? 66 : 58, 0, m ? 14 : 10, 0xa78bfa).setOrigin(0, 0.5).setScrollFactor(0).setDepth(102);
 
     // Pause button cleanly placed between XP bar and center Timer
-    const pauseBtn = addButton(this, 474, 42, '⏸', {
-      width: 54,
-      height: 50,
+    const pauseBtn = addButton(this, 474, barH / 2, '⏸', {
+      width: m ? 64 : 54,
+      height: m ? 58 : 50,
       fill: 0x312e81,
-      fontSize: 24,
+      fontSize: m ? 28 : 24,
       onClick: () => {
         if (this.pausedByUser) this.closePauseMenu();
         else if (!this.activeVillage && !this.runEnded) this.openPauseMenu();
@@ -592,14 +609,14 @@ export class PlayScene extends Phaser.Scene {
     pauseBtn.setScrollFactor(0).setDepth(102);
 
     this.timerBadge = this.add
-      .rectangle(width / 2, 42, 196, 64, 0x1e1b4b, 0.96)
+      .rectangle(width / 2, barH / 2, m ? 220 : 196, m ? 72 : 64, 0x1e1b4b, 0.96)
       .setStrokeStyle(4, 0xfacc15)
       .setScrollFactor(0)
       .setDepth(101);
     this.timerText = this.add
-      .text(width / 2, 42, '30.0', {
+      .text(width / 2, barH / 2, '30.0', {
         fontFamily: font,
-        fontSize: '42px',
+        fontSize: m ? '48px' : '42px',
         fontStyle: 'bold',
         color: '#facc15',
         stroke: '#09050f',
@@ -610,9 +627,9 @@ export class PlayScene extends Phaser.Scene {
       .setDepth(102);
 
     this.pausedBanner = this.add
-      .text(width / 2, 96, '', {
+      .text(width / 2, barH + 14, '', {
         fontFamily: font,
-        fontSize: '18px',
+        fontSize: m ? '21px' : '18px',
         fontStyle: 'bold',
         color: '#38bdf8',
         stroke: '#09050f',
@@ -622,17 +639,17 @@ export class PlayScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(102);
 
-    this.add.image(width - 436, 28, 'px-coin').setScale(0.7).setScrollFactor(0).setDepth(102);
+    this.add.image(width - 436, m ? 30 : 28, 'px-coin').setScale(m ? 0.85 : 0.7).setScrollFactor(0).setDepth(102);
     this.goldText = this.add
-      .text(width - 416, 28, '0 G', { fontFamily: font, fontSize: '21px', fontStyle: 'bold', color: '#facc15' })
+      .text(width - 414, m ? 30 : 28, '0 G', { fontFamily: font, fontSize: m ? '25px' : '21px', fontStyle: 'bold', color: '#facc15' })
       .setOrigin(0, 0.5)
       .setScrollFactor(0)
       .setDepth(102);
 
     this.add
-      .text(width - 24, 28, `${this.kit.t(`chapter.${this.stage.chapter.id}`)} ${this.stage.roman}`, {
+      .text(width - 24, m ? 30 : 28, `${this.kit.t(`chapter.${this.stage.chapter.id}`)} ${this.stage.roman}`, {
         fontFamily: font,
-        fontSize: '18px',
+        fontSize: m ? '21px' : '18px',
         fontStyle: 'bold',
         color: '#c084fc',
       })
@@ -641,26 +658,46 @@ export class PlayScene extends Phaser.Scene {
       .setDepth(102);
 
     this.bossArrowText = this.add
-      .text(width - 24, 60, '', { fontFamily: font, fontSize: '18px', fontStyle: 'bold', color: '#fda4af' })
+      .text(width - 24, m ? 68 : 60, '', { fontFamily: font, fontSize: m ? '21px' : '18px', fontStyle: 'bold', color: '#fda4af' })
       .setOrigin(1, 0.5)
       .setScrollFactor(0)
       .setDepth(102);
 
-    const dashBtn = addButton(this, width - 96, height - 64, this.kit.t('dash'), {
-      width: 144,
-      height: 56,
+    const dashW = m ? 188 : 144;
+    const dashH = m ? 74 : 56;
+    const dashX = m ? width - 116 : width - 96;
+    const dashY = m ? height - 74 : height - 64;
+    const dashBtn = addButton(this, dashX, dashY, this.kit.t('dash'), {
+      width: dashW,
+      height: dashH,
       fill: 0x0284c7,
-      fontSize: 22,
+      fontSize: m ? 28 : 22,
       onClick: () => this.tryDash(),
     });
     dashBtn.setScrollFactor(0).setDepth(102);
-    this.add.rectangle(width - 96, height - 26, 136, 8, 0x1e1b4b).setScrollFactor(0).setDepth(101);
-    this.dashBarFill = this.add.rectangle(width - 164, height - 26, 136, 6, 0x38bdf8).setOrigin(0, 0.5).setScrollFactor(0).setDepth(102);
+    this.add.rectangle(dashX, m ? height - 24 : height - 26, dashW - 8, m ? 10 : 8, 0x1e1b4b).setScrollFactor(0).setDepth(101);
+    this.dashBarFill = this.add
+      .rectangle(dashX - (dashW - 8) / 2, m ? height - 24 : height - 26, dashW - 8, m ? 8 : 6, 0x38bdf8)
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(102);
+
+    // Mobile-only dedicated Jump button for Boss Arena (hidden in Overworld & completely absent on Desktop!)
+    if (m) {
+      this.jumpBtn = addButton(this, dashX - 202, dashY, this.kit.t('jump'), {
+        width: 176,
+        height: 74,
+        fill: 0x16a34a,
+        fontSize: 28,
+        onClick: () => this.tryArenaJump(),
+      });
+      this.jumpBtn.setScrollFactor(0).setDepth(102).setVisible(false);
+    }
 
     this.controlsHintText = this.add
-      .text(24, height - 28, this.kit.t('controlsHint'), {
+      .text(24, height - 28, this.kit.t(m ? 'touchControlsHint' : 'controlsHint'), {
         fontFamily: font,
-        fontSize: '15px',
+        fontSize: m ? '19px' : '15px',
         color: '#e2e8f0',
         stroke: '#09050f',
         strokeThickness: 3,
@@ -829,9 +866,11 @@ export class PlayScene extends Phaser.Scene {
       return o;
     };
 
-    // Chapter-Themed Boss Throne Room Background
+    // Chapter-Themed Boss Throne Room Background + Episode I..V Boss Evolution
     const ch = this.stage.chapter;
-    const bossName = this.kit.t(`boss.${ch.bossKind}`);
+    this.arenaBossEvo = getBossEvo(this.stage.episodeIndex);
+    this.arenaBossVolleyCount = 0;
+    const bossName = this.currentBossDisplayName();
     const bg = addA(this.add.graphics(), 40);
     bg.fillStyle(0x0b0614, 1);
     bg.fillRect(0, 0, width, height);
@@ -938,8 +977,16 @@ export class PlayScene extends Phaser.Scene {
 
     addA(this.add.ellipse(ARENA_BOSS_X, ARENA_GROUND_Y + 6, 130, 26, 0x000000, 0.5), 50);
     this.arenaBoss = addA(this.add.image(ARENA_BOSS_X, ARENA_BOSS_Y, `px-${ch.bossKind}-0`).setScale(1.75).setFlipX(true), 54);
+    this.arenaBossEvoRig?.destroy();
+    this.arenaBossEvoRig = createBossEvoRig(this, this.arenaBoss, this.arenaBossEvo, {
+      baseScale: 1.75,
+      screenSpace: true,
+      depthBehind: 53,
+      depthFront: 56,
+    });
+    this.arenaBossEvoRig.syncPosition(this.arenaBoss.x, this.arenaBoss.y);
 
-    // Dramatic entrance banner
+    // Dramatic entrance banner (+ Finale tag on Episode V!)
     const banner = addA(
       this.add
         .text(width / 2, height / 2 - 60, this.kit.t('bossEnter'), {
@@ -954,12 +1001,38 @@ export class PlayScene extends Phaser.Scene {
       80,
     );
     this.tweens.add({ targets: banner, y: banner.y - 30, alpha: 0, duration: 950, ease: 'Cubic.easeOut', onComplete: () => banner.destroy() });
+    if (this.stage.isFinale) {
+      const finBanner = addA(
+        this.add
+          .text(width / 2, height / 2 - 12, this.kit.t('finaleTag'), {
+            fontFamily: font,
+            fontSize: '26px',
+            fontStyle: 'bold',
+            color: '#fda4af',
+            stroke: '#09050f',
+            strokeThickness: 5,
+          })
+          .setOrigin(0.5),
+        80,
+      );
+      this.tweens.add({ targets: finBanner, y: finBanner.y - 24, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => finBanner.destroy() });
+    }
 
-    this.controlsHintText.setText(this.kit.t('bossControls'));
+    this.controlsHintText.setText(this.kit.t(this.isMobile ? 'touchControlsHint' : 'bossControls'));
+    this.jumpBtn?.setVisible(this.isMobile);
     this.syncMusicIntensity();
   }
 
+  private currentBossDisplayName(): string {
+    const base = this.kit.t(`boss.${this.stage.chapter.bossKind}`);
+    const evo = this.arenaBossEvo ?? getBossEvo(this.stage.episodeIndex);
+    const evoLabel = evo.titleKey ? this.kit.t(evo.titleKey) : '';
+    return formatBossName(base, evo, evoLabel, this.stage.roman);
+  }
+
   private exitBossArena(): void {
+    this.arenaBossEvoRig?.destroy();
+    this.arenaBossEvoRig = null;
     for (const fb of this.fireballs) {
       fb.obj.destroy();
       fb.glow.destroy();
@@ -972,7 +1045,8 @@ export class PlayScene extends Phaser.Scene {
     this.mode = 'overworld';
     this.castleReentryCooldown = 1.6;
     this.heroSprite.setPosition(CASTLE_POS.x - 120, CASTLE_POS.y);
-    this.controlsHintText.setText(this.kit.t('controlsHint'));
+    this.controlsHintText.setText(this.kit.t(this.isMobile ? 'touchControlsHint' : 'controlsHint'));
+    this.jumpBtn?.setVisible(false);
     this.kit.audio.sfx('click');
     this.syncMusicIntensity();
   }
@@ -1040,16 +1114,18 @@ export class PlayScene extends Phaser.Scene {
     this.arenaBossAnimClock += dt * 3.2;
     this.arenaBoss.setTexture(`px-${bKind}-${Math.floor(this.arenaBossAnimClock) % 2}`);
     this.arenaBoss.y = ARENA_BOSS_Y + Math.sin(this.arenaBossAnimClock * 1.4) * 12;
+    this.arenaBossEvoRig?.syncPosition(this.arenaBoss.x, this.arenaBoss.y);
 
     if (this.arenaBossCharging > 0) {
       this.arenaBossCharging -= dt;
       const blink = Math.floor(this.time.now / 65) % 2 === 0;
-      this.arenaBoss.setTint(blink ? this.stage.chapter.arenaAccent : 0xffffff);
+      this.arenaBoss.setTint(blink ? this.stage.chapter.arenaAccent : (this.arenaBossEvo?.tint ?? 0xffffff));
       const warnY = ARENA_GROUND_Y - 26 - this.arenaPendingOffsetY;
       this.arenaTelegraphLine?.setPosition(ARENA_BOSS_X / 2, warnY).setVisible(true).setAlpha(blink ? 0.45 : 0.16);
       this.arenaTelegraphWarn?.setPosition(ARENA_BOSS_X - 115, warnY - 34).setVisible(true).setAlpha(blink ? 1 : 0.55);
       if (this.arenaBossCharging <= 0) {
-        this.arenaBoss.clearTint();
+        if (this.arenaBossEvo?.tint != null) this.arenaBoss.setTint(this.arenaBossEvo.tint);
+        else this.arenaBoss.clearTint();
         this.arenaTelegraphLine?.setVisible(false);
         this.arenaTelegraphWarn?.setVisible(false);
         this.spawnBossFireball();
@@ -1058,12 +1134,17 @@ export class PlayScene extends Phaser.Scene {
       this.arenaBossAttackTimer -= dt;
       if (this.arenaBossAttackTimer <= 0) {
         const slowed = this.hero.weaponPassive === 'frostSlow';
-        const loopTempo = Math.min(0.65, Math.max(0, this.meta.loop - 1) * 0.015);
+        const evoTier = this.arenaBossEvo?.tier ?? 1;
+        const loopTempo = Math.min(0.65, Math.max(0, this.meta.loop - 1) * 0.015 + (evoTier >= 4 ? 0.08 : 0));
         const baseCharge = Math.max(0.45, 0.65 - loopTempo * 0.25);
         const baseAtkCd = Math.max(1.2, 2.05 - loopTempo);
         this.arenaBossCharging = slowed ? baseCharge * 1.3 : baseCharge;
         this.arenaBossAttackTimer = slowed ? baseAtkCd * 1.3 : baseAtkCd;
-        if (this.stage.chapter.bossPattern === 'iceDual' || this.stage.chapter.bossPattern === 'seraphBarrage') {
+        if (
+          this.stage.chapter.bossPattern === 'iceDual' ||
+          this.stage.chapter.bossPattern === 'seraphBarrage' ||
+          evoTier >= 3
+        ) {
           this.bossPatternFlip = !this.bossPatternFlip;
           this.arenaPendingOffsetY = this.bossPatternFlip ? 0 : 88;
         } else {
@@ -1120,8 +1201,8 @@ export class PlayScene extends Phaser.Scene {
               fb.obj.destroy();
               fb.glow.destroy();
               this.fireballs.splice(i, 1);
-              this.kit.audio.sfx('medal');
-              this.endRun('victory');
+              this.kills += 1;
+              this.playBossVictoryCelebration();
               return;
             }
           }
@@ -1176,7 +1257,9 @@ export class PlayScene extends Phaser.Scene {
 
   private spawnBossFireball(): void {
     const pattern = this.stage.chapter.bossPattern;
-    const loopSpeedMult = 1 + Math.min(0.4, Math.max(0, this.meta.loop - 1) * 0.009);
+    const evoTier = this.arenaBossEvo?.tier ?? 1;
+    this.arenaBossVolleyCount += 1;
+    const loopSpeedMult = 1 + Math.min(0.4, Math.max(0, this.meta.loop - 1) * 0.009) + (evoTier >= 4 ? 0.08 : 0);
     const frostMult = this.hero.weaponPassive === 'frostSlow' ? 0.7 : 1;
     const speedScale = loopSpeedMult * frostMult;
     const launchOrb = (offsetY: number, speed: number, coreColor: number, rimColor: number) => {
@@ -1189,16 +1272,21 @@ export class PlayScene extends Phaser.Scene {
 
     if (pattern === 'iceDual') {
       launchOrb(this.arenaPendingOffsetY, 500, 0xe0f2fe, 0x38bdf8);
+      if (evoTier >= 2 && this.arenaBossVolleyCount % 2 === 0) {
+        this.time.delayedCall(260, () => {
+          if (this.mode === 'boss' && !this.runEnded) launchOrb(this.arenaPendingOffsetY, 520, 0xffffff, 0x38bdf8);
+        });
+      }
     } else if (pattern === 'magmaVolley') {
-      launchOrb(0, 520, 0xfef08a, 0xf97316);
+      launchOrb(this.arenaPendingOffsetY, 520, 0xfef08a, 0xf97316);
       this.time.delayedCall(260, () => {
-        if (this.mode === 'boss' && !this.runEnded) launchOrb(20, 540, 0xfef08a, 0xdc2626);
+        if (this.mode === 'boss' && !this.runEnded) launchOrb(this.arenaPendingOffsetY === 0 ? 20 : 88, 540, 0xfef08a, 0xdc2626);
       });
     } else if (pattern === 'cyberLaser') {
       // Chapter 4 Cyber Mech: ultra-fast cyan plasma pulse!
-      launchOrb(0, 620, 0xffffff, 0x22d3ee);
+      launchOrb(this.arenaPendingOffsetY, 620, 0xffffff, 0x22d3ee);
       this.time.delayedCall(200, () => {
-        if (this.mode === 'boss' && !this.runEnded) launchOrb(0, 640, 0xf0abfc, 0xa21caf);
+        if (this.mode === 'boss' && !this.runEnded) launchOrb(this.arenaPendingOffsetY, 640, 0xf0abfc, 0xa21caf);
       });
     } else if (pattern === 'seraphBarrage') {
       // Chapter 5 Void Seraph: high-low celestial light barrage!
@@ -1207,7 +1295,14 @@ export class PlayScene extends Phaser.Scene {
         if (this.mode === 'boss' && !this.runEnded) launchOrb(this.arenaPendingOffsetY === 0 ? 88 : 0, 560, 0xe9d5ff, 0x7c3aed);
       });
     } else {
-      launchOrb(0, 470, 0xfacc15, 0xef4444);
+      // Chapter 1 Demon Lord: Episode II+ fires staggered double-shot on even volleys, Episode V fires finale combo!
+      launchOrb(this.arenaPendingOffsetY, 470, 0xfacc15, 0xef4444);
+      if (evoTier >= 2 && (evoTier >= 5 || this.arenaBossVolleyCount % 2 === 0)) {
+        const secondOffset = evoTier >= 5 ? (this.arenaPendingOffsetY === 0 ? 88 : 0) : this.arenaPendingOffsetY;
+        this.time.delayedCall(260, () => {
+          if (this.mode === 'boss' && !this.runEnded) launchOrb(secondOffset, 500, 0xfef08a, 0xf97316);
+        });
+      }
     }
     this.kit.audio.sfx('rush');
   }
@@ -1252,7 +1347,10 @@ export class PlayScene extends Phaser.Scene {
     // Boss flash + recoil + sparks
     this.arenaBoss.setTintFill(0xffffff);
     this.time.delayedCall(90, () => {
-      if (this.arenaBoss?.active) this.arenaBoss.clearTint();
+      if (this.arenaBoss?.active) {
+        if (this.arenaBossEvo?.tint != null) this.arenaBoss.setTint(this.arenaBossEvo.tint);
+        else this.arenaBoss.clearTint();
+      }
     });
     this.tweens.add({ targets: this.arenaBoss, x: ARENA_BOSS_X + 26, duration: 75, yoyo: true });
 
@@ -1272,15 +1370,11 @@ export class PlayScene extends Phaser.Scene {
 
     // Update Boss HP bar immediately
     this.arenaBossHpFill.width = Math.max(0, 540 * (this.bossHp / this.bossMaxHp));
-    this.arenaBossHpText.setText(`${this.kit.t(`boss.${this.stage.chapter.bossKind}`)}  ${this.bossHp} / ${this.bossMaxHp}`);
+    this.arenaBossHpText.setText(`${this.currentBossDisplayName()}  ${this.bossHp} / ${this.bossMaxHp}`);
 
     if (res.bossDefeated) {
       this.kills += 1;
-      this.fx.flash(0xfacc15, 300);
-      this.fx.shake(0.85);
-      this.kit.audio.sfx('newBest');
-      this.arenaBoss.setVisible(false);
-      this.endRun('victory');
+      this.playBossVictoryCelebration();
       return;
     }
 
@@ -1365,17 +1459,18 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private syncEnemyVisuals(e: EnemyEntity): void {
-    const barW = 44;
-    const barY = e.sprite.y - 30;
+    const barW = this.isMobile ? 56 : 44;
+    const barY = e.sprite.y - (this.isMobile ? 38 : 30);
     e.hpBg.setPosition(e.sprite.x, barY);
     e.hpFill.setPosition(e.sprite.x - barW / 2 + 1, barY);
     e.hpFill.width = Math.max(0, (barW - 2) * (e.hp / e.maxHp));
-    e.label.setPosition(e.sprite.x, barY - 11);
+    e.label.setPosition(e.sprite.x, barY - (this.isMobile ? 15 : 11));
     e.label.setText(`HP ${e.hp}`);
   }
 
   private handleBump(e: EnemyEntity): void {
-    const res = resolveBumpClash(this.hero, e.hp, e.spec);
+    const isDashing = this.dashTimeLeft > 0;
+    const res = resolveBumpClash(this.hero, e.hp, e.spec, Math.random, isDashing);
     e.hp = res.remainingEnemyHp;
     if (this.invulnLeft <= 0) {
       this.hero.hp = Math.max(0, this.hero.hp - res.heroDamageTaken);
@@ -1391,10 +1486,15 @@ export class PlayScene extends Phaser.Scene {
     const midX = (this.heroSprite.x + e.sprite.x) / 2;
     const midY = (this.heroSprite.y + e.sprite.y) / 2;
 
-    this.fx.burst(midX, midY, { color: res.critTriggered || res.oneShot ? 0xfacc15 : 0xf43f5e, count: 14, speed: 320, lifespanMs: 360 });
-    this.fx.popText(e.sprite.x, e.sprite.y - 24, res.critTriggered ? `${this.kit.t('critTag')} -${res.enemyDamageDealt}!` : `-${res.enemyDamageDealt}`, {
-      color: res.critTriggered ? 0xfacc15 : 0xfef08a,
-      size: res.critTriggered ? 28 : 24,
+    this.fx.burst(midX, midY, { color: res.critTriggered || isDashing || res.oneShot ? 0xfacc15 : 0xf43f5e, count: isDashing ? 18 : 14, speed: 320, lifespanMs: 360 });
+    const dmgLabel = res.critTriggered
+      ? `${this.kit.t('critTag')} -${res.enemyDamageDealt}!`
+      : isDashing
+        ? `⚡ -${res.enemyDamageDealt}!`
+        : `-${res.enemyDamageDealt}`;
+    this.fx.popText(e.sprite.x, e.sprite.y - 24, dmgLabel, {
+      color: res.critTriggered || isDashing ? 0xfacc15 : 0xfef08a,
+      size: res.critTriggered || isDashing ? 28 : 24,
     });
     if (res.heroDamageTaken > 0 && this.invulnLeft <= 0) {
       this.fx.popText(this.heroSprite.x, this.heroSprite.y - 28, `-${res.heroDamageTaken}`, { color: 0xf43f5e, size: 22 });
@@ -1770,14 +1870,748 @@ export class PlayScene extends Phaser.Scene {
     this.updateHud();
   }
 
+  private spawnArenaBurst(x: number, y: number, colors: readonly number[], count: number, maxRadius: number, duration: number): void {
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.35;
+      const dist = maxRadius * (0.45 + Math.random() * 0.65);
+      const color = colors[i % colors.length];
+      const size = 6 + Math.random() * 7;
+      const shape =
+        i % 3 === 0
+          ? this.add.star(x, y, 4, size * 0.45, size, color, 1)
+          : this.add.rectangle(x, y, size, size, color, 1);
+      shape.setScrollFactor(0).setDepth(92).setAngle(Math.random() * 360);
+      this.tweens.add({
+        targets: shape,
+        x: x + Math.cos(angle) * dist,
+        y: y + Math.sin(angle) * dist + 24,
+        angle: shape.angle + (Math.random() > 0.5 ? 240 : -240),
+        scale: 0.15,
+        alpha: 0,
+        duration: duration * (0.75 + Math.random() * 0.4),
+        ease: 'Cubic.easeOut',
+        onComplete: () => shape.destroy(),
+      });
+    }
+  }
+
+  private spawnArenaConfetti(): void {
+    const { width, height } = this.scale;
+    const palette = [0xfacc15, 0x38bdf8, 0xf43f5e, 0x34d399, 0xc084fc, 0xfef08a];
+    for (let i = 0; i < 38; i++) {
+      const startX = 60 + Math.random() * (width - 120);
+      const startY = 76 + Math.random() * 40;
+      const color = palette[i % palette.length];
+      const w = 7 + Math.random() * 6;
+      const h = 11 + Math.random() * 7;
+      const piece = this.add.rectangle(startX, startY, w, h, color, 0.95).setScrollFactor(0).setDepth(94);
+      const driftX = (Math.random() - 0.5) * 180;
+      const delay = Math.random() * 480;
+      this.tweens.add({
+        targets: piece,
+        x: startX + driftX,
+        y: height * (0.58 + Math.random() * 0.36),
+        angle: (Math.random() > 0.5 ? 1 : -1) * (240 + Math.random() * 320),
+        alpha: 0,
+        delay,
+        duration: 1350 + Math.random() * 450,
+        ease: 'Sine.easeIn',
+        onComplete: () => piece.destroy(),
+      });
+    }
+  }
+
+  private playBossVictoryCelebration(): void {
+    if (this.runEnded) return;
+    this.runEnded = true;
+    this.fx.clearPops();
+    this.updateHud();
+
+    // Stop battle BGM and immediately play the triumphant 8-bit victory fanfare!
+    this.kit.audio.music.stop();
+    this.kit.audio.sfx('newBest');
+    playVictoryFanfare(this.kit.audio.muted);
+
+    // Clear telegraph warnings & shatter remaining fireballs into golden sparks
+    this.arenaTelegraphLine?.setVisible(false);
+    this.arenaTelegraphWarn?.setVisible(false);
+    for (const fb of this.fireballs) {
+      this.spawnArenaBurst(fb.x, fb.y, [0xfacc15, 0xfef08a, 0x38bdf8], 8, 52, 360);
+      fb.obj.destroy();
+      fb.glow.destroy();
+    }
+    this.fireballs = [];
+
+    const { width, height } = this.scale;
+    const font = this.kit.theme.font;
+    const bossX = this.arenaBoss?.x ?? ARENA_BOSS_X;
+    const bossY = this.arenaBoss?.y ?? ARENA_BOSS_Y;
+
+    // 1. Impact flash + heavy shake + expanding golden shockwave from Boss
+    this.fx.flash(0xfacc15, 320);
+    this.fx.shake(0.85);
+
+    const shockwave = this.add.circle(bossX, bossY, 26, 0xfacc15, 0).setStrokeStyle(8, 0xfef08a, 0.95).setScrollFactor(0).setDepth(90);
+    this.tweens.add({
+      targets: shockwave,
+      scale: 9.5,
+      alpha: 0,
+      duration: 620,
+      ease: 'Cubic.easeOut',
+      onComplete: () => shockwave.destroy(),
+    });
+
+    // 2. Boss dramatic white-hot tremor & staggered firework bursts before vanishing
+    if (this.arenaBoss?.active) {
+      this.arenaBoss.setTintFill(0xffffff);
+      this.tweens.add({
+        targets: this.arenaBoss,
+        x: bossX + 14,
+        duration: 45,
+        yoyo: true,
+        repeat: 9,
+      });
+      this.tweens.add({
+        targets: this.arenaBoss,
+        scaleX: this.arenaBoss.scaleX * 1.35,
+        scaleY: this.arenaBoss.scaleY * 1.35,
+        alpha: 0,
+        delay: 360,
+        duration: 300,
+        ease: 'Cubic.easeIn',
+        onComplete: () => {
+          if (this.arenaBoss?.active) this.arenaBoss.setVisible(false);
+          this.arenaBossEvoRig?.setVisible(false);
+        },
+      });
+    }
+
+    const burstPalette = [0xfacc15, 0xfef08a, 0x38bdf8, 0xf43f5e, 0xc084fc];
+    this.spawnArenaBurst(bossX, bossY, burstPalette, 22, 165, 650);
+    this.time.delayedCall(240, () => {
+      if (!this.scene.isActive()) return;
+      this.fx.shake(0.42);
+      this.spawnArenaBurst(bossX - 42, bossY - 34, burstPalette, 18, 150, 620);
+      this.spawnArenaBurst(bossX + 46, bossY + 18, burstPalette, 16, 140, 600);
+    });
+    this.time.delayedCall(520, () => {
+      if (!this.scene.isActive()) return;
+      this.fx.flash(0xffffff, 200);
+      this.fx.shake(0.55);
+      this.spawnArenaBurst(bossX, bossY - 12, [0xfacc15, 0xffffff, 0x38bdf8, 0x34d399], 30, 230, 780);
+    });
+
+    // 3. Hero lands cleanly, radiates golden aura, and does joyful victory hops!
+    if (this.arenaHero?.active) {
+      this.arenaHero.setAlpha(1).setFlipX(false).setTexture(this.heroFrames[0]);
+      const heroLandX = Phaser.Math.Clamp(this.arenaHero.x, 180, width * 0.52);
+      const heroGroundY = ARENA_GROUND_Y - 34;
+
+      const aura = this.add.circle(heroLandX, heroGroundY + 16, 36, 0xfacc15, 0.25).setStrokeStyle(4, 0xfef08a, 0.9).setScrollFactor(0).setDepth(52);
+      this.tweens.add({
+        targets: aura,
+        scale: 1.55,
+        alpha: 0.08,
+        duration: 420,
+        yoyo: true,
+        repeat: 3,
+      });
+
+      this.tweens.add({
+        targets: this.arenaHero,
+        x: heroLandX,
+        y: heroGroundY,
+        duration: 240,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          if (this.arenaHeroShadow?.active) this.arenaHeroShadow.setPosition(this.arenaHero.x, ARENA_GROUND_Y + 4);
+        },
+        onComplete: () => {
+          if (!this.arenaHero?.active) return;
+          this.tweens.add({
+            targets: this.arenaHero,
+            y: heroGroundY - 56,
+            duration: 210,
+            ease: 'Sine.easeOut',
+            yoyo: true,
+            repeat: 8,
+            onYoyo: () => {
+              if (this.arenaHero?.active) this.arenaHero.setTexture(this.heroFrames[1]);
+            },
+            onRepeat: () => {
+              if (this.arenaHero?.active) this.arenaHero.setTexture(this.heroFrames[0]);
+            },
+          });
+        },
+      });
+    }
+
+    // 4. Celebratory Banner + Speedrun Rank Pill + Confetti & Sky Fireworks!
+    this.time.delayedCall(260, () => {
+      if (!this.scene.isActive()) return;
+      this.kit.audio.sfx('medal');
+      this.spawnArenaConfetti();
+
+      const ribbon = this.add
+        .rectangle(width / 2, height * 0.34, width, 118, 0x0f0726, 0.82)
+        .setStrokeStyle(4, 0xfacc15)
+        .setScrollFactor(0)
+        .setDepth(95)
+        .setScale(1, 0.05);
+      this.tweens.add({ targets: ribbon, scaleY: 1, duration: 260, ease: 'Back.easeOut' });
+
+      const title = this.add
+        .text(width / 2, height * 0.32, `★ ${this.kit.t('victory')} ★`, {
+          fontFamily: font,
+          fontSize: '52px',
+          fontStyle: 'bold',
+          color: '#facc15',
+          stroke: '#09050f',
+          strokeThickness: 8,
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(96)
+        .setScale(0.25);
+      this.tweens.add({ targets: title, scale: 1, duration: 360, ease: 'Back.easeOut' });
+
+      const medal = medalForTimeLeft(this.timeLeft);
+      const medalColor = medal === 'S' ? '#facc15' : medal === 'A' ? '#38bdf8' : '#e2e8f0';
+      const subText = this.add
+        .text(width / 2, height * 0.388, `🏆 ${medal} RANK  •  ⏱ ${Math.max(0, this.timeLeft).toFixed(1)}s`, {
+          fontFamily: font,
+          fontSize: '24px',
+          fontStyle: 'bold',
+          color: medalColor,
+          stroke: '#09050f',
+          strokeThickness: 5,
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(96)
+        .setAlpha(0);
+      this.tweens.add({ targets: subText, alpha: 1, y: height * 0.382, delay: 160, duration: 260, ease: 'Cubic.easeOut' });
+    });
+
+    // Extra celebratory sky fireworks & second confetti wave across the throne room
+    const fireworkSpots: Array<[number, number, number]> = [
+      [680, width * 0.24, height * 0.22],
+      [980, width * 0.76, height * 0.2],
+      [1320, width * 0.5, height * 0.18],
+      [1950, width * 0.3, height * 0.24],
+      [2550, width * 0.72, height * 0.22],
+      [3250, width * 0.48, height * 0.19],
+    ];
+    for (const [delay, fxX, fxY] of fireworkSpots) {
+      this.time.delayedCall(delay, () => {
+        if (!this.scene.isActive()) return;
+        this.spawnArenaBurst(fxX, fxY, burstPalette, 20, 130, 680);
+      });
+    }
+    this.time.delayedCall(1900, () => {
+      if (!this.scene.isActive()) return;
+      this.spawnArenaConfetti();
+      this.playSpeedrunCreditsRoll();
+    });
+  }
+
+  /**
+   * Readable 8-bit JRPG Ending Credits Roll & Post-Credits Sequel Teaser:
+   * - Comfortable reading speed (~9.5s roll + ~2.4s sequel teaser)
+   * - Hold [SPACE] to 3.5x fast-forward
+   * - Press [ESC] or click Skip button to jump straight to Results
+   * - Site-only kyoangel Time Goddess Easter egg (clean generic credit on portals)
+   */
+  private playSpeedrunCreditsRoll(): void {
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height * 0.61;
+    const panelW = 780;
+    const panelH = 320;
+    const font = this.kit.theme.font;
+
+    const curTitle = `${this.kit.t(`chapter.${this.stage.chapter.id}`)} ${this.stage.roman}`;
+    const nextStage = getChapterForLoop(this.meta.loop + 1);
+    const nextTitle = `${this.kit.t(`chapter.${nextStage.chapter.id}`)} ${nextStage.roman}`;
+    const sameChapter = nextStage.chapter.id === this.stage.chapter.id;
+
+    // Only show the personal kyoangel Time Goddess pun on our own site / local dev (clean generic credit on portals)
+    const isOwnSite = this.kit.platform.features.externalLinks;
+    const goddessCredit = this.kit.t(isOwnSite ? 'credits.goddessSite' : 'credits.goddessPortal');
+
+    // Retro dark cosmic credits box
+    const panel = this.add
+      .rectangle(cx, cy, panelW, panelH, 0x090517, 0.92)
+      .setStrokeStyle(3, 0xfacc15)
+      .setScrollFactor(0)
+      .setDepth(115)
+      .setAlpha(0);
+    this.tweens.add({ targets: panel, alpha: 0.94, duration: 280 });
+
+    // Top "CHAPTER I — THE END" header
+    const header = this.add
+      .text(cx, cy - panelH / 2 + 28, `${curTitle}  —  ${this.kit.t('credits.theEnd')}`, {
+        fontFamily: font,
+        fontSize: '22px',
+        fontStyle: 'bold',
+        color: '#facc15',
+        stroke: '#09050f',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(117)
+      .setAlpha(0);
+    this.tweens.add({ targets: header, alpha: 1, duration: 280 });
+
+    const divider = this.add
+      .rectangle(cx, cy - panelH / 2 + 52, panelW - 48, 2, 0xfacc15, 0.45)
+      .setScrollFactor(0)
+      .setDepth(117);
+
+    // Masked viewport for smooth upward staff roll
+    const viewTop = cy - panelH / 2 + 60;
+    const viewH = panelH - 122;
+    const maskGfx = this.add.graphics().setScrollFactor(0).setVisible(false);
+    maskGfx.fillStyle(0xffffff, 1);
+    maskGfx.fillRect(cx - panelW / 2 + 18, viewTop, panelW - 36, viewH);
+
+    const startRollY = viewTop + viewH + 10;
+    const roll = this.add.container(cx, startRollY).setScrollFactor(0).setDepth(116);
+    roll.setMask(maskGfx.createGeometryMask());
+
+    const lines: Array<{ text: string; color: string; size: number; gap: number }> = [
+      { text: this.kit.t('credits.cast'), color: '#7dd3fc', size: 19, gap: 38 },
+      { text: `${this.kit.t('credits.hero')}  ·  LV ${this.hero.level}`, color: '#ffffff', size: 20, gap: 36 },
+      { text: `${this.kit.t('credits.goddess')}  ·  ${goddessCredit}`, color: '#fef08a', size: 20, gap: 38 },
+      { text: `${this.kit.t('credits.smith')}  ·  ${this.kit.t('credits.smithVal')}`, color: '#cbd5e1', size: 18, gap: 36 },
+      { text: `${this.kit.t('credits.mobs')}  ·  ${this.kills}`, color: '#cbd5e1', size: 18, gap: 36 },
+      { text: `${this.kit.t('credits.boss')}  ·  ${this.currentBossDisplayName()} ✓`, color: '#fda4af', size: 19, gap: 46 },
+      { text: this.kit.t('credits.thanks'), color: '#7dd3fc', size: 19, gap: 36 },
+      { text: this.kit.t('credits.spacebar'), color: '#e2e8f0', size: 19, gap: 52 },
+      { text: this.kit.t('credits.thanksPlay'), color: '#facc15', size: 28, gap: 40 },
+    ];
+
+    let yCursor = 0;
+    for (const ln of lines) {
+      const t = this.add
+        .text(0, yCursor, ln.text, {
+          fontFamily: font,
+          fontSize: `${ln.size}px`,
+          fontStyle: 'bold',
+          color: ln.color,
+          stroke: '#09050f',
+          strokeThickness: 4,
+        })
+        .setOrigin(0.5, 0);
+      roll.add(t);
+      yCursor += ln.gap;
+    }
+
+    // Target Y so "★ THANKS FOR PLAYING! ★" settles cleanly right in the center of the viewport
+    const targetRollY = viewTop + viewH / 2 - (yCursor - 54);
+    const totalScrollDist = Math.max(1, startRollY - targetRollY);
+    const baseScrollPxPerSec = totalScrollDist / 9.2; // Comfortable ~9.2s readable roll!
+
+    let done = false;
+    let fastForward = false;
+    let teaserShown = false;
+
+    // Bottom-left fast-forward hint + bottom-right Skip / Continue button (never auto-jumps to Results!)
+    const fastHint = this.add
+      .text(28, height - 48, this.kit.t('holdFastCredits'), {
+        fontFamily: font,
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#cbd5e1',
+        stroke: '#09050f',
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0.5)
+      .setScrollFactor(0)
+      .setDepth(130);
+
+    let actionBtn = addButton(this, width - 138, height - 52, this.kit.t('skipCredits'), {
+      width: 224,
+      height: 50,
+      fill: 0x312e81,
+      fontSize: 19,
+      onClick: () => finishNow(true),
+    });
+    actionBtn.setScrollFactor(0).setDepth(130);
+
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (done) return;
+      if (e.code === 'Escape' || e.key === 'Escape' || (teaserShown && (e.code === 'Enter' || e.key === 'Enter'))) {
+        e.preventDefault();
+        finishNow(true);
+        return;
+      }
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        fastForward = true;
+        if (fastHint.active) fastHint.setColor('#facc15');
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent): void => {
+      if (e.code === 'Space' || e.key === ' ') {
+        fastForward = false;
+        if (fastHint.active) fastHint.setColor('#cbd5e1');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+
+    const tickEvent = this.time.addEvent({
+      delay: 16,
+      loop: true,
+      callback: () => {
+        if (done || !this.scene.isActive() || !roll.active) return;
+        const stepSec = 0.016 * (fastForward ? 3.5 : 1);
+        if (roll.y > targetRollY) {
+          roll.y = Math.max(targetRollY, roll.y - baseScrollPxPerSec * stepSec);
+        } else if (!teaserShown) {
+          teaserShown = true;
+          this.kit.audio.sfx('rush');
+          const teaserMsg = sameChapter
+            ? `${this.kit.t('credits.nextSame')}   ▶ ${nextTitle}`
+            : `${this.kit.t('credits.nextChapter')}   ▶ ${nextTitle}`;
+          const teaser = this.add
+            .text(cx, cy + panelH / 2 - 28, teaserMsg, {
+              fontFamily: font,
+              fontSize: '18px',
+              fontStyle: 'bold',
+              color: sameChapter ? '#fda4af' : '#facc15',
+              stroke: '#09050f',
+              strokeThickness: 4,
+            })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(118)
+            .setScale(0.6)
+            .setAlpha(0);
+          this.tweens.add({ targets: teaser, scale: 1, alpha: 1, duration: 320, ease: 'Back.easeOut' });
+
+          // Replace Skip button with a prominent golden "Proceed to Results" button (waits for user!)
+          if (fastHint.active) fastHint.setVisible(false);
+          if (actionBtn.active) actionBtn.destroy();
+          actionBtn = addButton(this, width - 144, height - 52, this.kit.t('toResultsCredits'), {
+            width: 236,
+            height: 52,
+            fill: 0xd97706,
+            fontSize: 19,
+            onClick: () => finishNow(true),
+          });
+          actionBtn.setScrollFactor(0).setDepth(130);
+        }
+      },
+    });
+
+    const cleanupCredits = (): void => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
+      tickEvent.remove(false);
+      if (actionBtn.active) actionBtn.destroy();
+      if (fastHint.active) fastHint.destroy();
+      maskGfx.destroy();
+      divider.destroy();
+    };
+
+    const finishNow = (byUser: boolean): void => {
+      if (done) return;
+      done = true;
+      cleanupCredits();
+      if (!this.scene.isActive()) return;
+      if (byUser) this.kit.audio.sfx('click');
+      this.finalizeRun('victory', true);
+    };
+
+    this.events.once('shutdown', cleanupCredits);
+  }
+
+  private scheduleCutsceneFinalize(reason: RunSummary['reason'], delayMs: number): void {
+    let done = false;
+    let skipBtn: Phaser.GameObjects.Container | null = null;
+    let autoTimer: Phaser.Time.TimerEvent | null = null;
+    let graceTimer: Phaser.Time.TimerEvent | null = null;
+
+    const cleanupSkip = (): void => {
+      window.removeEventListener('keydown', onSkipKey, true);
+      if (autoTimer) {
+        autoTimer.remove(false);
+        autoTimer = null;
+      }
+      if (graceTimer) {
+        graceTimer.remove(false);
+        graceTimer = null;
+      }
+      if (skipBtn?.active) {
+        skipBtn.destroy();
+        skipBtn = null;
+      }
+    };
+
+    const finishNow = (byUser: boolean): void => {
+      if (done) return;
+      done = true;
+      cleanupSkip();
+      if (!this.scene.isActive()) return;
+      if (byUser) this.kit.audio.sfx('click');
+      this.finalizeRun(reason, true);
+    };
+
+    const onSkipKey = (e: KeyboardEvent): void => {
+      if (done) return;
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'Escape' || e.key === ' ') {
+        e.preventDefault();
+        finishNow(true);
+      }
+    };
+
+    // Short 450ms grace period so holding Space during a Dash-Slash won't accidentally skip the cutscene
+    graceTimer = this.time.delayedCall(450, () => {
+      if (done || !this.scene.isActive()) return;
+      const { width, height } = this.scale;
+      skipBtn = addButton(this, width - 146, height - 54, this.kit.t('skipCutscene'), {
+        width: 244,
+        height: 52,
+        fill: 0x312e81,
+        fontSize: 19,
+        onClick: () => finishNow(true),
+      });
+      skipBtn.setScrollFactor(0).setDepth(130).setAlpha(0);
+      this.tweens.add({ targets: skipBtn, alpha: 0.96, duration: 200 });
+      window.addEventListener('keydown', onSkipKey, true);
+    });
+
+    autoTimer = this.time.delayedCall(delayMs, () => finishNow(false));
+    this.events.once('shutdown', cleanupSkip);
+  }
+
+  private clearDefeatCutscene(): void {
+    for (const o of this.defeatCutsceneObjects) {
+      if (o.active) o.destroy();
+    }
+    this.defeatCutsceneObjects = [];
+  }
+
+  private playDefeatCutscene(reason: 'defeated' | 'timeUp'): void {
+    this.fx.clearPops();
+    this.clearDefeatCutscene();
+    this.updateHud();
+
+    // Stop battle BGM and play defeat jingle immediately during the animation
+    this.kit.audio.music.stop();
+    playDefeatJingle(this.kit.audio.muted);
+
+    // Clear active boss fireballs/telegraphs so the defeat scene reads cleanly
+    this.arenaTelegraphLine?.setVisible(false);
+    this.arenaTelegraphWarn?.setVisible(false);
+    for (const fb of this.fireballs) {
+      fb.obj.destroy();
+      fb.glow.destroy();
+    }
+    this.fireballs = [];
+
+    const { width, height } = this.scale;
+    const font = this.kit.theme.font;
+    const track = <T extends Phaser.GameObjects.GameObject>(obj: T): T => {
+      this.defeatCutsceneObjects.push(obj);
+      return obj;
+    };
+
+    const isBoss = this.mode === 'boss' && this.arenaHero?.active;
+    const heroObj = isBoss ? this.arenaHero : this.heroSprite;
+    const heroShadowObj = isBoss ? this.arenaHeroShadow : this.heroShadow;
+    const heroScreenX = isBoss ? this.arenaHero.x : this.heroSprite.x - this.cameras.main.scrollX;
+    const heroScreenY = isBoss ? this.arenaHero.y : this.heroSprite.y - this.cameras.main.scrollY;
+
+    // Soft dramatic dim veil
+    const veilColor = reason === 'defeated' ? 0x1a060e : 0x0b1024;
+    const veil = track(this.add.rectangle(width / 2, height / 2, width, height, veilColor, 0).setScrollFactor(0).setDepth(90));
+    this.tweens.add({ targets: veil, fillAlpha: 0.42, duration: 360, ease: 'Cubic.easeOut' });
+
+    if (reason === 'defeated') {
+      // 1A. DEFEATED: Dramatic knockback tumble + dizzy stars on the ground!
+      this.fx.flash(0xf43f5e, 260);
+      this.fx.shake(0.6);
+
+      const knockDir = isBoss ? -1 : this.heroSprite.flipX ? 1 : -1;
+      const startX = heroObj.x;
+      const startY = heroObj.y;
+      const landX = isBoss
+        ? Phaser.Math.Clamp(startX + knockDir * 120, 72, ARENA_BOSS_X - 80)
+        : Phaser.Math.Clamp(startX + knockDir * 84, 52, WORLD_W - 52);
+      const landY = isBoss ? ARENA_GROUND_Y - 18 : startY + 14;
+
+      heroObj.setAlpha(1).setTint(0xfda4af);
+      this.spawnArenaBurst(heroScreenX, heroScreenY, [0xf43f5e, 0xfef08a, 0xffffff], 18, 125, 520);
+
+      // Launch arc (x + angle tumble + pop up then drop flat)
+      this.tweens.add({
+        targets: heroObj,
+        x: landX,
+        angle: knockDir * 90,
+        duration: 520,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          if (heroShadowObj?.active) heroShadowObj.setPosition(heroObj.x, isBoss ? ARENA_GROUND_Y + 4 : heroObj.y + 18);
+          if (!isBoss) {
+            this.heroHpBg.setPosition(heroObj.x, heroObj.y - 36);
+            this.heroHpFill.setPosition(heroObj.x - 24, heroObj.y - 36);
+          }
+        },
+      });
+      this.tweens.add({
+        targets: heroObj,
+        y: startY - 68,
+        duration: 210,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          if (!heroObj.active) return;
+          this.tweens.add({
+            targets: heroObj,
+            y: landY,
+            duration: 310,
+            ease: 'Bounce.easeOut',
+            onComplete: () => {
+              if (!this.scene.isActive()) return;
+              // Dust puff & dizzy stars orbiting over fallen hero!
+              const landScreenX = isBoss ? heroObj.x : heroObj.x - this.cameras.main.scrollX;
+              const landScreenY = isBoss ? heroObj.y : heroObj.y - this.cameras.main.scrollY;
+              this.spawnArenaBurst(landScreenX, landScreenY + 10, [0xcbd5e1, 0x94a3b8], 10, 56, 380);
+              for (let i = 0; i < 3; i++) {
+                const a0 = (Math.PI * 2 * i) / 3;
+                const star = track(
+                  this.add
+                    .star(landScreenX, landScreenY - 30, 5, 3, 7, 0xfacc15, 0.95)
+                    .setScrollFactor(0)
+                    .setDepth(96),
+                );
+                this.tweens.addCounter({
+                  from: 0,
+                  to: Math.PI * 8,
+                  duration: 3400,
+                  onUpdate: (tw) => {
+                    if (!star.active) return;
+                    const a = a0 + (tw.getValue() ?? 0);
+                    star.setPosition(landScreenX + Math.cos(a) * 26, landScreenY - 30 + Math.sin(a) * 9);
+                  },
+                });
+              }
+            },
+          });
+        },
+      });
+    } else {
+      // 1B. TIME UP: Timer alarm shatter + hero slumps in exhaustion with gloom sigh!
+      this.kit.audio.sfx('shieldBreak');
+      this.fx.flash(0xf43f5e, 180);
+      this.fx.shake(0.35);
+
+      // Top-center Timer Badge alarm shake & shattering sand sparks
+      const timerX = width / 2;
+      const timerY = 42;
+      this.tweens.add({
+        targets: [this.timerBadge, this.timerText],
+        x: timerX + 10,
+        duration: 48,
+        yoyo: true,
+        repeat: 6,
+        onComplete: () => {
+          this.timerBadge.setX(timerX);
+          this.timerText.setX(timerX);
+        },
+      });
+      const alarmRing = track(
+        this.add.circle(timerX, timerY, 34, 0xf43f5e, 0).setStrokeStyle(5, 0xf43f5e, 0.95).setScrollFactor(0).setDepth(105),
+      );
+      this.tweens.add({ targets: alarmRing, scale: 3.4, alpha: 0, duration: 560, ease: 'Cubic.easeOut' });
+      this.spawnArenaBurst(timerX, timerY, [0xf43f5e, 0xfacc15, 0x94a3b8], 20, 120, 620);
+
+      // Hero slumps down with a disappointed squish + floating gloom cloud & sweatdrop
+      const baseScaleY = heroObj.scaleY;
+      heroObj.setAlpha(1).setTint(0x94a3b8);
+      this.tweens.add({
+        targets: heroObj,
+        scaleY: baseScaleY * 0.8,
+        y: heroObj.y + 10,
+        duration: 420,
+        ease: 'Sine.easeOut',
+      });
+
+      const gloom = track(
+        this.add
+          .text(heroScreenX, heroScreenY - 52, '💦 ...', {
+            fontFamily: font,
+            fontSize: '26px',
+            fontStyle: 'bold',
+            color: '#93c5fd',
+            stroke: '#09050f',
+            strokeThickness: 5,
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(96)
+          .setAlpha(0),
+      );
+      this.tweens.add({ targets: gloom, alpha: 1, y: heroScreenY - 76, duration: 680, ease: 'Cubic.easeOut' });
+    }
+
+    // 2. Dramatic Banner (t = 220ms)
+    this.time.delayedCall(220, () => {
+      if (!this.scene.isActive()) return;
+      const accent = reason === 'defeated' ? 0xf43f5e : 0xf59e0b;
+      const ribbon = track(
+        this.add
+          .rectangle(width / 2, height * 0.36, width, 102, 0x13091f, 0.84)
+          .setStrokeStyle(4, accent)
+          .setScrollFactor(0)
+          .setDepth(95)
+          .setScale(1, 0.05),
+      );
+      this.tweens.add({ targets: ribbon, scaleY: 1, duration: 240, ease: 'Back.easeOut' });
+
+      const icon = reason === 'defeated' ? '💀' : '⏰';
+      const titleColor = reason === 'defeated' ? '#fda4af' : '#fcd34d';
+      const bannerText = track(
+        this.add
+          .text(width / 2, height * 0.36, `${icon} ${this.kit.t(reason)}`, {
+            fontFamily: font,
+            fontSize: '48px',
+            fontStyle: 'bold',
+            color: titleColor,
+            stroke: '#09050f',
+            strokeThickness: 8,
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(96)
+          .setScale(0.3),
+      );
+      this.tweens.add({ targets: bannerText, scale: 1, duration: 320, ease: 'Back.easeOut' });
+    });
+
+    // 3. Auto-transition after 3.6s, or let player skip anytime after 450ms via button / [SPACE]
+    this.scheduleCutsceneFinalize(reason, 3600);
+  }
+
   private endRun(reason: RunSummary['reason']): void {
     if (this.runEnded) return;
     this.runEnded = true;
+    if (reason === 'defeated' || reason === 'timeUp') {
+      this.playDefeatCutscene(reason);
+      return;
+    }
+    this.finalizeRun(reason, false);
+  }
+
+  private finalizeRun(reason: RunSummary['reason'], fanfarePlayed: boolean): void {
     this.fx.clearPops();
 
     const bossSlain = reason === 'victory';
     this.kit.audio.music.stop();
-    if (!bossSlain) {
+    if (!bossSlain && !fanfarePlayed) {
       this.kit.audio.sfx('death');
     }
     const bossHpRatio = this.bossMaxHp > 0 ? this.bossHp / this.bossMaxHp : 1;
@@ -1820,33 +2654,367 @@ export class PlayScene extends Phaser.Scene {
       skinsUnlocked: [...this.skinsUnlockedThisRun],
       defeatTip,
       reason,
+      fanfarePlayed,
     };
     this.game.registry.set(LAST_RUN_KEY, summary);
 
     const reviveCb = bossSlain
       ? undefined
       : () => {
-          this.runEnded = false;
-          this.time.paused = false;
-          this.tweens.resumeAll();
-          this.timeLeft = Math.max(this.timeLeft, 0) + REVIVE_BONUS_SEC;
-          this.hero.hp = this.hero.maxHp;
-          this.invulnLeft = 1.6;
-          this.fx.flash(0xfacc15, 220);
-          this.kit.audio.sfx('newBest');
-          if (this.mode === 'boss') {
-            this.popArenaText(this.arenaHero.x, this.arenaHero.y - 60, this.kit.t('goddessRevive'), '#facc15', 30);
-          } else {
-            this.fx.burst(this.heroSprite.x, this.heroSprite.y, { color: 0xfacc15, count: 32, speed: 420, lifespanMs: 650 });
-            this.fx.popText(this.heroSprite.x, this.heroSprite.y - 54, this.kit.t('goddessRevive'), { color: 0xfacc15, size: 30 });
-          }
-          this.lastMusicState = '';
-          this.kit.audio.music.start();
-          this.syncMusicIntensity();
-          this.updateHud();
+          this.playGoddessReviveCutscene();
         };
 
     void this.kit.gameOver(score, reviveCb ? { revive: reviveCb } : undefined);
+  }
+
+  private playGoddessReviveCutscene(): void {
+    // Keep runEnded = true during the cutscene so timer & enemies stay frozen while Goddess casts her spell
+    this.runEnded = true;
+    this.time.paused = false;
+    this.tweens.resumeAll();
+    this.clearDefeatCutscene();
+
+    // Clear any lingering boss fireballs/telegraphs so player resumes cleanly
+    for (const fb of this.fireballs) {
+      fb.obj.destroy();
+      fb.glow.destroy();
+    }
+    this.fireballs = [];
+    this.arenaBossCharging = 0;
+    this.arenaBossAttackTimer = 1.8;
+    this.arenaTelegraphLine?.setVisible(false);
+    this.arenaTelegraphWarn?.setVisible(false);
+
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height * 0.44;
+    const font = this.kit.theme.font;
+    const cleanup: Phaser.GameObjects.GameObject[] = [];
+    const track = <T extends Phaser.GameObjects.GameObject>(obj: T): T => {
+      cleanup.push(obj);
+      return obj;
+    };
+
+    const baseTime = Math.max(0, this.timeLeft);
+    const targetTime = baseTime + REVIVE_BONUS_SEC;
+
+    // Heavenly audio chime
+    playGoddessReviveChime(this.kit.audio.muted);
+
+    // 1. Soft twilight dim veil (depth 95 -> below HUD timer at 101 so timer +10s animation shines on top!)
+    const veil = track(this.add.rectangle(cx, height / 2, width, height, 0x09051f, 0).setScrollFactor(0).setDepth(95));
+    this.tweens.add({ targets: veil, fillAlpha: 0.56, duration: 360, ease: 'Cubic.easeOut' });
+
+    // Vertical divine beam of light from the heavens
+    const beamOuter = track(this.add.rectangle(cx, height / 2, 220, height, 0x38bdf8, 0).setScrollFactor(0).setDepth(110));
+    const beamInner = track(this.add.rectangle(cx, height / 2, 110, height, 0xfef08a, 0).setScrollFactor(0).setDepth(111));
+    this.tweens.add({ targets: beamOuter, fillAlpha: 0.16, duration: 420, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: beamInner, fillAlpha: 0.22, duration: 420, ease: 'Cubic.easeOut' });
+
+    // 2. Layered glowing halos descending with the Time Goddess from top to screen center
+    // Stage 26+ (Hard Mode): Goddess A has descended as a mortal Heroine, so Astral Goddess B takes over!
+    const useAstralGoddess = this.meta.loop >= HARD_MODE_LOOP;
+    const goddessKey0 = useAstralGoddess ? 'px-goddess-astral-0' : 'px-goddess-0';
+    const goddessKey1 = useAstralGoddess ? 'px-goddess-astral-1' : 'px-goddess-1';
+    const haloPrimary = useAstralGoddess ? 0xc084fc : 0xfacc15;
+    const haloSecondary = useAstralGoddess ? 0x38bdf8 : 0x38bdf8;
+    const starCrestColor = useAstralGoddess ? 0xe0e7ff : 0xfef08a;
+
+    const startY = -90;
+    const glowFar = track(this.add.circle(cx, startY, 132, haloSecondary, 0.22).setScrollFactor(0).setDepth(112));
+    const glowMid = track(this.add.circle(cx, startY, 92, haloPrimary, 0.28).setScrollFactor(0).setDepth(113));
+    const glowCore = track(this.add.circle(cx, startY, 56, 0xffffff, 0.36).setScrollFactor(0).setDepth(114));
+
+    const haloOuter = track(
+      this.add.circle(cx, startY, 108, haloSecondary, 0).setStrokeStyle(4, haloSecondary, 0.85).setScrollFactor(0).setDepth(115),
+    );
+    const haloGold = track(
+      this.add.circle(cx, startY, 78, haloPrimary, 0).setStrokeStyle(4, starCrestColor, 0.95).setScrollFactor(0).setDepth(116),
+    );
+
+    // Rotating celestial star-crest behind Goddess
+    const starCrest = track(this.add.star(cx, startY, 8, 46, 94, starCrestColor, 0.22).setScrollFactor(0).setDepth(115));
+    this.tweens.add({ targets: starCrest, angle: 360, duration: 3600, repeat: -1 });
+
+    // Pixel-art Time Goddess sprite with gentle wing-flap animation
+    const goddess = track(this.add.image(cx, startY, goddessKey0).setScale(1.25).setScrollFactor(0).setDepth(118));
+    const flapTimer = this.time.addEvent({
+      delay: 220,
+      loop: true,
+      callback: () => {
+        if (goddess.active) goddess.setTexture(goddess.texture.key === goddessKey0 ? goddessKey1 : goddessKey0);
+      },
+    });
+
+    const goddessGroup = [glowFar, glowMid, glowCore, haloOuter, haloGold, starCrest, goddess];
+    this.tweens.add({
+      targets: goddessGroup,
+      y: cy,
+      duration: 680,
+      ease: 'Cubic.easeOut',
+    });
+
+    // Pulsing halo glow once she arrives
+    this.tweens.add({ targets: [glowFar, haloOuter], scale: 1.18, alpha: 0.65, delay: 450, duration: 520, yoyo: true, repeat: 2 });
+    this.tweens.add({ targets: [glowMid, haloGold], scale: 1.12, delay: 450, duration: 420, yoyo: true, repeat: 3 });
+
+    // Orbiting celestial light motes swirling around the Goddess
+    for (let i = 0; i < 8; i++) {
+      const a0 = (Math.PI * 2 * i) / 8;
+      const mote = track(
+        this.add
+          .star(cx + Math.cos(a0) * 105, cy + Math.sin(a0) * 60, 4, 3, 8, i % 2 === 0 ? 0xfef08a : 0x7dd3fc, 0)
+          .setScrollFactor(0)
+          .setDepth(119),
+      );
+      this.tweens.add({ targets: mote, alpha: 0.95, delay: 420 + i * 35, duration: 220 });
+      this.tweens.addCounter({
+        from: 0,
+        to: Math.PI * 2,
+        duration: 1600,
+        delay: 420,
+        onUpdate: (tw) => {
+          if (!mote.active) return;
+          const a = a0 + (tw.getValue() ?? 0);
+          mote.setPosition(cx + Math.cos(a) * 108, cy + Math.sin(a) * 52);
+        },
+      });
+    }
+
+    // 3. Spell Cast Incantation (t = 680ms)
+    this.time.delayedCall(680, () => {
+      if (!this.scene.isActive()) return;
+      this.kit.audio.sfx('medal');
+
+      // Expanding golden spell circle
+      const spellRing = track(
+        this.add.circle(cx, cy, 42, 0xfacc15, 0).setStrokeStyle(6, 0xfef08a, 0.95).setScrollFactor(0).setDepth(117),
+      );
+      this.tweens.add({ targets: spellRing, scale: 4.8, alpha: 0, duration: 640, ease: 'Cubic.easeOut' });
+      this.spawnArenaBurst(cx, cy, [0xfacc15, 0x38bdf8, 0xffffff, 0x34d399], 22, 170, 650);
+
+      // Goddess title & incantation banner
+      const banner = track(
+        this.add
+          .rectangle(cx, cy + 128, 560, 86, 0x13092b, 0.9)
+          .setStrokeStyle(3, 0xfacc15)
+          .setScrollFactor(0)
+          .setDepth(120)
+          .setScale(0.2, 1),
+      );
+      this.tweens.add({ targets: banner, scaleX: 1, duration: 260, ease: 'Back.easeOut' });
+
+      const titleTxt = track(
+        this.add
+          .text(cx, cy + 106, this.kit.t('goddessTitle'), {
+            fontFamily: font,
+            fontSize: '20px',
+            fontStyle: 'bold',
+            color: '#7dd3fc',
+            stroke: '#09050f',
+            strokeThickness: 4,
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(121)
+          .setAlpha(0),
+      );
+      const spellTxt = track(
+        this.add
+          .text(cx, cy + 140, this.kit.t('goddessSpell'), {
+            fontFamily: font,
+            fontSize: '26px',
+            fontStyle: 'bold',
+            color: '#fef08a',
+            stroke: '#09050f',
+            strokeThickness: 6,
+          })
+          .setOrigin(0.5)
+          .setScrollFactor(0)
+          .setDepth(121)
+          .setScale(0.4),
+      );
+      this.tweens.add({ targets: titleTxt, alpha: 1, duration: 220 });
+      this.tweens.add({ targets: spellTxt, scale: 1, duration: 300, ease: 'Back.easeOut' });
+    });
+
+    // 4. Dual Blessing Animation: Revive Hero HP + Fly Chrono Orbs into Timer (+10.0s!) (t = 1220ms)
+    this.time.delayedCall(1220, () => {
+      if (!this.scene.isActive()) return;
+      this.fx.flash(0xfef08a, 240);
+      this.kit.audio.sfx('newBest');
+
+      // Locate Hero in screen coordinates (works for both Boss Arena & Overworld!)
+      const heroScreenX =
+        this.mode === 'boss' && this.arenaHero?.active
+          ? this.arenaHero.x
+          : this.heroSprite.x - this.cameras.main.scrollX;
+      const heroScreenY =
+        this.mode === 'boss' && this.arenaHero?.active
+          ? this.arenaHero.y
+          : this.heroSprite.y - this.cameras.main.scrollY;
+
+      // (A) Revival Blessing Orbs streaming to Hero
+      for (let i = 0; i < 6; i++) {
+        const orb = this.add.circle(cx, cy, 9, i % 2 === 0 ? 0x34d399 : 0xfef08a, 0.95).setScrollFactor(0).setDepth(125);
+        this.tweens.add({
+          targets: orb,
+          x: heroScreenX + (Math.random() - 0.5) * 20,
+          y: heroScreenY + (Math.random() - 0.5) * 20,
+          scale: 0.4,
+          delay: i * 45,
+          duration: 300,
+          ease: 'Cubic.easeIn',
+          onComplete: () => orb.destroy(),
+        });
+      }
+
+      // Hero resurrection ring + full HP refill + stand back up cleanly on orb impact!
+      this.time.delayedCall(260, () => {
+        if (!this.scene.isActive()) return;
+        this.hero.hp = this.hero.maxHp;
+        this.updateHud();
+
+        // Restore fallen/slumped Hero back to full upright fighting stance with a little spring hop
+        if (this.mode === 'boss' && this.arenaHero?.active) {
+          this.arenaHero.clearTint().setAlpha(1);
+          this.tweens.add({
+            targets: this.arenaHero,
+            angle: 0,
+            scaleX: 1.65,
+            scaleY: 1.65,
+            y: ARENA_GROUND_Y - 34,
+            duration: 240,
+            ease: 'Back.easeOut',
+          });
+        } else if (this.heroSprite?.active) {
+          this.heroSprite.clearTint().setAlpha(1);
+          const s = this.isMobile ? 1.3 : 1;
+          this.tweens.add({
+            targets: this.heroSprite,
+            angle: 0,
+            scaleX: s,
+            scaleY: s,
+            duration: 240,
+            ease: 'Back.easeOut',
+          });
+        }
+        const revRing = this.add
+          .circle(heroScreenX, heroScreenY, 18, 0x34d399, 0)
+          .setStrokeStyle(6, 0x34d399, 0.95)
+          .setScrollFactor(0)
+          .setDepth(124);
+        this.tweens.add({
+          targets: revRing,
+          scale: 4.5,
+          alpha: 0,
+          duration: 500,
+          ease: 'Cubic.easeOut',
+          onComplete: () => revRing.destroy(),
+        });
+        this.spawnArenaBurst(heroScreenX, heroScreenY, [0x34d399, 0xfacc15, 0xffffff], 20, 120, 560);
+        this.popArenaText(heroScreenX, heroScreenY - 58, `✨ ${this.kit.t('healed')}`, '#34d399', 28);
+      });
+
+      // (B) Chrono Blessing Orbs arcing up into the Top-Center Timer Badge (width / 2, 42)
+      const timerX = width / 2;
+      const timerY = 42;
+      for (let i = 0; i < 6; i++) {
+        const tOrb = this.add
+          .star(cx + (i - 2.5) * 18, cy - 20, 4, 4, 10, i % 2 === 0 ? 0x38bdf8 : 0xfacc15, 1)
+          .setScrollFactor(0)
+          .setDepth(125);
+        this.tweens.add({
+          targets: tOrb,
+          x: timerX,
+          y: timerY,
+          angle: 270,
+          scale: 0.5,
+          delay: i * 55,
+          duration: 340,
+          ease: 'Cubic.easeIn',
+          onComplete: () => tOrb.destroy(),
+        });
+      }
+
+      // Timer badge pulse + smooth +10.0s count-up roll!
+      this.time.delayedCall(280, () => {
+        if (!this.scene.isActive()) return;
+        this.kit.audio.sfx('medal');
+        const timerRing = this.add
+          .circle(timerX, timerY, 34, 0x38bdf8, 0)
+          .setStrokeStyle(5, 0x38bdf8, 0.95)
+          .setScrollFactor(0)
+          .setDepth(124);
+        this.tweens.add({
+          targets: timerRing,
+          scale: 3.6,
+          alpha: 0,
+          duration: 520,
+          ease: 'Cubic.easeOut',
+          onComplete: () => timerRing.destroy(),
+        });
+        this.spawnArenaBurst(timerX, timerY, [0x38bdf8, 0xfacc15, 0xffffff], 18, 110, 520);
+        this.tweens.add({ targets: [this.timerBadge, this.timerText], scale: 1.24, duration: 180, yoyo: true, ease: 'Back.easeOut' });
+        this.popArenaText(timerX, timerY + 64, `+${REVIVE_BONUS_SEC.toFixed(1)}s ⏱`, '#38bdf8', 32);
+
+        this.tweens.addCounter({
+          from: baseTime,
+          to: targetTime,
+          duration: 420,
+          ease: 'Cubic.easeOut',
+          onUpdate: (tw) => {
+            if (!this.scene.isActive()) return;
+            this.timeLeft = tw.getValue() ?? targetTime;
+            this.updateHud();
+          },
+          onComplete: () => {
+            if (!this.scene.isActive()) return;
+            this.timeLeft = targetTime;
+            this.updateHud();
+          },
+        });
+      });
+    });
+
+    // 5. Goddess ascends in light & gameplay smoothly resumes (t = 1980ms -> 2350ms)
+    this.time.delayedCall(1980, () => {
+      if (!this.scene.isActive()) return;
+      this.tweens.add({
+        targets: goddessGroup,
+        y: cy - 110,
+        alpha: 0,
+        duration: 360,
+        ease: 'Cubic.easeIn',
+      });
+      this.tweens.add({
+        targets: [veil, beamOuter, beamInner],
+        fillAlpha: 0,
+        duration: 360,
+        ease: 'Cubic.easeOut',
+      });
+      for (const obj of cleanup) {
+        if (!goddessGroup.includes(obj as never) && obj !== veil && obj !== beamOuter && obj !== beamInner && 'alpha' in obj) {
+          this.tweens.add({ targets: obj, alpha: 0, duration: 280 });
+        }
+      }
+    });
+
+    this.time.delayedCall(2360, () => {
+      flapTimer.remove(false);
+      for (const obj of cleanup) {
+        if (obj.active) obj.destroy();
+      }
+      if (!this.scene.isActive()) return;
+      this.timeLeft = targetTime;
+      this.hero.hp = this.hero.maxHp;
+      this.invulnLeft = 2.0;
+      this.runEnded = false;
+      this.lastMusicState = '';
+      this.kit.audio.music.start();
+      this.syncMusicIntensity();
+      this.updateHud();
+    });
   }
 
   private updateHud(): void {
@@ -1881,7 +3049,7 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.mode === 'boss') {
       this.bossArrowText.setColor('#fda4af');
-      this.bossArrowText.setText(`⚔ ${this.kit.t(`boss.${this.stage.chapter.bossKind}`)} ${this.bossHp}/${this.bossMaxHp}`);
+      this.bossArrowText.setText(`⚔ ${this.currentBossDisplayName()} ${this.bossHp}/${this.bossMaxHp}`);
     } else {
       const dist = Math.max(0, Math.round((CASTLE_POS.x - this.heroSprite.x) / 4));
       this.bossArrowText.setColor(readyForBoss ? '#facc15' : '#fda4af');
@@ -1889,7 +3057,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     const dashReady = Math.max(0, Math.min(1, 1 - this.dashCooldownLeft / h.dashCooldownMs));
-    this.dashBarFill.width = 136 * dashReady;
+    this.dashBarFill.width = (this.isMobile ? 180 : 136) * dashReady;
     this.dashBarFill.fillColor = dashReady >= 1 ? 0x38bdf8 : 0x64748b;
   }
 }

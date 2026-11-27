@@ -19,6 +19,7 @@ import {
   type WeaponId,
 } from './gear.ts';
 import {
+  activeHeroCharacter,
   activeShieldFor,
   ascendArmor,
   ascendShield,
@@ -32,9 +33,11 @@ import {
   canAscendWeapons,
   defaultMeta,
   isBoostsUnlocked,
+  isGoddessHeroUnlocked,
   resolveHeroAppearance,
   sanitizeMeta,
   selectArmorSkin,
+  selectHeroCharacter,
   selectStageLoop,
   selectWeaponSkin,
   togglePreRunBoost,
@@ -44,10 +47,18 @@ import {
   type UpgradeId,
 } from './meta.ts';
 import { ensureHeroAppearance, ensurePixelArt } from './pixelArt.ts';
+import { isTouchMobileViewport } from './mobile.ts';
 import { META_SAVE_KEY } from './PlayScene.ts';
 import { createHeroStats } from './systems.ts';
 
 type CampTab = 'upgrades' | 'armory' | 'skins' | 'stages';
+
+// Unified Armory & Skins button color semantics:
+// Green = Equipped/Selected, Blue = Owned/Unlocked (click to equip), Gold = Unowned & Affordable, Slate = Locked/Unaffordable
+const BTN_EQUIPPED = 0x16a34a;
+const BTN_EQUIP = 0x0284c7;
+const BTN_BUY = 0xd97706;
+const BTN_LOCKED = 0x1e293b;
 const TABS: readonly CampTab[] =
   FEATURES.chapterSelect || FEATURES.preRunBoosts ? ['upgrades', 'armory', 'skins', 'stages'] : ['upgrades', 'armory', 'skins'];
 
@@ -212,9 +223,11 @@ export class CampScene extends Phaser.Scene {
     );
 
     const { weaponLook, armorLook, shieldLook } = resolveHeroAppearance(this.meta);
-    const [k0] = ensureHeroAppearance(this, weaponLook, armorLook, shieldLook);
-    this.addObj(this.add.ellipse(cx, cy - 28, 96, 26, 0x000000, 0.45));
-    const sprite = this.addObj(this.add.image(cx, cy - 78, k0).setScale(2.5));
+    const activeChar = activeHeroCharacter(this.meta);
+    const goddessUnlocked = isGoddessHeroUnlocked(this.meta);
+    const [k0] = ensureHeroAppearance(this, weaponLook, armorLook, shieldLook, activeChar);
+    this.addObj(this.add.ellipse(cx, cy - 36, 96, 26, 0x000000, 0.45));
+    const sprite = this.addObj(this.add.image(cx, cy - 86, k0).setScale(2.5));
     this.tweens.add({ targets: sprite, y: sprite.y - 8, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     const previewStats = createHeroStats(this.meta);
@@ -224,20 +237,54 @@ export class CampScene extends Phaser.Scene {
       `⚔ ${this.kit.t(`weapon.${this.meta.equippedWeapon}`)} (${wHands}H)`,
       `🛡 ${this.kit.t(`armor.${this.meta.equippedArmor}`)}`,
       activeShield ? `🔰 ${this.kit.t(`shield.${activeShield}`)}` : wHands === 2 ? `🔒 ${this.kit.t('armory.locked2H')}` : `🔰 ${this.kit.t('shield.none')}`,
-      '',
-      `CRIT ${Math.round(previewStats.critChance * 100)}% • EVA ${Math.round(previewStats.evaChance * 100)}%`,
-      `⏱ ${previewStats.runDurationSec}s`,
+      `CRIT ${Math.round(previewStats.critChance * 100)}% • EVA ${Math.round(previewStats.evaChance * 100)}% • ⏱ ${previewStats.runDurationSec}s`,
     ];
     this.addObj(
       this.add
-        .text(cx, cy + 94, lines.join('\n'), {
+        .text(cx, cy + 56, lines.join('\n'), {
           fontFamily: font,
-          fontSize: '14px',
+          fontSize: '13px',
           color: '#e2e8f0',
           align: 'center',
           lineSpacing: 5,
         })
         .setOrigin(0.5),
+    );
+
+    // Character Switcher: Hero vs Fallen Goddess (unlocked after clearing Stage 25!)
+    this.addObj(
+      addButton(this, cx, cy + 128, `⚔ ${this.kit.t('char.hero')}`, {
+        width: 172,
+        height: 32,
+        fill: activeChar === 'hero' ? BTN_EQUIPPED : BTN_EQUIP,
+        fontSize: 13,
+        onClick: () => {
+          const next = selectHeroCharacter(this.meta, 'hero');
+          if (!next) {
+            this.kit.audio.sfx('click');
+            return;
+          }
+          this.kit.audio.sfx('medal');
+          this.persistMeta(next);
+        },
+      }),
+    );
+    this.addObj(
+      addButton(this, cx, cy + 168, goddessUnlocked ? `✨ ${this.kit.t('char.goddess')}` : this.kit.t('char.locked26'), {
+        width: 172,
+        height: 32,
+        fill: activeChar === 'goddess' ? BTN_EQUIPPED : goddessUnlocked ? BTN_EQUIP : BTN_LOCKED,
+        fontSize: 13,
+        onClick: () => {
+          const next = selectHeroCharacter(this.meta, 'goddess');
+          if (!next) {
+            this.kit.audio.sfx('click');
+            return;
+          }
+          this.kit.audio.sfx('medal');
+          this.persistMeta(next);
+        },
+      }),
     );
 
     this.addObj(
@@ -320,6 +367,10 @@ export class CampScene extends Phaser.Scene {
   private renderArmory(): void {
     this.renderHeroPreview();
     const font = this.kit.theme.font;
+    const m = isTouchMobileViewport();
+    const nameFs = m ? '15px' : '13px';
+    const statFs = m ? '13px' : '11px';
+    const btnFs = m ? 16 : 14;
 
     // Row 1: Weapons (7 compact cards with 1H/2H & passive badges)
     const weaponsAscendOpen = canAscendWeapons(this.meta);
@@ -375,14 +426,14 @@ export class CampScene extends Phaser.Scene {
       this.addObj(this.add.rectangle(cx, cy - 66, 40, 10, Phaser.Display.Color.HexStringToColor(w.bladeColor).color).setStrokeStyle(1, 0x09050f));
       this.addObj(
         this.add
-          .text(cx, cy - 44, this.kit.t(`weapon.${w.id}`), { fontFamily: font, fontSize: '13px', fontStyle: 'bold', color: '#ffffff', align: 'center' })
+          .text(cx, cy - 44, this.kit.t(`weapon.${w.id}`), { fontFamily: font, fontSize: nameFs, fontStyle: 'bold', color: '#ffffff', align: 'center' })
           .setOrigin(0.5),
       );
       this.addObj(
         this.add
           .text(cx, cy - 22, `ATK +${eff.baseAtk} (+${eff.polishAtkPerLv}/LV)`, {
             fontFamily: font,
-            fontSize: '11px',
+            fontSize: statFs,
             fontStyle: 'bold',
             color: isAscended && owned ? '#e9d5ff' : '#cbd5e1',
             align: 'center',
@@ -393,7 +444,7 @@ export class CampScene extends Phaser.Scene {
         this.add
           .text(cx, cy - 4, this.kit.t(`passive.${w.passive}`), {
             fontFamily: font,
-            fontSize: '11px',
+            fontSize: statFs,
             color: '#fef08a',
             align: 'center',
           })
@@ -406,7 +457,7 @@ export class CampScene extends Phaser.Scene {
           addButton(this, cx, cy + 24, label, {
             width: 118,
             height: 28,
-            fill: equipped ? 0x16a34a : 0x3b82f6,
+            fill: equipped ? BTN_EQUIPPED : BTN_EQUIP,
             fontSize: 13,
             onClick: () => this.tryWeapon(w.id),
           }),
@@ -415,7 +466,7 @@ export class CampScene extends Phaser.Scene {
           addButton(this, cx, cy + 58, `↑ 💎 ${ascCost}`, {
             width: 118,
             height: 28,
-            fill: canAffordAsc ? 0x9333ea : 0x1e293b,
+            fill: canAffordAsc ? 0x9333ea : BTN_LOCKED,
             fontSize: 12,
             onClick: () => this.tryAscendWeapon(w.id),
           }),
@@ -432,8 +483,8 @@ export class CampScene extends Phaser.Scene {
           addButton(this, cx, cy + 50, label, {
             width: 118,
             height: 34,
-            fill: equipped ? 0x16a34a : owned ? 0x3b82f6 : canBuy ? 0xd97706 : 0x1e293b,
-            fontSize: 14,
+            fill: equipped ? BTN_EQUIPPED : owned ? BTN_EQUIP : canBuy ? BTN_BUY : BTN_LOCKED,
+            fontSize: btnFs,
             onClick: () => this.tryWeapon(w.id),
           }),
         );
@@ -480,14 +531,14 @@ export class CampScene extends Phaser.Scene {
       this.addObj(this.add.rectangle(cx + 12, cy - 66, 20, 12, Phaser.Display.Color.HexStringToColor(a.capeColor).color).setStrokeStyle(1, 0x09050f));
       this.addObj(
         this.add
-          .text(cx, cy - 44, this.kit.t(`armor.${a.id}`), { fontFamily: font, fontSize: '13px', fontStyle: 'bold', color: '#ffffff', align: 'center' })
+          .text(cx, cy - 44, this.kit.t(`armor.${a.id}`), { fontFamily: font, fontSize: nameFs, fontStyle: 'bold', color: '#ffffff', align: 'center' })
           .setOrigin(0.5),
       );
       this.addObj(
         this.add
           .text(cx, cy - 22, `DEF +${eff.baseDef} HP +${eff.baseHp}`, {
             fontFamily: font,
-            fontSize: '11px',
+            fontSize: statFs,
             fontStyle: 'bold',
             color: isAscended && owned ? '#e9d5ff' : '#cbd5e1',
             align: 'center',
@@ -498,7 +549,7 @@ export class CampScene extends Phaser.Scene {
         this.add
           .text(cx, cy - 4, this.kit.t(`armorPassive.${a.passive}`), {
             fontFamily: font,
-            fontSize: '11px',
+            fontSize: statFs,
             color: '#7dd3fc',
             align: 'center',
           })
@@ -511,7 +562,7 @@ export class CampScene extends Phaser.Scene {
           addButton(this, cx, cy + 24, label, {
             width: 118,
             height: 28,
-            fill: equipped ? 0x16a34a : 0x0284c7,
+            fill: equipped ? BTN_EQUIPPED : BTN_EQUIP,
             fontSize: 13,
             onClick: () => this.tryArmor(a.id),
           }),
@@ -520,7 +571,7 @@ export class CampScene extends Phaser.Scene {
           addButton(this, cx, cy + 58, `↑ 💎 ${ascCost}`, {
             width: 118,
             height: 28,
-            fill: canAffordAsc ? 0x9333ea : 0x1e293b,
+            fill: canAffordAsc ? 0x9333ea : BTN_LOCKED,
             fontSize: 12,
             onClick: () => this.tryAscendArmor(a.id),
           }),
@@ -537,8 +588,8 @@ export class CampScene extends Phaser.Scene {
           addButton(this, cx, cy + 50, label, {
             width: 118,
             height: 34,
-            fill: equipped ? 0x16a34a : owned ? 0x0284c7 : canBuy ? 0x0284c7 : 0x1e293b,
-            fontSize: 14,
+            fill: equipped ? BTN_EQUIPPED : owned ? BTN_EQUIP : canBuy ? BTN_BUY : BTN_LOCKED,
+            fontSize: btnFs,
             onClick: () => this.tryArmor(a.id),
           }),
         );
@@ -627,14 +678,14 @@ export class CampScene extends Phaser.Scene {
             ? this.kit.t('armory.equip')
             : `💎 ${s.unlockCost}`;
       const btnFill = activeEquipped
-        ? 0x16a34a
+        ? BTN_EQUIPPED
         : is2H && owned
           ? 0x475569
           : owned
-            ? 0x059669
+            ? BTN_EQUIP
             : canBuy
-              ? 0x059669
-              : 0x1e293b;
+              ? BTN_BUY
+              : BTN_LOCKED;
       if (canAscend) {
         this.addObj(
           addButton(this, cx - 56, cy + 36, label, {
@@ -718,7 +769,7 @@ export class CampScene extends Phaser.Scene {
         addButton(this, cx, cy + 62, btnLabel, {
           width: 104,
           height: 40,
-          fill: selected ? 0x16a34a : unlocked ? 0xd97706 : 0x1e293b,
+          fill: selected ? BTN_EQUIPPED : unlocked ? BTN_EQUIP : BTN_LOCKED,
           fontSize: 13,
           onClick: () => {
             const next = selectWeaponSkin(this.meta, id);
@@ -769,7 +820,7 @@ export class CampScene extends Phaser.Scene {
         addButton(this, cx, cy + 62, btnLabel, {
           width: 104,
           height: 40,
-          fill: selected ? 0x16a34a : unlocked ? 0x0284c7 : 0x1e293b,
+          fill: selected ? BTN_EQUIPPED : unlocked ? BTN_EQUIP : BTN_LOCKED,
           fontSize: 13,
           onClick: () => {
             const next = selectArmorSkin(this.meta, id);

@@ -77,3 +77,29 @@ export function playDefeatJingle(muted: boolean): void {
   }
   setTimeout(() => void ctx.close().catch(() => {}), 1400);
 }
+
+/** Heavenly celestial harp arpeggio for the Time Goddess revival cutscene. */
+export function playGoddessReviveChime(muted: boolean): void {
+  if (muted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const arp: Array<[number, number, number]> = [
+    [523.25, 0.0, 0.32],  // C5
+    [659.25, 0.09, 0.32], // E5
+    [783.99, 0.18, 0.34], // G5
+    [987.77, 0.27, 0.36], // B5
+    [1046.5, 0.36, 0.42], // C6
+    [1318.5, 0.48, 0.55], // E6
+    [1567.98, 0.62, 0.72], // G6!
+  ];
+  for (const [f, s, d] of arp) {
+    playNote(ctx, f, s, d, 'triangle', 0.12);
+    playNote(ctx, f * 0.5, s, d, 'sine', 0.09);
+  }
+  // Radiant spell-cast shimmer chord at t = 1.15s
+  playNote(ctx, 1046.5, 1.15, 0.65, 'triangle', 0.11);
+  playNote(ctx, 1318.5, 1.18, 0.65, 'triangle', 0.1);
+  playNote(ctx, 1567.98, 1.22, 0.7, 'sine', 0.12);
+  setTimeout(() => void ctx.close().catch(() => {}), 2200);
+}

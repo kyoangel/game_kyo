@@ -1,16 +1,277 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#13092b"/>
-      <stop offset="55%" stop-color="#4c1d57"/>
-      <stop offset="100%" stop-color="#9a3412"/>
+    <!-- Dramatic twilight-to-inferno sky -->
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b0524"/>
+      <stop offset="45%" stop-color="#2e1065"/>
+      <stop offset="82%" stop-color="#7f1d1d"/>
+      <stop offset="100%" stop-color="#b45309"/>
     </linearGradient>
+
+    <!-- Radiant golden chrono glow behind center/left -->
+    <radialGradient id="chronoGlow" cx="0.32" cy="0.58" r="0.45">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.5"/>
+      <stop offset="55%" stop-color="#38bdf8" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Crimson demon aura on the right -->
+    <radialGradient id="demonGlow" cx="0.82" cy="0.44" r="0.38">
+      <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.65"/>
+      <stop offset="55%" stop-color="#be123c" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#be123c" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Title metallic gold gradient -->
+    <linearGradient id="titleGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef9c3"/>
+      <stop offset="45%" stop-color="#facc15"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+
+    <!-- Sword blade shine -->
+    <linearGradient id="blade" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="45%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+
+    <!-- Hero dash speed trail -->
+    <linearGradient id="dashTrail" x1="1" y1="0.5" x2="0" y2="0.5">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.85"/>
+      <stop offset="55%" stop-color="#facc15" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Sword slash arc -->
+    <linearGradient id="slashArc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#facc15" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Ground gradients -->
+    <linearGradient id="hillFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0f0a26"/>
+    </linearGradient>
+    <linearGradient id="hillMid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#166534"/>
+      <stop offset="100%" stop-color="#052e16"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="60%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="heavyBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
   </defs>
-  <rect width="800" height="310" fill="url(#sky)"/>
-  <rect y="310" width="800" height="140" fill="#15803d"/>
-  <rect y="355" width="800" height="34" fill="#b45309"/>
-  <text x="400" y="142" text-anchor="middle" font-family="monospace" font-weight="900" font-size="78" fill="#facc15" stroke="#13092b" stroke-width="10">CHRONO RUSH</text>
-  <text x="400" y="206" text-anchor="middle" font-family="monospace" font-weight="700" font-size="26" fill="#fef08a" stroke="#13092b" stroke-width="5">BEAT THE CLOCK • SLAY THE DEMON LORD</text>
-  <circle cx="400" cy="276" r="34" fill="#1e1b4b" stroke="#38bdf8" stroke-width="6"/>
-  <text x="400" y="287" text-anchor="middle" font-family="monospace" font-weight="900" font-size="28" fill="#facc15">⏱</text>
+
+  <!-- Sky backdrop -->
+  <rect width="800" height="450" fill="url(#sky)"/>
+  <rect width="800" height="450" fill="url(#chronoGlow)"/>
+  <rect width="800" height="450" fill="url(#demonGlow)"/>
+
+  <!-- Starfield -->
+  <g fill="#fef9c3">
+    <circle cx="52" cy="38" r="2" opacity="0.9"/>
+    <circle cx="118" cy="72" r="1.5" opacity="0.7"/>
+    <circle cx="188" cy="34" r="2.2" opacity="0.85"/>
+    <circle cx="268" cy="52" r="1.4" opacity="0.6"/>
+    <circle cx="486" cy="30" r="1.8" opacity="0.8"/>
+    <circle cx="556" cy="64" r="2.3" opacity="0.9"/>
+    <circle cx="622" cy="40" r="1.5" opacity="0.7"/>
+    <circle cx="716" cy="56" r="2" opacity="0.85"/>
+    <circle cx="764" cy="96" r="1.6" opacity="0.6"/>
+    <circle cx="88" cy="140" r="1.5" opacity="0.6"/>
+  </g>
+
+  <!-- Giant glowing Chrono Clock Dial in background -->
+  <g transform="translate(400, 228)" opacity="0.22">
+    <circle r="158" fill="none" stroke="#38bdf8" stroke-width="5" stroke-dasharray="18 10"/>
+    <circle r="134" fill="none" stroke="#facc15" stroke-width="3"/>
+    <g stroke="#fef08a" stroke-width="4" stroke-linecap="round">
+      <line x1="0" y1="-134" x2="0" y2="-114"/>
+      <line x1="134" y1="0" x2="114" y2="0"/>
+      <line x1="0" y1="134" x2="0" y2="114"/>
+      <line x1="-134" y1="0" x2="-114" y2="0"/>
+      <line x1="95" y1="-95" x2="82" y2="-82"/>
+      <line x1="95" y1="95" x2="82" y2="82"/>
+      <line x1="-95" y1="95" x2="-82" y2="82"/>
+      <line x1="-95" y1="-95" x2="-82" y2="-82"/>
+    </g>
+    <!-- Clock hands racing toward midnight -->
+    <line x1="0" y1="0" x2="0" y2="-92" stroke="#facc15" stroke-width="7" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="64" y2="-44" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+    <circle r="10" fill="#facc15"/>
+  </g>
+
+  <!-- Dynamic horizontal speed lines -->
+  <g stroke-linecap="round" opacity="0.38">
+    <line x1="12" y1="184" x2="178" y2="184" stroke="#38bdf8" stroke-width="3"/>
+    <line x1="48" y1="214" x2="236" y2="214" stroke="#facc15" stroke-width="2.5"/>
+    <line x1="0" y1="252" x2="144" y2="252" stroke="#ffffff" stroke-width="2"/>
+    <line x1="600" y1="168" x2="788" y2="168" stroke="#fb7185" stroke-width="2.5"/>
+    <line x1="654" y1="204" x2="800" y2="204" stroke="#f43f5e" stroke-width="3"/>
+  </g>
+
+  <!-- Distant dark mountains -->
+  <path d="M 0 330 L 95 248 L 195 308 L 315 234 L 445 316 L 560 250 L 680 288 L 800 226 L 800 450 L 0 450 Z" fill="url(#hillFar)"/>
+
+  <!-- Demon Castle silhouette on right cliff -->
+  <g transform="translate(555, 166)">
+    <!-- Castle aura -->
+    <ellipse cx="115" cy="110" rx="110" ry="75" fill="#f43f5e" opacity="0.22" filter="url(#heavyBlur)"/>
+    <!-- Spires & battlements -->
+    <polygon points="18,160 18,74 34,42 50,74 50,160" fill="#180a29"/>
+    <polygon points="168,160 168,66 186,32 204,66 204,160" fill="#180a29"/>
+    <rect x="46" y="76" width="128" height="90" fill="#1e0b36"/>
+    <!-- Central tall spire -->
+    <polygon points="84,82 84,32 110,-6 136,32 136,82" fill="#140724"/>
+    <!-- Battlement teeth -->
+    <rect x="48" y="66" width="14" height="14" fill="#1e0b36"/>
+    <rect x="70" y="66" width="14" height="14" fill="#1e0b36"/>
+    <rect x="136" y="66" width="14" height="14" fill="#1e0b36"/>
+    <rect x="158" y="66" width="14" height="14" fill="#1e0b36"/>
+    <!-- Glowing crimson castle windows & gate -->
+    <rect x="103" y="34" width="14" height="24" rx="7" fill="#fb7185" filter="url(#softGlow)"/>
+    <rect x="29" y="88" width="10" height="18" rx="5" fill="#f43f5e"/>
+    <rect x="181" y="84" width="10" height="18" rx="5" fill="#f43f5e"/>
+    <path d="M 92 162 L 92 118 Q 110 96 128 118 L 128 162 Z" fill="#f43f5e" opacity="0.9"/>
+    <path d="M 98 162 L 98 124 Q 110 108 122 124 L 122 162 Z" fill="#fef08a"/>
+  </g>
+
+  <!-- Rolling green hills -->
+  <path d="M 0 342 Q 190 296 410 336 T 800 326 L 800 450 L 0 450 Z" fill="url(#hillMid)"/>
+  <!-- Perspective hero rush road (smooth S-curve toward castle) -->
+  <path d="M 0 392 Q 260 364 500 368 Q 610 370 700 334 L 722 344 Q 625 404 500 408 Q 265 416 0 442 Z" fill="url(#road)"/>
+  <path d="M 0 396 Q 260 368 500 372 Q 605 374 696 338" fill="none" stroke="#fef08a" stroke-width="3" opacity="0.45"/>
+
+  <!-- Menacing Demon Lord looming on the right -->
+  <g transform="translate(624, 242)">
+    <!-- Fiery bat wings -->
+    <path d="M 24 52 Q -36 12 -74 -26 Q -28 24 -42 62 Q -6 50 24 72 Z" fill="#881337" stroke="#f43f5e" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M 76 52 Q 136 12 166 -24 Q 126 24 136 62 Q 102 50 76 72 Z" fill="#881337" stroke="#f43f5e" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- Dark armored body & ragged robe -->
+    <path d="M 16 134 L 26 52 L 74 52 L 86 134 L 68 124 L 50 136 L 32 124 Z" fill="#1e0b36" stroke="#c084fc" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M 32 58 L 50 78 L 68 58 L 62 120 L 38 120 Z" fill="#4c1d95"/>
+    <!-- Spiked shoulder pauldrons -->
+    <polygon points="10,56 30,44 36,64" fill="#312e81" stroke="#f43f5e" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="90,56 70,44 64,64" fill="#312e81" stroke="#f43f5e" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- Horned helm / head -->
+    <circle cx="50" cy="36" r="22" fill="#140724" stroke="#f43f5e" stroke-width="2.5"/>
+    <!-- Curved demon horns -->
+    <path d="M 34 22 Q 12 2 20 -20 Q 28 0 44 16 Z" fill="#facc15" stroke="#7c2d12" stroke-width="2"/>
+    <path d="M 66 22 Q 88 2 80 -20 Q 72 0 56 16 Z" fill="#facc15" stroke="#7c2d12" stroke-width="2"/>
+    <!-- Glowing crimson eyes -->
+    <polygon points="36,34 47,38 39,43" fill="#fef08a" filter="url(#softGlow)"/>
+    <polygon points="64,34 53,38 61,43" fill="#fef08a" filter="url(#softGlow)"/>
+    <!-- Charging dark fireball with energy ring -->
+    <circle cx="-18" cy="76" r="22" fill="#f43f5e" opacity="0.48" filter="url(#softGlow)"/>
+    <circle cx="-18" cy="76" r="12" fill="#fb923c" stroke="#fef08a" stroke-width="3"/>
+    <circle cx="-18" cy="76" r="5" fill="#ffffff"/>
+  </g>
+
+  <!-- Hero Dash Afterimage & Speed Swoosh -->
+  <path d="M 18 358 Q 112 350 218 318 L 222 252 Q 112 288 18 312 Z" fill="url(#dashTrail)"/>
+  <!-- Ghost afterimage silhouette -->
+  <g transform="translate(110, 246) scale(0.92)" opacity="0.32">
+    <path d="M 20 50 L -22 86 L 24 88 Z" fill="#38bdf8"/>
+    <rect x="24" y="42" width="38" height="44" rx="8" fill="#38bdf8"/>
+    <circle cx="46" cy="24" r="20" fill="#facc15"/>
+  </g>
+
+  <!-- Iconic Dashing Hero (golden hair, flowing red cape, blue tunic, sword thrust forward!) -->
+  <g transform="translate(186, 232)">
+    <!-- Ground shadow -->
+    <ellipse cx="44" cy="148" rx="48" ry="12" fill="#09050f" opacity="0.55"/>
+    <!-- Billowing crimson cape -->
+    <path d="M 26 54 Q -18 54 -66 74 L -48 86 L -62 100 Q -14 102 22 92 L 32 76 Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 20 66 Q -18 68 -46 82" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0.65"/>
+    <!-- Striding boots -->
+    <rect x="12" y="106" width="22" height="32" rx="6" transform="rotate(26 23 122)" fill="#78350f" stroke="#120d1d" stroke-width="3.5"/>
+    <rect x="48" y="104" width="22" height="32" rx="6" transform="rotate(-24 59 120)" fill="#78350f" stroke="#120d1d" stroke-width="3.5"/>
+    <!-- Blue knight tunic + golden belt -->
+    <path d="M 22 50 L 66 50 L 72 108 L 18 108 Z" fill="#2563eb" stroke="#120d1d" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="20" y="84" width="50" height="10" fill="#facc15" stroke="#120d1d" stroke-width="2.5"/>
+    <rect x="40" y="82" width="12" height="14" rx="2" fill="#fef08a" stroke="#120d1d" stroke-width="2"/>
+    <!-- Shoulder armor -->
+    <circle cx="24" cy="58" r="11" fill="#e2e8f0" stroke="#120d1d" stroke-width="3"/>
+    <circle cx="66" cy="58" r="11" fill="#e2e8f0" stroke="#120d1d" stroke-width="3"/>
+    <!-- Hero Head + Golden Spiky Hair -->
+    <circle cx="46" cy="30" r="24" fill="#ffcca8" stroke="#120d1d" stroke-width="4"/>
+    <!-- Determined anime/pixel eyes (clearly visible!) -->
+    <rect x="49" y="25" width="5.5" height="9.5" rx="2" fill="#120d1d"/>
+    <rect x="60" y="25" width="5.5" height="9.5" rx="2" fill="#120d1d"/>
+    <rect x="51" y="26.5" width="2.2" height="3.2" fill="#ffffff"/>
+    <rect x="62" y="26.5" width="2.2" height="3.2" fill="#ffffff"/>
+    <!-- Golden Hero Hair -->
+    <path d="M 18 30 Q 12 -2 48 -4 Q 74 -2 72 20 L 62 15 L 55 22 L 44 13 L 34 22 L 26 16 Z" fill="#facc15" stroke="#120d1d" stroke-width="3.5" stroke-linejoin="round"/>
+    <!-- Cyan headband with trailing ribbon -->
+    <path d="M 22 21 Q 46 14 70 20" fill="none" stroke="#38bdf8" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M 22 22 Q 4 16 -10 24" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Gleaming Chrono Blade angled forward toward the Demon Lord! -->
+    <g transform="translate(88, 72) rotate(44)">
+      <!-- Forward sword energy slash arc -->
+      <path d="M -8 -96 Q 58 -62 56 20 Q 42 -42 -12 -80 Z" fill="url(#slashArc)" opacity="0.9"/>
+      <!-- Blade -->
+      <polygon points="0,-96 12,-74 12,12 -12,12 -12,-74" fill="url(#blade)" stroke="#120d1d" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="0" y1="-82" x2="0" y2="6" stroke="#38bdf8" stroke-width="3"/>
+      <!-- Crossguard -->
+      <rect x="-22" y="8" width="44" height="10" rx="4" fill="#facc15" stroke="#120d1d" stroke-width="3"/>
+      <circle cx="0" cy="13" r="4.5" fill="#38bdf8"/>
+      <!-- Hilt -->
+      <rect x="-5" y="18" width="10" height="20" rx="3" fill="#78350f" stroke="#120d1d" stroke-width="3"/>
+      <circle cx="0" cy="40" r="6" fill="#facc15" stroke="#120d1d" stroke-width="3"/>
+    </g>
+  </g>
+
+  <!-- Central Clash Sparks & Golden Starburst -->
+  <g transform="translate(422, 286)" filter="url(#softGlow)">
+    <polygon points="0,-32 7,-8 32,0 7,8 0,32 -7,8 -32,0 -7,-8" fill="#fef08a"/>
+    <polygon points="0,-18 4,-4 18,0 4,4 0,18 -4,4 -18,0 -4,-4" fill="#ffffff"/>
+  </g>
+  <!-- Floating magic crystals & sparks -->
+  <g>
+    <polygon points="362,338 370,324 378,338 370,352" fill="#38bdf8" stroke="#e0f2fe" stroke-width="2"/>
+    <polygon points="484,234 490,222 496,234 490,246" fill="#facc15" stroke="#ffffff" stroke-width="1.5"/>
+    <circle cx="332" cy="242" r="4" fill="#fef08a"/>
+    <circle cx="468" cy="340" r="3.5" fill="#38bdf8"/>
+    <circle cx="524" cy="288" r="4.5" fill="#fb7185"/>
+  </g>
+
+  <!-- Crisp Glowing Chrono Badge (top-left corner accent) -->
+  <g transform="translate(76, 86)">
+    <circle r="34" fill="#13092b" stroke="#38bdf8" stroke-width="4" filter="url(#softGlow)"/>
+    <circle r="27" fill="none" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 4"/>
+    <line x1="0" y1="0" x2="0" y2="-16" stroke="#facc15" stroke-width="4" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="12" y2="6" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round"/>
+    <circle r="4" fill="#ffffff"/>
+  </g>
+
+  <!-- Bold, High-Contrast Slanted Game Title (paint-order="stroke" fixes stroke-over-fill!) -->
+  <g transform="skewX(-8) translate(34, 0)">
+    <!-- Cyan & Crimson speed echo -->
+    <text x="412" y="122" text-anchor="middle" font-family="system-ui, -apple-system, 'Arial Black', sans-serif" font-weight="900" font-size="82" letter-spacing="3" fill="#38bdf8" opacity="0.72">CHRONO RUSH</text>
+    <text x="420" y="118" text-anchor="middle" font-family="system-ui, -apple-system, 'Arial Black', sans-serif" font-weight="900" font-size="82" letter-spacing="3" fill="#f43f5e" opacity="0.65">CHRONO RUSH</text>
+    <!-- Main metallic gold title with crisp dark outline behind fill -->
+    <text x="416" y="120" text-anchor="middle" font-family="system-ui, -apple-system, 'Arial Black', sans-serif" font-weight="900" font-size="82" letter-spacing="3" fill="url(#titleGold)" stroke="#0f0726" stroke-width="14" stroke-linejoin="round" paint-order="stroke">CHRONO RUSH</text>
+  </g>
+
+  <!-- Crisp Subtitle Pill Badge -->
+  <g transform="translate(400, 162)">
+    <rect x="-242" y="-20" width="484" height="36" rx="18" fill="#0f0726" fill-opacity="0.86" stroke="#facc15" stroke-width="2.5"/>
+    <text x="0" y="5" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="18" letter-spacing="2.2" fill="#fef08a">BEAT THE CLOCK  •  SLAY THE DEMON LORD</text>
+  </g>
 </svg>

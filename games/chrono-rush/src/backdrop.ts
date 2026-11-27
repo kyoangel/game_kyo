@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { getKit } from '@gf/game-kit';
+import { createBossEvoRig, getBossEvo, type BossEvoRig } from './bossEvo.ts';
 import { getChapterForLoop } from './chapters.ts';
-import { defaultMeta, resolveHeroAppearance, sanitizeMeta, type MetaSave } from './meta.ts';
+import { activeHeroCharacter, defaultMeta, resolveHeroAppearance, sanitizeMeta, type MetaSave } from './meta.ts';
 import { ensureHeroAppearance, ensurePixelArt } from './pixelArt.ts';
 import { META_SAVE_KEY } from './PlayScene.ts';
 import { TITLE_META_EVENT } from './titleExtras.ts';
@@ -13,13 +14,20 @@ export function heroTitleBackdrop(scene: Phaser.Scene): void {
   const { width, height } = scene.scale;
 
   const g = scene.add.graphics();
-  const drawBackdrop = (groundColor: number, roadOuter: number, roadInner: number): void => {
+  const drawBackdrop = (
+    groundColor: number,
+    roadOuter: number,
+    roadInner: number,
+    skyTop = 0x13092b,
+    skyMid = 0x4c1d57,
+    skyHorizon = 0x9a3412,
+  ): void => {
     g.clear();
     const bands = [
-      { y: 0, h: height * 0.22, color: 0x13092b },
+      { y: 0, h: height * 0.22, color: skyTop },
       { y: height * 0.22, h: height * 0.18, color: 0x26124d },
-      { y: height * 0.4, h: height * 0.16, color: 0x4c1d57 },
-      { y: height * 0.56, h: height * 0.12, color: 0x9a3412 },
+      { y: height * 0.4, h: height * 0.16, color: skyMid },
+      { y: height * 0.56, h: height * 0.12, color: skyHorizon },
       { y: height * 0.68, h: height * 0.32, color: groundColor },
     ];
     for (const b of bands) {
@@ -47,36 +55,51 @@ export function heroTitleBackdrop(scene: Phaser.Scene): void {
 
   drawBackdrop(0x14532d, 0x92400e, 0xb45309);
 
-  scene.add.image(155, height * 0.66, 'px-village').setScale(1.4);
-  scene.add.image(width - 150, height * 0.61, 'px-castle').setScale(1.25);
+  scene.add.image(155, height * 0.66, 'px-village').setScale(1.4).setDepth(2);
+  scene.add.image(width - 150, height * 0.61, 'px-castle').setScale(1.25).setDepth(2);
 
-  const hero = scene.add.image(275, height * 0.78, 'px-hero-0').setScale(1.65);
-  const boss = scene.add.image(width - 270, height * 0.75, 'px-demon-0').setScale(1.25).setFlipX(true);
+  const hero = scene.add.image(275, height * 0.78, 'px-hero-0').setScale(1.65).setDepth(5);
+  const boss = scene.add.image(width - 270, height * 0.75, 'px-demon-0').setScale(1.25).setFlipX(true).setDepth(5);
+  let bossRig: BossEvoRig | null = null;
 
   scene.tweens.add({ targets: hero, y: hero.y - 8, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  scene.tweens.add({ targets: boss, y: boss.y - 10, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  scene.tweens.add({
+    targets: boss,
+    y: boss.y - 10,
+    duration: 600,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => bossRig?.syncPosition(boss.x, boss.y),
+  });
 
-  const scan = scene.add.graphics();
+  const scan = scene.add.graphics().setDepth(8);
   scan.fillStyle(0x000000, 0.08);
   for (let y = 0; y < height; y += 6) scan.fillRect(0, y, width, 2);
 
-  // Sync hero Skin, current Chapter Boss, and ground biome from saved meta (and live stage switches!)
+  // Sync hero Skin, current Chapter Boss (+ Episode I..V evolution!), and ground biome from saved meta
   let alive = true;
   const applyMetaVisuals = (meta: MetaSave): void => {
     if (!alive || !hero.active || !boss.active) return;
     const { weaponLook, armorLook, shieldLook } = resolveHeroAppearance(meta);
-    const [h0] = ensureHeroAppearance(scene, weaponLook, armorLook, shieldLook);
+    const [h0] = ensureHeroAppearance(scene, weaponLook, armorLook, shieldLook, activeHeroCharacter(meta));
     hero.setTexture(h0);
 
     const stage = getChapterForLoop(meta.loop);
     const ch = stage.chapter;
+    const evo = getBossEvo(stage.episodeIndex);
     boss.setTexture(`px-${ch.bossKind}-0`);
-    drawBackdrop(ch.zoneColors[0], ch.roadOuter, ch.roadInner);
+    bossRig?.destroy();
+    bossRig = createBossEvoRig(scene, boss, evo, { baseScale: 1.25, depthBehind: 4, depthFront: 6 });
+    bossRig.syncPosition(boss.x, boss.y);
+    drawBackdrop(ch.zoneColors[0], ch.roadOuter, ch.roadInner, evo.skyTop, evo.skyMid, evo.skyHorizon);
   };
 
   scene.events.on(TITLE_META_EVENT, applyMetaVisuals);
   scene.events.once('shutdown', () => {
     alive = false;
+    bossRig?.destroy();
+    bossRig = null;
     scene.events.off(TITLE_META_EVENT, applyMetaVisuals);
   });
   void kit.save

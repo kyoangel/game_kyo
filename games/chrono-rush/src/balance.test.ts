@@ -3,7 +3,7 @@ import { diagnoseDefeat } from './balance.ts';
 import { getChapterForLoop, getCycleForLoop, getLoopForCycleCell, resolveObstacleCollision } from './chapters.ts';
 import { ARMOR_CATALOG, MAX_POLISH_LV, WEAPON_CATALOG } from './gear.ts';
 import { computeCrystalReward, defaultMeta, type MetaSave } from './meta.ts';
-import { bossFireballDamage, createHeroStats, grantRewards, makeEnemy, resolveBossDashHit } from './systems.ts';
+import { bossFireballDamage, createHeroStats, grantRewards, makeEnemy, resolveBossDashHit, resolveBumpClash } from './systems.ts';
 
 function simulateBossFight(meta: MetaSave, loop: number, targetLevel: number, polishLv: number) {
   const hero = createHeroStats(meta);
@@ -105,6 +105,26 @@ describe('chrono-rush 3 chapters (Loop 1..15) balance & structure', () => {
       expect(res.survived, `Loop ${loop} hero should survive boss counter-hits`).toBe(true);
       expect(res.hits, `Loop ${loop} should finish in <= 12 dash-slashes`).toBeLessThanOrEqual(12);
     }
+  });
+
+  it('keeps Loop 5 overworld mobs one-shottable with early-mid gear and Dash-Slash', () => {
+    const meta5: MetaSave = {
+      ...defaultMeta(),
+      loop: 5,
+      equippedWeapon: 'crimson',
+      ownedWeapons: ['wood', 'iron', 'crimson'],
+      ranks: { ...defaultMeta().ranks, atk: 2 },
+    };
+    const hero = createHeroStats(meta5);
+    const slime5 = makeEnemy('slime', 5);
+    const goblin5 = makeEnemy('goblin', 5);
+
+    // At LV 1 with Sunfire Claymore, Zone-1 Slimes are cleanly one-shot without even dashing
+    expect(resolveBumpClash(hero, slime5.hp, slime5, () => 0.99, false).oneShot).toBe(true);
+    // After 1 village weapon polish + 2 levels, Dash-Slash cleanly one-shots Zone-2 Goblins!
+    hero.weaponPolishLv = 1;
+    grantRewards(hero, hero.xpToNext * 2, 0);
+    expect(resolveBumpClash(hero, goblin5.hp, goblin5, () => 0.99, true).oneShot).toBe(true);
   });
 
   it('keeps Loop 25 and Loop 50 genuinely dangerous even for a maxed-out endgame tank', () => {

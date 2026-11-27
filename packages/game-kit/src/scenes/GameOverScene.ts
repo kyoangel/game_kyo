@@ -67,14 +67,15 @@ export class GameOverScene extends Phaser.Scene {
     if (!this.ring) return;
     const { theme } = getKit(this);
     const { width, height } = this.scale;
+    const landscape = width > height;
     const cx = width / 2;
-    const cy = height * 0.36;
-    const r = 70;
+    const cy = landscape ? height * 0.31 : height * 0.36;
+    const r = landscape ? 56 : 70;
     this.ring.clear();
-    this.ring.lineStyle(14, 0x1a1033, 0.7);
+    this.ring.lineStyle(landscape ? 12 : 14, 0x1a1033, 0.7);
     this.ring.strokeCircle(cx, cy, r);
     const frac = Math.max(0, this.remaining / COUNTDOWN_MS);
-    this.ring.lineStyle(14, theme.accent, 1);
+    this.ring.lineStyle(landscape ? 12 : 14, theme.accent, 1);
     this.ring.beginPath();
     this.ring.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac, false);
     this.ring.strokePath();
@@ -84,17 +85,22 @@ export class GameOverScene extends Phaser.Scene {
     const kit = getKit(this);
     const { theme } = kit;
     const { width, height } = this.scale;
+    const landscape = width > height;
     const cx = width / 2;
+
+    const panelW = landscape ? 620 : 580;
+    const panelY = landscape ? height * 0.16 : height * 0.22;
+    const panelH = landscape ? height * 0.58 : height * 0.44;
 
     const panelBg = this.add.graphics();
     panelBg.fillStyle(0x1a1033, 0.85);
-    panelBg.fillRoundedRect(cx - 290, height * 0.22, 580, height * 0.44, 28);
+    panelBg.fillRoundedRect(cx - panelW / 2, panelY, panelW, panelH, 28);
     panelBg.lineStyle(4, theme.primary, 1);
-    panelBg.strokeRoundedRect(cx - 290, height * 0.22, 580, height * 0.44, 28);
+    panelBg.strokeRoundedRect(cx - panelW / 2, panelY, panelW, panelH, 28);
 
     this.ring = this.add.graphics();
     this.drawRing();
-    const num = this.add.text(cx, height * 0.36, '', this.style(56, theme.text)).setOrigin(0.5);
+    const num = this.add.text(cx, landscape ? height * 0.31 : height * 0.36, '', this.style(landscape ? 48 : 56, theme.text)).setOrigin(0.5);
     const numTimer = this.time.addEvent({
       delay: 100,
       loop: true,
@@ -102,24 +108,36 @@ export class GameOverScene extends Phaser.Scene {
     });
     num.setText('5');
 
-    const btn = addButton(this, cx, height * 0.5, kit.t('gk.revive'), {
-      width: 380,
-      height: 88,
+    const btnW = landscape ? 480 : 420;
+    const btnH = landscape ? 82 : 88;
+    const btn = addButton(this, cx, landscape ? height * 0.52 : height * 0.5, kit.t('gk.revive'), {
+      width: btnW,
+      height: btnH,
       fill: theme.primary,
-      fontSize: 38,
+      fontSize: landscape ? 32 : 36,
       onClick: () => void this.accept(),
     });
     // rewarded-ad icon: small play triangle in a rounded badge, left of the label
+    const iconLeft = -btnW / 2 + 20;
+    const iconSize = 46;
     const icon = this.add.graphics();
     icon.fillStyle(theme.accent, 1);
-    icon.fillRoundedRect(-170, -24, 48, 48, 10);
+    icon.fillRoundedRect(iconLeft, -iconSize / 2, iconSize, iconSize, 10);
     icon.fillStyle(0x1a1033, 1);
-    icon.fillTriangle(-156, -13, -156, 13, -134, 0);
+    icon.fillTriangle(iconLeft + 14, -12, iconLeft + 14, 12, iconLeft + 34, 0);
     btn.add(icon);
     const text = btn.list.find((o) => o instanceof Phaser.GameObjects.Text) as Phaser.GameObjects.Text | undefined;
-    text?.setX(20);
+    if (text) {
+      const textAreaLeft = iconLeft + iconSize + 14;
+      const textAreaRight = btnW / 2 - 18;
+      const maxTextW = textAreaRight - textAreaLeft;
+      text.setX((textAreaLeft + textAreaRight) / 2);
+      if (text.width > maxTextW) {
+        text.setScale(maxTextW / text.width);
+      }
+    }
 
-    const no = this.add.text(cx, height * 0.6, kit.t('gk.noThanks'), this.style(30, theme.muted)).setOrigin(0.5);
+    const no = this.add.text(cx, landscape ? height * 0.65 : height * 0.6, kit.t('gk.noThanks'), this.style(28, theme.muted)).setOrigin(0.5);
     no.setPadding(30, 14, 30, 14);
     no.setInteractive({ useHandCursor: true });
     no.on('pointerup', () => void this.decline());
