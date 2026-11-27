@@ -2,15 +2,78 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>Chrono Rush</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none; }
-      #game { width: 100%; height: 100%; }
+      html, body { margin: 0; height: 100%; background: #13092b; overflow: hidden; touch-action: none; }
+      #game { width: 100%; height: 100%; box-sizing: border-box; }
+      #rotate-hint {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: radial-gradient(circle at 50% 35%, #2e1065 0%, #0f0726 75%);
+        color: #fef9c3;
+        font-family: system-ui, -apple-system, sans-serif;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 28px;
+        gap: 16px;
+      }
+      #rotate-hint .phone-icon {
+        font-size: 56px;
+        animation: tiltPhone 1.8s ease-in-out infinite;
+      }
+      @keyframes tiltPhone {
+        0%, 20% { transform: rotate(0deg); }
+        55%, 80% { transform: rotate(-90deg); }
+        100% { transform: rotate(0deg); }
+      }
+      #rotate-hint h2 { margin: 0; font-size: 22px; color: #facc15; }
+      #rotate-hint p { margin: 0; font-size: 15px; color: #cbd5e1; max-width: 280px; line-height: 1.5; }
+      #rotate-dismiss {
+        margin-top: 8px;
+        padding: 10px 20px;
+        border-radius: 999px;
+        border: 1.5px solid #475569;
+        background: rgba(30, 22, 59, 0.9);
+        color: #cbd5e1;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      @media (pointer: coarse) and (max-height: 540px) {
+        #game {
+          padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+        }
+      }
+      @media (pointer: coarse) and (orientation: portrait) and (max-width: 600px) {
+        body:not(.allow-portrait) #rotate-hint { display: flex; }
+      }
     </style>
-    <script type="module" crossorigin src="./assets/index-oMPQ5y-F.js"></script>
+    <script type="module" crossorigin src="./assets/index-HVc4Mlff.js"></script>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate-hint" role="dialog" aria-live="polite">
+      <div class="phone-icon">📱</div>
+      <h2 id="rotate-title">請將手機橫放遊玩</h2>
+      <p id="rotate-desc">橫向畫面可放大角色、按鈕與文字，在手機上操作更順手清楚！</p>
+      <button id="rotate-dismiss" type="button">仍以直向遊玩</button>
+    </div>
+    <script>
+      (function () {
+        var isZh = /^zh/i.test(navigator.language || '');
+        if (!isZh) {
+          document.getElementById('rotate-title').textContent = 'Rotate to Landscape';
+          document.getElementById('rotate-desc').textContent = 'Landscape mode makes the hero, monsters, and touch buttons much larger and easier to play!';
+          document.getElementById('rotate-dismiss').textContent = 'Play in Portrait anyway';
+        }
+        document.getElementById('rotate-dismiss').addEventListener('click', function () {
+          document.body.classList.add('allow-portrait');
+        });
+      })();
+    </script>
   </body>
 </html>
