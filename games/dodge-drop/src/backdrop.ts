@@ -2,29 +2,43 @@ import Phaser from 'phaser';
 import { getKit } from '@gf/game-kit';
 import { SKINS } from './economy.ts';
 import { skinTextureKey } from './skinArt.ts';
+import { fillCloud } from './skyArt.ts';
 
-function blockKey(scene: Phaser.Scene): string {
-  const key = 'dd-title-block';
+/** White cloud silhouette (tinted per use) for the title backdrop and the drifting sky layer. */
+function cloudKey(scene: Phaser.Scene): string {
+  const key = 'dd-title-cloud';
   if (scene.textures.exists(key)) return key;
   const g = scene.make.graphics({}, false);
   g.fillStyle(0xffffff, 1);
-  g.fillRoundedRect(0, 0, 64, 64, 14);
-  g.generateTexture(key, 64, 64);
+  fillCloud(g, 4, 4, 120, 52);
+  g.generateTexture(key, 128, 60);
   g.destroy();
   return key;
 }
 
-/** Title backdrop: slow falling translucent blocks plus the selected skin idling near the bottom. */
+/** Tile of soft, faint clouds for the play-field sky (drifts down faster than the stars: flying-up feel). */
+function skyCloudKey(scene: Phaser.Scene): string {
+  const key = 'dd-sky-clouds';
+  if (scene.textures.exists(key)) return key;
+  const g = scene.make.graphics({}, false);
+  const puffs = [[40, 60, 150, 50], [300, 210, 190, 60], [120, 420, 130, 44], [420, 560, 160, 52], [210, 700, 210, 66], [20, 860, 140, 48]];
+  g.fillStyle(0xd8c8ff, 0.5);
+  for (const [x, y, w, h] of puffs) fillCloud(g, x!, y!, w!, h!);
+  g.generateTexture(key, 512, 960);
+  g.destroy();
+  return key;
+}
+
+/** Title backdrop: slow falling translucent clouds plus the selected plane idling near the bottom. */
 export function ddTitleBackdrop(scene: Phaser.Scene): void {
   const { width, height } = scene.scale;
-  const key = blockKey(scene);
+  const key = cloudKey(scene);
   for (let i = 0; i < 12; i++) {
     const sx = 0.8 + Math.random() * 1.6;
-    const img = scene.add.image(40 + Math.random() * (width - 80), -100, key).setTint(i % 3 === 0 ? 0xffa14d : 0xff4fa3).setAlpha(0.14 + Math.random() * 0.1).setScale(sx, sx * (0.5 + Math.random() * 0.4));
+    const img = scene.add.image(40 + Math.random() * (width - 80), -100, key).setTint(i % 3 === 0 ? 0xffa14d : 0xff4fa3).setAlpha(0.14 + Math.random() * 0.1).setScale(sx * 0.8, sx * 0.8 * (0.8 + Math.random() * 0.3));
     scene.tweens.add({
       targets: img,
       y: height + 120,
-      angle: (Math.random() - 0.5) * 40,
       duration: 9000 + Math.random() * 7000,
       delay: Math.random() * 9000,
       repeat: -1,
@@ -50,6 +64,7 @@ export interface Parallax { update(dt: number, speed: number): void }
 /** Layer tuning: share of the block fall speed, alpha (kept low so blocks stay the brightest thing) and tile scale. */
 const FAR = { depth: -95, k: 0.15, alpha: 0.14, tile: 0.7 };
 const MID = { depth: -92, k: 0.4, alpha: 0.14, tile: 0.9 };
+const CLOUDS = { depth: -90, k: 0.75, alpha: 0.1, tile: 1 };
 
 /** Two scrolling star tiles behind the play field; null when the art is not loaded (procedural fallback). */
 export function addParallax(scene: Phaser.Scene, w: number, h: number): Parallax | null {
@@ -58,8 +73,10 @@ export function addParallax(scene: Phaser.Scene, w: number, h: number): Parallax
     scene.add.tileSprite(w / 2, h / 2, w, h, key).setDepth(l.depth).setAlpha(l.alpha).setTileScale(l.tile);
   const far = layer('dd-bg-far', FAR);
   const mid = layer('dd-bg-mid', MID);
+  const clouds = layer(skyCloudKey(scene), CLOUDS);
   return {
     update(dt, speed) {
+      clouds.tilePositionY -= dt * speed * CLOUDS.k;
       // Tile offsets are in texture px; dividing by the tile scale makes the on-screen shift k * speed * dt.
       far.tilePositionY -= (dt * speed * FAR.k) / FAR.tile;
       mid.tilePositionY -= (dt * speed * MID.k) / MID.tile;

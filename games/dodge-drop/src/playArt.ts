@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { artImage } from './art.ts';
+import { drawFlame, drawFluffyCloud, drawStormCloud } from './skyArt.ts';
 import { BLOCK_H, BLOCK_PAD } from './waves.ts';
 
 export { BLOCK_PAD };
@@ -38,59 +39,28 @@ function gfx(scene: Phaser.Scene): Phaser.GameObjects.Graphics {
   return scene.make.graphics({}, false);
 }
 
-/** Glowing rounded block texture, cached per width bucket. Returns key and the body width of the texture. */
+/** Storm-cloud obstacle texture (neon rim pink, rush amber), cached per width bucket. Returns key and body width. */
 export function blockTexture(scene: Phaser.Scene, w: number, rush: boolean): { key: string; bodyW: number } {
   const bw = bucket(w);
-  const key = `dd-blk-${bw}-${rush ? 'r' : 'p'}`;
+  const key = `dd-cloud-${bw}-${rush ? 'r' : 'p'}`;
   if (!scene.textures.exists(key)) {
-    const color = rush ? BLOCK_ORANGE : BLOCK_PINK;
     const g = gfx(scene);
     const P = BLOCK_PAD;
-    for (let i = 4; i >= 1; i--) {
-      g.fillStyle(color, 0.07 * (5 - i));
-      const e = (i * P) / 4;
-      g.fillRoundedRect(P - e, P - e, bw + e * 2, BLOCK_H + e * 2, 12 + e);
-    }
-    g.fillStyle(color, 1);
-    g.fillRoundedRect(P, P, bw, BLOCK_H, 12);
-    g.fillStyle(0x000000, 0.16);
-    g.fillRoundedRect(P + 2, P + BLOCK_H * 0.55, bw - 4, BLOCK_H * 0.45 - 2, 9);
-    // lighter 2 px top edge
-    g.fillStyle(0xffffff, 0.85);
-    g.fillRoundedRect(P + 6, P + 1, bw - 12, 2, 1);
+    drawStormCloud(g, P, P, bw, BLOCK_H, rush ? BLOCK_ORANGE : BLOCK_PINK, P);
     g.generateTexture(key, bw + P * 2, BLOCK_H + P * 2);
     g.destroy();
   }
   return { key, bodyW: bw };
 }
 
-/** Edible neon-blue block texture during Chomp mode (flashes white/blue in the final 1.5 s). */
+/** Edible fluffy cloud during Chomp mode (flashes white/blue in the final 1.5 s). */
 export function edibleBlockTexture(scene: Phaser.Scene, w: number, flash: boolean): { key: string; bodyW: number } {
   const bw = bucket(w);
-  const key = `dd-edible-${bw}-${flash ? 'w' : 'b'}`;
+  const key = `dd-fluff-${bw}-${flash ? 'w' : 'b'}`;
   if (!scene.textures.exists(key)) {
-    const body = flash ? 0xeaf6ff : 0x2da8ff;
-    const glow = flash ? 0xffffff : 0x3ff0ff;
     const g = gfx(scene);
     const P = BLOCK_PAD;
-    for (let i = 4; i >= 1; i--) {
-      g.fillStyle(glow, 0.09 * (5 - i));
-      const e = (i * P) / 4;
-      g.fillRoundedRect(P - e, P - e, bw + e * 2, BLOCK_H + e * 2, 12 + e);
-    }
-    g.fillStyle(body, 1);
-    g.fillRoundedRect(P, P, bw, BLOCK_H, 12);
-    // Crisp white dashed/glossy neon rim + soft energy dots so it reads as soft & edible
-    g.lineStyle(2.5, flash ? 0x2da8ff : 0xb8f6ff, 0.9);
-    g.strokeRoundedRect(P + 1, P + 1, bw - 2, BLOCK_H - 2, 11);
-    g.fillStyle(0xffffff, 0.85);
-    g.fillRoundedRect(P + 8, P + 3, bw - 16, 3, 1.5);
-    const dots = Math.max(2, Math.floor(bw / 34));
-    const step = bw / (dots + 1);
-    g.fillStyle(flash ? 0x2da8ff : 0xffffff, 0.55);
-    for (let i = 1; i <= dots; i++) {
-      g.fillCircle(P + i * step, P + BLOCK_H * 0.58, 3.5);
-    }
+    drawFluffyCloud(g, P, P, bw, BLOCK_H, flash ? 0xeaf6ff : 0x9fe6ff, flash ? 0xffffff : 0x3ff0ff, P);
     g.generateTexture(key, bw + P * 2, BLOCK_H + P * 2);
     g.destroy();
   }
@@ -196,6 +166,12 @@ export function ensurePlayTextures(scene: Phaser.Scene): void {
     };
     drawChomper('dd-chomp-open', 20, 24);
     drawChomper('dd-chomp-closed', 14, 9);
+  }
+  if (!tex.exists('dd-flame')) {
+    const g = gfx(scene);
+    drawFlame(g);
+    g.generateTexture('dd-flame', 24, 40);
+    g.destroy();
   }
   if (!tex.exists('dd-chomp-ring')) {
     const g = gfx(scene);

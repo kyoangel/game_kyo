@@ -128,6 +128,8 @@ export class PlayScene extends Phaser.Scene {
   private trail: SkinTrail | null = null;
   private ring!: Phaser.GameObjects.Image;
   private chompRing!: Phaser.GameObjects.Image;
+  /** Exhaust flame under the plane; grows with the fall speed (rushes, Overdrive). */
+  private flame!: Phaser.GameObjects.Image;
   private chompBanner!: Phaser.GameObjects.Text;
   private shieldHudIcons: Phaser.GameObjects.Image[] = [];
   private vel = 0;
@@ -448,6 +450,7 @@ export class PlayScene extends Phaser.Scene {
   private buildPlayer(): void {
     const key = skinTextureKey(this, this.skin);
     this.player = this.add.image(W / 2, PLAYER_Y, key).setDepth(10);
+    this.flame = this.add.image(W / 2, PLAYER_Y + 30, 'dd-flame').setOrigin(0.5, 0).setDepth(9);
     this.ring = styleArt(this, this.add.image(W / 2, PLAYER_Y, 'dd-ring'), 'dd-ring').setDepth(11).setVisible(false);
     this.ringArtScale = artScale(this, 'dd-ring');
     this.chompRing = this.add.image(W / 2, PLAYER_Y, 'dd-chomp-ring').setDepth(11).setVisible(false);
@@ -689,6 +692,7 @@ export class PlayScene extends Phaser.Scene {
     this.updateBlocks(dt);
     this.updatePickups(dt);
     if (!this.dead) this.updatePlayerVisual(dt);
+    else this.flame.setVisible(false);
     this.updateHud(dt);
   }
 
@@ -788,7 +792,9 @@ export class PlayScene extends Phaser.Scene {
     const chomping = this.chompTimer > 0;
     const baseScale = chomping ? 1.15 : this.cfg.playerScale;
     this.player.setAngle(this.tiltN * 12);
-    this.player.setScale(baseScale * (1 + 0.25 * n), baseScale * (1 - 0.15 * n));
+    // Plane banks into the turn: the wings foreshorten a little (no squash: it is a plane, not a cube).
+    this.player.setScale(chomping ? baseScale * (1 + 0.25 * n) : baseScale * (1 - 0.18 * n), chomping ? baseScale * (1 - 0.15 * n) : baseScale);
+    this.updateFlame(baseScale, chomping);
     if (chomping) {
       const open = Math.floor(this.t * 12) % 2 === 0;
       const want = open ? 'dd-chomp-open' : 'dd-chomp-closed';
@@ -812,6 +818,20 @@ export class PlayScene extends Phaser.Scene {
       this.chompRing.setScale(baseScale * (1.08 + Math.sin(this.t * 6) * 0.05));
       this.chompRing.rotation -= dt * 1.2;
     }
+  }
+
+  private updateFlame(scale: number, chomping: boolean): void {
+    const f = this.flame;
+    f.setVisible(!chomping && !this.dead);
+    if (!f.visible) return;
+    const od = overdrive(this.t);
+    const boost = Math.min(1.8, (fallSpeed(this.t) * speedBoost(this.t) * (1 + od)) / fallSpeed(0));
+    const flicker = 0.85 + 0.3 * Math.abs(Math.sin(this.t * 37)) * (0.6 + 0.4 * Math.sin(this.t * 11));
+    const a = this.player.rotation;
+    // Hang under the tail, following the bank angle.
+    const d = 27 * scale;
+    f.setPosition(this.player.x - Math.sin(a) * d, this.player.y + Math.cos(a) * d).setRotation(a);
+    f.setScale(scale * (0.8 + 0.15 * boost), scale * flicker * (0.55 + 0.45 * boost)).setAlpha(this.player.alpha);
   }
 
   // ------------------------------------------------------------ scheduler

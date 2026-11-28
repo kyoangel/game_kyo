@@ -1,4 +1,4 @@
-# Neon Rush v3.9.0 - CrazyGames resubmission notes
+# Neon Rush v3.10.0 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -47,6 +47,11 @@ mission is gone. New original synth-pop main loop (140 BPM, F minor, sidechain p
 v3.9.0 - the graze gauge is back with a new reward: every 8 near misses grant one shield (the gauge holds full while
 shields are maxed). The goal bar counts the seconds left to the next medal ("Neon in 60 s") instead of showing the
 medal's clock time.
+
+v3.10.0 - neon night-sky theme (phase 1): the falling blocks are storm clouds with lightning (art stays inside the
+hit box), the player is an original little plane with an exhaust flame that grows with speed and banks into turns,
+faint clouds drift down behind the field, Chomp turns storm clouds into fluffy edible clouds, title backdrop clouds.
+Phase 2 (after the owner plays it): distinct planes per skin, Chomp look, store covers and videos.
 
 ## What changed since v2.8.4 (paste into the portal notes)
 
