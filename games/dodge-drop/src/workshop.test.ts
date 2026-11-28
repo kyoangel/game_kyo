@@ -2,17 +2,20 @@ import { describe, expect, it } from 'vitest';
 import {
   buyUpgrade, effectValue, emptyWorkshop, magnetPulls, magnetRadius, migrateWorkshop, nextCost, sanitizeWorkshop,
   shieldAfterPickup, shieldCapacity, shieldFirstAt, shieldInterval, startShieldChance, starInterval, UPGRADE_IDS, upgradeCost,
+  grazeNeeded, maxLevel,
 } from './workshop.ts';
 
 describe('workshop table', () => {
-  it('lists the five upgrades in row order (Shield Stack second; graze upgrades retired)', () => {
-    expect(UPGRADE_IDS).toEqual(['shield', 'shieldStack', 'startShield', 'magnet', 'luck']);
+  it('lists the six upgrades in row order (Shield Stack second, Graze Charger last)', () => {
+    expect(UPGRADE_IDS).toEqual(['shield', 'shieldStack', 'startShield', 'magnet', 'luck', 'grazeCharge']);
   });
-  it('costs 15/24/38/61/98 per level, 236 per upgrade, 1180 total', () => {
+  it('costs 15/24/38/61/98 per level, 236 per 5-level upgrade; Graze Charger has 3 levels (77)', () => {
     expect([1, 2, 3, 4, 5].map(upgradeCost)).toEqual([15, 24, 38, 61, 98]);
     const per = [1, 2, 3, 4, 5].reduce((s, n) => s + upgradeCost(n), 0);
     expect(per).toBe(236);
-    expect(per * UPGRADE_IDS.length).toBe(1180);
+    expect(maxLevel('grazeCharge')).toBe(3);
+    const total = UPGRADE_IDS.reduce((s, id) => s + Array.from({ length: maxLevel(id) }, (_, i) => upgradeCost(i + 1)).reduce((a, b) => a + b, 0), 0);
+    expect(total).toBe(1180 + 77);
     expect(upgradeCost(0)).toBe(Infinity);
     expect(upgradeCost(6)).toBe(Infinity);
   });
@@ -20,6 +23,16 @@ describe('workshop table', () => {
     expect(nextCost(0)).toBe(15);
     expect(nextCost(4)).toBe(98);
     expect(nextCost(5)).toBeNull();
+    expect(nextCost(2, maxLevel('grazeCharge'))).toBe(38);
+    expect(nextCost(3, maxLevel('grazeCharge'))).toBeNull();
+  });
+  it('Graze Charger: a shield needs 8/7/6/5 near misses; buying stops at level 3; saves clamp to 3', () => {
+    expect([0, 1, 2, 3].map(grazeNeeded)).toEqual([8, 7, 6, 5]);
+    expect(grazeNeeded(9)).toBe(5);
+    expect(effectValue('grazeCharge', 2)).toBe(6);
+    const levels = { ...emptyWorkshop(), grazeCharge: 3 };
+    expect(buyUpgrade({ coins: 999, levels }, 'grazeCharge')).toEqual({ ok: false, reason: 'max' });
+    expect(sanitizeWorkshop({ grazeCharge: 5 }).grazeCharge).toBe(3);
   });
 });
 
@@ -97,7 +110,7 @@ describe('sanitize / buy', () => {
   });
   it('sanitizes unknown ids and out-of-range levels to 0..5', () => {
     expect(sanitizeWorkshop({ shield: 3, bogus: 2, magnet: 9, luck: -1, startShield: '2', shieldStack: 2.7 })).toEqual({
-      shield: 3, shieldStack: 2, startShield: 0, magnet: 5, luck: 0,
+      shield: 3, shieldStack: 2, startShield: 0, magnet: 5, luck: 0, grazeCharge: 0,
     });
     expect(sanitizeWorkshop(null)).toEqual(emptyWorkshop());
     expect(sanitizeWorkshop([1, 2])).toEqual(emptyWorkshop());

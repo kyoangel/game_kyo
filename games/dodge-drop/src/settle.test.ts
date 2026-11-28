@@ -6,7 +6,7 @@ import type { RunState } from './runState.ts';
 import { nearGoal, settleRun, type Saved } from './settle.ts';
 
 const rng = () => 0.5;
-const maxed = (): Workshop => ({ shield: 5, shieldStack: 5, startShield: 5, magnet: 5, luck: 5 });
+const maxed = (): Workshop => ({ shield: 5, shieldStack: 5, startShield: 5, magnet: 5, luck: 5, grazeCharge: 3 });
 const ms = (o: Partial<MissionState> = {}): MissionState => ({
   active: [
     { id: 'runs', tier: 1, progress: 0 },

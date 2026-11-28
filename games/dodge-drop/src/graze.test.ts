@@ -17,4 +17,9 @@ describe('graze gauge (shields)', () => {
     expect(addGraze(8, false)).toEqual({ gauge: 8, shield: false });
     expect(addGraze(8, true)).toEqual({ gauge: 0, shield: true });
   });
+  it('a smaller target (Graze Charger) pays sooner', () => {
+    expect(addGraze(4, true, 5)).toEqual({ gauge: 0, shield: true });
+    expect(addGraze(3, true, 5)).toEqual({ gauge: 4, shield: false });
+    expect(addGraze(4, false, 5)).toEqual({ gauge: 5, shield: false });
+  });
 });

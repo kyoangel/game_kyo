@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { artImage } from './art.ts';
 import { drawFlame, drawFluffyCloud, drawStormCloud } from './skyArt.ts';
-import { BLOCK_H, BLOCK_PAD } from './waves.ts';
+import { BLOCK_PAD } from './waves.ts';
 
 export { BLOCK_PAD };
 export const BLOCK_PINK = 0xff4fa3;
@@ -39,29 +39,29 @@ function gfx(scene: Phaser.Scene): Phaser.GameObjects.Graphics {
   return scene.make.graphics({}, false);
 }
 
-/** Storm-cloud obstacle texture (neon rim pink, rush amber), cached per width bucket. Returns key and body width. */
-export function blockTexture(scene: Phaser.Scene, w: number, rush: boolean): { key: string; bodyW: number } {
+/** Storm-cloud obstacle texture (neon rim pink, rush amber), cached per width bucket and height. Returns key and body width. */
+export function blockTexture(scene: Phaser.Scene, w: number, h: number, rush: boolean): { key: string; bodyW: number } {
   const bw = bucket(w);
-  const key = `dd-cloud-${bw}-${rush ? 'r' : 'p'}`;
+  const key = `dd-cloud-${bw}x${h}-${rush ? 'r' : 'p'}`;
   if (!scene.textures.exists(key)) {
     const g = gfx(scene);
     const P = BLOCK_PAD;
-    drawStormCloud(g, P, P, bw, BLOCK_H, rush ? BLOCK_ORANGE : BLOCK_PINK, P);
-    g.generateTexture(key, bw + P * 2, BLOCK_H + P * 2);
+    drawStormCloud(g, P, P, bw, h, rush ? BLOCK_ORANGE : BLOCK_PINK, P);
+    g.generateTexture(key, bw + P * 2, h + P * 2);
     g.destroy();
   }
   return { key, bodyW: bw };
 }
 
 /** Edible fluffy cloud during Chomp mode (flashes white/blue in the final 1.5 s). */
-export function edibleBlockTexture(scene: Phaser.Scene, w: number, flash: boolean): { key: string; bodyW: number } {
+export function edibleBlockTexture(scene: Phaser.Scene, w: number, h: number, flash: boolean): { key: string; bodyW: number } {
   const bw = bucket(w);
-  const key = `dd-fluff-${bw}-${flash ? 'w' : 'b'}`;
+  const key = `dd-fluff-${bw}x${h}-${flash ? 'w' : 'b'}`;
   if (!scene.textures.exists(key)) {
     const g = gfx(scene);
     const P = BLOCK_PAD;
-    drawFluffyCloud(g, P, P, bw, BLOCK_H, flash ? 0xeaf6ff : 0x9fe6ff, flash ? 0xffffff : 0x3ff0ff, P);
-    g.generateTexture(key, bw + P * 2, BLOCK_H + P * 2);
+    drawFluffyCloud(g, P, P, bw, h, flash ? 0xeaf6ff : 0x9fe6ff, flash ? 0xffffff : 0x3ff0ff, P);
+    g.generateTexture(key, bw + P * 2, h + P * 2);
     g.destroy();
   }
   return { key, bodyW: bw };

@@ -6,7 +6,7 @@ import {
   type AssistState, type CoinResult, type StartTier,
 } from './progression.ts';
 import type { RunState } from './runState.ts';
-import { nextCost, UPGRADE_IDS, type Workshop } from './workshop.ts';
+import { maxLevel, nextCost, UPGRADE_IDS, type Workshop } from './workshop.ts';
 
 export interface Saved {
   coins: number; lossStreak: number; assist: AssistState; startTier: StartTier;
@@ -22,7 +22,7 @@ export function nearGoal(workshop: Workshop, ownedSkins: readonly string[]): Goa
     list.reduce<Goal | null>((best, g) => (best === null || g.cost < best.cost ? g : best), null);
   const rows: Goal[] = [];
   for (const id of UPGRADE_IDS) {
-    const cost = nextCost(workshop[id]);
+    const cost = nextCost(workshop[id], maxLevel(id));
     if (cost !== null) rows.push({ kind: 'workshop', id, level: workshop[id] + 1, cost });
   }
   if (rows.length > 0) return cheapest(rows);

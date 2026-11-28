@@ -11,9 +11,17 @@ export interface Spawn {
 
 export const PLAYER_HITBOX_W = 44.8;
 export const BLOCK_H = 40;
+/** Thickest cloud (the widest blocks); owner 2026-11-28: wide storm clouds looked flat at 40 px. */
+export const BLOCK_H_MAX = 80;
 export const BLOCK_PAD = 14;
-/** Centre y at which a block appears (just above the screen). */
-export const SPAWN_Y = -BLOCK_H / 2 - BLOCK_PAD;
+/** Centre y at which a block appears (just above the screen, even for the thickest cloud). */
+export const SPAWN_Y = -BLOCK_H_MAX / 2 - BLOCK_PAD;
+
+/** Cloud thickness (= hit box height) by width: 40 px up to 140 px wide, +16 px per 100 px, max 80, 4 px steps. */
+export function blockHeight(w: number): number {
+  const h = BLOCK_H + Math.max(0, w - 140) * 0.16;
+  return Math.min(BLOCK_H_MAX, Math.floor(h / 4) * 4);
+}
 
 const GAP_W = 2.5 * PLAYER_HITBOX_W; // 112 >= 2.2 x hitbox
 const MAX_GAP_SHIFT = 360;
@@ -131,7 +139,7 @@ function rain(t: number, rng: () => number, width: number, intervalMul: number):
   const speedMul = t < 10 ? 0.6 : 1;
   const spawns: Spawn[] = [];
   for (let i = 0; i < n; i++) {
-    for (const b of rainRow(t, rng, width)) spawns.push({ at: i * interval, x: b.x, w: b.w, h: BLOCK_H, speedMul });
+    for (const b of rainRow(t, rng, width)) spawns.push({ at: i * interval, x: b.x, w: b.w, h: blockHeight(b.w), speedMul });
   }
   return { spawns, duration: RAIN_CHUNK };
 }
@@ -149,8 +157,8 @@ function wall(rng: () => number, width: number, prevGapX?: number): Plan {
   const leftW = gapX - GAP_W / 2;
   const rightW = width - (gapX + GAP_W / 2);
   const spawns: Spawn[] = [
-    { at: 0, x: leftW / 2, w: leftW, h: BLOCK_H, speedMul: 1 },
-    { at: 0, x: width - rightW / 2, w: rightW, h: BLOCK_H, speedMul: 1 },
+    { at: 0, x: leftW / 2, w: leftW, h: blockHeight(leftW), speedMul: 1 },
+    { at: 0, x: width - rightW / 2, w: rightW, h: blockHeight(rightW), speedMul: 1 },
   ];
   return { spawns, duration: 1 + BREATHER, gapX };
 }
@@ -164,7 +172,7 @@ function stairs(t: number, rng: () => number, width: number, intervalMul: number
   const spawns: Spawn[] = [];
   for (let i = 0; i < count; i++) {
     const col = ltr ? i : count - 1 - i;
-    spawns.push({ at: i * gap, x: w / 2 + col * step, w, h: BLOCK_H, speedMul: 1 });
+    spawns.push({ at: i * gap, x: w / 2 + col * step, w, h: blockHeight(w), speedMul: 1 });
   }
   return { spawns, duration: (count - 1) * gap + BREATHER };
 }
@@ -180,7 +188,7 @@ function zigzag(t: number, rng: () => number, width: number, intervalMul: number
     const w = Math.min(third, min + rng() * (max - min)); // <= third (240 at 720)
     const base = left ? 0 : 2 * third;
     const x = base + w / 2 + rng() * Math.max(0, third - w);
-    spawns.push({ at: i * gap, x, w, h: BLOCK_H, speedMul: 1 });
+    spawns.push({ at: i * gap, x, w, h: blockHeight(w), speedMul: 1 });
     left = !left;
   }
   return { spawns, duration: (count - 1) * gap + BREATHER };

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { spawnInterval } from './difficulty.ts';
 import { mulberry32 } from './rng.ts';
 import {
-  BLOCK_H, heavyRainMul, PLAYER_HITBOX_W, isRush, planWave, rainRow, rainRowBlocks, rainRowExpected, rainWidthRange, rowHasGap,
+  BLOCK_H, BLOCK_H_MAX, blockHeight, heavyRainMul, PLAYER_HITBOX_W, isRush, planWave, rainRow, rainRowBlocks, rainRowExpected, rainWidthRange, rowHasGap,
   stairsWidth, waveKindAt, zigzagWidthRange,
 } from './waves.ts';
 import type { WaveKind } from './waves.ts';
@@ -46,7 +46,7 @@ describe('planWave fairness', () => {
           expect(plan.duration).toBeGreaterThan(0);
           expect(plan.spawns.length).toBeGreaterThan(0);
           for (const s of plan.spawns) {
-            expect(s.h).toBe(BLOCK_H);
+            expect(s.h).toBe(blockHeight(s.w));
             expect(s.at).toBeGreaterThanOrEqual(0);
             expect(s.x - s.w / 2).toBeGreaterThanOrEqual(-1e-9);
             expect(s.x + s.w / 2).toBeLessThanOrEqual(W + 1e-9);
@@ -203,5 +203,19 @@ describe('late density cap (owner: Legend was a wall of blocks)', () => {
   it('expected rain blocks per second at Legend stay under 8 (was about 17)', () => {
     expect(rainRowExpected(240) / spawnInterval(240)).toBeLessThan(8);
     expect(rainRowExpected(240) / (spawnInterval(240) * heavyRainMul(240))).toBeLessThan(10);
+  });
+});
+
+describe('cloud thickness', () => {
+  it('narrow clouds stay 40 px, wide ones grow to at most 80 px, in 4 px steps', () => {
+    expect(blockHeight(60)).toBe(BLOCK_H);
+    expect(blockHeight(140)).toBe(BLOCK_H);
+    expect(blockHeight(300)).toBeGreaterThan(BLOCK_H);
+    expect(blockHeight(700)).toBe(BLOCK_H_MAX);
+    expect(BLOCK_H_MAX).toBe(80);
+    for (let w = 16; w <= 720; w += 7) {
+      expect(blockHeight(w) % 4).toBe(0);
+      expect(blockHeight(w + 7)).toBeGreaterThanOrEqual(blockHeight(w));
+    }
   });
 });

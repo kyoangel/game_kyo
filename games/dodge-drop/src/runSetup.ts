@@ -1,7 +1,7 @@
 import { emptyBoosts, SHRINK_SCALE, type RunBoosts } from './boosts.ts';
 import { rushesBefore, tierSeconds, ASSIST_INTERVAL_MUL, ASSIST_SPEED_MUL, type AssistState, type StartTier } from './progression.ts';
 import {
-  magnetRadius, shieldCapacity, shieldFirstAt, startShieldChance, type Workshop,
+  grazeNeeded, magnetRadius, shieldCapacity, shieldFirstAt, startShieldChance, type Workshop,
 } from './workshop.ts';
 
 export const MAGNET_SPEED = 900;
@@ -16,6 +16,8 @@ export interface RunConfig {
   rushIdx: number;
   playerScale: number;
   chompArmed: boolean;
+  /** Near misses per graze shield (Graze Charger). */
+  grazeNeed: number;
 }
 
 export function buildRunConfig(i: { workshop: Workshop; assist: AssistState; tier: StartTier; rng: () => number; boosts?: RunBoosts }): RunConfig {
@@ -40,5 +42,6 @@ export function buildRunConfig(i: { workshop: Workshop; assist: AssistState; tie
     luckLevel: w.luck, rushIdx: rushesBefore(startT),
     playerScale: boosts.shrink ? SHRINK_SCALE : 1,
     chompArmed: boosts.chomp,
+    grazeNeed: grazeNeeded(w.grazeCharge),
   };
 }

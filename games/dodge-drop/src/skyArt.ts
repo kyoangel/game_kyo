@@ -8,13 +8,15 @@ import type Phaser from 'phaser';
 
 /** Lobe circles (x, y, r) of a cloud filling the box (x0, y0, w, h); the body is a rounded rect under them. */
 export function cloudLobes(x0: number, y0: number, w: number, h: number): { x: number; y: number; r: number }[] {
-  const n = Math.max(2, Math.round(w / 38));
+  // Thicker clouds get bigger, fewer lobes, so a wide cloud reads as a few big puffs rather than a row of beads.
+  const n = Math.max(2, Math.round(w / (h * 0.75)));
   const out: { x: number; y: number; r: number }[] = [];
   const mid = (n - 1) / 2;
   for (let i = 0; i < n; i++) {
-    // Puffy middle, smaller edges, slight alternation so it never reads as a row of equal balls.
+    // Puffy middle, smaller edges, a fixed per-lobe wobble so no two neighbours are the same size.
     const centre = mid === 0 ? 1 : 1 - Math.abs(i - mid) / mid;
-    const r = Math.min(w / 2, h / 2, h * (0.32 + 0.18 * centre + (i % 2 === 0 ? 0.02 : -0.04)));
+    const wobble = [0.03, -0.05, 0.05, -0.02, 0.0, -0.06, 0.04][(i * 3 + n) % 7]!;
+    const r = Math.min(w / 2, h / 2, h * (0.31 + 0.2 * centre + wobble * 0.7));
     const x = x0 + r * 0.8 + ((w - 1.6 * r) * (i + 0.5)) / n;
     // Every lobe sits on the body line (bottom at 0.78 h) and never pokes above y0.
     out.push({ x: Math.min(x0 + w - r, Math.max(x0 + r, x)), y: Math.max(y0 + r, y0 + h * 0.78 - r), r });
@@ -39,27 +41,36 @@ export function boltPoints(cx: number, cy: number, s: number): Phaser.Types.Math
   ];
 }
 
-/** Storm cloud: violet body with a lit top and dark belly, neon rim + glow in `rim`, lightning bolts. */
+/** Storm cloud: violet body with lit puffs on top and a scalloped dark belly, neon rim + glow in `rim`, lightning. */
 export function drawStormCloud(g: Phaser.GameObjects.Graphics, x0: number, y0: number, w: number, h: number, rim: number, glowPad: number): void {
+  const inset = 2.5;
   for (let i = 4; i >= 1; i--) {
     g.fillStyle(rim, 0.06 * (5 - i));
     fillCloud(g, x0, y0, w, h, (i * glowPad) / 4);
   }
   g.fillStyle(rim, 1);
   fillCloud(g, x0, y0, w, h, 0);
-  g.fillStyle(0x5b3a91, 1);
-  fillCloud(g, x0 + 2.5, y0 + 2.5, w - 5, h - 5, 0);
-  // Dark belly.
-  g.fillStyle(0x2a1347, 0.85);
-  g.fillRoundedRect(x0 + 3, y0 + h * 0.62, w - 6, h * 0.38 - 3, Math.min(10, h * 0.19));
-  // Lit lobe tops.
-  g.fillStyle(0xb9a2ff, 0.55);
-  for (const l of cloudLobes(x0 + 2.5, y0 + 2.5, w - 5, h - 5)) g.fillCircle(l.x - l.r * 0.2, l.y - l.r * 0.35, l.r * 0.5);
-  // One bolt per ~70 px, in the belly.
-  const bolts = Math.max(1, Math.round(w / 70));
+  // Body: the same silhouette shrunk by the rim width (same lobes, so the rim is an even line all round).
+  g.fillStyle(0x4a2d7d, 1);
+  fillCloud(g, x0, y0, w, h, -inset);
+  // Lit crown: the silhouette's upper part in a lighter violet (every lobe shrunk a little and lifted, plus the
+  // body down to 60 % height). Overlapping lobes merge into one shape, so the cloud keeps a darker underside.
+  const lobes = cloudLobes(x0, y0, w, h);
+  g.fillStyle(0x7354b8, 1);
+  for (const l of lobes) g.fillCircle(l.x, l.y - l.r * 0.1, (l.r - inset) * 0.86);
+  const bodyTop = y0 + h * 0.4;
+  g.fillRoundedRect(x0 + inset + 4, bodyTop, w - 2 * inset - 8, h * 0.2, Math.min(8, h * 0.1));
+  // Soft sheen on the biggest puff only.
+  const top = lobes.reduce((a, b) => (b.r > a.r ? b : a));
+  g.fillStyle(0xa58cf0, 0.5);
+  g.fillCircle(top.x - top.r * 0.3, top.y - top.r * 0.38, top.r * 0.26);
+  // Lightning: one bolt per ~130 px, sizes and heights varied so they never line up like a pattern.
+  const bolts = Math.max(1, Math.round(w / 130));
   for (let i = 0; i < bolts; i++) {
-    const cx = x0 + (w * (i + 0.5)) / bolts;
-    const pts = boltPoints(cx, y0 + h * 0.66, h * 0.5);
+    const jitter = [0, 0.18, -0.14, 0.1, -0.2][i % 5]!;
+    const cx = x0 + (w * (i + 0.5 + jitter * 0.5)) / bolts;
+    const size = h * (0.5 + (i % 2 === 0 ? 0.08 : -0.04));
+    const pts = boltPoints(cx, y0 + h * 0.66 + (i % 2 === 0 ? 0 : h * 0.04), size);
     g.fillStyle(0xffe14d, 1);
     g.fillPoints(pts, true);
     g.lineStyle(1.5, 0xffffff, 0.9);
@@ -76,9 +87,9 @@ export function drawFluffyCloud(g: Phaser.GameObjects.Graphics, x0: number, y0: 
   g.fillStyle(glow, 1);
   fillCloud(g, x0, y0, w, h, 0);
   g.fillStyle(body, 1);
-  fillCloud(g, x0 + 2.5, y0 + 2.5, w - 5, h - 5, 0);
-  g.fillStyle(0xffffff, 0.55);
-  for (const l of cloudLobes(x0 + 3, y0 + 3, w - 6, h - 6)) g.fillCircle(l.x - l.r * 0.25, l.y - l.r * 0.3, l.r * 0.4);
+  fillCloud(g, x0, y0, w, h, -2.5);
+  g.fillStyle(0xffffff, 0.45);
+  for (const l of cloudLobes(x0, y0, w, h)) g.fillCircle(l.x - l.r * 0.15, l.y - l.r * 0.15, (l.r - 2.5) * 0.7);
 }
 
 /**

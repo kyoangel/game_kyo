@@ -34,7 +34,7 @@ import { createTutorialView, type TutorialView } from './tutorialView.ts';
 import { tiltToVelocity } from './tilt.ts';
 import { TiltReader } from './tiltSensor.ts';
 import { nextToastSlot, rushBannerUntil } from './toastSlot.ts';
-import { BLOCK_H, isRush, PLAYER_HITBOX_W } from './waves.ts';
+import { blockHeight, isRush, PLAYER_HITBOX_W, SPAWN_Y } from './waves.ts';
 
 const W = 720;
 const H = 1280;
@@ -114,7 +114,7 @@ export class PlayScene extends Phaser.Scene {
 
   private t = 0;
   private stars = 0;
-  /** Graze gauge: near misses toward the next shield (0..GRAZE_FULL; full = waiting for a free shield slot). */
+  /** Graze gauge: near misses toward the next shield (0..cfg.grazeNeed; full = waiting for a free shield slot). */
   private graze = 0;
   /** Length of the current Chomp, for the draining gauge. */
   private chompTotal = 0;
@@ -443,7 +443,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private makeBlock(): Block {
-    const { key } = blockTexture(this, 80, false);
+    const { key } = blockTexture(this, 80, 40, false);
     return { img: this.add.image(0, 0, key).setVisible(false).setDepth(5), active: false, x: 0, y: 0, w: 0, h: 0, speedMul: 1, rush: false, checked: false };
   }
 
@@ -873,7 +873,7 @@ export class PlayScene extends Phaser.Scene {
     }
     if (!this.camp.update(this.player.x, dt)) return;
     const at = this.t + TELEGRAPH;
-    const sp = { at, x: campBlockX(this.player.x, W), w: CAMP_BLOCK_W, h: BLOCK_H, speedMul: 1 };
+    const sp = { at, x: campBlockX(this.player.x, W), w: CAMP_BLOCK_W, h: blockHeight(CAMP_BLOCK_W), speedMul: 1 };
     if (!this.scheduler.inject(sp)) {
       this.camp.retrySoon();
       return;
@@ -902,8 +902,8 @@ export class PlayScene extends Phaser.Scene {
     }
     const tex =
       this.ghostMode === 'none'
-        ? blockTexture(this, p.w, p.rush)
-        : edibleBlockTexture(this, p.w, this.ghostMode === 'white');
+        ? blockTexture(this, p.w, p.h, p.rush)
+        : edibleBlockTexture(this, p.w, p.h, this.ghostMode === 'white');
     b.active = true;
     b.checked = false;
     b.x = p.x;
@@ -911,7 +911,7 @@ export class PlayScene extends Phaser.Scene {
     b.h = p.h;
     b.speedMul = p.speedMul;
     b.rush = p.rush;
-    b.y = -BLOCK_H / 2 - BLOCK_PAD + late * fallSpeed(this.t) * speedBoost(this.t) * p.speedMul * this.cfg.speedMul;
+    b.y = SPAWN_Y + late * fallSpeed(this.t) * speedBoost(this.t) * p.speedMul * this.cfg.speedMul;
     b.img.setTexture(tex.key).setVisible(true);
     b.img.setScale(p.w / tex.bodyW, 1);
     b.img.setPosition(b.x, b.y);
@@ -936,8 +936,8 @@ export class PlayScene extends Phaser.Scene {
       if (!b.active) continue;
       const tex =
         want === 'none'
-          ? blockTexture(this, b.w, b.rush)
-          : edibleBlockTexture(this, b.w, want === 'white');
+          ? blockTexture(this, b.w, b.h, b.rush)
+          : edibleBlockTexture(this, b.w, b.h, want === 'white');
       b.img.setTexture(tex.key);
       b.img.setScale(b.w / tex.bodyW, 1);
     }
@@ -1181,7 +1181,7 @@ export class PlayScene extends Phaser.Scene {
           if (isNearMiss(gap)) this.onNearMiss(b);
         }
       }
-      if (b.y - BLOCK_H / 2 > H + BLOCK_PAD) {
+      if (b.y - b.h / 2 > H + BLOCK_PAD) {
         b.active = false;
         b.img.setVisible(false);
       }
@@ -1248,7 +1248,7 @@ export class PlayScene extends Phaser.Scene {
   private onNearMiss(b: Block): void {
     this.stats.nearMisses++;
     if (this.chompTimer > 0) return;
-    const g = addGraze(this.graze, this.shieldHits < this.cfg.shieldCapacity);
+    const g = addGraze(this.graze, this.shieldHits < this.cfg.shieldCapacity, this.cfg.grazeNeed);
     this.graze = g.gauge;
     const side = Math.sign(b.x - this.player.x) || 1;
     if (g.shield) {
@@ -1263,7 +1263,7 @@ export class PlayScene extends Phaser.Scene {
       this.fx.popText(this.player.x, PLAYER_Y - 70, this.kit.t('graze'), { color: 0x3ff0ff, size: fieldFont(this.frame, 34) });
     }
     // Pitch climbs with the gauge so the player hears it filling.
-    this.kit.audio.sfx('nearMiss', { step: g.shield ? GRAZE_FULL : this.graze });
+    this.kit.audio.sfx('nearMiss', { step: g.shield ? GRAZE_FULL : this.graze + GRAZE_FULL - this.cfg.grazeNeed });
     playNearMiss(this, this.fx, this.skin, this.player.x, PLAYER_Y, side, this.skinColor());
   }
 
@@ -1602,7 +1602,7 @@ export class PlayScene extends Phaser.Scene {
     this.updateGauge();
   }
 
-  /** Graze gauge: GRAZE_FULL segments filling with near misses; while Chomp runs, one bar draining with its time. */
+  /** Graze gauge: cfg.grazeNeed segments filling with near misses; while Chomp runs, one bar draining with its time. */
   private updateGauge(): void {
     const chomping = this.chompTimer > 0 && this.chompTotal > 0;
     const drain = chomping ? Math.round((this.chompTimer / this.chompTotal) * 100) : -1;
@@ -1622,8 +1622,9 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     const gap = 4;
-    const seg = (w - gap * (GRAZE_FULL - 1)) / GRAZE_FULL;
-    for (let i = 0; i < GRAZE_FULL; i++) {
+    const n = this.cfg.grazeNeed;
+    const seg = (w - gap * (n - 1)) / n;
+    for (let i = 0; i < n; i++) {
       g.fillStyle(i < this.graze ? 0x58ff9a : 0x3a2f66, i < this.graze ? 1 : 0.85);
       g.fillRoundedRect(x + i * (seg + gap), y, seg, h, Math.min(4, h / 2));
     }

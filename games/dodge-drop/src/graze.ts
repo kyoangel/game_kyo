@@ -6,8 +6,8 @@ export const GRAZE_FULL = 8;
  * (`canHold` false) the gauge stays full and the shield is granted on the first near miss after a slot frees up.
  * The gauge never decays.
  */
-export function addGraze(gauge: number, canHold: boolean): { gauge: number; shield: boolean } {
-  const g = Math.min(GRAZE_FULL, gauge + 1);
-  if (g < GRAZE_FULL) return { gauge: g, shield: false };
-  return canHold ? { gauge: 0, shield: true } : { gauge: GRAZE_FULL, shield: false };
+export function addGraze(gauge: number, canHold: boolean, full = GRAZE_FULL): { gauge: number; shield: boolean } {
+  const g = Math.min(full, gauge + 1);
+  if (g < full) return { gauge: g, shield: false };
+  return canHold ? { gauge: 0, shield: true } : { gauge: full, shield: false };
 }

@@ -1,5 +1,5 @@
-export type UpgradeId = 'shield' | 'shieldStack' | 'startShield' | 'magnet' | 'luck';
-export const UPGRADE_IDS: readonly UpgradeId[] = ['shield', 'shieldStack', 'startShield', 'magnet', 'luck'];
+export type UpgradeId = 'shield' | 'shieldStack' | 'startShield' | 'magnet' | 'luck' | 'grazeCharge';
+export const UPGRADE_IDS: readonly UpgradeId[] = ['shield', 'shieldStack', 'startShield', 'magnet', 'luck', 'grazeCharge'];
 /**
  * Upgrades removed in v3.8.0 with the graze gauge (owner: graze-triggered Chomp felt out of place): "Daredevil"
  * (near-miss window) and "Longer Chomp" (graze Chomp length). Saved levels are refunded once, see migrateWorkshop.
@@ -8,13 +8,18 @@ export const RETIRED_UPGRADE_IDS: readonly string[] = ['nearMiss', 'combo'];
 export const MAX_LEVEL = 5;
 export type Workshop = Record<UpgradeId, number>;
 
-function lvl(level: number): number {
+/** Levels an upgrade can reach: Graze Charger (owner 2026-11-28: 8 -> 7 -> 6 -> 5 near misses) has 3, the rest 5. */
+export function maxLevel(id: UpgradeId): number {
+  return id === 'grazeCharge' ? 3 : MAX_LEVEL;
+}
+
+function lvl(level: number, max = MAX_LEVEL): number {
   if (!Number.isFinite(level)) return 0;
-  return Math.min(MAX_LEVEL, Math.max(0, Math.floor(level)));
+  return Math.min(max, Math.max(0, Math.floor(level)));
 }
 
 export function emptyWorkshop(): Workshop {
-  return { shield: 0, shieldStack: 0, startShield: 0, magnet: 0, luck: 0 };
+  return { shield: 0, shieldStack: 0, startShield: 0, magnet: 0, luck: 0, grazeCharge: 0 };
 }
 
 export function sanitizeWorkshop(raw: unknown): Workshop {
@@ -23,7 +28,7 @@ export function sanitizeWorkshop(raw: unknown): Workshop {
   const rec = raw as Record<string, unknown>;
   for (const id of UPGRADE_IDS) {
     const v = rec[id];
-    out[id] = typeof v === 'number' && Number.isFinite(v) ? lvl(v) : 0;
+    out[id] = typeof v === 'number' && Number.isFinite(v) ? lvl(v, maxLevel(id)) : 0;
   }
   return out;
 }
@@ -52,9 +57,9 @@ export function upgradeCost(n: number): number {
   return Number.isInteger(n) && n >= 1 && n <= MAX_LEVEL ? Math.round(15 * 1.6 ** (n - 1)) : Infinity;
 }
 
-export function nextCost(level: number): number | null {
-  const l = lvl(level);
-  return l >= MAX_LEVEL ? null : upgradeCost(l + 1);
+export function nextCost(level: number, max = MAX_LEVEL): number | null {
+  const l = lvl(level, max);
+  return l >= max ? null : upgradeCost(l + 1);
 }
 
 export function buyUpgrade(
@@ -63,7 +68,7 @@ export function buyUpgrade(
 ): { ok: true; coins: number; levels: Workshop } | { ok: false; reason: 'max' | 'poor' | 'unknown' } {
   if (!(UPGRADE_IDS as readonly string[]).includes(id)) return { ok: false, reason: 'unknown' };
   const uid = id as UpgradeId;
-  const cost = nextCost(state.levels[uid]);
+  const cost = nextCost(state.levels[uid], maxLevel(uid));
   if (cost === null) return { ok: false, reason: 'max' };
   if (state.coins < cost) return { ok: false, reason: 'poor' };
   return { ok: true, coins: state.coins - cost, levels: { ...state.levels, [uid]: lvl(state.levels[uid]) + 1 } };
@@ -96,6 +101,10 @@ export function magnetPulls(kind: 'star' | 'shield', dist: number, radius: numbe
   if (radius <= 0 || dist > radius) return false;
   return kind === 'star' || shieldHits < capacity;
 }
+/** Near misses that fill the graze gauge for one shield: 8 minus the Graze Charger level (5 at max). */
+export function grazeNeeded(level: number): number {
+  return 8 - lvl(level, maxLevel('grazeCharge'));
+}
 export function starInterval(level: number, r: number): number {
   return (6 + 3 * r) * (1 - 0.07 * lvl(level));
 }
@@ -107,5 +116,6 @@ export function effectValue(id: UpgradeId, level: number): number {
     case 'startShield': return Math.round(startShieldChance(level) * 100);
     case 'magnet': return magnetRadius(level);
     case 'luck': return 7 * lvl(level);
+    case 'grazeCharge': return grazeNeeded(level);
   }
 }

@@ -135,7 +135,7 @@ test('dodge-drop: retired graze upgrades (Daredevil, Longer Chomp) are refunded 
   await openTitle(page);
   // 236 (all five Daredevil levels) + 15 (one Longer Chomp level) on top of the 10 held.
   await expect.poll(async () => await ls(page, 'coins')).toBe('261');
-  expect(JSON.parse((await ls(page, 'workshop')) ?? '{}')).toEqual({ shield: 2, shieldStack: 0, startShield: 0, magnet: 0, luck: 0 });
+  expect(JSON.parse((await ls(page, 'workshop')) ?? '{}')).toEqual({ shield: 2, shieldStack: 0, startShield: 0, magnet: 0, luck: 0, grazeCharge: 0 });
   await page.reload();
   await page.waitForFunction(() => (window as unknown as W).__gk!.activeScenes.includes('GKTitle'));
   await page.waitForTimeout(300);
@@ -496,6 +496,26 @@ test('dodge-drop: 8 near misses fill the graze gauge and grant a shield (never C
   const names = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.hud())).map((h) => h.name);
   expect(names).toContain('timer');
   expect(names).not.toContain('score');
+  expect(errors).toEqual([]);
+});
+
+test('dodge-drop: Graze Charger 3 needs only 5 near misses per shield (5-segment gauge)', async ({ page }) => {
+  const errors = watch(page);
+  await skipOnboarding(page);
+  await seed(page, { workshop: '{"grazeCharge":3,"shieldStack":1}' }, true);
+  await openTitle(page);
+  await startRun(page);
+  type S = { graze: number; shieldHits: number; t: number };
+  type D = { stats(): S; nearMiss(): void };
+  const stats = (): Promise<S> => page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats());
+  const graze = (n: number) => page.evaluate((k) => { for (let i = 0; i < k; i++) (window as unknown as { __dd: D }).__dd.nearMiss(); }, n);
+  await page.waitForFunction(() => ((window as unknown as { __dd: D }).__dd.stats?.().t ?? 0) > 0.5);
+  await graze(4);
+  expect(await stats()).toMatchObject({ graze: 4, shieldHits: 0 });
+  await graze(1);
+  expect(await stats()).toMatchObject({ graze: 0, shieldHits: 1 });
+  await graze(5);
+  expect(await stats()).toMatchObject({ graze: 0, shieldHits: 2 });
   expect(errors).toEqual([]);
 });
 
