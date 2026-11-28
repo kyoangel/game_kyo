@@ -231,13 +231,26 @@ export function buyUpgrade(meta: MetaSave, id: UpgradeId): MetaSave | null {
   };
 }
 
+export function isWeaponUnlocked(meta: MetaSave, id: WeaponId): boolean {
+  return meta.ownedWeapons.includes(id) || meta.maxUnlockedLoop >= getWeaponSpec(id).unlockLoop;
+}
+
+export function isArmorUnlocked(meta: MetaSave, id: ArmorId): boolean {
+  return meta.ownedArmors.includes(id) || meta.maxUnlockedLoop >= getArmorSpec(id).unlockLoop;
+}
+
+export function isShieldUnlocked(meta: MetaSave, id: ShieldId): boolean {
+  const spec = getShieldSpec(id);
+  return meta.ownedShields.includes(id) || (spec !== null && meta.maxUnlockedLoop >= spec.unlockLoop);
+}
+
 export function buyOrEquipWeapon(meta: MetaSave, id: WeaponId): MetaSave | null {
   if (meta.ownedWeapons.includes(id)) {
     if (meta.equippedWeapon === id) return null;
     return { ...meta, equippedWeapon: id };
   }
   const spec = getWeaponSpec(id);
-  if (meta.crystals < spec.unlockCost) return null;
+  if (!isWeaponUnlocked(meta, id) || meta.crystals < spec.unlockCost) return null;
   return {
     ...meta,
     crystals: meta.crystals - spec.unlockCost,
@@ -252,7 +265,7 @@ export function buyOrEquipArmor(meta: MetaSave, id: ArmorId): MetaSave | null {
     return { ...meta, equippedArmor: id };
   }
   const spec = getArmorSpec(id);
-  if (meta.crystals < spec.unlockCost) return null;
+  if (!isArmorUnlocked(meta, id) || meta.crystals < spec.unlockCost) return null;
   return {
     ...meta,
     crystals: meta.crystals - spec.unlockCost,
@@ -310,7 +323,7 @@ export function buyOrEquipShield(meta: MetaSave, id: ShieldId | null): MetaSave 
     return { ...meta, equippedShield: id };
   }
   const spec = getShieldSpec(id);
-  if (!spec || meta.crystals < spec.unlockCost) return null;
+  if (!spec || !isShieldUnlocked(meta, id) || meta.crystals < spec.unlockCost) return null;
   return {
     ...meta,
     crystals: meta.crystals - spec.unlockCost,

@@ -59,11 +59,14 @@ export const BALANCE = {
   },
   bossAtk: (loop: number): number => {
     const l = Math.max(1, Math.floor(loop));
-    if (l <= 5) {
-      const onboardingAtk = [20, 30, 42, 56, 72];
-      return onboardingAtk[l - 1];
+    if (l <= 25) {
+      // Smooth, forgiving ramp across Normal Mode (Loops 1..25) with zero Loop 5->6 cliff:
+      // Loop 1: 12, Loop 5: 52, Loop 6: 63, Loop 10: 111, Loop 15: 175, Loop 20: 244, Loop 25: 317
+      return Math.round(12 + (l - 1) * 7.5 + Math.pow(l - 1, 1.4) * 1.45);
     }
-    return Math.round(36 + (l - 1) * 18 + Math.pow(l - 1, 1.35) * 3.5);
+    // Hard Mode (Loops 26..50+) accelerates smoothly from the Loop 25 baseline (~1590 at Loop 50)
+    const extra = l - 25;
+    return Math.round(317 + extra * 36 + Math.pow(extra, 1.38) * 4.4);
   },
   bossDef: (_loop: number): number => 0,
 

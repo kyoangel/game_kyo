@@ -27,7 +27,10 @@ import {
   computeCrystalReward,
   computeScore,
   defaultMeta,
+  isArmorUnlocked,
   isGoddessHeroUnlocked,
+  isShieldUnlocked,
+  isWeaponUnlocked,
   recordStageClear,
   resolveHeroAppearance,
   sanitizeMeta,
@@ -40,6 +43,7 @@ import {
   unlockWeaponSkin,
   UPGRADES,
   upgradeCost,
+  type MetaSave,
 } from './meta.ts';
 import {
   bossBonusDamageMult,
@@ -104,7 +108,7 @@ describe('chrono-rush meta progression, gear & skins', () => {
   });
 
   it('activates shields only with 1-handed weapons and locks them with 2-handed weapons', () => {
-    let meta = { ...defaultMeta(), crystals: 300 };
+    let meta = { ...defaultMeta(), crystals: 300, maxUnlockedLoop: 6 };
     meta = buyOrEquipShield(meta, 'buckler')!;
     expect(activeShieldFor(meta)).toBe('buckler');
     const hero1H = createHeroStats(meta);
@@ -116,6 +120,45 @@ describe('chrono-rush meta progression, gear & skins', () => {
     const hero2H = createHeroStats(meta);
     expect(hero2H.shieldId).toBeNull();
     expect(hero2H.critChance).toBeGreaterThan(hero1H.critChance);
+  });
+
+  it('stage-gates armory purchases: first 2 gear in Stages 1-5, then +1 tier every 5 stages', () => {
+    const rich = { ...defaultMeta(), crystals: 9999, maxUnlockedLoop: 5 };
+    // Stages 1-5: wood & iron weapons, tunic & leather armors, buckler shield are unlocked
+    expect(isWeaponUnlocked(rich, 'iron')).toBe(true);
+    expect(isArmorUnlocked(rich, 'leather')).toBe(true);
+    expect(isShieldUnlocked(rich, 'buckler')).toBe(true);
+    expect(buyOrEquipWeapon(rich, 'iron')).not.toBeNull();
+    expect(buyOrEquipArmor(rich, 'leather')).not.toBeNull();
+    expect(buyOrEquipShield(rich, 'buckler')).not.toBeNull();
+
+    // Crimson / Steel / Kite are locked until Stage 6 (after clearing Stage 5)
+    expect(isWeaponUnlocked(rich, 'crimson')).toBe(false);
+    expect(isArmorUnlocked(rich, 'steel')).toBe(false);
+    expect(isShieldUnlocked(rich, 'kite')).toBe(false);
+    expect(buyOrEquipWeapon(rich, 'crimson')).toBeNull();
+    expect(buyOrEquipArmor(rich, 'steel')).toBeNull();
+    expect(buyOrEquipShield(rich, 'kite')).toBeNull();
+
+    // Every 5 stages unlocks the next chapter's gear tier
+    const ch2 = { ...rich, maxUnlockedLoop: 6 };
+    expect(buyOrEquipWeapon(ch2, 'crimson')).not.toBeNull();
+    expect(buyOrEquipArmor(ch2, 'steel')).not.toBeNull();
+    expect(buyOrEquipShield(ch2, 'kite')).not.toBeNull();
+    expect(buyOrEquipWeapon(ch2, 'frost')).toBeNull();
+
+    expect(isWeaponUnlocked({ ...rich, maxUnlockedLoop: 11 }, 'frost')).toBe(true);
+    expect(isWeaponUnlocked({ ...rich, maxUnlockedLoop: 11 }, 'thunder')).toBe(false);
+    expect(isWeaponUnlocked({ ...rich, maxUnlockedLoop: 16 }, 'thunder')).toBe(true);
+    expect(isWeaponUnlocked({ ...rich, maxUnlockedLoop: 21 }, 'void')).toBe(true);
+    expect(isWeaponUnlocked({ ...rich, maxUnlockedLoop: 25 }, 'excalibur')).toBe(false);
+    expect(isWeaponUnlocked({ ...rich, maxUnlockedLoop: 26 }, 'excalibur')).toBe(true);
+    expect(isArmorUnlocked({ ...rich, maxUnlockedLoop: 26 }, 'aegis')).toBe(true);
+    expect(isShieldUnlocked({ ...rich, maxUnlockedLoop: 26 }, 'aegisShield')).toBe(true);
+
+    // Already-owned gear from an older save remains equippable even if maxUnlockedLoop < unlockLoop
+    const legacy = { ...defaultMeta(), ownedWeapons: ['wood', 'excalibur'] as MetaSave['ownedWeapons'], maxUnlockedLoop: 1 };
+    expect(buyOrEquipWeapon(legacy, 'excalibur')?.equippedWeapon).toBe('excalibur');
   });
 
   it('toggles pre-run boosts only after Hard Mode (Loop 26) and records S/A/B medals without losing frontier progress', () => {

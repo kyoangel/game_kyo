@@ -32,8 +32,11 @@ import {
   canAscendShields,
   canAscendWeapons,
   defaultMeta,
+  isArmorUnlocked,
   isBoostsUnlocked,
   isGoddessHeroUnlocked,
+  isShieldUnlocked,
+  isWeaponUnlocked,
   resolveHeroAppearance,
   sanitizeMeta,
   selectArmorSkin,
@@ -364,6 +367,10 @@ export class CampScene extends Phaser.Scene {
     });
   }
 
+  private lockLabel(unlockLoop: number): string {
+    return `🔒 ${this.kit.t('armory.clearPrefix')}${Math.max(1, unlockLoop - 1)}${this.kit.t('armory.clearSuffix')}`;
+  }
+
   private renderArmory(): void {
     this.renderHeroPreview();
     const font = this.kit.theme.font;
@@ -394,19 +401,20 @@ export class CampScene extends Phaser.Scene {
       const cx = startX + i * (cardW + gap);
       const cy = 212;
       const owned = this.meta.ownedWeapons.includes(w.id);
+      const unlocked = isWeaponUnlocked(this.meta, w.id);
       const equipped = this.meta.equippedWeapon === w.id;
       const hasSkin = this.meta.unlockedWeaponSkins.includes(w.id);
       const ascCost = weaponAscendCost(w.id);
       const isAscended = ascCost === 0 || this.meta.ascendedWeapons.includes(w.id);
       const canAscend = weaponsAscendOpen && owned && !isAscended;
       const canAffordAsc = canAscend && this.meta.crystals >= ascCost;
-      const canBuy = !owned && this.meta.crystals >= w.unlockCost;
+      const canBuy = !owned && unlocked && this.meta.crystals >= w.unlockCost;
       const eff = effectiveWeaponStats(w.id, isAscended);
 
       this.addObj(
         this.add
-          .rectangle(cx, cy, cardW, cardH, 0x1e163b, 0.96)
-          .setStrokeStyle(3, equipped ? 0xfacc15 : isAscended && owned ? 0xa855f7 : canBuy ? 0xd97706 : 0x334155),
+          .rectangle(cx, cy, cardW, cardH, 0x1e163b, unlocked ? 0.96 : 0.52)
+          .setStrokeStyle(3, equipped ? 0xfacc15 : isAscended && owned ? 0xa855f7 : canBuy ? 0xd97706 : unlocked ? 0x334155 : 0x1e293b),
       );
       this.addObj(
         this.add
@@ -414,7 +422,7 @@ export class CampScene extends Phaser.Scene {
             fontFamily: font,
             fontSize: '12px',
             fontStyle: 'bold',
-            color: w.hands === 2 ? '#fb923c' : '#38bdf8',
+            color: !unlocked ? '#64748b' : w.hands === 2 ? '#fb923c' : '#38bdf8',
           })
           .setOrigin(0, 0.5),
       );
@@ -423,10 +431,21 @@ export class CampScene extends Phaser.Scene {
           this.add.text(cx + 58, cy - 68, '★', { fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#facc15' }).setOrigin(1, 0.5),
         );
       }
-      this.addObj(this.add.rectangle(cx, cy - 66, 40, 10, Phaser.Display.Color.HexStringToColor(w.bladeColor).color).setStrokeStyle(1, 0x09050f));
       this.addObj(
         this.add
-          .text(cx, cy - 44, this.kit.t(`weapon.${w.id}`), { fontFamily: font, fontSize: nameFs, fontStyle: 'bold', color: '#ffffff', align: 'center' })
+          .rectangle(cx, cy - 66, 40, 10, Phaser.Display.Color.HexStringToColor(w.bladeColor).color)
+          .setAlpha(unlocked ? 1 : 0.35)
+          .setStrokeStyle(1, 0x09050f),
+      );
+      this.addObj(
+        this.add
+          .text(cx, cy - 44, this.kit.t(`weapon.${w.id}`), {
+            fontFamily: font,
+            fontSize: nameFs,
+            fontStyle: 'bold',
+            color: unlocked ? '#ffffff' : '#94a3b8',
+            align: 'center',
+          })
           .setOrigin(0.5),
       );
       this.addObj(
@@ -435,7 +454,7 @@ export class CampScene extends Phaser.Scene {
             fontFamily: font,
             fontSize: statFs,
             fontStyle: 'bold',
-            color: isAscended && owned ? '#e9d5ff' : '#cbd5e1',
+            color: !unlocked ? '#64748b' : isAscended && owned ? '#e9d5ff' : '#cbd5e1',
             align: 'center',
           })
           .setOrigin(0.5),
@@ -445,13 +464,19 @@ export class CampScene extends Phaser.Scene {
           .text(cx, cy - 4, this.kit.t(`passive.${w.passive}`), {
             fontFamily: font,
             fontSize: statFs,
-            color: '#fef08a',
+            color: unlocked ? '#fef08a' : '#64748b',
             align: 'center',
           })
           .setOrigin(0.5),
       );
 
-      const label = equipped ? this.kit.t('armory.equipped') : owned ? this.kit.t('armory.equip') : `💎 ${w.unlockCost}`;
+      const label = equipped
+        ? this.kit.t('armory.equipped')
+        : owned
+          ? this.kit.t('armory.equip')
+          : unlocked
+            ? `💎 ${w.unlockCost}`
+            : this.lockLabel(w.unlockLoop);
       if (canAscend) {
         this.addObj(
           addButton(this, cx, cy + 24, label, {
@@ -478,13 +503,19 @@ export class CampScene extends Phaser.Scene {
               .text(cx, cy + 16, this.kit.t('armory.maxTier'), { fontFamily: font, fontSize: '11px', fontStyle: 'bold', color: '#c084fc' })
               .setOrigin(0.5),
           );
+        } else if (!unlocked) {
+          this.addObj(
+            this.add
+              .text(cx, cy + 16, `💎 ${w.unlockCost}`, { fontFamily: font, fontSize: '11px', fontStyle: 'bold', color: '#64748b' })
+              .setOrigin(0.5),
+          );
         }
         this.addObj(
           addButton(this, cx, cy + 50, label, {
             width: 118,
             height: 34,
             fill: equipped ? BTN_EQUIPPED : owned ? BTN_EQUIP : canBuy ? BTN_BUY : BTN_LOCKED,
-            fontSize: btnFs,
+            fontSize: unlocked ? btnFs : 12,
             onClick: () => this.tryWeapon(w.id),
           }),
         );
@@ -508,30 +539,47 @@ export class CampScene extends Phaser.Scene {
       const cx = startX + i * (cardW + gap);
       const cy = 418;
       const owned = this.meta.ownedArmors.includes(a.id);
+      const unlocked = isArmorUnlocked(this.meta, a.id);
       const equipped = this.meta.equippedArmor === a.id;
       const hasSkin = this.meta.unlockedArmorSkins.includes(a.id);
       const ascCost = armorAscendCost(a.id);
       const isAscended = ascCost === 0 || this.meta.ascendedArmors.includes(a.id);
       const canAscend = armorsAscendOpen && owned && !isAscended;
       const canAffordAsc = canAscend && this.meta.crystals >= ascCost;
-      const canBuy = !owned && this.meta.crystals >= a.unlockCost;
+      const canBuy = !owned && unlocked && this.meta.crystals >= a.unlockCost;
       const eff = effectiveArmorStats(a.id, isAscended);
 
       this.addObj(
         this.add
-          .rectangle(cx, cy, cardW, cardH, 0x1e163b, 0.96)
-          .setStrokeStyle(3, equipped ? 0x38bdf8 : isAscended && owned ? 0xa855f7 : canBuy ? 0x0284c7 : 0x334155),
+          .rectangle(cx, cy, cardW, cardH, 0x1e163b, unlocked ? 0.96 : 0.52)
+          .setStrokeStyle(3, equipped ? 0x38bdf8 : isAscended && owned ? 0xa855f7 : canBuy ? 0x0284c7 : unlocked ? 0x334155 : 0x1e293b),
       );
       if (hasSkin) {
         this.addObj(
           this.add.text(cx + 58, cy - 68, '★', { fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#facc15' }).setOrigin(1, 0.5),
         );
       }
-      this.addObj(this.add.rectangle(cx - 12, cy - 66, 20, 12, Phaser.Display.Color.HexStringToColor(a.tunicColor).color).setStrokeStyle(1, 0x09050f));
-      this.addObj(this.add.rectangle(cx + 12, cy - 66, 20, 12, Phaser.Display.Color.HexStringToColor(a.capeColor).color).setStrokeStyle(1, 0x09050f));
       this.addObj(
         this.add
-          .text(cx, cy - 44, this.kit.t(`armor.${a.id}`), { fontFamily: font, fontSize: nameFs, fontStyle: 'bold', color: '#ffffff', align: 'center' })
+          .rectangle(cx - 12, cy - 66, 20, 12, Phaser.Display.Color.HexStringToColor(a.tunicColor).color)
+          .setAlpha(unlocked ? 1 : 0.35)
+          .setStrokeStyle(1, 0x09050f),
+      );
+      this.addObj(
+        this.add
+          .rectangle(cx + 12, cy - 66, 20, 12, Phaser.Display.Color.HexStringToColor(a.capeColor).color)
+          .setAlpha(unlocked ? 1 : 0.35)
+          .setStrokeStyle(1, 0x09050f),
+      );
+      this.addObj(
+        this.add
+          .text(cx, cy - 44, this.kit.t(`armor.${a.id}`), {
+            fontFamily: font,
+            fontSize: nameFs,
+            fontStyle: 'bold',
+            color: unlocked ? '#ffffff' : '#94a3b8',
+            align: 'center',
+          })
           .setOrigin(0.5),
       );
       this.addObj(
@@ -540,7 +588,7 @@ export class CampScene extends Phaser.Scene {
             fontFamily: font,
             fontSize: statFs,
             fontStyle: 'bold',
-            color: isAscended && owned ? '#e9d5ff' : '#cbd5e1',
+            color: !unlocked ? '#64748b' : isAscended && owned ? '#e9d5ff' : '#cbd5e1',
             align: 'center',
           })
           .setOrigin(0.5),
@@ -550,13 +598,19 @@ export class CampScene extends Phaser.Scene {
           .text(cx, cy - 4, this.kit.t(`armorPassive.${a.passive}`), {
             fontFamily: font,
             fontSize: statFs,
-            color: '#7dd3fc',
+            color: unlocked ? '#7dd3fc' : '#64748b',
             align: 'center',
           })
           .setOrigin(0.5),
       );
 
-      const label = equipped ? this.kit.t('armory.equipped') : owned ? this.kit.t('armory.equip') : `💎 ${a.unlockCost}`;
+      const label = equipped
+        ? this.kit.t('armory.equipped')
+        : owned
+          ? this.kit.t('armory.equip')
+          : unlocked
+            ? `💎 ${a.unlockCost}`
+            : this.lockLabel(a.unlockLoop);
       if (canAscend) {
         this.addObj(
           addButton(this, cx, cy + 24, label, {
@@ -583,13 +637,19 @@ export class CampScene extends Phaser.Scene {
               .text(cx, cy + 16, this.kit.t('armory.maxTier'), { fontFamily: font, fontSize: '11px', fontStyle: 'bold', color: '#c084fc' })
               .setOrigin(0.5),
           );
+        } else if (!unlocked) {
+          this.addObj(
+            this.add
+              .text(cx, cy + 16, `💎 ${a.unlockCost}`, { fontFamily: font, fontSize: '11px', fontStyle: 'bold', color: '#64748b' })
+              .setOrigin(0.5),
+          );
         }
         this.addObj(
           addButton(this, cx, cy + 50, label, {
             width: 118,
             height: 34,
             fill: equipped ? BTN_EQUIPPED : owned ? BTN_EQUIP : canBuy ? BTN_BUY : BTN_LOCKED,
-            fontSize: btnFs,
+            fontSize: unlocked ? btnFs : 12,
             onClick: () => this.tryArmor(a.id),
           }),
         );
@@ -619,34 +679,47 @@ export class CampScene extends Phaser.Scene {
       const cx = sStartX + i * (sCardW + sGap);
       const cy = 608;
       const owned = this.meta.ownedShields.includes(s.id);
+      const unlocked = isShieldUnlocked(this.meta, s.id);
       const equipped = this.meta.equippedShield === s.id;
       const activeEquipped = equipped && !is2H;
       const ascCost = shieldAscendCost(s.id);
       const isAscended = ascCost === 0 || this.meta.ascendedShields.includes(s.id);
       const canAscend = shieldsAscendOpen && owned && !isAscended;
       const canAffordAsc = canAscend && this.meta.crystals >= ascCost;
-      const canBuy = !owned && this.meta.crystals >= s.unlockCost;
+      const canBuy = !owned && unlocked && this.meta.crystals >= s.unlockCost;
       const eff = effectiveShieldStats(s.id, isAscended);
 
       this.addObj(
         this.add
-          .rectangle(cx, cy, sCardW, sCardH, 0x1e163b, is2H ? 0.55 : 0.96)
-          .setStrokeStyle(3, activeEquipped ? 0x34d399 : isAscended && owned ? 0xa855f7 : canBuy ? 0x059669 : 0x334155),
+          .rectangle(cx, cy, sCardW, sCardH, 0x1e163b, is2H || !unlocked ? 0.52 : 0.96)
+          .setStrokeStyle(3, activeEquipped ? 0x34d399 : isAscended && owned ? 0xa855f7 : canBuy ? 0x059669 : unlocked ? 0x334155 : 0x1e293b),
       );
       this.addObj(
         this.add
           .rectangle(cx - 94, cy - 38, 22, 22, Phaser.Display.Color.HexStringToColor(s.mainColor).color)
+          .setAlpha(unlocked ? 1 : 0.35)
           .setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(s.rimColor).color),
       );
       this.addObj(
         this.add
-          .text(cx - 72, cy - 38, this.kit.t(`shield.${s.id}`), { fontFamily: font, fontSize: '15px', fontStyle: 'bold', color: '#ffffff' })
+          .text(cx - 72, cy - 38, this.kit.t(`shield.${s.id}`), {
+            fontFamily: font,
+            fontSize: '15px',
+            fontStyle: 'bold',
+            color: unlocked ? '#ffffff' : '#94a3b8',
+          })
           .setOrigin(0, 0.5),
       );
       if (owned && isAscended) {
         this.addObj(
           this.add
             .text(cx + 112, cy - 38, '✦ MAX', { fontFamily: font, fontSize: '11px', fontStyle: 'bold', color: '#c084fc' })
+            .setOrigin(1, 0.5),
+        );
+      } else if (!unlocked) {
+        this.addObj(
+          this.add
+            .text(cx + 112, cy - 38, `💎 ${s.unlockCost}`, { fontFamily: font, fontSize: '11px', fontStyle: 'bold', color: '#64748b' })
             .setOrigin(1, 0.5),
         );
       }
@@ -656,7 +729,7 @@ export class CampScene extends Phaser.Scene {
             fontFamily: font,
             fontSize: '12px',
             fontStyle: 'bold',
-            color: isAscended && owned ? '#e9d5ff' : '#cbd5e1',
+            color: !unlocked ? '#64748b' : isAscended && owned ? '#e9d5ff' : '#cbd5e1',
           })
           .setOrigin(0.5),
       );
@@ -665,7 +738,7 @@ export class CampScene extends Phaser.Scene {
           .text(cx, cy + 2, this.kit.t(`shieldPassive.${s.passive}`), {
             fontFamily: font,
             fontSize: '11px',
-            color: '#6ee7b7',
+            color: unlocked ? '#6ee7b7' : '#64748b',
           })
           .setOrigin(0.5),
       );
@@ -676,7 +749,9 @@ export class CampScene extends Phaser.Scene {
           ? `🔒 ${this.kit.t('armory.locked2H')}`
           : owned
             ? this.kit.t('armory.equip')
-            : `💎 ${s.unlockCost}`;
+            : unlocked
+              ? `💎 ${s.unlockCost}`
+              : this.lockLabel(s.unlockLoop);
       const btnFill = activeEquipped
         ? BTN_EQUIPPED
         : is2H && owned

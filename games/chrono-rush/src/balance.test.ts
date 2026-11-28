@@ -107,6 +107,44 @@ describe('chrono-rush 3 chapters (Loop 1..15) balance & structure', () => {
     }
   });
 
+  it('keeps Stages 1..25 smoothly survivable using only stage-unlocked gear at each chapter', () => {
+    for (let loop = 1; loop <= 25; loop++) {
+      const unlockedWeapons = WEAPON_CATALOG.filter((w) => w.unlockLoop <= loop);
+      const unlockedArmors = ARMOR_CATALOG.filter((a) => a.unlockLoop <= loop);
+      const w = unlockedWeapons[unlockedWeapons.length - 1];
+      const a = unlockedArmors[unlockedArmors.length - 1];
+      const meta: MetaSave = {
+        ...defaultMeta(),
+        loop,
+        maxUnlockedLoop: loop,
+        equippedWeapon: w.id,
+        equippedArmor: a.id,
+        equippedShield: loop >= 11 ? 'mirror' : loop >= 6 ? 'kite' : 'buckler',
+        ownedWeapons: unlockedWeapons.map((x) => x.id),
+        ownedArmors: unlockedArmors.map((x) => x.id),
+        ownedShields: loop >= 11 ? ['buckler', 'kite', 'mirror'] : loop >= 6 ? ['buckler', 'kite'] : ['buckler'],
+        unlockedWeaponSkins: unlockedWeapons.slice(0, Math.max(0, unlockedWeapons.length - 1)).map((x) => x.id),
+        unlockedArmorSkins: unlockedArmors.slice(0, Math.max(0, unlockedArmors.length - 1)).map((x) => x.id),
+        ranks: {
+          atk: Math.min(10, Math.ceil((loop * 10) / 25)),
+          def: Math.min(10, Math.ceil((loop * 10) / 25)),
+          spd: Math.min(8, Math.ceil((loop * 8) / 25)),
+          xp: Math.min(8, Math.ceil((loop * 8) / 25)),
+          gold: Math.min(8, Math.ceil((loop * 8) / 25)),
+          startLv: Math.min(5, Math.floor((loop * 5) / 25)),
+          time: Math.min(5, Math.floor((loop * 5) / 25)),
+          crit: Math.min(8, Math.floor((loop * 8) / 25)),
+          eva: Math.min(8, Math.floor((loop * 8) / 25)),
+        },
+      };
+      const targetLv = 6 + loop;
+      const polishLv = Math.min(MAX_POLISH_LV, 1 + Math.floor(loop / 4));
+      const res = simulateBossFight(meta, loop, targetLv, polishLv);
+      expect(res.defeated, `Stage ${loop} with ${w.id}/${a.id} should be beatable`).toBe(true);
+      expect(res.survived, `Stage ${loop} with ${w.id}/${a.id} should not get burst down`).toBe(true);
+    }
+  });
+
   it('keeps Loop 5 overworld mobs one-shottable with early-mid gear and Dash-Slash', () => {
     const meta5: MetaSave = {
       ...defaultMeta(),
@@ -168,8 +206,13 @@ describe('chrono-rush 3 chapters (Loop 1..15) balance & structure', () => {
 
     const boss25 = makeEnemy('demonLord', 25);
     const boss50 = makeEnemy('demonLord', 50);
-    // Boss fireballs always deal meaningful piercing damage instead of 2-damage chip!
-    expect(bossFireballDamage(hero25, boss25)).toBeGreaterThanOrEqual(120);
+    // Boss ATK ramps smoothly across Stages 1..25 without a sudden cliff at Stage 6
+    const boss5 = makeEnemy('demonLord', 5);
+    const boss6 = makeEnemy('demonLord', 6);
+    expect(boss6.atk).toBeGreaterThan(boss5.atk);
+    expect(boss6.atk).toBeLessThan(boss5.atk * 1.35);
+    // Boss fireballs still deal meaningful piercing damage at Loop 25 and scale hard by Loop 50!
+    expect(bossFireballDamage(hero25, boss25)).toBeGreaterThanOrEqual(65);
     expect(bossFireballDamage(hero25, boss50)).toBeGreaterThanOrEqual(300);
     // Loop 50 Boss HP is substantial enough to require combos/buffs/dodging
     expect(boss50.hp).toBeGreaterThanOrEqual(35000);
