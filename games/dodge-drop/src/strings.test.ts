@@ -13,6 +13,8 @@ describe('dodge-drop strings', () => {
     for (const id of UPGRADE_IDS) {
       expect(strings.en![`up.${id}.name`]).toBeTruthy();
       expect(strings.en![`up.${id}.desc`]).toBeTruthy();
+      // Results "next goal" line names the upgrade with upgrade.<id> (missing key showed the raw key, v3.11.0).
+      expect(strings.en![`upgrade.${id}`]).toBeTruthy();
     }
     for (const d of MISSION_POOL) expect(strings.en![`mission.${d.id}`]).toContain('{t}');
   });

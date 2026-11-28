@@ -1,4 +1,4 @@
-# Neon Rush v3.11.0 - CrazyGames resubmission notes
+# Neon Rush v3.11.1 - CrazyGames resubmission notes
 
 Plan: `docs/plans/2026-11-23-dodge-drop-v3-crazygames-resubmit.md`. Previous submission: v2.8.4, rejected 2026-11-22
 ("The overall quality of the game does not yet meet the expectations of our platform"). The rejection record stays in
@@ -56,6 +56,9 @@ Phase 2 (after the owner plays it): distinct planes per skin, Chomp look, store 
 v3.11.0 - wider storm clouds are thicker (40 px up to 140 px wide, growing to 80 px; the hit box grows with the art
 and the fairness check uses it), clouds redrawn as one shaded shape with big overlapping puffs. New upgrade "Graze
 Charger" (3 levels): a graze shield needs 8 / 7 / 6 / 5 near misses.
+
+v3.11.1 - the results screen's "next upgrade" line showed the raw key "upgrade.grazeCharge"; the name is now
+translated (a unit test checks every upgrade has it).
 
 ## What changed since v2.8.4 (paste into the portal notes)
 
