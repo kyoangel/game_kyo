@@ -407,6 +407,11 @@ test('goal bar shows the next medal and fills as the run proceeds', async ({ pag
   await expect.poll(async () => (await dd(page)).frac).toBeGreaterThan(0.4);
   await page.evaluate(() => (window as unknown as { __dd: { warp(s: number): void } }).__dd.warp(10));
   await expect.poll(async () => (await dd(page)).id).toBe('silver');
+  // The label counts the seconds left to the medal, not the medal's clock time (30 s).
+  const t = await page.evaluate(() => (window as unknown as { __dd: { stats(): { t: number } } }).__dd.stats().t);
+  const left = Number(/in (\d+) s/.exec((await dd(page)).text)?.[1]);
+  expect(left).toBeGreaterThan(0);
+  expect(Math.abs(left - (30 - t))).toBeLessThanOrEqual(2);
 });
 
 test('dodge-drop: title boost bar - a second tap on an equipped boost refunds it', async ({ page }) => {
@@ -469,24 +474,28 @@ test('dodge-drop: pause button freezes the run, Resume continues, End run goes t
   expect(errors).toEqual([]);
 });
 
-test('dodge-drop: near misses never trigger Chomp (no graze gauge); the HUD shows the run time', async ({ page }) => {
+test('dodge-drop: 8 near misses fill the graze gauge and grant a shield (never Chomp); the HUD shows the run time', async ({ page }) => {
   const errors = watch(page);
   await skipOnboarding(page);
   await seed(page, {}, true);
   await openTitle(page);
   await startRun(page);
-  type S = { chomping: boolean; nearMisses: number; t: number };
+  type S = { graze: number; chomping: boolean; shieldHits: number; t: number };
   type D = { stats(): S; nearMiss(): void; hud(): Array<{ name: string }> };
+  const stats = (): Promise<S> => page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats());
+  const graze = (n: number) => page.evaluate((k) => { for (let i = 0; i < k; i++) (window as unknown as { __dd: D }).__dd.nearMiss(); }, n);
   await page.waitForFunction(() => ((window as unknown as { __dd: D }).__dd.stats?.().t ?? 0) > 0.5);
-  const before = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats())).nearMisses;
-  for (let i = 0; i < 12; i++) await page.evaluate(() => (window as unknown as { __dd: D }).__dd.nearMiss());
-  const s = await page.evaluate(() => (window as unknown as { __dd: D }).__dd.stats());
-  expect(s.chomping).toBe(false);
-  expect(s.nearMisses - before).toBe(12);
+  expect((await stats()).shieldHits).toBe(0);
+  await graze(7);
+  expect(await stats()).toMatchObject({ graze: 7, shieldHits: 0, chomping: false });
+  await graze(1);
+  expect(await stats()).toMatchObject({ graze: 0, shieldHits: 1, chomping: false });
+  // Capacity 1 without Shield Stack: the gauge fills and waits instead of wasting the shield.
+  await graze(9);
+  expect(await stats()).toMatchObject({ graze: 8, shieldHits: 1, chomping: false });
   const names = (await page.evaluate(() => (window as unknown as { __dd: D }).__dd.hud())).map((h) => h.name);
   expect(names).toContain('timer');
   expect(names).not.toContain('score');
-  expect(names, 'the Chomp label shows only while Chomp runs').not.toContain('gauge');
   expect(errors).toEqual([]);
 });
 

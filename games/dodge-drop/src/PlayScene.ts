@@ -7,6 +7,7 @@ import { CAMP_BLOCK_W, campBlockX, CampTracker } from './camp.ts';
 import { musicRate } from './musicTempo.ts';
 import { countdownAt, WARN_LEAD } from './countdown.ts';
 import { horizontalGap, isNearMiss } from './combo.ts';
+import { addGraze, GRAZE_FULL } from './graze.ts';
 import { emptyStats, liveProgress, newlyCompleted, sanitizeMissions, type MissionId, type MissionState, type RunStats } from './missions.ts';
 import { rushStartAt, sanitizeAssist, sanitizeStartTier, DEFAULT_ASSIST } from './progression.ts';
 import { buildRunConfig, GRACE_SECONDS, MAGNET_SPEED, type RunConfig } from './runSetup.ts';
@@ -113,6 +114,8 @@ export class PlayScene extends Phaser.Scene {
 
   private t = 0;
   private stars = 0;
+  /** Graze gauge: near misses toward the next shield (0..GRAZE_FULL; full = waiting for a free shield slot). */
+  private graze = 0;
   /** Length of the current Chomp, for the draining gauge. */
   private chompTotal = 0;
   private camp = new CampTracker();
@@ -181,7 +184,6 @@ export class PlayScene extends Phaser.Scene {
   private missionsText: Phaser.GameObjects.Text | null = null;
   private lastMissionsShown = '';
   private gaugeLabel: Phaser.GameObjects.Text | null = null;
-  private gaugeIcon: Phaser.GameObjects.Image | null = null;
   private gaugeBar!: Phaser.GameObjects.Graphics;
   private goalText!: Phaser.GameObjects.Text;
   private goalBar!: Phaser.GameObjects.Graphics;
@@ -237,6 +239,7 @@ export class PlayScene extends Phaser.Scene {
     this.rng = mulberry32(Date.now() >>> 0);
     this.t = 0;
     this.stars = 0;
+    this.graze = 0;
     this.chompTotal = 0;
     this.camp.reset();
     this.aimedTotal = 0;
@@ -299,6 +302,7 @@ export class PlayScene extends Phaser.Scene {
         god,
         stats: () => ({
           t: this.t,
+          graze: this.graze,
           aimed: this.aimedTotal,
           chomping: this.chompTimer > 0,
           nearMisses: this.stats.nearMisses,
@@ -321,7 +325,7 @@ export class PlayScene extends Phaser.Scene {
         /** Test hook: canvas positions of the pause menu buttons while it is open. */
         pauseMenu: () => (this.paused ? this.pauseMenuReport() : null),
         warp: (seconds: number) => { this.t += seconds; },
-        /** Test hook: one near miss beside the player (counts toward the near-miss mission). */
+        /** Test hook: one near miss beside the player (charges the graze gauge). */
         nearMiss: () => this.onNearMiss({ x: this.player.x + 60 } as Block),
         /** Test hook: adds one held shield (capped like a pickup). */
         giveShield: () => this.addShield(),
@@ -587,14 +591,12 @@ export class PlayScene extends Phaser.Scene {
     const panelHud = (): void => {
       // The run clock is the headline result (medals, best time).
       this.timerText = this.add.text(a.timer.x, a.timer.y, '0:00', { ...this.textStyleFor('panel', 60, theme.text), strokeThickness: 7 }).setOrigin(a.timer.originX ?? 0, 0).setDepth(100);
-      // Chomp timer (bought Chomp boost only): landscape a text label over the bar, portrait a small Chomp icon.
-      // Both stay hidden until Chomp runs.
+      // Graze gauge (8 near misses = 1 shield): landscape a text label over the bar, portrait a small shield icon.
+      // While the bought Chomp runs the same bar drains with its time.
       this.gaugeLabel = landscape
-        ? this.add.text(a.gauge.x, a.gauge.y, this.kit.t('chompGauge'), this.textStyle(GOAL_PANEL_FONT, 0x3ff0ff)).setDepth(100).setVisible(false)
+        ? this.add.text(a.gauge.x, a.gauge.y, this.kit.t('grazeGauge'), this.textStyle(GOAL_PANEL_FONT, 0x3ff0ff)).setDepth(100)
         : null;
-      this.gaugeIcon = landscape
-        ? null
-        : artImage(this, a.gauge.x + 12, a.gauge.y + 8, boostIconKey('chomp')).setDisplaySize(26, 26).setDepth(100).setVisible(false);
+      if (!landscape) artImage(this, a.gauge.x + 12, a.gauge.y + 8, boostIconKey('shield')).setDisplaySize(26, 26).setDepth(100);
       this.gaugeBar = this.add.graphics().setDepth(100);
       const goalStyle = landscape ? this.textStyle(GOAL_PANEL_FONT, theme.text) : this.textStyleFor('panel', 26, theme.text);
       this.goalText = this.add.text(a.goal.x, a.goal.y, '', goalStyle).setOrigin(a.goal.originX ?? 0, 0).setDepth(100).setVisible(false);
@@ -1222,15 +1224,26 @@ export class PlayScene extends Phaser.Scene {
     this.syncShieldHud();
   }
 
-  /** A block passed close by: counts for the near-miss mission and plays the skin's near-miss effect (no gauge). */
+  /** A block passed close by: charges the graze gauge; a full gauge is one more shield (no Chomp). */
   private onNearMiss(b: Block): void {
     this.stats.nearMisses++;
     if (this.chompTimer > 0) return;
+    const g = addGraze(this.graze, this.shieldHits < this.cfg.shieldCapacity);
+    this.graze = g.gauge;
     const side = Math.sign(b.x - this.player.x) || 1;
-    // Two blocks passing on both sides in the same row must not stack two effects on top of each other.
-    if (this.t - this.lastNearPopT < 0.2) return;
-    this.lastNearPopT = this.t;
-    this.kit.audio.sfx('nearMiss', { step: 1 });
+    if (g.shield) {
+      this.addShield();
+      this.kit.audio.sfx('shield');
+      this.fx.burst(this.player.x, PLAYER_Y, { color: 0x58ff9a, count: 22, speed: 340, lifespanMs: 520 });
+      this.fx.popText(this.player.x, PLAYER_Y - 70, this.kit.t('grazeShield'), { color: 0x58ff9a, size: fieldFont(this.frame, 34) });
+      this.lastNearPopT = this.t;
+    } else if (this.t - this.lastNearPopT >= 0.2) {
+      // Two blocks passing on both sides in the same row must not stack two pops on top of each other.
+      this.lastNearPopT = this.t;
+      this.fx.popText(this.player.x, PLAYER_Y - 70, this.kit.t('graze'), { color: 0x3ff0ff, size: fieldFont(this.frame, 34) });
+    }
+    // Pitch climbs with the gauge so the player hears it filling.
+    this.kit.audio.sfx('nearMiss', { step: g.shield ? GRAZE_FULL : this.graze });
     playNearMiss(this, this.fx, this.skin, this.player.x, PLAYER_Y, side, this.skinColor());
   }
 
@@ -1522,7 +1535,9 @@ export class PlayScene extends Phaser.Scene {
 
   // -------------------------------------------------------------------- hud
 
-  /** Next-medal label + progress bar; redraws only when the label or a 1 % bar step changes. */
+  /**
+   * Next-medal label (seconds LEFT, not the medal's clock time: owner read "Neon · 120 s" after a Gold start as 120 s
+   * more) + progress bar; redraws only when the label or a 1 % bar step changes. */
   private updateGoal(): void {
     const g = nextGoal(this.t, this.kit.session.best);
     this.goalState = g;
@@ -1532,7 +1547,7 @@ export class PlayScene extends Phaser.Scene {
     }
     const pct = Math.round(g.frac * 100);
     const label = g.kind === 'medal'
-      ? this.kit.t('goal.medal').replace('{medal}', this.kit.t(`medal.${g.id}`)).replace('{n}', String(g.targetSec))
+      ? this.kit.t('goal.medal').replace('{medal}', this.kit.t(`medal.${g.id}`)).replace('{n}', String(g.remainingSec))
       : this.kit.t('goal.best').replace('{n}', String(g.percent));
     const key = `${label}|${pct}`;
     if (key === this.lastGoalKey) return;
@@ -1567,24 +1582,30 @@ export class PlayScene extends Phaser.Scene {
     this.updateGauge();
   }
 
-  /** Chomp timer: one bar draining with the remaining Chomp time; hidden (with its label/icon) when not chomping. */
+  /** Graze gauge: GRAZE_FULL segments filling with near misses; while Chomp runs, one bar draining with its time. */
   private updateGauge(): void {
     const chomping = this.chompTimer > 0 && this.chompTotal > 0;
     const drain = chomping ? Math.round((this.chompTimer / this.chompTotal) * 100) : -1;
-    const key = `${drain}`;
+    const key = `${this.graze}|${drain}`;
     if (key === this.lastGaugeKey) return;
     this.lastGaugeKey = key;
-    this.gaugeLabel?.setVisible(chomping);
-    this.gaugeIcon?.setVisible(chomping);
-    const g = this.gaugeBar;
-    g.clear();
-    if (!chomping) return;
     const landscape = this.frame.mode === 'landscape';
     const x = this.anchors.gauge.x + (landscape ? 0 : 32);
     const y = this.anchors.gauge.y + (landscape ? 50 : 0);
     const w = landscape ? 380 : 136;
     const h = landscape ? 20 : 16;
-    g.fillStyle(0x3a2f66, 0.85).fillRoundedRect(x, y, w, h, h / 2);
-    g.fillStyle(0x3b7bff, 1).fillRoundedRect(x, y, Math.max(h, (w * drain) / 100), h, h / 2);
+    const g = this.gaugeBar;
+    g.clear();
+    if (chomping) {
+      g.fillStyle(0x3a2f66, 0.85).fillRoundedRect(x, y, w, h, h / 2);
+      g.fillStyle(0x3b7bff, 1).fillRoundedRect(x, y, Math.max(h, (w * drain) / 100), h, h / 2);
+      return;
+    }
+    const gap = 4;
+    const seg = (w - gap * (GRAZE_FULL - 1)) / GRAZE_FULL;
+    for (let i = 0; i < GRAZE_FULL; i++) {
+      g.fillStyle(i < this.graze ? 0x58ff9a : 0x3a2f66, i < this.graze ? 1 : 0.85);
+      g.fillRoundedRect(x + i * (seg + gap), y, seg, h, Math.min(4, h / 2));
+    }
   }
 }
