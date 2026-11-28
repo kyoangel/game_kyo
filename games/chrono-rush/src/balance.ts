@@ -46,13 +46,33 @@ export const BALANCE = {
   bossFireballMinAtkRatio: 0.22,
   mobMinAtkRatio: 0.15,
 
-  // Progressive Loop 1..50+ Boss curve (0 DEF so hero ATK = transparent damage; HP & ATK accelerate in Cycle 2+)
-  bossHp: (loop: number): number => Math.round(360 + (loop - 1) * 260 + Math.pow(Math.max(0, loop - 1), 1.65) * 42),
-  bossAtk: (loop: number): number => Math.round(36 + (loop - 1) * 18 + Math.pow(Math.max(0, loop - 1), 1.35) * 3.5),
+  // Progressive Loop 1..50+ Boss curve:
+  // - Loops 1..5: friendly onboarding arc (Loop 1 beatable fresh w/o polish; Loop 2 beatable <LV10 w/ LV3 polish; Loops 3-5 smooth with camp gear)
+  // - Loops 6..50+: full mid/endgame ramp keeping Loop 25 & Loop 50 genuinely thrilling
+  bossHp: (loop: number): number => {
+    const l = Math.max(1, Math.floor(loop));
+    if (l <= 5) {
+      const onboardingHp = [190, 340, 540, 780, 1060];
+      return onboardingHp[l - 1];
+    }
+    return Math.round(360 + (l - 1) * 260 + Math.pow(l - 1, 1.65) * 42);
+  },
+  bossAtk: (loop: number): number => {
+    const l = Math.max(1, Math.floor(loop));
+    if (l <= 5) {
+      const onboardingAtk = [20, 30, 42, 56, 72];
+      return onboardingAtk[l - 1];
+    }
+    return Math.round(36 + (l - 1) * 18 + Math.pow(l - 1, 1.35) * 3.5);
+  },
   bossDef: (_loop: number): number => 0,
 
-  // Overworld mob scaling (smooth early-mid curve so Loop 1..8 stay snappy, accelerating in Loop 10+)
-  mobStatScale: (loop: number): number => 1 + (loop - 1) * 0.25 + Math.pow(Math.max(0, loop - 1), 1.55) * 0.032,
+  // Overworld mob scaling (gentle in Loops 1..5 onboarding, accelerating smoothly in Loop 6+)
+  mobStatScale: (loop: number): number => {
+    const l = Math.max(1, Math.floor(loop));
+    if (l <= 5) return 1 + (l - 1) * 0.22;
+    return 1 + (l - 1) * 0.25 + Math.pow(l - 1, 1.55) * 0.032;
+  },
   mobRewardScale: (loop: number): number => 1 + (loop - 1) * 0.28,
 
   // Crystal economy (sqrt curve prevents runaway inflation at Loop 15+)

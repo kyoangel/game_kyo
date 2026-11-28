@@ -147,6 +147,9 @@ export class PlayScene extends Phaser.Scene {
   private dashTimeLeft = 0;
   private dashCooldownLeft = 0;
   private dashDir = { x: 1, y: 0 };
+  private dashHitEnemies = new Set<EnemyEntity>();
+  private onboardVillageTipShown = false;
+  private onboardTipBanner?: Phaser.GameObjects.Container;
   private invulnLeft = 0;
   private villageReentryCooldown = 0;
   private villageOpenedAt = 0;
@@ -213,6 +216,9 @@ export class PlayScene extends Phaser.Scene {
     this.animClock = 0;
     this.dashTimeLeft = 0;
     this.dashCooldownLeft = 0;
+    this.dashHitEnemies.clear();
+    this.onboardVillageTipShown = false;
+    this.onboardTipBanner = undefined;
     this.invulnLeft = 0;
     this.villageReentryCooldown = 0;
     this.lastMusicState = '';
@@ -304,6 +310,13 @@ export class PlayScene extends Phaser.Scene {
       this.kit.audio.music.start();
       this.syncMusicIntensity();
       this.updateHud();
+      if (this.meta.loop === 1) {
+        this.showOnboardingTip(this.kit.t('onboard.loop1'));
+      } else if (this.meta.loop === 2) {
+        this.showOnboardingTip(this.kit.t('onboard.loop2'));
+      } else if (this.meta.loop <= 5 && this.meta.equippedWeapon === 'wood') {
+        this.showOnboardingTip(this.kit.t('onboard.campGear'));
+      }
     };
 
     void this.kit.save
@@ -529,10 +542,47 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
+  private mobVisualId(id: OverworldMobId): OverworldMobId {
+    return this.meta.loop <= 5 ? 'slime' : id;
+  }
+
+  private mobBaseTint(id: OverworldMobId): number | null {
+    if (this.meta.loop > 5) return null;
+    if (id === 'goblin') return 0x7dd3fc; // Zone 2 Rich Cyan Slime
+    if (id === 'skeleton') return 0xfde047; // Zone 3 Royal Golden Slime
+    return null;
+  }
+
+  private showOnboardingTip(msg: string): void {
+    if (this.onboardTipBanner?.active) this.onboardTipBanner.destroy();
+    const { width } = this.scale;
+    const y = this.isMobile ? 124 : 112;
+    const bg = this.add.rectangle(0, 0, Math.min(width - 48, 760), 42, 0x13092b, 0.92).setStrokeStyle(2, 0x38bdf8);
+    const txt = this.add
+      .text(0, 0, msg, {
+        fontFamily: this.kit.theme.font,
+        fontSize: this.isMobile ? '17px' : '16px',
+        fontStyle: 'bold',
+        color: '#fef08a',
+        stroke: '#09050f',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
+    const box = this.add.container(width / 2, y, [bg, txt]).setScrollFactor(0).setDepth(104).setAlpha(0);
+    this.onboardTipBanner = box;
+    this.tweens.add({ targets: box, alpha: 1, duration: 240 });
+    this.time.delayedCall(4400, () => {
+      if (!box.active) return;
+      this.tweens.add({ targets: box, alpha: 0, duration: 360, onComplete: () => box.destroy() });
+    });
+  }
+
   private createEnemyEntity(id: OverworldMobId, x: number, y: number): EnemyEntity {
     const spec = makeEnemy(id, this.meta.loop);
     const m = this.isMobile;
-    const sprite = this.add.image(x, y, mobTextureKey(this.stage.chapter.id, id, 0)).setScale(m ? 1.28 : 1).setDepth(10);
+    const sprite = this.add.image(x, y, mobTextureKey(this.stage.chapter.id, this.mobVisualId(id), 0)).setScale(m ? 1.28 : 1).setDepth(10);
+    const tint = this.mobBaseTint(id);
+    if (tint !== null) sprite.setTint(tint);
 
     const barW = m ? 56 : 44;
     const barY = y - (m ? 38 : 30);
@@ -1025,6 +1075,9 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.controlsHintText.setText(this.kit.t(this.isMobile ? 'touchControlsHint' : 'bossControls'));
+    if (this.meta.loop <= 2) {
+      this.showOnboardingTip(this.kit.t('onboard.boss'));
+    }
     this.syncMusicIntensity();
   }
 
@@ -1411,6 +1464,7 @@ export class PlayScene extends Phaser.Scene {
     if (this.activeVillage || this.dashCooldownLeft > 0 || this.runEnded) return;
     this.dashTimeLeft = this.mode === 'boss' ? 0.26 : 0.22;
     this.dashCooldownLeft = this.hero.dashCooldownMs;
+    this.dashHitEnemies.clear();
     this.kit.audio.sfx('rush');
     if (this.mode === 'overworld') {
       this.fx.burst(this.heroSprite.x, this.heroSprite.y, { color: 0x38bdf8, count: 10, speed: 220, lifespanMs: 260 });
@@ -1468,10 +1522,13 @@ export class PlayScene extends Phaser.Scene {
       e.sprite.setPosition(e.homeX + bobX, e.homeY + bobY);
 
       const frame = Math.floor(e.wanderPhase * 1.5) % 2;
-      e.sprite.setTexture(mobTextureKey(this.stage.chapter.id, e.spec.id as OverworldMobId, frame));
+      e.sprite.setTexture(mobTextureKey(this.stage.chapter.id, this.mobVisualId(e.spec.id as OverworldMobId), frame));
       this.syncEnemyVisuals(e);
 
-      if (e.bumpCooldown <= 0 && PlayScene.distPointToSegment(e.sprite.x, e.sprite.y, ax, ay, bx, by) < hitRadius) {
+      // Dash-Slash ALWAYS connects once per dash (even right after a normal bump!) so dashing never phases through a mob!
+      const canDashBypass = this.dashTimeLeft > 0 && !this.dashHitEnemies.has(e);
+      if ((e.bumpCooldown <= 0 || canDashBypass) && PlayScene.distPointToSegment(e.sprite.x, e.sprite.y, ax, ay, bx, by) < hitRadius) {
+        if (this.dashTimeLeft > 0) this.dashHitEnemies.add(e);
         this.handleBump(e);
         if (this.runEnded) return;
       }
@@ -1551,6 +1608,8 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (!res.oneShot) {
+      // Stop dash on surviving enemy so hero bounces off cleanly instead of phasing through
+      this.dashTimeLeft = 0;
       const angle = Phaser.Math.Angle.Between(e.sprite.x, e.sprite.y, this.heroSprite.x, this.heroSprite.y);
       // Mutual knockback: both Hero and surviving Monster recoil cleanly apart!
       this.heroSprite.setPosition(
@@ -1561,8 +1620,11 @@ export class PlayScene extends Phaser.Scene {
       e.homeY = Phaser.Math.Clamp(e.homeY - Math.sin(angle) * 24, 120, WORLD_H - 60);
       e.sprite.setPosition(e.homeX, e.homeY);
       e.sprite.setTintFill(0xffffff);
+      const restoreTint = this.mobBaseTint(e.spec.id as OverworldMobId);
       this.time.delayedCall(80, () => {
-        if (e.sprite.active) e.sprite.clearTint();
+        if (!e.sprite.active) return;
+        if (restoreTint !== null) e.sprite.setTint(restoreTint);
+        else e.sprite.clearTint();
       });
       this.syncEnemyVisuals(e);
       e.bumpCooldown = 0.22;
@@ -1590,6 +1652,10 @@ export class PlayScene extends Phaser.Scene {
       this.kit.audio.sfx('pickup');
       const { levelsGained, xpGained, goldGained } = grantRewards(this.hero, e.spec.xp, e.spec.gold);
       this.fx.popText(e.sprite.x, e.sprite.y + 8, `+${xpGained}XP +${goldGained}G`, { color: 0x86efac, size: 18 });
+      if (this.meta.loop <= 2 && !this.onboardVillageTipShown && this.hero.weaponPolishLv === 0 && this.hero.gold >= 24) {
+        this.onboardVillageTipShown = true;
+        this.showOnboardingTip(this.kit.t('onboard.village'));
+      }
 
       if (levelsGained > 0) {
         this.kit.audio.sfx('medal');

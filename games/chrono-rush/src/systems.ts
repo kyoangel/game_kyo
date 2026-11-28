@@ -184,6 +184,8 @@ export function totalDef(hero: HeroStats): number {
 export function makeEnemy(id: EnemySpec['id'], loop: number): EnemySpec {
   const scale = BALANCE.mobStatScale(loop);
   const rew = BALANCE.mobRewardScale(loop);
+  // Loops 1..5 onboarding arc: all 3 overworld zones are easy-to-clear Slimes whose XP & Gold scale up closer to the castle!
+  const onboardingSlime = loop <= 5;
   switch (id) {
     case 'slime':
       return {
@@ -199,8 +201,8 @@ export function makeEnemy(id: EnemySpec['id'], loop: number): EnemySpec {
       return {
         id,
         zone: 2,
-        hp: Math.round(48 * scale),
-        atk: Math.round(16 * scale),
+        hp: Math.round((onboardingSlime ? 22 : 48) * scale),
+        atk: Math.round((onboardingSlime ? 9 : 16) * scale),
         def: 0,
         xp: Math.round(28 * rew),
         gold: Math.round(24 * rew),
@@ -209,8 +211,8 @@ export function makeEnemy(id: EnemySpec['id'], loop: number): EnemySpec {
       return {
         id,
         zone: 3,
-        hp: Math.round(115 * scale),
-        atk: Math.round(32 * scale),
+        hp: Math.round((onboardingSlime ? 28 : 115) * scale),
+        atk: Math.round((onboardingSlime ? 11 : 32) * scale),
         def: 0,
         xp: Math.round(68 * rew),
         gold: Math.round(58 * rew),

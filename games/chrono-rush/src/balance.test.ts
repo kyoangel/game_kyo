@@ -121,10 +121,31 @@ describe('chrono-rush 3 chapters (Loop 1..15) balance & structure', () => {
 
     // At LV 1 with Sunfire Claymore, Zone-1 Slimes are cleanly one-shot without even dashing
     expect(resolveBumpClash(hero, slime5.hp, slime5, () => 0.99, false).oneShot).toBe(true);
-    // After 1 village weapon polish + 2 levels, Dash-Slash cleanly one-shots Zone-2 Goblins!
+    // After 1 village weapon polish + 2 levels, Dash-Slash cleanly one-shots Zone-2 Rich Slimes!
     hero.weaponPolishLv = 1;
     grantRewards(hero, hero.xpToNext * 2, 0);
     expect(resolveBumpClash(hero, goblin5.hp, goblin5, () => 0.99, true).oneShot).toBe(true);
+  });
+
+  it('keeps Loops 1..5 friendly for new players (Loop 1 fresh, Loop 2 <LV10 + LV3 polish, 3-zone Slime rewards)', () => {
+    // Loop 1: brand-new player (LV 5, starter Oak Blade, 0 polish, 0 camp upgrades) beats Boss 1!
+    const loop1Res = simulateBossFight(defaultMeta(), 1, 5, 0);
+    expect(loop1Res.defeated).toBe(true);
+    expect(loop1Res.survived).toBe(true);
+
+    // Loop 2: player under LV 10 (LV 8) with LV 3 weapon polish beats Boss 2!
+    const loop2Res = simulateBossFight({ ...defaultMeta(), loop: 2 }, 2, 8, 3);
+    expect(loop2Res.defeated).toBe(true);
+    expect(loop2Res.survived).toBe(true);
+
+    // Loops 1..5: all 3 zones stay Slime-easy while XP & Gold ramp up closer to the castle
+    const z1 = makeEnemy('slime', 3);
+    const z2 = makeEnemy('goblin', 3);
+    const z3 = makeEnemy('skeleton', 3);
+    expect(z2.hp).toBeLessThan(z1.hp * 2);
+    expect(z3.hp).toBeLessThan(z1.hp * 2.2);
+    expect(z2.xp).toBeGreaterThan(z1.xp * 2);
+    expect(z3.xp).toBeGreaterThan(z2.xp * 2);
   });
 
   it('keeps Loop 25 and Loop 50 genuinely dangerous even for a maxed-out endgame tank', () => {
